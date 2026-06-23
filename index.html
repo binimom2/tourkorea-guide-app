@@ -3898,7 +3898,7 @@ function renderSubmissions() {
           <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
           <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
         </div>
-        <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="markSubSeen('${s.id}')">확인</button>
+        <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>
       </div>
     </div>`).join('');
 }
@@ -3906,6 +3906,25 @@ function renderSubmissions() {
 async function markSubSeen(id) {
   const s=submissionsDB.find(x=>x.id===id);
   if(s){s.status='seen'; await saveSubmissions(); renderSubmissions();}
+}
+
+async function openSubData(id) {
+  const s = submissionsDB.find(x=>x.id===id);
+  if(!s || !s.fullData) { showToast('저장된 데이터가 없습니다.', true); return; }
+  if(!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 불러오시겠습니까?\n현재 작업 중인 내용은 덮어씌워집니다.`)) return;
+  s.status = 'seen';
+  await saveSubmissions();
+  const d = s.fullData;
+  state.info     = d.info     || {};
+  state.days     = d.days     || [];
+  state.expenses = d.expenses || {};
+  state.options  = d.options  || [];
+  state.shopping = d.shopping || [];
+  state.company  = d.company  || [];
+  saveData();
+  closeSubmissions();
+  restoreUIFromState();
+  showToast(`✅ [${s.settleCode}] 불러오기 완료`);
 }
 
 // ══════════════════════════════════════════════════════
