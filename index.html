@@ -2827,121 +2827,121 @@ function fetchWithTimeout(url, ms) {
 function parseRatesFromHtml(html) {
   let usd = null, krw = null;
 
-  // USD 찾기 ($100 buying 기준: 30~42 THB)
-  const usdBlocks = html.match(/USD[\s\S]{0,500}/gi) || [];
+  // USD — $100 buying 기준 (30~42 THB)
+  const usdBlocks = html.match(/USD[\s\S]{0,600}/gi) || [];
   for (const block of usdBlocks) {
     const nums = block.match(/\b(\d{2,3}(?:\.\d{1,4})?)\b/g) || [];
     for (const n of nums) {
       const v = parseFloat(n);
-      if (v >= 30 && v <= 42) { usd = v; break; }
+      if (v >= 30 && v <= 42)   { usd = v; break; }
       if (v >= 3000 && v <= 4200) { usd = v / 100; break; }
     }
     if (usd) break;
   }
 
-  // KRW 찾기 (50000~5000원 buying 기준)
-  // Super Rich는 1KRW(~0.021), 100KRW(~2.1), 1000KRW(~21) 단위로 표시할 수 있음
-  const krwBlocks = html.match(/KRW[\s\S]{0,500}/gi) || [];
-  for (const block of krwBlocks) {
+  // KRW — 50000-5000원 buying 기준 (0.02160 형식)
+  // 1순위: "50000" 또는 "5000" denomination 근처의 KRW 블록
+  const krw50k = html.match(/KRW[\s\S]{0,600}?(?:50000|5000)[\s\S]{0,200}/gi) || [];
+  const krwAll = html.match(/KRW[\s\S]{0,600}/gi) || [];
+  for (const block of [...krw50k, ...krwAll]) {
     const nums = block.match(/\b(\d+(?:\.\d{1,5})?)\b/g) || [];
     for (const n of nums) {
       const v = parseFloat(n);
-      if (v >= 0.015 && v <= 0.035) { krw = v; break; }        // per 1 KRW
-      if (v >= 1.5  && v <= 3.5)   { krw = v / 100; break; }   // per 100 KRW
-      if (v >= 15   && v <= 35)    { krw = v / 1000; break; }   // per 1000 KRW
+      if (v >= 0.015 && v <= 0.035) { krw = v; break; }        // per 1 KRW  (~0.0216)
+      if (v >= 1.5   && v <= 3.5)   { krw = v / 100; break; }  // per 100 KRW (~2.16)
+      if (v >= 15    && v <= 35)    { krw = v / 1000; break; }  // per 1000 KRW (~21.6)
     }
     if (krw) break;
   }
 
-  return (usd && krw) ? { usd, krw } : null;
+  return { usd, krw };
 }
 
 async function fetchAutoRate() {
   const btn = document.getElementById('btn-fetch-rate');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 가져오는 중...'; }
 
-  let usdRaw = null, krwRaw = null, source = '';
+  let usdRaw = null, krwRaw = null, usdSrc = '', krwSrc = '';
 
-  // 1차: Super Rich Thailand 전용 JSON API
-  const srApiUrls = [
-    'https://corsproxy.io/?' + encodeURIComponent('https://www.superrichthailand.com/api/exchange-rate/current'),
-    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.superrichthailand.com/api/exchange-rate/current'),
+  // ── Super Rich Thailand — 알려진 API 엔드포인트 순차 시도
+  const SR_APIS = [
+    'https://www.superrichthailand.com/Services/GetCurrentRate',
+    'https://www.superrichthailand.com/api/exchange-rate/current',
+    'https://www.superrichthailand.com/api/ExchangeRate',
+    'https://www.superrichthailand.com/api/v1/exchange-rates',
   ];
-  for (const url of srApiUrls) {
-    try {
-      const resp = await fetchWithTimeout(url, 7000);
-      if (!resp.ok) continue;
-      let text = await resp.text();
-      try { const j = JSON.parse(text); if (j.contents) text = j.contents; } catch(e) {}
-      const data = JSON.parse(text);
-      // Super Rich JSON: 배열 혹은 객체에서 USD/KRW buying 추출
-      const findRate = (arr, code) => {
-        const item = (Array.isArray(arr) ? arr : Object.values(arr))
-          .find(r => (r.code||r.currency||r.currencyCode||'').toUpperCase() === code);
-        if (!item) return null;
-        return parseFloat(item.buying || item.buyingRate || item.buy || item.ratebuying || 0);
-      };
-      const arr = data.data || data.rates || data.result || data;
-      const u = findRate(arr, 'USD'), k = findRate(arr, 'KRW');
-      if (u && k) {
-        // USD: $100 단위일 경우 /100
-        usdRaw = u > 100 ? u / 100 : u;
-        // KRW: 1000원 단위일 경우 /1000, 100원 단위일 경우 /100
-        krwRaw = k > 10 ? k / 1000 : k > 1 ? k / 100 : k;
-        source = 'Super Rich Thailand';
-        break;
-      }
-    } catch(e) {}
-  }
-
-  // 2차: Super Rich HTML 파싱 (CORS 프록시)
-  if (!usdRaw || !krwRaw) {
-    const SR_URL = 'https://www.superrichthailand.com/';
-    const proxies = [
-      'https://corsproxy.io/?' + encodeURIComponent(SR_URL),
-      'https://api.allorigins.win/get?url=' + encodeURIComponent(SR_URL),
-    ];
-    for (const url of proxies) {
+  for (const apiUrl of SR_APIS) {
+    if (usdRaw && krwRaw) break;
+    for (const proxy of [
+      'https://corsproxy.io/?' + encodeURIComponent(apiUrl),
+      'https://api.allorigins.win/get?url=' + encodeURIComponent(apiUrl),
+    ]) {
       try {
-        const resp = await fetchWithTimeout(url, 7000);
+        const resp = await fetchWithTimeout(proxy, 6000);
         if (!resp.ok) continue;
-        let html = await resp.text();
-        try { const j = JSON.parse(html); if (j.contents) html = j.contents; } catch(e) {}
-        const rates = parseRatesFromHtml(html);
-        if (rates) { usdRaw = rates.usd; krwRaw = rates.krw; source = 'Super Rich Thailand'; break; }
+        let text = await resp.text();
+        try { const j = JSON.parse(text); if (j.contents) text = j.contents; } catch(e) {}
+        const data = JSON.parse(text);
+        const findRate = (arr, code) => {
+          const list = Array.isArray(arr) ? arr : (Array.isArray(arr?.data)?arr.data:Object.values(arr||{}));
+          const item = list.find(r=>(r.code||r.currency||r.currencyCode||r.Currency||'').toString().toUpperCase()===code);
+          if (!item) return null;
+          const v = parseFloat(item.buying||item.buyingRate||item.buy||item.BuyRate||item.ratebuying||0);
+          return v > 0 ? v : null;
+        };
+        const arr = data.data||data.rates||data.result||data.Data||data;
+        const u = findRate(arr,'USD'), k = findRate(arr,'KRW');
+        if (u) { usdRaw = u > 100 ? u/100 : u; usdSrc='Super Rich'; }
+        if (k) { krwRaw = k > 10 ? k/1000 : k > 1 ? k/100 : k; krwSrc='Super Rich'; }
+        if (usdRaw && krwRaw) break;
       } catch(e) {}
     }
   }
 
-  // 3차: open.er-api.com
+  // ── Super Rich HTML 파싱 (JS SPA이므로 정적 HTML에 데이터 없을 수 있음)
+  if (!usdRaw || !krwRaw) {
+    for (const proxyUrl of [
+      'https://corsproxy.io/?' + encodeURIComponent('https://www.superrichthailand.com/'),
+      'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.superrichthailand.com/'),
+    ]) {
+      try {
+        const resp = await fetchWithTimeout(proxyUrl, 7000);
+        if (!resp.ok) continue;
+        let html = await resp.text();
+        try { const j = JSON.parse(html); if (j.contents) html = j.contents; } catch(e) {}
+        const r = parseRatesFromHtml(html);
+        if (!usdRaw && r.usd) { usdRaw = r.usd; usdSrc = 'Super Rich'; }
+        if (!krwRaw && r.krw) { krwRaw = r.krw; krwSrc = 'Super Rich'; }
+        if (usdRaw && krwRaw) break;
+      } catch(e) {}
+    }
+  }
+
+  // ── open.er-api.com (시장 기준율 — USD/KRW 각각 없는 것만 보완)
   if (!usdRaw || !krwRaw) {
     try {
       const resp = await fetchWithTimeout('https://open.er-api.com/v6/latest/THB', 6000);
       if (resp.ok) {
         const d = await resp.json();
-        if (d.rates?.USD && d.rates?.KRW) {
-          usdRaw = parseFloat((1 / d.rates.USD).toFixed(4));
-          krwRaw = parseFloat((1 / d.rates.KRW).toFixed(6));
-          source = 'Open Exchange Rates';
-        }
+        if (!usdRaw && d.rates?.USD) { usdRaw = parseFloat((1/d.rates.USD).toFixed(4)); usdSrc='시장환율'; }
+        if (!krwRaw && d.rates?.KRW) { krwRaw = parseFloat((1/d.rates.KRW).toFixed(6)); krwSrc='시장환율'; }
       }
     } catch(e) {}
   }
 
-  // 4차: frankfurter.app
+  // ── frankfurter.app
   if (!usdRaw || !krwRaw) {
     try {
       const resp = await fetchWithTimeout('https://api.frankfurter.app/latest?from=THB&to=USD,KRW', 6000);
       if (resp.ok) {
         const d = await resp.json();
-        if (d.rates?.USD && d.rates?.KRW) {
-          usdRaw = parseFloat((1 / d.rates.USD).toFixed(4));
-          krwRaw = parseFloat((1 / d.rates.KRW).toFixed(6));
-          source = 'Frankfurter';
-        }
+        if (!usdRaw && d.rates?.USD) { usdRaw = parseFloat((1/d.rates.USD).toFixed(4)); usdSrc='Frankfurter'; }
+        if (!krwRaw && d.rates?.KRW) { krwRaw = parseFloat((1/d.rates.KRW).toFixed(6)); krwSrc='Frankfurter'; }
       }
     } catch(e) {}
   }
+
+  const source = (usdSrc===krwSrc) ? usdSrc : `USD:${usdSrc} / KRW:${krwSrc}`;
 
   if (btn) { btn.disabled = false; btn.textContent = '🔄 환율 자동'; }
 
