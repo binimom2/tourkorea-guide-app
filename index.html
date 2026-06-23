@@ -703,10 +703,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
         <div class="field-group" style="margin-bottom:0;">
           <label>가이드명</label>
-          <select id="guideSelect" onchange="onGuideSelect(this)" style="width:100%;margin-bottom:4px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-family:inherit;">
-            <option value="">-- 직원 선택 --</option>
-          </select>
-          <input type="text" id="guideName" placeholder="직접 입력 가능" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
+          <input type="text" id="guideName" placeholder="가이드명 입력" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
         </div>
         <div class="field-group" style="margin-bottom:0;">
           <label>정산 코드</label>
@@ -715,7 +712,7 @@
             <span style="font-size:18px;font-weight:700;color:#3730a3;line-height:1;flex-shrink:0;">-</span>
             <input type="text" id="settleSeq" maxlength="2" value="00" style="width:52px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:16px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
-          <div id="settleCodeDisplay" style="margin-top:4px;font-size:11px;color:#6366f1;font-weight:700;letter-spacing:1px;min-height:15px;"></div>
+          <div id="settleCodeDisplay" style="display:none;"></div>
         </div>
       </div>
       <!-- 줄2: 여행사명 / 로컬가이드 / 행사일자 / 박수 -->
