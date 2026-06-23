@@ -1808,7 +1808,11 @@ function addDay(noSwitch) {
       </div>
       <div class="expense-list" id="${dayId}-list"></div>
       <button class="btn-add" onclick="addExpenseRow('${dayId}')">＋ 항목 추가</button>
-      <div class="total-row"><span>합계</span><span id="${dayId}-total">฿0</span></div>
+      <div class="total-row"><span>${dayNum}일차 합계</span><span id="${dayId}-total">฿0</span></div>
+      <div class="total-row" id="${dayId}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
+        <span id="${dayId}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;">누적 합계</span>
+        <span id="${dayId}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
+      </div>
     </div>
   `;
   const optPanel = document.getElementById('tab-option');
@@ -1897,7 +1901,7 @@ function renderExpenses(key) {
         <option value="" ${!row.category||row.category===''?' selected':''} disabled>선택</option>
         ${cats.map(c=>`<option${row.category===c?' selected':''}>${c}</option>`).join('')}
       </select>
-      <input type="text" placeholder="${detailPlaceholder}" value="${row.detail||''}"
+      <input type="text" lang="ko" inputmode="text" placeholder="${detailPlaceholder}" value="${row.detail||''}"
         oninput="updateExpense('${key}','${row.id}','detail',this.value)"
         style="${isRestaurant ? 'border-color:#E8872A;background:#FEF9F4;' : ''}">
       <input type="number" placeholder="인원/개수" value="${row.pax||''}" min="0" oninput="updateExpense('${key}','${row.id}','pax',this.value)">
@@ -1947,6 +1951,25 @@ function calcExpenseTotal(key) {
   const el=document.getElementById(key+'-total');
   if (el) el.textContent=fmtTHB(total);
   syncExpenseSumToSettle();
+  updateCumulativeTotals();
+}
+
+function updateCumulativeTotals() {
+  let running = 0;
+  state.days.forEach((d, i) => {
+    const daySum = (state.expenses[d.id]||[]).reduce((s,r)=>s+(parseFloat(r.amount)||0), 0);
+    running += daySum;
+    const cumEl  = document.getElementById(d.id+'-cumulative');
+    const cumVal = document.getElementById(d.id+'-cumulative-val');
+    const cumLbl = document.getElementById(d.id+'-cumulative-label');
+    if (i === 0) {
+      if (cumEl) cumEl.style.display = 'none';
+    } else {
+      if (cumEl) cumEl.style.display = '';
+      if (cumVal) cumVal.textContent = fmtTHB(running);
+      if (cumLbl) cumLbl.textContent = `1~${i+1}일차 누적 합계`;
+    }
+  });
 }
 
 // 메인 + 전체 일차 합산 → 정산서 행사지출금 자동입력
