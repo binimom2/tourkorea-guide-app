@@ -3006,8 +3006,9 @@ function loadData() {
   try {
     document.querySelectorAll('.day-panel').forEach(p => p.remove());
     // state.days는 ②에서 이미 설정됨 — 여기서 DOM 패널만 생성
-    state.days.forEach(d => {
+    state.days.forEach((d, idx) => {
       if (!state.expenses[d.id]) state.expenses[d.id] = defaultRows();
+      const dayNum = idx + 1;
       const panel = document.createElement('div');
       panel.id = 'tab-' + d.id;
       panel.className = 'tab-panel day-panel';
@@ -3021,7 +3022,14 @@ function loadData() {
           </div>
           <div class="expense-list" id="${d.id}-list"></div>
           <button class="btn-add" onclick="addExpenseRow('${d.id}')">＋ 항목 추가</button>
-          <div class="total-row"><span>합계</span><span id="${d.id}-total">฿0</span></div>
+          <div class="total-row" style="background:#f1f5f9;">
+            <span style="color:#475569;font-size:12px;">${dayNum}일차 당일 합계</span>
+            <span id="${d.id}-total">฿0</span>
+          </div>
+          <div class="total-row" id="${d.id}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
+            <span id="${d.id}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;"></span>
+            <span id="${d.id}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
+          </div>
         </div>`;
       const optPanel = document.getElementById('tab-option');
       document.querySelector('.content').insertBefore(panel, optPanel);
