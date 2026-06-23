@@ -1344,6 +1344,9 @@
     <div style="display:flex;gap:8px;margin-bottom:8px;">
       <button class="btn-print print-hide admin-only" style="flex:1;background:#28A87A;" onclick="openMonthExcel()">📊 월별 엑셀 다운로드</button>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;" id="submitBtnWrap">
+      <button class="btn-print print-hide" style="flex:1;background:#dc2626;" onclick="submitToAdmin()">📤 정산서 제출</button>
+    </div>
     <button class="btn-reset" onclick="confirmReset()">🗑 데이터 초기화</button>
   </div>
 
@@ -1566,8 +1569,8 @@ function _completeLogin() {
     updateGuideDropdown(); updateSettleCode();
     populateProductDropdown();
     restoreNewInfoFields();
-    if (currentRole==='guide') document.getElementById('btnSubmit').style.display='';
-    else document.getElementById('btnSubmit').style.display='none';
+    const _sb = document.getElementById('btnSubmit');
+    if (_sb) _sb.style.display = (currentRole==='guide'||currentRole==='admin') ? '' : 'none';
   });
 }
 
@@ -1751,7 +1754,7 @@ function rebuildTabBar() {
   ['option','shopping','summary'].forEach((t,i) => {
     bar.appendChild(makeTabBtn(t, ['옵션','쇼핑','📊 정산서'][i]));
   });
-  if (currentRole === 'admin') {
+  if (currentRole === 'admin' || currentRole === 'organizer') {
     const subBtn = makeTabBtn('submissions','📋 제출현황');
     subBtn.onclick = () => openSubmissions();
     bar.appendChild(subBtn);
