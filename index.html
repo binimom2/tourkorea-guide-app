@@ -699,34 +699,30 @@
     <!-- 기본 정보 -->
     <div class="info-card">
       <h3>기본 정보</h3>
-      <!-- 줄1+2: 4컬럼 공유 그리드 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
-        <!-- 가이드명: 2칸 -->
+      <!-- 줄1+2: 하나의 4컬럼 그리드로 완전 통합 -->
+      <div id="settleCodeDisplay" style="display:none;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+        <!-- 줄1 -->
         <div class="field-group" style="grid-column:span 2;margin-bottom:0;">
           <label>가이드명</label>
           <input type="text" id="guideName" placeholder="가이드명 입력" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
         </div>
-        <!-- 정산코드: 행사일자 칸 -->
         <div class="field-group" style="margin-bottom:0;">
           <label>정산 코드</label>
           <div id="settleCodeSec1" style="width:100%;padding:7px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
         </div>
-        <!-- 뒤 2자리: 박수 칸 (라벨 없음) -->
         <div class="field-group" style="margin-bottom:0;">
           <label style="visibility:hidden;">-</label>
           <div style="display:flex;align-items:center;gap:4px;">
             <span style="font-size:16px;font-weight:700;color:#3730a3;flex-shrink:0;">-</span>
-            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:60px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 8px;font-size:16px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
+            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:60px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 8px;font-size:15px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
-        <div id="settleCodeDisplay" style="display:none;"></div>
-      </div>
-      <!-- 줄2: 여행사명 / 로컬가이드 / 행사일자 / 박수 -->
-      <div class="info-grid3" style="grid-template-columns:1fr 1fr 1fr 1fr;">
-        <div class="field-group"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()"></div>
-        <div class="field-group"><label>로컬가이드명</label><input type="text" id="localGuide" placeholder="로컬가이드 입력" oninput="state.info.localGuide=this.value; saveData()"></div>
-        <div class="field-group"><label>행사일자</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
-        <div class="field-group">
+        <!-- 줄2 -->
+        <div class="field-group" style="margin-bottom:0;"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()"></div>
+        <div class="field-group" style="margin-bottom:0;"><label>로컬가이드명</label><input type="text" id="localGuide" placeholder="로컬가이드 입력" oninput="state.info.localGuide=this.value; saveData()"></div>
+        <div class="field-group" style="margin-bottom:0;"><label>행사일자</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
+        <div class="field-group" style="margin-bottom:0;">
           <label style="visibility:hidden;">-</label>
           <div style="display:flex;align-items:center;gap:4px;">
             <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:60px;flex-shrink:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
