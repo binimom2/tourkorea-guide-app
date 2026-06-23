@@ -36,14 +36,6 @@
   .login-btn { width:100%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; transition:all 0.2s; }
   .login-btn:hover { background:#145a75; }
   .login-error { color:var(--danger); font-size:12px; text-align:center; margin-top:8px; display:none; }
-  .login-tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:18px; }
-  .ltab { flex:1; padding:8px 0; text-align:center; font-size:13px; font-weight:700; cursor:pointer; color:var(--text-sub); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
-  .ltab.active { color:var(--primary); border-bottom-color:var(--primary); }
-  .login-panel { display:none; }
-  .login-panel.active { display:block; }
-  .login-pending { text-align:center; padding:12px 0 8px; }
-  .login-pending .pi { font-size:36px; margin-bottom:10px; }
-  .login-pending p { color:var(--text-sub); font-size:13px; line-height:1.7; }
   .login-link { color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline; margin-top:10px; display:inline-block; }
   /* ── SETTINGS MODAL ── */
   .cfg-modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:900; display:none; align-items:center; justify-content:center; }
@@ -650,60 +642,16 @@
       <h1>📋 가이드 정산서</h1>
       <p>투어코리아 가이드 정산 시스템</p>
     </div>
-    <div class="login-tabs">
-      <div class="ltab active" id="ltab-login" onclick="switchLoginPanel('login')">로그인</div>
-      <div class="ltab" id="ltab-register" onclick="switchLoginPanel('register')">계정 신청</div>
+    <div class="login-field">
+      <label>아이디</label>
+      <input type="text" id="loginId" placeholder="아이디 입력" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <!-- 로그인 패널 -->
-    <div id="login-panel" class="login-panel active">
-      <div class="login-field">
-        <label>아이디</label>
-        <input type="text" id="loginId" placeholder="아이디 입력" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
-      <div class="login-field">
-        <label>비밀번호</label>
-        <input type="password" id="loginPw" placeholder="비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
-      <button class="login-btn" onclick="doLogin()">로그인</button>
-      <div class="login-error" id="loginError">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="login-field">
+      <label>비밀번호</label>
+      <input type="password" id="loginPw" placeholder="비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <!-- 계정 신청 패널 -->
-    <div id="register-panel" class="login-panel">
-      <div class="login-field">
-        <label>아이디 (영문·숫자)</label>
-        <input type="text" id="regId" placeholder="예: guide01">
-      </div>
-      <div class="login-field">
-        <label>이름</label>
-        <input type="text" id="regName" placeholder="실명 입력">
-      </div>
-      <div class="login-field">
-        <label>역할</label>
-        <select id="regRole">
-          <option value="">-- 역할 선택 --</option>
-          <option value="op">Manager (운영)</option>
-          <option value="guide">Guide (가이드)</option>
-        </select>
-      </div>
-      <div class="login-field">
-        <label>비밀번호</label>
-        <input type="password" id="regPw" placeholder="비밀번호 설정">
-      </div>
-      <div class="login-field">
-        <label>비밀번호 확인</label>
-        <input type="password" id="regPw2" placeholder="비밀번호 재입력">
-      </div>
-      <button class="login-btn" onclick="doRegister()">계정 신청</button>
-      <div class="login-error" id="registerError"></div>
-    </div>
-    <!-- 승인 대기 패널 -->
-    <div id="pending-panel" class="login-panel">
-      <div class="login-pending">
-        <div class="pi">⏳</div>
-        <p><strong id="pendingName"></strong>님,<br>계정 승인 대기 중입니다.<br>관리자 승인 후 로그인 가능합니다.</p>
-        <span class="login-link" onclick="switchLoginPanel('login')">← 로그인으로 돌아가기</span>
-      </div>
-    </div>
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="loginError">아이디 또는 비밀번호가 올바르지 않습니다.</div>
   </div>
 </div>
 
@@ -1421,18 +1369,32 @@
   </div>
 </div>
 
-<!-- ═══ 계정관리 모달 ═══ -->
+<!-- ═══ 계정관리 모달 (풀빌라 스타일) ═══ -->
 <div class="cfg-modal" id="userMgrModal">
   <div class="cfg-box">
     <div class="cfg-head">
       <span>👥 계정 관리</span>
       <button onclick="closeUserMgr()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
     </div>
-    <div class="cfg-tabs">
-      <div class="cfg-tab active" id="utab-pending" onclick="switchUserTab('pending')">승인 대기</div>
-      <div class="cfg-tab" id="utab-all" onclick="switchUserTab('all')">전체 계정</div>
+    <div class="cfg-body" style="padding:16px;">
+      <ul id="acc-list" style="list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:8px;"></ul>
+      <div style="background:#f8fafc;border-radius:10px;padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:10px;">새 계정 추가</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <input type="text" id="acc-id" placeholder="아이디" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
+          <input type="text" id="acc-name" placeholder="이름" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <input type="password" id="acc-pw" placeholder="비밀번호" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
+          <select id="acc-role" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
+            <option value="op">Manager (운영)</option>
+            <option value="guide">Guide (가이드)</option>
+          </select>
+        </div>
+        <div class="login-error" id="acc-err" style="margin-bottom:6px;"></div>
+        <button onclick="addAccount()" style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">➕ 계정 추가</button>
+      </div>
     </div>
-    <div class="cfg-body" id="userMgrBody"></div>
   </div>
 </div>
 
@@ -1492,118 +1454,94 @@
 //  AUTH
 // ══════════════════════════════════
 // ── 사용자 관리 ──────────────────────────────────────────
-const USERS_KEY   = 'guide_users_v1';
-const SETTINGS_KEY= 'guide_settings_v1';
-const SUBS_KEY    = 'guide_submissions_v1';
+// ══════════════════════════════════════════════════════
+//  AUTH (풀빌라 스타일 — 어드민이 계정 직접 관리)
+// ══════════════════════════════════════════════════════
+const SETTINGS_KEY = 'guide_settings_v1';
+const SUBS_KEY     = 'guide_submissions_v1';
+const ACC_KEY      = 'guide_accounts_v1';   // [{id,pw,name,role}]
+const ADMIN_ID     = 'admin';
+const ADMIN_PW_DEFAULT = 'admin1234';
 
 let currentRole = null;
-let currentUser = null;   // {id,username,name,role,password,status}
-let usersDB = [];
-let appSettings = { categories:['호텔비','차량비','관광지','식당','골프장','기타'], products:[], vehicles:[] };
+let currentUser = null;
+let appSettings  = { categories:['호텔비','차량비','관광지','식당','골프장','기타'], products:[], vehicles:[] };
 let submissionsDB = [];
 
-const DEFAULT_ADMIN = { id:'u_admin', username:'admin', name:'관리자', role:'admin', password:'admin1234', status:'approved', createdAt:'' };
-
-// 로컬스토리지에서 즉시 로드 (페이지 로드 시 동기 실행)
-(function initUsersFromLocal(){
-  try { usersDB = JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch(e) { usersDB=[]; }
-  if (!usersDB.find(u=>u.username==='admin')) {
-    usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
-    try { localStorage.setItem(USERS_KEY, JSON.stringify(usersDB)); } catch(e){}
-  }
-})();
-
-async function loadUsers() {
-  try {
-    const sb_data = await loadFromSupabase(USERS_KEY);
-    if (sb_data && Array.isArray(sb_data) && sb_data.length > 0) {
-      usersDB = sb_data;
-      if (!usersDB.find(u=>u.username==='admin')) {
-        usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
-      }
-      localStorage.setItem(USERS_KEY, JSON.stringify(usersDB));
-    }
-  } catch(e) {}
-  // 항상 로컬에서도 확인
-  try {
-    const local = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-    if (local.length > usersDB.length) usersDB = local;
-  } catch(e) {}
-  if (!usersDB.find(u=>u.username==='admin')) {
-    usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
-    await saveUsers();
-  }
+// 어드민 비밀번호 (Supabase 저장)
+function getAdminPw() { return localStorage.getItem('guide_admin_pw') || ADMIN_PW_DEFAULT; }
+async function setAdminPw(pw) {
+  localStorage.setItem('guide_admin_pw', pw);
+  await syncToSupabase('guide_admin_pw', pw);
 }
-async function saveUsers() {
-  localStorage.setItem(USERS_KEY, JSON.stringify(usersDB));
-  await syncToSupabase(USERS_KEY, usersDB);
+
+// 일반 계정 (Supabase 저장)
+function getAccounts() {
+  try { return JSON.parse(localStorage.getItem(ACC_KEY)) || []; } catch(e) { return []; }
 }
+async function saveAccounts(arr) {
+  localStorage.setItem(ACC_KEY, JSON.stringify(arr));
+  await syncToSupabase(ACC_KEY, arr);
+}
+
+// Supabase에서 계정 동기화
+async function syncAccountsFromSupabase() {
+  try {
+    const d = await loadFromSupabase(ACC_KEY);
+    if (d && Array.isArray(d)) { localStorage.setItem(ACC_KEY, JSON.stringify(d)); }
+    const pw = await loadFromSupabase('guide_admin_pw');
+    if (pw && typeof pw === 'string') { localStorage.setItem('guide_admin_pw', pw); }
+  } catch(e) {}
+}
+
 async function loadAppSettings() {
-  const d = await loadFromSupabase(SETTINGS_KEY);
-  if (d) { appSettings = Object.assign(appSettings, d); localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); }
-  else { try { const r=JSON.parse(localStorage.getItem(SETTINGS_KEY)); if(r) appSettings=Object.assign(appSettings,r); } catch(e){} }
+  try {
+    const d = await loadFromSupabase(SETTINGS_KEY);
+    if (d) { appSettings = Object.assign(appSettings, d); localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); }
+    else { const r = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(r) appSettings = Object.assign(appSettings, r); }
+  } catch(e) {}
 }
 async function saveAppSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
   await syncToSupabase(SETTINGS_KEY, appSettings);
 }
 async function loadSubmissions() {
-  const d = await loadFromSupabase(SUBS_KEY);
-  if (d) { submissionsDB = d; localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB)); }
-  else { try { submissionsDB = JSON.parse(localStorage.getItem(SUBS_KEY)) || []; } catch(e){submissionsDB=[];} }
+  try {
+    const d = await loadFromSupabase(SUBS_KEY);
+    if (d) { submissionsDB = d; localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB)); }
+    else { submissionsDB = JSON.parse(localStorage.getItem(SUBS_KEY)||'[]'); }
+  } catch(e) { submissionsDB = []; }
 }
 async function saveSubmissions() {
   localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
   await syncToSupabase(SUBS_KEY, submissionsDB);
 }
 
-function switchLoginPanel(p) {
-  ['login','register','pending'].forEach(n=>{
-    document.getElementById(n+'-panel').classList.toggle('active', n===p);
-    const tab = document.getElementById('ltab-'+n);
-    if(tab) tab.classList.toggle('active', n===p);
-  });
-}
-
 async function doLogin() {
-  await loadUsers();
-  const id = (document.getElementById('loginId').value||'').trim().toLowerCase();
+  const id = (document.getElementById('loginId').value||'').trim();
   const pw = (document.getElementById('loginPw').value||'').trim();
-  const user = usersDB.find(u=>u.username.toLowerCase()===id && u.password===pw);
-  if (!user) { document.getElementById('loginError').style.display='block'; return; }
-  document.getElementById('loginError').style.display='none';
-  if (user.status==='pending') {
-    document.getElementById('pendingName').textContent = user.name;
-    switchLoginPanel('pending');
-    return;
-  }
-  if (user.status==='rejected') {
-    document.getElementById('loginError').textContent='승인이 거부된 계정입니다.';
-    document.getElementById('loginError').style.display='block'; return;
-  }
-  currentUser = user;
-  currentRole = user.role;
-  _completeLogin();
-}
+  const err = document.getElementById('loginError');
+  err.style.display = 'none';
 
-async function doRegister() {
-  const id   = (document.getElementById('regId').value||'').trim();
-  const name = (document.getElementById('regName').value||'').trim();
-  const role = document.getElementById('regRole').value;
-  const pw   = (document.getElementById('regPw').value||'').trim();
-  const pw2  = (document.getElementById('regPw2').value||'').trim();
-  const errEl = document.getElementById('registerError');
-  errEl.style.display='none';
-  const showErr = msg => { errEl.textContent=msg; errEl.style.display='block'; };
-  if (!id||!name||!role||!pw||!pw2) return showErr('모든 항목을 입력해주세요.');
-  if (!/^[a-zA-Z0-9_]+$/.test(id)) return showErr('아이디는 영문·숫자·_만 사용 가능합니다.');
-  if (pw!==pw2) return showErr('비밀번호가 일치하지 않습니다.');
-  await loadUsers();
-  if (usersDB.find(u=>u.username.toLowerCase()===id.toLowerCase())) return showErr('이미 사용 중인 아이디입니다.');
-  usersDB.push({id:'u_'+Date.now(), username:id, name, role, password:pw, status:'pending', createdAt:new Date().toISOString()});
-  await saveUsers();
-  document.getElementById('pendingName').textContent = name;
-  switchLoginPanel('pending');
+  // 어드민 체크 (Supabase 동기화 후)
+  await syncAccountsFromSupabase();
+
+  if (id === ADMIN_ID && pw === getAdminPw()) {
+    currentUser = { id, name:'관리자', role:'admin' };
+    currentRole = 'admin';
+    _completeLogin(); return;
+  }
+  const accounts = getAccounts();
+  const found = accounts.find(a => a.id === id && a.pw === pw);
+  if (found) {
+    currentUser = { id: found.id, name: found.name||found.id, role: found.role };
+    currentRole = found.role;
+    _completeLogin(); return;
+  }
+  err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+  err.style.display = 'block';
+  document.getElementById('loginPw').value = '';
+  document.getElementById('loginPw').focus();
 }
 
 function _completeLogin() {
@@ -1660,7 +1598,6 @@ function doLogout() {
   document.getElementById('loginId').value = '';
   document.getElementById('loginPw').value = '';
   document.getElementById('loginError').style.display = 'none';
-  switchLoginPanel('login');
 }
 
 function canEditMain() { return currentRole === 'admin' || currentRole === 'op'; }
@@ -3606,88 +3543,162 @@ function removeCfgItem(i) {
 // ══════════════════════════════════════════════════════
 //  계정 관리 (어드민)
 // ══════════════════════════════════════════════════════
-let currentUserTab = 'pending';
-
+// ══════════════════════════════════════════════════════
+//  계정 관리 (풀빌라 스타일)
+// ══════════════════════════════════════════════════════
 async function openUserMgr() {
-  await loadUsers();
-  switchUserTab('pending');
+  await syncAccountsFromSupabase();
   document.getElementById('userMgrModal').style.display='flex';
+  renderAccountList();
 }
-function closeUserMgr() { document.getElementById('userMgrModal').style.display='none'; }
-
-function switchUserTab(tab) {
-  currentUserTab = tab;
-  ['pending','all'].forEach(t=>{
-    const el=document.getElementById('utab-'+t);
-    if(el) el.classList.toggle('active', t===tab);
-  });
-  renderUserMgr();
+function closeUserMgr() {
+  document.getElementById('userMgrModal').style.display='none';
+  document.getElementById('acc-id').value='';
+  document.getElementById('acc-name').value='';
+  document.getElementById('acc-pw').value='';
+  document.getElementById('acc-err').style.display='none';
 }
 
-function renderUserMgr() {
-  const body = document.getElementById('userMgrBody');
-  const roleLabels = {admin:'Admin',op:'Manager',guide:'Guide'};
-  let list = currentUserTab==='pending'
-    ? usersDB.filter(u=>u.status==='pending')
-    : usersDB.filter(u=>u.username!=='admin');
+function roleBadge(role){
+  if(role==='admin') return '<span style="background:#e8220a;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">ADMIN</span>';
+  if(role==='op')    return '<span style="background:#2563eb;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">MANAGER</span>';
+  return '<span style="background:#059669;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">GUIDE</span>';
+}
 
-  if(!list.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px 0;text-align:center;">해당 계정이 없습니다.</p>'; return; }
+function renderAccountList() {
+  const ul = document.getElementById('acc-list');
+  ul.innerHTML = '';
+  const s = 'display:flex;justify-content:space-between;align-items:center;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;flex-wrap:wrap;gap:6px;';
 
-  body.innerHTML = list.map((u,i)=>{
-    const idx = usersDB.indexOf(u);
-    const statusBadge = u.status==='approved'
-      ? '<span class="sub-badge new">승인됨</span>'
-      : u.status==='rejected'
-        ? '<span class="sub-badge seen">거부됨</span>'
-        : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">대기</span>';
-    return `<div class="sub-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div class="sc-code">${u.name} <span style="font-size:11px;font-weight:400;color:#888;">(${u.username})</span></div>
-          <div class="sc-meta">${roleLabels[u.role]||u.role} · 신청: ${(u.createdAt||'').slice(0,10)} ${statusBadge}</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          ${u.status!=='approved'?`<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="approveUser(${idx})">✔ 승인</button>`:''}
-          ${u.status==='approved'?`<button class="del-btn" onclick="rejectUser(${idx})">정지</button>`:''}
-          <button class="del-btn" onclick="deleteUser(${idx})">삭제</button>
-        </div>
+  // 관리자 고정 항목
+  const adminLi = document.createElement('li');
+  adminLi.style.cssText = s;
+  adminLi.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-weight:700;font-size:13px;">${ADMIN_ID}</span>
+      ${roleBadge('admin')}
+    </div>
+    <button onclick="togglePwRow('pwrow-admin')" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">🔑 비번변경</button>
+    <div id="pwrow-admin" style="display:none;width:100%;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="password" id="pw-new-admin" placeholder="새 비밀번호" style="flex:1;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;font-family:inherit;">
+        <button onclick="changePwAdmin()" style="background:#1040cc;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">변경</button>
       </div>
+      <div id="pw-err-admin" style="color:#e8220a;font-size:11px;min-height:14px;margin-top:3px;"></div>
     </div>`;
-  }).join('');
+  ul.appendChild(adminLi);
+
+  // 일반 계정
+  const accounts = getAccounts();
+  accounts.forEach((a, i) => {
+    const li = document.createElement('li');
+    li.style.cssText = s;
+    li.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-weight:700;font-size:13px;">${a.id}</span>
+        ${a.name ? `<span style="font-size:12px;color:#666;">(${a.name})</span>` : ''}
+        ${roleBadge(a.role)}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="togglePwRow('pwrow-${i}')" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">🔑 비번변경</button>
+        <button onclick="deleteAccount(${i})" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">삭제</button>
+      </div>
+      <div id="pwrow-${i}" style="display:none;width:100%;margin-top:6px;">
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="pw-new-${i}" placeholder="새 비밀번호" style="flex:1;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;font-family:inherit;">
+          <button onclick="changePwAccount(${i})" style="background:#1040cc;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">변경</button>
+        </div>
+        <div id="pw-err-${i}" style="color:#e8220a;font-size:11px;min-height:14px;margin-top:3px;"></div>
+      </div>`;
+    ul.appendChild(li);
+  });
 }
 
-async function approveUser(idx) {
-  usersDB[idx].status='approved'; usersDB[idx].approvedAt=new Date().toISOString();
-  await saveUsers(); renderUserMgr();
+function togglePwRow(id) {
+  const row = document.getElementById(id);
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  document.querySelectorAll('[id^="pwrow-"]').forEach(r => r.style.display='none');
+  if (!open) row.style.display = 'block';
 }
-async function rejectUser(idx) {
-  usersDB[idx].status='rejected';
-  await saveUsers(); renderUserMgr();
+
+async function changePwAdmin() {
+  const nw = (document.getElementById('pw-new-admin').value||'').trim();
+  const err = document.getElementById('pw-err-admin');
+  if (!nw) { err.textContent='비밀번호를 입력해주세요.'; return; }
+  await setAdminPw(nw);
+  document.getElementById('pwrow-admin').style.display='none';
+  document.getElementById('pw-new-admin').value='';
+  err.textContent='';
+  showToast('🔑 관리자 비밀번호가 변경되었습니다.');
 }
-async function deleteUser(idx) {
-  if(!confirm('계정을 삭제하시겠습니까?')) return;
-  usersDB.splice(idx,1);
-  await saveUsers(); renderUserMgr();
+
+async function changePwAccount(i) {
+  const nw = (document.getElementById(`pw-new-${i}`).value||'').trim();
+  const err = document.getElementById(`pw-err-${i}`);
+  if (!nw) { err.textContent='비밀번호를 입력해주세요.'; return; }
+  const accounts = getAccounts();
+  accounts[i].pw = nw;
+  await saveAccounts(accounts);
+  document.getElementById(`pwrow-${i}`).style.display='none';
+  document.getElementById(`pw-new-${i}`).value='';
+  err.textContent='';
+  showToast('🔑 비밀번호가 변경되었습니다.');
+}
+
+async function addAccount() {
+  const id   = (document.getElementById('acc-id').value||'').trim();
+  const name = (document.getElementById('acc-name').value||'').trim();
+  const pw   = (document.getElementById('acc-pw').value||'').trim();
+  const role = document.getElementById('acc-role').value;
+  const err  = document.getElementById('acc-err');
+  err.style.display = 'none';
+  if (!id||!pw) { err.textContent='아이디와 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
+  if (id === ADMIN_ID) { err.textContent='이미 사용 중인 아이디입니다.'; err.style.display='block'; return; }
+  const accounts = getAccounts();
+  if (accounts.find(a=>a.id===id)) { err.textContent='이미 존재하는 아이디입니다.'; err.style.display='block'; return; }
+  accounts.push({ id, pw, name, role });
+  await saveAccounts(accounts);
+  document.getElementById('acc-id').value='';
+  document.getElementById('acc-name').value='';
+  document.getElementById('acc-pw').value='';
+  renderAccountList();
+  showToast('✅ 계정이 추가되었습니다.');
+}
+
+async function deleteAccount(i) {
+  if (!confirm('이 계정을 삭제할까요?')) return;
+  const accounts = getAccounts();
+  accounts.splice(i, 1);
+  await saveAccounts(accounts);
+  renderAccountList();
+  showToast('🗑 계정이 삭제되었습니다.');
 }
 
 // ══════════════════════════════════════════════════════
-//  비밀번호 변경
+//  비밀번호 변경 (본인 — 헤더 🔑 버튼)
 // ══════════════════════════════════════════════════════
 function openPwChange() { document.getElementById('pwModal').style.display='flex'; document.getElementById('pwError').style.display='none'; }
 function closePwChange() { document.getElementById('pwModal').style.display='none'; }
 async function confirmPwChange() {
-  const cur=document.getElementById('pwCur').value;
-  const nw=document.getElementById('pwNew').value;
-  const nw2=document.getElementById('pwNew2').value;
-  const err=document.getElementById('pwError');
+  const cur = document.getElementById('pwCur').value;
+  const nw  = document.getElementById('pwNew').value;
+  const nw2 = document.getElementById('pwNew2').value;
+  const err = document.getElementById('pwError');
   err.style.display='none';
-  if(!currentUser) return;
-  if(cur!==currentUser.password){err.textContent='현재 비밀번호가 올바르지 않습니다.';err.style.display='block';return;}
-  if(!nw){err.textContent='새 비밀번호를 입력해주세요.';err.style.display='block';return;}
-  if(nw!==nw2){err.textContent='새 비밀번호가 일치하지 않습니다.';err.style.display='block';return;}
-  const idx=usersDB.findIndex(u=>u.id===currentUser.id);
-  if(idx>=0){usersDB[idx].password=nw; currentUser.password=nw;}
-  await saveUsers();
+  if (!currentUser) return;
+  // 현재 비밀번호 확인
+  const curPw = currentRole==='admin' ? getAdminPw() : (getAccounts().find(a=>a.id===currentUser.id)||{}).pw||'';
+  if (cur !== curPw) { err.textContent='현재 비밀번호가 올바르지 않습니다.'; err.style.display='block'; return; }
+  if (!nw) { err.textContent='새 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
+  if (nw !== nw2) { err.textContent='새 비밀번호가 일치하지 않습니다.'; err.style.display='block'; return; }
+  if (currentRole==='admin') {
+    await setAdminPw(nw);
+  } else {
+    const accounts = getAccounts();
+    const idx = accounts.findIndex(a=>a.id===currentUser.id);
+    if (idx>=0) { accounts[idx].pw=nw; await saveAccounts(accounts); }
+  }
   closePwChange();
   showToast('✅ 비밀번호가 변경되었습니다.');
   document.getElementById('pwCur').value='';
