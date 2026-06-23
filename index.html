@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>가이드 정산서</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -1329,25 +1330,31 @@ function doLogin() {
   badgeEl.textContent = labels[role];
   badgeEl.className = 'role-badge ' + role;
   applyRoleUI();
-  const restored = loadData();
-  if (!restored) {
-    initData();
-    renderAll();
-    calcPaxTotal();
-    syncRate2FromBase();
-  }
-  rebuildTabBar();
-  switchTab('main');
-  // 로그인 후 항상 저장 — loadData() 내부에서 오류가 나도 DOM 값 보장
-  saveData();
-  // 직원명부 드롭다운 + 정산코드 초기화
-  updateGuideDropdown();
-  updateSettleCode();
+  // Supabase에서 최신 데이터 불러온 후 로그인 완료
+  loadFromSupabase(LS_KEY).then(sbData => {
+    if (sbData) localStorage.setItem(LS_KEY, JSON.stringify(sbData));
+    loadFromSupabase(STAFF_KEY).then(sbStaff => {
+      if (sbStaff) localStorage.setItem(STAFF_KEY, JSON.stringify(sbStaff));
+      const restored = loadData();
+      if (!restored) {
+        initData();
+        renderAll();
+        calcPaxTotal();
+        syncRate2FromBase();
+      }
+      rebuildTabBar();
+      switchTab('main');
+      saveData();
+      updateGuideDropdown();
+      updateSettleCode();
+    });
+  });
 }
 
 function resetData() {
   if (!confirm('저장된 모든 데이터를 초기화하고 새로 시작하시겠습니까?')) return;
   localStorage.removeItem(LS_KEY);
+  sb.from('guide_data').delete().eq('data_key', LS_KEY);
   initData();
   renderAll();
   // 기본정보 필드 초기화
@@ -2613,6 +2620,23 @@ function renderAll(){
 // ══════════════════════════════════
 const LS_KEY = 'guideSettleApp_v1';
 
+// ── Supabase 연결 ──────────────────────────────────────────
+const SUPABASE_URL = 'https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function syncToSupabase(key, data) {
+  try {
+    await sb.from('guide_data').upsert({ data_key: key, data: data, updated_at: new Date().toISOString() });
+  } catch(e) {}
+}
+async function loadFromSupabase(key) {
+  try {
+    const { data } = await sb.from('guide_data').select('data').eq('data_key', key).single();
+    return data ? data.data : null;
+  } catch(e) { return null; }
+}
+
 // 저장할 입력 필드 ID 목록 (state로 관리되지 않는 값들)
 const SAVE_FIELD_IDS = [
   'guideName','agencyName','localGuide','tourStart','tourEnd',
@@ -2665,6 +2689,7 @@ function saveData() {
       fields,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
+    syncToSupabase(LS_KEY, data);
   } catch(e) {}
 }
 
@@ -2833,23 +2858,22 @@ function parseRatesFromHtml(html) {
     const nums = block.match(/\b(\d{2,3}(?:\.\d{1,4})?)\b/g) || [];
     for (const n of nums) {
       const v = parseFloat(n);
-      if (v >= 30 && v <= 42)   { usd = v; break; }
+      if (v >= 30 && v <= 42)     { usd = v; break; }
       if (v >= 3000 && v <= 4200) { usd = v / 100; break; }
     }
     if (usd) break;
   }
 
-  // KRW — 50000-5000원 buying 기준 (0.02160 형식)
-  // 1순위: "50000" 또는 "5000" denomination 근처의 KRW 블록
+  // KRW — 50000-5000원 첫 번째 행 buying 기준 (0.02160 형식)
   const krw50k = html.match(/KRW[\s\S]{0,600}?(?:50000|5000)[\s\S]{0,200}/gi) || [];
   const krwAll = html.match(/KRW[\s\S]{0,600}/gi) || [];
   for (const block of [...krw50k, ...krwAll]) {
     const nums = block.match(/\b(\d+(?:\.\d{1,5})?)\b/g) || [];
     for (const n of nums) {
       const v = parseFloat(n);
-      if (v >= 0.015 && v <= 0.035) { krw = v; break; }        // per 1 KRW  (~0.0216)
-      if (v >= 1.5   && v <= 3.5)   { krw = v / 100; break; }  // per 100 KRW (~2.16)
-      if (v >= 15    && v <= 35)    { krw = v / 1000; break; }  // per 1000 KRW (~21.6)
+      if (v >= 0.015 && v <= 0.035) { krw = v; break; }        // per 1 KRW (~0.0216)
+      if (v >= 1.5   && v <= 3.5)   { krw = v / 100; break; }  // per 100 KRW
+      if (v >= 15    && v <= 35)    { krw = v / 1000; break; }  // per 1000 KRW
     }
     if (krw) break;
   }
@@ -2863,7 +2887,7 @@ async function fetchAutoRate() {
 
   let usdRaw = null, krwRaw = null, usdSrc = '', krwSrc = '';
 
-  // ── Super Rich Thailand — 알려진 API 엔드포인트 순차 시도
+  // 1차: Super Rich Thailand API 엔드포인트 순차 시도
   const SR_APIS = [
     'https://www.superrichthailand.com/Services/GetCurrentRate',
     'https://www.superrichthailand.com/api/exchange-rate/current',
@@ -2898,7 +2922,7 @@ async function fetchAutoRate() {
     }
   }
 
-  // ── Super Rich HTML 파싱 (JS SPA이므로 정적 HTML에 데이터 없을 수 있음)
+  // 2차: Super Rich HTML 파싱 (SPA라서 비어있을 수 있음)
   if (!usdRaw || !krwRaw) {
     for (const proxyUrl of [
       'https://corsproxy.io/?' + encodeURIComponent('https://www.superrichthailand.com/'),
@@ -2910,14 +2934,14 @@ async function fetchAutoRate() {
         let html = await resp.text();
         try { const j = JSON.parse(html); if (j.contents) html = j.contents; } catch(e) {}
         const r = parseRatesFromHtml(html);
-        if (!usdRaw && r.usd) { usdRaw = r.usd; usdSrc = 'Super Rich'; }
-        if (!krwRaw && r.krw) { krwRaw = r.krw; krwSrc = 'Super Rich'; }
+        if (!usdRaw && r.usd) { usdRaw = r.usd; usdSrc='Super Rich'; }
+        if (!krwRaw && r.krw) { krwRaw = r.krw; krwSrc='Super Rich'; }
         if (usdRaw && krwRaw) break;
       } catch(e) {}
     }
   }
 
-  // ── open.er-api.com (시장 기준율 — USD/KRW 각각 없는 것만 보완)
+  // 3차: open.er-api.com (없는 것만 보완)
   if (!usdRaw || !krwRaw) {
     try {
       const resp = await fetchWithTimeout('https://open.er-api.com/v6/latest/THB', 6000);
@@ -2929,7 +2953,7 @@ async function fetchAutoRate() {
     } catch(e) {}
   }
 
-  // ── frankfurter.app
+  // 4차: frankfurter.app
   if (!usdRaw || !krwRaw) {
     try {
       const resp = await fetchWithTimeout('https://api.frankfurter.app/latest?from=THB&to=USD,KRW', 6000);
@@ -3098,6 +3122,7 @@ function loadStaff() {
 }
 function saveStaff() {
   localStorage.setItem(STAFF_KEY, JSON.stringify(staffDB));
+  syncToSupabase(STAFF_KEY, staffDB);
 }
 function openStaffModal() {
   loadStaff();
@@ -3207,3 +3232,4 @@ function updateSettleCode() {
 </script>
 </body>
 </html>
+
