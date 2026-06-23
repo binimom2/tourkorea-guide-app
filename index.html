@@ -713,7 +713,7 @@
           <div style="display:flex;align-items:center;gap:6px;height:38px;">
             <div id="settleCodeSec1" style="flex:1;padding:0 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;height:100%;display:flex;align-items:center;justify-content:center;">-</div>
             <span style="font-size:18px;font-weight:700;color:#3730a3;line-height:1;flex-shrink:0;">-</span>
-            <input type="text" id="settleSeq" maxlength="2" placeholder="01" style="width:52px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:0 6px;font-size:16px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;height:100%;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
+            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:52px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:16px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
           <div id="settleCodeDisplay" style="margin-top:4px;font-size:11px;color:#6366f1;font-weight:700;letter-spacing:1px;min-height:15px;"></div>
         </div>
@@ -1584,7 +1584,7 @@ function resetData() {
    'paxAdult','paxChild','paxTC','advancePay','rateUSD','rateKRW',
    'shopCount','settleSeq'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = (id==='rateUSD')?'34.00':(id==='rateKRW')?'0.0207':(id.startsWith('pax'))?'0':'';
+    if (el) el.value = (id==='rateUSD')?'34.00':(id==='rateKRW')?'0.0207':(id==='settleSeq')?'00':(id.startsWith('pax'))?'0':'';
   });
   const p = document.getElementById('productName'); if(p) p.value='';
   calcPaxTotal(); syncRate2FromBase(); updateSettleCode(); switchTab('main');
@@ -1616,6 +1616,19 @@ function applyRoleUI() {
   });
   const btnSubmit = document.getElementById('btnSubmit');
   if (btnSubmit) btnSubmit.style.display = currentRole === 'guide' ? '' : 'none';
+
+  // 가이드 역할: 정산코드·상품명·쇼핑횟수 입력 잠금
+  const guideOnly = currentRole === 'guide';
+  ['settleSeq','productName','shopCount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = guideOnly;
+    el.style.opacity = guideOnly ? '0.5' : '1';
+    el.style.cursor  = guideOnly ? 'not-allowed' : '';
+  });
+  const sec1 = document.getElementById('settleCodeSec1');
+  if (sec1) { sec1.style.opacity = guideOnly ? '0.5' : '1'; }
+
   applyKBVisibility();
 }
 
@@ -1631,7 +1644,7 @@ const state = {
   info: { guideName:'', agencyName:'', localGuide:'', tourStart:'', tourNights:'',
           paxAdult:'0', paxChild:'0', paxTC:'0', advancePay:'',
           rateUSD:'34.00', rateKRW:'0.0207', guideCode:'',
-          productName:'', shopCount:'0', settleSeq:'' }
+          productName:'', shopCount:'0', settleSeq:'00' }
 };
 
 let _uid = 1;
