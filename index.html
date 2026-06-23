@@ -699,14 +699,23 @@
     <!-- 기본 정보 -->
     <div class="info-card">
       <h3>기본 정보</h3>
-      <!-- 줄1: 가이드명 / 여행사명 / 로컬가이드명 -->
-      <div class="info-grid3">
-        <div class="field-group">
+      <!-- 줄1: 가이드명 + 정산코드 -->
+      <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap;">
+        <div class="field-group" style="flex:2;min-width:160px;margin-bottom:0;">
           <label>가이드명</label>
           <select id="guideSelect" onchange="onGuideSelect(this)" style="width:100%;margin-bottom:4px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-family:inherit;">
             <option value="">-- 직원 선택 --</option>
           </select>
           <input type="text" id="guideName" placeholder="직접 입력 가능" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
+        </div>
+        <div class="field-group" style="flex:1;min-width:160px;margin-bottom:0;">
+          <label>정산 코드</label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div id="settleCodeSec1" style="padding:7px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;min-width:76px;text-align:center;">-</div>
+            <span style="font-size:18px;font-weight:700;color:#3730a3;line-height:1;">-</span>
+            <input type="text" id="settleSeq" maxlength="2" placeholder="01" style="width:48px;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:15px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
+          </div>
+          <div id="settleCodeDisplay" style="margin-top:4px;font-size:11px;color:#6366f1;font-weight:700;letter-spacing:1px;min-height:16px;"></div>
         </div>
       </div>
       <!-- 줄2: 여행사명 / 로컬가이드 / 행사일자 / 박수 -->
@@ -720,16 +729,6 @@
             <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:60px;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
             <span style="font-size:13px;color:var(--text-sub);font-weight:600;">박</span>
           </div>
-        </div>
-      </div>
-      <!-- 줄3: 정산코드 (2섹터) -->
-      <div class="field-group" style="margin-bottom:12px;">
-        <label>정산 코드</label>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div id="settleCodeSec1" style="padding:6px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;font-weight:700;color:#3730a3;letter-spacing:1px;min-width:80px;">-</div>
-          <span style="font-size:16px;font-weight:700;color:#3730a3;">-</span>
-          <input type="text" id="settleSeq" maxlength="2" placeholder="01" style="width:52px;border:1.5px solid #c7d2fe;border-radius:6px;padding:6px 8px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
-          <div id="settleCodeDisplay" style="padding:6px 10px;background:#e0e7ff;border:1px solid #a5b4fc;border-radius:6px;font-size:13px;font-weight:800;color:#3730a3;letter-spacing:1px;">-</div>
         </div>
       </div>
       <!-- 줄4: 행사인원 / 상품명 / 쇼핑횟수 / 행사비지급금 -->
@@ -3457,9 +3456,10 @@ function updateSettleCode() {
   }
   const el1 = document.getElementById('settleCodeSec1');
   if (el1) el1.textContent = sec1;
-  const full = sec1 !== '-' && seq ? sec1+'-'+seq.padStart(2,'0') : (sec1 !== '-' ? sec1 : '-');
+  const seqVal = seq ? seq.padStart(2,'0') : '';
+  const full = sec1 !== '-' && seqVal ? sec1+'-'+seqVal : (sec1 !== '-' ? sec1 : '-');
   const el = document.getElementById('settleCodeDisplay');
-  if (el) el.textContent = full;
+  if (el) el.textContent = full !== '-' ? '▶ ' + full : '';
   if (state && state.info) state.info.settleCode = full;
 }
 
