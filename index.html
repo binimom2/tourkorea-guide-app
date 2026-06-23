@@ -1504,14 +1504,31 @@ let submissionsDB = [];
 
 const DEFAULT_ADMIN = { id:'u_admin', username:'admin', name:'관리자', role:'admin', password:'admin1234', status:'approved', createdAt:'' };
 
-async function loadUsers() {
-  const sb_data = await loadFromSupabase(USERS_KEY);
-  if (sb_data) {
-    usersDB = sb_data;
-    localStorage.setItem(USERS_KEY, JSON.stringify(usersDB));
-  } else {
-    try { usersDB = JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch(e) { usersDB=[]; }
+// 로컬스토리지에서 즉시 로드 (페이지 로드 시 동기 실행)
+(function initUsersFromLocal(){
+  try { usersDB = JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch(e) { usersDB=[]; }
+  if (!usersDB.find(u=>u.username==='admin')) {
+    usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
+    try { localStorage.setItem(USERS_KEY, JSON.stringify(usersDB)); } catch(e){}
   }
+})();
+
+async function loadUsers() {
+  try {
+    const sb_data = await loadFromSupabase(USERS_KEY);
+    if (sb_data && Array.isArray(sb_data) && sb_data.length > 0) {
+      usersDB = sb_data;
+      if (!usersDB.find(u=>u.username==='admin')) {
+        usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
+      }
+      localStorage.setItem(USERS_KEY, JSON.stringify(usersDB));
+    }
+  } catch(e) {}
+  // 항상 로컬에서도 확인
+  try {
+    const local = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+    if (local.length > usersDB.length) usersDB = local;
+  } catch(e) {}
   if (!usersDB.find(u=>u.username==='admin')) {
     usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
     await saveUsers();
