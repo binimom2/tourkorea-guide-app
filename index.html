@@ -1615,7 +1615,7 @@ function applyRoleUI() {
     el.style.display = currentRole === 'admin' ? '' : 'none';
   });
   const btnSubmit = document.getElementById('btnSubmit');
-  if (btnSubmit) btnSubmit.style.display = currentRole === 'guide' ? '' : 'none';
+  if (btnSubmit) btnSubmit.style.display = (currentRole === 'guide' || currentRole === 'admin') ? '' : 'none';
 
   // 가이드 역할: 정산코드·상품명·쇼핑횟수 입력 잠금 (organizer/manager/admin은 모두 입력 가능)
   const guideOnly = currentRole === 'guide';
@@ -3805,7 +3805,7 @@ async function confirmPwChange() {
 async function submitToAdmin() {
   if(!confirm('현재 정산서를 어드민에 제출하시겠습니까?\n제출 후에도 수정은 가능합니다.')) return;
   await loadSubmissions();
-  const code = (document.getElementById('settleCodeDisplay')||{}).textContent || '-';
+  const code = (state.info && state.info.settleCode) || (document.getElementById('settleCodeSec1')||{}).textContent || '-';
   const guideName = (document.getElementById('guideName')||{}).value || (currentUser&&currentUser.name) || '';
   const paxTotal = parseInt((document.getElementById('paxTotalDisplay')||{}).textContent)||0;
   const productName = (document.getElementById('productName')||{}).value || '';
