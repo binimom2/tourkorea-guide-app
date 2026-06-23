@@ -983,6 +983,10 @@
           <span class="si-label">여행사</span><span class="si-value" id="sum-agency">-</span>
           <span class="si-sep">|</span>
           <span class="si-label">로컬가이드</span><span class="si-value" id="sum-local">-</span>
+          <span class="si-sep">|</span>
+          <span class="si-label">상품명</span><span class="si-value" id="sum-product">-</span>
+          <span class="si-sep">|</span>
+          <span class="si-label">쇼핑횟수</span><span class="si-value" id="sum-shopcount">-</span>
         </div>
         <div class="pig-screen-row">
           <span class="si-label">행사기간</span><span class="si-value" id="sum-period">-</span>
@@ -2770,6 +2774,9 @@ function updateSummary(){
   const nights=(document.getElementById('tourNights')||{}).value||'';
   const period=s?(s+(nights?' · '+nights+'박':'')):(s||'-');
 
+  const product=(document.getElementById('productName')||{}).value||'-';
+  const shopCount=(document.getElementById('shopCount')||{}).value||'0';
+
   ['','p'].forEach(sfx=>{
     const id=sfx?'-'+sfx:'';
     const g=document.getElementById('sum-guide'+id); if(g) g.textContent=guide;
@@ -2777,6 +2784,8 @@ function updateSummary(){
     const l=document.getElementById('sum-local'+id); if(l) l.textContent=local;
     const p=document.getElementById('sum-period'+id); if(p) p.textContent=period;
   });
+  const sp=document.getElementById('sum-product'); if(sp) sp.textContent=product;
+  const sc=document.getElementById('sum-shopcount'); if(sc) sc.textContent=shopCount+'회';
 
   // 인원 표기
   const adult=parseInt(document.getElementById('paxAdult')?.value)||0;
