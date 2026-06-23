@@ -711,11 +711,11 @@
           <label>정산 코드</label>
           <div id="settleCodeSec1" style="width:100%;padding:7px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
         </div>
-        <!-- 뒤 2자리: 박수 칸 -->
+        <!-- 뒤 2자리: 박수 칸 (라벨 없음) -->
         <div class="field-group" style="margin-bottom:0;">
-          <label>코드 뒤 2자리</label>
+          <label style="visibility:hidden;">-</label>
           <div style="display:flex;align-items:center;gap:4px;">
-            <span style="font-size:16px;font-weight:700;color:#3730a3;">-</span>
+            <span style="font-size:16px;font-weight:700;color:#3730a3;flex-shrink:0;">-</span>
             <input type="text" id="settleSeq" maxlength="2" value="00" style="flex:1;border:2px solid #c7d2fe;border-radius:6px;padding:7px 8px;font-size:16px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
