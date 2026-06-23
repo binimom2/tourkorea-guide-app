@@ -36,6 +36,44 @@
   .login-btn { width:100%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; transition:all 0.2s; }
   .login-btn:hover { background:#145a75; }
   .login-error { color:var(--danger); font-size:12px; text-align:center; margin-top:8px; display:none; }
+  .login-tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:18px; }
+  .ltab { flex:1; padding:8px 0; text-align:center; font-size:13px; font-weight:700; cursor:pointer; color:var(--text-sub); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
+  .ltab.active { color:var(--primary); border-bottom-color:var(--primary); }
+  .login-panel { display:none; }
+  .login-panel.active { display:block; }
+  .login-pending { text-align:center; padding:12px 0 8px; }
+  .login-pending .pi { font-size:36px; margin-bottom:10px; }
+  .login-pending p { color:var(--text-sub); font-size:13px; line-height:1.7; }
+  .login-link { color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline; margin-top:10px; display:inline-block; }
+  /* ── SETTINGS MODAL ── */
+  .cfg-modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:900; display:none; align-items:center; justify-content:center; }
+  .cfg-box { background:#fff; border-radius:16px; width:520px; max-width:94vw; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+  .cfg-head { background:var(--primary); color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:15px; }
+  .cfg-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); padding:0 16px; background:#f8fafc; }
+  .cfg-tab { padding:9px 14px; font-size:12px; font-weight:700; cursor:pointer; color:var(--text-sub); border-bottom:2px solid transparent; }
+  .cfg-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+  .cfg-body { flex:1; overflow-y:auto; padding:16px; }
+  .cfg-list-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; }
+  .cfg-list-item input { flex:1; border:1px solid var(--border); border-radius:6px; padding:6px 9px; font-size:13px; font-family:inherit; }
+  .cfg-add-row { display:flex; gap:8px; margin-top:10px; }
+  .cfg-add-row input { flex:1; border:1.5px solid var(--primary); border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; }
+  .cfg-add-btn { background:var(--primary); color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .del-btn { background:#fee2e2; color:#dc2626; border:none; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px; font-weight:700; }
+  /* ── SUBMISSIONS VIEW ── */
+  .sub-card { border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; background:#fff; }
+  .sub-card:hover { border-color:var(--primary); background:var(--primary-light); }
+  .sub-card .sc-code { font-size:13px; font-weight:800; color:var(--primary); }
+  .sub-card .sc-meta { font-size:11px; color:var(--text-sub); margin-top:3px; }
+  .sub-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
+  .sub-badge.new { background:#d1fae5; color:#065f46; }
+  .sub-badge.seen { background:#e5e7eb; color:#6b7280; }
+  /* ── MONTH PICKER ── */
+  .month-export-bar { display:flex; gap:8px; align-items:center; padding:10px 0; flex-wrap:wrap; }
+  .month-export-bar select { border:1.5px solid var(--border); border-radius:7px; padding:6px 10px; font-size:13px; font-family:inherit; }
+  .month-export-bar button { background:var(--success); color:#fff; border:none; border-radius:7px; padding:7px 16px; font-size:13px; font-weight:700; cursor:pointer; }
+  /* ── PW CHANGE MODAL ── */
+  .pw-modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:950; display:none; align-items:center; justify-content:center; }
+  .pw-box { background:#fff; border-radius:16px; padding:24px; width:320px; max-width:94vw; }
 
   /* ── HEADER ── */
   .app-header { background:var(--primary); color:#fff; padding:10px 16px 0; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.18); }
@@ -610,25 +648,61 @@
   <div class="login-box">
     <div class="login-logo">
       <h1>📋 가이드 정산서</h1>
-      <p>로그인 후 이용하세요</p>
+      <p>투어코리아 가이드 정산 시스템</p>
     </div>
-    <div class="login-field">
-      <label>역할 선택</label>
-      <select id="loginRole">
-        <option value="">-- 역할 선택 --</option>
-        <option value="admin">Admin (관리자)</option>
-        <option value="op">Manager (운영)</option>
-        <option value="guide">Guide (가이드)</option>
-      </select>
+    <div class="login-tabs">
+      <div class="ltab active" id="ltab-login" onclick="switchLoginPanel('login')">로그인</div>
+      <div class="ltab" id="ltab-register" onclick="switchLoginPanel('register')">계정 신청</div>
     </div>
-    <div class="login-field">
-      <label>비밀번호</label>
-      <input type="password" id="loginPw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+    <!-- 로그인 패널 -->
+    <div id="login-panel" class="login-panel active">
+      <div class="login-field">
+        <label>아이디</label>
+        <input type="text" id="loginId" placeholder="아이디 입력" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-field">
+        <label>비밀번호</label>
+        <input type="password" id="loginPw" placeholder="비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">로그인</button>
+      <div class="login-error" id="loginError">아이디 또는 비밀번호가 올바르지 않습니다.</div>
     </div>
-    <button class="login-btn" onclick="doLogin()">로그인</button>
-    <div class="login-error" id="loginError">역할 또는 비밀번호가 올바르지 않습니다.</div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#aaa;text-align:center;">
-      Admin: 123456 &nbsp;|&nbsp; Manager: 5678 &nbsp;|&nbsp; Guide: 9999
+    <!-- 계정 신청 패널 -->
+    <div id="register-panel" class="login-panel">
+      <div class="login-field">
+        <label>아이디 (영문·숫자)</label>
+        <input type="text" id="regId" placeholder="예: guide01">
+      </div>
+      <div class="login-field">
+        <label>이름</label>
+        <input type="text" id="regName" placeholder="실명 입력">
+      </div>
+      <div class="login-field">
+        <label>역할</label>
+        <select id="regRole">
+          <option value="">-- 역할 선택 --</option>
+          <option value="op">Manager (운영)</option>
+          <option value="guide">Guide (가이드)</option>
+        </select>
+      </div>
+      <div class="login-field">
+        <label>비밀번호</label>
+        <input type="password" id="regPw" placeholder="비밀번호 설정">
+      </div>
+      <div class="login-field">
+        <label>비밀번호 확인</label>
+        <input type="password" id="regPw2" placeholder="비밀번호 재입력">
+      </div>
+      <button class="login-btn" onclick="doRegister()">계정 신청</button>
+      <div class="login-error" id="registerError"></div>
+    </div>
+    <!-- 승인 대기 패널 -->
+    <div id="pending-panel" class="login-panel">
+      <div class="login-pending">
+        <div class="pi">⏳</div>
+        <p><strong id="pendingName"></strong>님,<br>계정 승인 대기 중입니다.<br>관리자 승인 후 로그인 가능합니다.</p>
+        <span class="login-link" onclick="switchLoginPanel('login')">← 로그인으로 돌아가기</span>
+      </div>
     </div>
   </div>
 </div>
@@ -642,8 +716,12 @@
     <div class="header-right">
       <span class="role-badge" id="roleBadge"></span>
       <span class="app-meta" id="todayDate"></span>
-      <button class="logout-btn" onclick="openStaffModal()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 직원관리</button>
-      <button class="logout-btn" onclick="resetData()" style="background:rgba(255,80,80,0.25);margin-right:4px;" title="저장 데이터 초기화 후 새로 시작">🗑 초기화</button>
+      <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
+      <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 설정</button>
+      <button class="logout-btn admin-only" id="btnMonthExcel" onclick="openMonthExcel()" style="background:rgba(232,135,42,0.35);margin-right:4px;">📊 월별엑셀</button>
+      <button class="logout-btn" id="btnSubmit" onclick="submitToAdmin()" style="background:rgba(220,38,38,0.35);margin-right:4px;display:none;">📤 제출</button>
+      <button class="logout-btn" onclick="openPwChange()" style="background:rgba(255,255,255,0.15);margin-right:4px;">🔑</button>
+      <button class="logout-btn" onclick="resetData()" style="background:rgba(255,80,80,0.25);margin-right:4px;" title="초기화">🗑</button>
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
@@ -682,20 +760,32 @@
           </select>
           <input type="text" id="guideName" placeholder="직접 입력 가능" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
         </div>
+      </div>
+      <!-- 줄2: 여행사명 / 로컬가이드 / 행사일자 / 박수 -->
+      <div class="info-grid3" style="grid-template-columns:1fr 1fr 1fr 1fr;">
         <div class="field-group"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()"></div>
         <div class="field-group"><label>로컬가이드명</label><input type="text" id="localGuide" placeholder="로컬가이드 입력" oninput="state.info.localGuide=this.value; saveData()"></div>
-      </div>
-      <!-- 줄2: 행사기간 시작 / 종료 / 정산코드 -->
-      <div class="info-grid3">
-        <div class="field-group"><label>행사기간 시작</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
-        <div class="field-group"><label>행사기간 종료</label><input type="date" id="tourEnd" onchange="state.info.tourEnd=this.value; updateMiniBar(); saveData()"></div>
+        <div class="field-group"><label>행사일자</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
         <div class="field-group">
-          <label>정산 코드</label>
-          <div id="settleCodeDisplay" style="padding:6px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;font-weight:700;color:#3730a3;letter-spacing:1px;">-</div>
+          <label>박수</label>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:60px;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+            <span style="font-size:13px;color:var(--text-sub);font-weight:600;">박</span>
+          </div>
         </div>
       </div>
-      <!-- 줄3: 행사인원 + 행사비지급금 -->
-      <div style="display:flex;gap:12px;align-items:flex-end;">
+      <!-- 줄3: 정산코드 (2섹터) -->
+      <div class="field-group" style="margin-bottom:12px;">
+        <label>정산 코드</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div id="settleCodeSec1" style="padding:6px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;font-weight:700;color:#3730a3;letter-spacing:1px;min-width:80px;">-</div>
+          <span style="font-size:16px;font-weight:700;color:#3730a3;">-</span>
+          <input type="text" id="settleSeq" maxlength="2" placeholder="01" style="width:52px;border:1.5px solid #c7d2fe;border-radius:6px;padding:6px 8px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
+          <div id="settleCodeDisplay" style="padding:6px 10px;background:#e0e7ff;border:1px solid #a5b4fc;border-radius:6px;font-size:13px;font-weight:800;color:#3730a3;letter-spacing:1px;">-</div>
+        </div>
+      </div>
+      <!-- 줄4: 행사인원 / 상품명 / 쇼핑횟수 / 행사비지급금 -->
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
         <div style="flex:2;min-width:0;">
           <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">행사인원</label>
           <div class="pax-row" style="gap:4px;">
@@ -705,7 +795,17 @@
             <div class="pax-item" style="flex:1;min-width:44px;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay">0명</div></div>
           </div>
         </div>
-        <div style="flex:1;border-left:3px solid var(--danger);padding-left:12px;">
+        <div style="flex:1;min-width:120px;">
+          <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">상품명</label>
+          <select id="productName" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:inherit;" onchange="state.info.productName=this.value; saveData()">
+            <option value="">-- 선택 --</option>
+          </select>
+        </div>
+        <div style="min-width:70px;">
+          <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">쇼핑횟수</label>
+          <input type="number" id="shopCount" min="0" max="20" value="0" style="width:70px;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+        </div>
+        <div style="flex:1;min-width:110px;border-left:3px solid var(--danger);padding-left:12px;">
           <label style="font-size:11px;font-weight:700;color:var(--danger);display:block;margin-bottom:5px;">행사비 지급금</label>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:15px;font-weight:800;color:var(--danger);">฿</span>
@@ -1298,92 +1398,257 @@
       <button class="btn-print admin-only" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn-print print-hide" style="flex:1;background:#28A87A;" onclick="exportData()">💾 데이터 내보내기 (백업)</button>
-      <button class="btn-print print-hide" style="flex:1;background:#5a6a8a;" onclick="document.getElementById('importFileInput').click()">📂 데이터 가져오기 (복원)</button>
+      <button class="btn-print print-hide admin-only" style="flex:1;background:#28A87A;" onclick="openMonthExcel()">📊 월별 엑셀 다운로드</button>
     </div>
-    <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(this)">
     <button class="btn-reset" onclick="confirmReset()">🗑 데이터 초기화</button>
   </div>
 
 </div><!-- /content -->
+
+<!-- ═══ 설정 모달 (마스터 데이터) ═══ -->
+<div class="cfg-modal" id="settingsModal">
+  <div class="cfg-box">
+    <div class="cfg-head">
+      <span>⚙ 설정 관리</span>
+      <button onclick="closeSettings()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-tabs">
+      <div class="cfg-tab active" id="ctab-categories" onclick="switchCfgTab('categories')">구분</div>
+      <div class="cfg-tab" id="ctab-products" onclick="switchCfgTab('products')">상품명</div>
+      <div class="cfg-tab" id="ctab-vehicles" onclick="switchCfgTab('vehicles')">차량</div>
+    </div>
+    <div class="cfg-body" id="cfgBody"></div>
+  </div>
+</div>
+
+<!-- ═══ 계정관리 모달 ═══ -->
+<div class="cfg-modal" id="userMgrModal">
+  <div class="cfg-box">
+    <div class="cfg-head">
+      <span>👥 계정 관리</span>
+      <button onclick="closeUserMgr()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-tabs">
+      <div class="cfg-tab active" id="utab-pending" onclick="switchUserTab('pending')">승인 대기</div>
+      <div class="cfg-tab" id="utab-all" onclick="switchUserTab('all')">전체 계정</div>
+    </div>
+    <div class="cfg-body" id="userMgrBody"></div>
+  </div>
+</div>
+
+<!-- ═══ 비번변경 모달 ═══ -->
+<div class="pw-modal" id="pwModal">
+  <div class="pw-box">
+    <div style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:16px;">🔑 비밀번호 변경</div>
+    <div class="login-field"><label>현재 비밀번호</label><input type="password" id="pwCur" placeholder="현재 비밀번호"></div>
+    <div class="login-field"><label>새 비밀번호</label><input type="password" id="pwNew" placeholder="새 비밀번호"></div>
+    <div class="login-field"><label>새 비밀번호 확인</label><input type="password" id="pwNew2" placeholder="재입력"></div>
+    <div class="login-error" id="pwError"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="login-btn" style="background:#888;" onclick="closePwChange()">취소</button>
+      <button class="login-btn" onclick="confirmPwChange()">변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 제출현황 모달 (어드민) ═══ -->
+<div class="cfg-modal" id="submissionsModal">
+  <div class="cfg-box" style="max-width:620px;">
+    <div class="cfg-head">
+      <span>📋 제출 현황</span>
+      <button onclick="closeSubmissions()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body" id="submissionsBody"></div>
+  </div>
+</div>
+
+<!-- ═══ 월별 엑셀 모달 ═══ -->
+<div class="cfg-modal" id="monthExcelModal">
+  <div class="cfg-box" style="max-width:400px;">
+    <div class="cfg-head">
+      <span>📊 월별 엑셀 다운로드</span>
+      <button onclick="closeMonthExcel()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body">
+      <div class="month-export-bar">
+        <select id="excelYear" style="width:90px;"></select>
+        <select id="excelMonth">
+          <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+          <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+          <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+        <button onclick="downloadMonthExcel()">📥 다운로드</button>
+      </div>
+      <div id="monthExcelPreview" style="font-size:12px;color:var(--text-sub);margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /appWrap -->
 
 <script>
 // ══════════════════════════════════
 //  AUTH
 // ══════════════════════════════════
-const PASSWORDS = { admin:'123456', op:'5678', guide:'9999' };
-let currentRole = null;
+// ── 사용자 관리 ──────────────────────────────────────────
+const USERS_KEY   = 'guide_users_v1';
+const SETTINGS_KEY= 'guide_settings_v1';
+const SUBS_KEY    = 'guide_submissions_v1';
 
-function doLogin() {
-  const role = document.getElementById('loginRole').value;
-  const pw   = document.getElementById('loginPw').value;
-  if (!role || PASSWORDS[role] !== pw) {
-    document.getElementById('loginError').style.display = 'block';
-    return;
+let currentRole = null;
+let currentUser = null;   // {id,username,name,role,password,status}
+let usersDB = [];
+let appSettings = { categories:['호텔비','차량비','관광지','식당','골프장','기타'], products:[], vehicles:[] };
+let submissionsDB = [];
+
+const DEFAULT_ADMIN = { id:'u_admin', username:'admin', name:'관리자', role:'admin', password:'admin1234', status:'approved', createdAt:'' };
+
+async function loadUsers() {
+  const sb_data = await loadFromSupabase(USERS_KEY);
+  if (sb_data) {
+    usersDB = sb_data;
+    localStorage.setItem(USERS_KEY, JSON.stringify(usersDB));
+  } else {
+    try { usersDB = JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch(e) { usersDB=[]; }
   }
-  currentRole = role;
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appWrap').style.display = 'block';
-  const badgeEl = document.getElementById('roleBadge');
-  const labels = { admin:'Admin', op:'Manager', guide:'Guide' };
-  badgeEl.textContent = labels[role];
-  badgeEl.className = 'role-badge ' + role;
-  applyRoleUI();
-  // 탭바 즉시 초기 렌더 (Supabase 로드 전에도 표시)
-  try { rebuildTabBar(); switchTab('main'); } catch(e) {}
-  // Supabase에서 최신 데이터 불러온 후 로그인 완료
-  loadFromSupabase(LS_KEY).then(sbData => {
-    if (sbData) localStorage.setItem(LS_KEY, JSON.stringify(sbData));
-    loadFromSupabase(STAFF_KEY).then(sbStaff => {
-      if (sbStaff) localStorage.setItem(STAFF_KEY, JSON.stringify(sbStaff));
-      const restored = loadData();
-      if (!restored) {
-        initData();
-        renderAll();
-        calcPaxTotal();
-        syncRate2FromBase();
-      }
-      rebuildTabBar();
-      switchTab('main');
-      saveData();
-      updateGuideDropdown();
-      updateSettleCode();
-    });
+  if (!usersDB.find(u=>u.username==='admin')) {
+    usersDB.push({...DEFAULT_ADMIN, createdAt:new Date().toISOString()});
+    await saveUsers();
+  }
+}
+async function saveUsers() {
+  localStorage.setItem(USERS_KEY, JSON.stringify(usersDB));
+  await syncToSupabase(USERS_KEY, usersDB);
+}
+async function loadAppSettings() {
+  const d = await loadFromSupabase(SETTINGS_KEY);
+  if (d) { appSettings = Object.assign(appSettings, d); localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); }
+  else { try { const r=JSON.parse(localStorage.getItem(SETTINGS_KEY)); if(r) appSettings=Object.assign(appSettings,r); } catch(e){} }
+}
+async function saveAppSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
+  await syncToSupabase(SETTINGS_KEY, appSettings);
+}
+async function loadSubmissions() {
+  const d = await loadFromSupabase(SUBS_KEY);
+  if (d) { submissionsDB = d; localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB)); }
+  else { try { submissionsDB = JSON.parse(localStorage.getItem(SUBS_KEY)) || []; } catch(e){submissionsDB=[];} }
+}
+async function saveSubmissions() {
+  localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
+  await syncToSupabase(SUBS_KEY, submissionsDB);
+}
+
+function switchLoginPanel(p) {
+  ['login','register','pending'].forEach(n=>{
+    document.getElementById(n+'-panel').classList.toggle('active', n===p);
+    const tab = document.getElementById('ltab-'+n);
+    if(tab) tab.classList.toggle('active', n===p);
   });
 }
+
+async function doLogin() {
+  await loadUsers();
+  const id = (document.getElementById('loginId').value||'').trim().toLowerCase();
+  const pw = (document.getElementById('loginPw').value||'').trim();
+  const user = usersDB.find(u=>u.username.toLowerCase()===id && u.password===pw);
+  if (!user) { document.getElementById('loginError').style.display='block'; return; }
+  document.getElementById('loginError').style.display='none';
+  if (user.status==='pending') {
+    document.getElementById('pendingName').textContent = user.name;
+    switchLoginPanel('pending');
+    return;
+  }
+  if (user.status==='rejected') {
+    document.getElementById('loginError').textContent='승인이 거부된 계정입니다.';
+    document.getElementById('loginError').style.display='block'; return;
+  }
+  currentUser = user;
+  currentRole = user.role;
+  _completeLogin();
+}
+
+async function doRegister() {
+  const id   = (document.getElementById('regId').value||'').trim();
+  const name = (document.getElementById('regName').value||'').trim();
+  const role = document.getElementById('regRole').value;
+  const pw   = (document.getElementById('regPw').value||'').trim();
+  const pw2  = (document.getElementById('regPw2').value||'').trim();
+  const errEl = document.getElementById('registerError');
+  errEl.style.display='none';
+  const showErr = msg => { errEl.textContent=msg; errEl.style.display='block'; };
+  if (!id||!name||!role||!pw||!pw2) return showErr('모든 항목을 입력해주세요.');
+  if (!/^[a-zA-Z0-9_]+$/.test(id)) return showErr('아이디는 영문·숫자·_만 사용 가능합니다.');
+  if (pw!==pw2) return showErr('비밀번호가 일치하지 않습니다.');
+  await loadUsers();
+  if (usersDB.find(u=>u.username.toLowerCase()===id.toLowerCase())) return showErr('이미 사용 중인 아이디입니다.');
+  usersDB.push({id:'u_'+Date.now(), username:id, name, role, password:pw, status:'pending', createdAt:new Date().toISOString()});
+  await saveUsers();
+  document.getElementById('pendingName').textContent = name;
+  switchLoginPanel('pending');
+}
+
+function _completeLogin() {
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appWrap').style.display='block';
+  const badgeEl = document.getElementById('roleBadge');
+  const labels = { admin:'Admin', op:'Manager', guide:'Guide' };
+  badgeEl.textContent = (labels[currentRole]||currentRole) + ' · ' + (currentUser.name||'');
+  badgeEl.className = 'role-badge ' + currentRole;
+  applyRoleUI();
+  try { rebuildTabBar(); switchTab('main'); } catch(e) {}
+  // 비동기 데이터 로드
+  const userDataKey = 'guide_data_' + currentUser.username;
+  Promise.all([
+    loadFromSupabase(userDataKey),
+    loadAppSettings(),
+    loadSubmissions(),
+  ]).then(([sbData])=>{
+    if (sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
+    const restored = loadData();
+    if (!restored) { initData(); renderAll(); calcPaxTotal(); syncRate2FromBase(); }
+    rebuildTabBar(); switchTab('main');
+    updateGuideDropdown(); updateSettleCode();
+    populateProductDropdown();
+    restoreNewInfoFields();
+    if (currentRole==='guide') document.getElementById('btnSubmit').style.display='';
+    else document.getElementById('btnSubmit').style.display='none';
+  });
+}
+
+function LS_KEY_USER() { return currentUser ? 'guide_data_' + currentUser.username : LS_KEY; }
 
 function resetData() {
   if (!confirm('저장된 모든 데이터를 초기화하고 새로 시작하시겠습니까?')) return;
-  localStorage.removeItem(LS_KEY);
-  sb.from('guide_data').delete().eq('data_key', LS_KEY);
+  const k = LS_KEY_USER();
+  localStorage.removeItem(k);
+  sb.from('guide_data').delete().eq('data_key', k);
   initData();
   renderAll();
-  // 기본정보 필드 초기화
-  ['guideName','agencyName','localGuide','tourStart','tourEnd',
-   'paxAdult','paxChild','paxTC','advancePay',
-   'rateUSD','rateKRW'].forEach(id => {
+  ['guideName','agencyName','localGuide','tourStart','tourNights',
+   'paxAdult','paxChild','paxTC','advancePay','rateUSD','rateKRW',
+   'shopCount','settleSeq'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = (id==='rateUSD') ? '34.00' : (id==='rateKRW') ? '0.0207' : (id.startsWith('pax')) ? '0' : '';
+    if (el) el.value = (id==='rateUSD')?'34.00':(id==='rateKRW')?'0.0207':(id.startsWith('pax'))?'0':'';
   });
-  calcPaxTotal();
-  syncRate2FromBase();
-  switchTab('main');
+  const p = document.getElementById('productName'); if(p) p.value='';
+  calcPaxTotal(); syncRate2FromBase(); updateSettleCode(); switchTab('main');
 }
 
 function doLogout() {
-  currentRole = null;
+  currentRole = null; currentUser = null;
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appWrap').style.display = 'none';
-  document.getElementById('loginRole').value = '';
+  document.getElementById('loginId').value = '';
   document.getElementById('loginPw').value = '';
   document.getElementById('loginError').style.display = 'none';
+  switchLoginPanel('login');
 }
 
 function canEditMain() { return currentRole === 'admin' || currentRole === 'op'; }
 
 function applyRoleUI() {
-  // 메인 회사지불 행사비 잠금 여부
   const lockNotice = document.getElementById('main-lock-notice');
   const addBtnWrap = document.getElementById('main-add-btn-wrap');
   if (canEditMain()) {
@@ -1393,10 +1658,11 @@ function applyRoleUI() {
     lockNotice.style.display = 'block';
     addBtnWrap.style.display = 'none';
   }
-  // Admin 전용 버튼 표시/숨김 (정산서 탭 밖 요소)
-  document.querySelectorAll('button.admin-only').forEach(el => {
+  document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = currentRole === 'admin' ? '' : 'none';
   });
+  const btnSubmit = document.getElementById('btnSubmit');
+  if (btnSubmit) btnSubmit.style.display = currentRole === 'guide' ? '' : 'none';
   applyKBVisibility();
 }
 
@@ -1409,9 +1675,10 @@ const state = {
   days: [],
   options: [],
   shopping: { jewell:[], latex:[], beomrung:[], taiko:[], herb:[] },
-  info: { guideName:'', agencyName:'', localGuide:'', tourStart:'', tourEnd:'',
+  info: { guideName:'', agencyName:'', localGuide:'', tourStart:'', tourNights:'',
           paxAdult:'0', paxChild:'0', paxTC:'0', advancePay:'',
-          rateUSD:'34.00', rateKRW:'0.0207', guideCode:'' }
+          rateUSD:'34.00', rateKRW:'0.0207', guideCode:'',
+          productName:'', shopCount:'0', settleSeq:'' }
 };
 
 let _uid = 1;
@@ -1496,8 +1763,8 @@ function switchTab(name) {
 function updateMiniBar() {
   const guide = document.getElementById('guideName').value || '-';
   const s = document.getElementById('tourStart').value;
-  const e = document.getElementById('tourEnd').value;
-  const period = (s && e) ? s + ' ~ ' + e : (s || '-');
+  const nights = document.getElementById('tourNights') ? document.getElementById('tourNights').value : '';
+  const period = s ? (s + (nights ? ' · '+nights+'박' : '')) : '-';
   document.getElementById('mini-guide').textContent = guide;
   document.getElementById('mini-period').textContent = period;
   const subtitleEl = document.getElementById('print-guide-subtitle');
@@ -1518,6 +1785,11 @@ function rebuildTabBar() {
   ['option','shopping','summary'].forEach((t,i) => {
     bar.appendChild(makeTabBtn(t, ['옵션','쇼핑','📊 정산서'][i]));
   });
+  if (currentRole === 'admin') {
+    const subBtn = makeTabBtn('submissions','📋 제출현황');
+    subBtn.onclick = () => openSubmissions();
+    bar.appendChild(subBtn);
+  }
   const active = document.querySelector(`.tab-btn[data-tab="${currentTab}"]`);
   if (active) active.classList.add('active');
 }
@@ -2494,8 +2766,8 @@ function updateSummary(){
   const agency=document.getElementById('agencyName').value||'-';
   const local=document.getElementById('localGuide').value||'-';
   const s=document.getElementById('tourStart').value;
-  const e=document.getElementById('tourEnd').value;
-  const period=(s&&e)?s+' ~ '+e:(s||'-');
+  const nights=(document.getElementById('tourNights')||{}).value||'';
+  const period=s?(s+(nights?' · '+nights+'박':'')):(s||'-');
 
   ['','p'].forEach(sfx=>{
     const id=sfx?'-'+sfx:'';
@@ -2599,10 +2871,11 @@ function printAdmin() { doPrint('print-admin', '회 사 정 산 서'); }
 // ══════════════════════════════════
 function confirmReset(){
   if(!confirm('모든 입력 데이터를 초기화하시겠습니까?'))return;
-  ['guideName','agencyName','tourStart','tourEnd','localGuide','advancePay'].forEach(id=>{
+  ['guideName','agencyName','tourStart','localGuide','advancePay','tourNights','settleSeq'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  ['paxAdult','paxChild','paxTC'].forEach(id=>document.getElementById(id).value=0);
+  ['paxAdult','paxChild','paxTC','shopCount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  const ps=document.getElementById('productName');if(ps)ps.value='';
   document.getElementById('paxTotalDisplay').textContent='0명';
   document.querySelectorAll('.day-panel').forEach(p=>p.remove());
   initData(); renderAll(); switchTab('main');
@@ -2641,8 +2914,9 @@ async function loadFromSupabase(key) {
 
 // 저장할 입력 필드 ID 목록 (state로 관리되지 않는 값들)
 const SAVE_FIELD_IDS = [
-  'guideName','agencyName','localGuide','tourStart','tourEnd',
+  'guideName','agencyName','localGuide','tourStart','tourNights',
   'paxAdult','paxChild','paxTC','advancePay',
+  'productName','shopCount','settleSeq',
   'rateUSD','rateKRW',
   'inc-rateUSD','inc-rateKRW',
   'inc-land1','inc-land2','inc-land3',
@@ -2661,9 +2935,9 @@ const SHOP_KEYS = ['jewell','latex','beomrung','taiko','herb'];
 function saveData() {
   if (!currentRole) return;
   try {
-    // 기본정보 + 환율 필드를 state.info에 스냅샷 (DOM → 메모리) → state JSON에 포함됨
-    const INFO_IDS = ['guideName','agencyName','localGuide','tourStart','tourEnd',
+    const INFO_IDS = ['guideName','agencyName','localGuide','tourStart','tourNights',
                       'paxAdult','paxChild','paxTC','advancePay',
+                      'productName','shopCount','settleSeq',
                       'rateUSD','rateKRW','inc-rateUSD','inc-rateKRW'];
     INFO_IDS.forEach(id => {
       const el = document.getElementById(id);
@@ -2675,28 +2949,25 @@ function saveData() {
       const el = document.getElementById(id);
       if (el) fields[id] = el.value;
     });
-    // 정산방법 체크박스
     ['incentive','guarantee','settle'].forEach(method => {
       const chk = document.getElementById('chk-' + method);
       if (chk) fields['_chk_settle_' + method] = chk.checked;
     });
-    // 쇼핑 체크박스
     SHOP_KEYS.forEach(k => {
       const chk = document.getElementById('chk-' + k);
       if (chk) fields['_chk_' + k] = chk.checked;
     });
 
-    const data = {
-      state: JSON.parse(JSON.stringify(state)),
-      fields,
-    };
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-    syncToSupabase(LS_KEY, data);
+    const data = { state: JSON.parse(JSON.stringify(state)), fields };
+    const k = LS_KEY_USER();
+    localStorage.setItem(k, JSON.stringify(data));
+    syncToSupabase(k, data);
   } catch(e) {}
 }
 
 function loadData() {
-  const raw = localStorage.getItem(LS_KEY);
+  const k = LS_KEY_USER();
+  const raw = localStorage.getItem(k);
   if (!raw) return false;
 
   let data, saved;
@@ -2708,8 +2979,9 @@ function loadData() {
 
   const fields = data.fields || {};
   const savedInfo = saved.info || {};
-  const INFO_IDS = ['guideName','agencyName','localGuide','tourStart','tourEnd',
+  const INFO_IDS = ['guideName','agencyName','localGuide','tourStart','tourNights',
                     'paxAdult','paxChild','paxTC','advancePay',
+                    'productName','shopCount','settleSeq',
                     'rateUSD','rateKRW','inc-rateUSD','inc-rateKRW'];
 
   // ① 기본정보 + 환율 필드 복원 — 가장 먼저 실행 (이후 오류와 무관)
@@ -2810,6 +3082,7 @@ function loadData() {
     updateShopCheckedLabels();
   } catch(e) {}
 
+  try { updateSettleCode(); } catch(e) {}
   try { switchTab('main'); } catch(e) {}
 
   return true;
@@ -3219,18 +3492,346 @@ function onGuideSelect(sel) {
 }
 function updateSettleCode() {
   const date = (document.getElementById('tourStart')||{}).value || '';
-  const code = (state && state.info && state.info.guideCode) ? state.info.guideCode : '';
-  let codeStr = '-';
-  if(date) {
+  const seq  = ((document.getElementById('settleSeq')||{}).value || '').trim();
+  let sec1 = '-';
+  if (date) {
     const d = new Date(date);
     const yy = String(d.getFullYear()).slice(2);
     const mm = String(d.getMonth()+1).padStart(2,'0');
     const dd = String(d.getDate()).padStart(2,'0');
-    codeStr = yy+mm+dd + (code ? '-'+code : '');
+    sec1 = yy+mm+dd;
   }
+  const el1 = document.getElementById('settleCodeSec1');
+  if (el1) el1.textContent = sec1;
+  const full = sec1 !== '-' && seq ? sec1+'-'+seq.padStart(2,'0') : (sec1 !== '-' ? sec1 : '-');
   const el = document.getElementById('settleCodeDisplay');
-  if(el) el.textContent = codeStr;
+  if (el) el.textContent = full;
+  if (state && state.info) state.info.settleCode = full;
 }
+
+// ── 상품명 드롭다운 채우기 ──────────────────────────────
+function populateProductDropdown() {
+  const sel = document.getElementById('productName');
+  if (!sel) return;
+  const cur = (state.info && state.info.productName) || '';
+  sel.innerHTML = '<option value="">-- 선택 --</option>' +
+    (appSettings.products||[]).map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
+}
+
+// ── 새 기본정보 필드 복원 ──────────────────────────────
+function restoreNewInfoFields() {
+  ['tourNights','shopCount','settleSeq'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && state.info[id]!=null) el.value=state.info[id];
+  });
+  populateProductDropdown();
+  updateSettleCode();
+}
+
+// ══════════════════════════════════════════════════════
+//  설정 관리 (구분/상품명/차량)
+// ══════════════════════════════════════════════════════
+let currentCfgTab = 'categories';
+
+function openSettings() {
+  switchCfgTab('categories');
+  document.getElementById('settingsModal').style.display='flex';
+}
+function closeSettings() { document.getElementById('settingsModal').style.display='none'; }
+
+function switchCfgTab(tab) {
+  currentCfgTab = tab;
+  ['categories','products','vehicles'].forEach(t=>{
+    const el=document.getElementById('ctab-'+t);
+    if(el) el.classList.toggle('active', t===tab);
+  });
+  renderCfgBody();
+}
+
+function renderCfgBody() {
+  const body = document.getElementById('cfgBody');
+  const labels = {categories:'구분',products:'상품명',vehicles:'차량'};
+  const items = appSettings[currentCfgTab] || [];
+  const rows = items.map((v,i)=>`
+    <div class="cfg-list-item">
+      <input value="${v}" oninput="appSettings['${currentCfgTab}'][${i}]=this.value; debounceSaveCfg();">
+      <button class="del-btn" onclick="removeCfgItem(${i})">삭제</button>
+    </div>`).join('');
+  body.innerHTML = `
+    ${rows || '<p style="color:#aaa;font-size:13px;padding:8px 0;">항목이 없습니다.</p>'}
+    <div class="cfg-add-row">
+      <input id="cfgNewItem" placeholder="새 ${labels[currentCfgTab]} 추가">
+      <button class="cfg-add-btn" onclick="addCfgItem()">추가</button>
+    </div>`;
+}
+
+let _cfgSaveTimer;
+function debounceSaveCfg() { clearTimeout(_cfgSaveTimer); _cfgSaveTimer=setTimeout(()=>saveAppSettings(),1000); }
+
+function addCfgItem() {
+  const inp=document.getElementById('cfgNewItem');
+  const v=(inp.value||'').trim();
+  if(!v) return;
+  appSettings[currentCfgTab].push(v);
+  inp.value='';
+  saveAppSettings();
+  renderCfgBody();
+  if(currentCfgTab==='products') populateProductDropdown();
+}
+
+function removeCfgItem(i) {
+  appSettings[currentCfgTab].splice(i,1);
+  saveAppSettings();
+  renderCfgBody();
+  if(currentCfgTab==='products') populateProductDropdown();
+}
+
+// ══════════════════════════════════════════════════════
+//  계정 관리 (어드민)
+// ══════════════════════════════════════════════════════
+let currentUserTab = 'pending';
+
+async function openUserMgr() {
+  await loadUsers();
+  switchUserTab('pending');
+  document.getElementById('userMgrModal').style.display='flex';
+}
+function closeUserMgr() { document.getElementById('userMgrModal').style.display='none'; }
+
+function switchUserTab(tab) {
+  currentUserTab = tab;
+  ['pending','all'].forEach(t=>{
+    const el=document.getElementById('utab-'+t);
+    if(el) el.classList.toggle('active', t===tab);
+  });
+  renderUserMgr();
+}
+
+function renderUserMgr() {
+  const body = document.getElementById('userMgrBody');
+  const roleLabels = {admin:'Admin',op:'Manager',guide:'Guide'};
+  let list = currentUserTab==='pending'
+    ? usersDB.filter(u=>u.status==='pending')
+    : usersDB.filter(u=>u.username!=='admin');
+
+  if(!list.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px 0;text-align:center;">해당 계정이 없습니다.</p>'; return; }
+
+  body.innerHTML = list.map((u,i)=>{
+    const idx = usersDB.indexOf(u);
+    const statusBadge = u.status==='approved'
+      ? '<span class="sub-badge new">승인됨</span>'
+      : u.status==='rejected'
+        ? '<span class="sub-badge seen">거부됨</span>'
+        : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">대기</span>';
+    return `<div class="sub-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="sc-code">${u.name} <span style="font-size:11px;font-weight:400;color:#888;">(${u.username})</span></div>
+          <div class="sc-meta">${roleLabels[u.role]||u.role} · 신청: ${(u.createdAt||'').slice(0,10)} ${statusBadge}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          ${u.status!=='approved'?`<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="approveUser(${idx})">✔ 승인</button>`:''}
+          ${u.status==='approved'?`<button class="del-btn" onclick="rejectUser(${idx})">정지</button>`:''}
+          <button class="del-btn" onclick="deleteUser(${idx})">삭제</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function approveUser(idx) {
+  usersDB[idx].status='approved'; usersDB[idx].approvedAt=new Date().toISOString();
+  await saveUsers(); renderUserMgr();
+}
+async function rejectUser(idx) {
+  usersDB[idx].status='rejected';
+  await saveUsers(); renderUserMgr();
+}
+async function deleteUser(idx) {
+  if(!confirm('계정을 삭제하시겠습니까?')) return;
+  usersDB.splice(idx,1);
+  await saveUsers(); renderUserMgr();
+}
+
+// ══════════════════════════════════════════════════════
+//  비밀번호 변경
+// ══════════════════════════════════════════════════════
+function openPwChange() { document.getElementById('pwModal').style.display='flex'; document.getElementById('pwError').style.display='none'; }
+function closePwChange() { document.getElementById('pwModal').style.display='none'; }
+async function confirmPwChange() {
+  const cur=document.getElementById('pwCur').value;
+  const nw=document.getElementById('pwNew').value;
+  const nw2=document.getElementById('pwNew2').value;
+  const err=document.getElementById('pwError');
+  err.style.display='none';
+  if(!currentUser) return;
+  if(cur!==currentUser.password){err.textContent='현재 비밀번호가 올바르지 않습니다.';err.style.display='block';return;}
+  if(!nw){err.textContent='새 비밀번호를 입력해주세요.';err.style.display='block';return;}
+  if(nw!==nw2){err.textContent='새 비밀번호가 일치하지 않습니다.';err.style.display='block';return;}
+  const idx=usersDB.findIndex(u=>u.id===currentUser.id);
+  if(idx>=0){usersDB[idx].password=nw; currentUser.password=nw;}
+  await saveUsers();
+  closePwChange();
+  showToast('✅ 비밀번호가 변경되었습니다.');
+  document.getElementById('pwCur').value='';
+  document.getElementById('pwNew').value='';
+  document.getElementById('pwNew2').value='';
+}
+
+// ══════════════════════════════════════════════════════
+//  가이드 → 어드민 제출
+// ══════════════════════════════════════════════════════
+async function submitToAdmin() {
+  if(!confirm('현재 정산서를 어드민에 제출하시겠습니까?\n제출 후에도 수정은 가능합니다.')) return;
+  await loadSubmissions();
+  const code = (document.getElementById('settleCodeDisplay')||{}).textContent || '-';
+  const guideName = (document.getElementById('guideName')||{}).value || (currentUser&&currentUser.name) || '';
+  const paxTotal = parseInt((document.getElementById('paxTotalDisplay')||{}).textContent)||0;
+  const productName = (document.getElementById('productName')||{}).value || '';
+  const shopCount = parseInt((document.getElementById('shopCount')||{}).value)||0;
+
+  // 수익 데이터 수집
+  const getVal = id => parseFloat(((document.getElementById(id)||{}).textContent||'0').replace(/[฿,]/g,''))||0;
+  const sub = {
+    id: 'sub_'+Date.now(),
+    settleCode: code,
+    username: currentUser ? currentUser.username : '',
+    guideName,
+    productName,
+    shopCount,
+    paxTotal,
+    submittedAt: new Date().toISOString(),
+    status: 'new',
+    optionProfit:   getVal('st-opt-total')||getVal('inc-opt-total')||0,
+    shoppingProfit: getVal('st-shop-total')||0,
+    guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||0,
+    companyProfit:  getVal('st-company-profit')||getVal('inc-company-profit')||0,
+    exchangeProfit: getVal('st-adm-exloss-total')||0,
+    fullData: JSON.parse(JSON.stringify(state)),
+  };
+  // 같은 코드+유저 이미 있으면 업데이트
+  const existing = submissionsDB.findIndex(s=>s.settleCode===code && s.username===sub.username);
+  if(existing>=0) submissionsDB[existing]=sub; else submissionsDB.push(sub);
+  await saveSubmissions();
+  showToast('📤 어드민에 제출되었습니다!');
+}
+
+// ══════════════════════════════════════════════════════
+//  어드민 제출현황 보기
+// ══════════════════════════════════════════════════════
+async function openSubmissions() {
+  await loadSubmissions();
+  renderSubmissions();
+  document.getElementById('submissionsModal').style.display='flex';
+}
+function closeSubmissions() { document.getElementById('submissionsModal').style.display='none'; }
+
+function renderSubmissions() {
+  const body = document.getElementById('submissionsBody');
+  if(!submissionsDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">제출된 정산서가 없습니다.</p>'; return; }
+  const sorted = [...submissionsDB].sort((a,b)=>a.settleCode.localeCompare(b.settleCode));
+  body.innerHTML = sorted.map(s=>`
+    <div class="sub-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span></div>
+          <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
+          <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
+        </div>
+        <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="markSubSeen('${s.id}')">확인</button>
+      </div>
+    </div>`).join('');
+}
+
+async function markSubSeen(id) {
+  const s=submissionsDB.find(x=>x.id===id);
+  if(s){s.status='seen'; await saveSubmissions(); renderSubmissions();}
+}
+
+// ══════════════════════════════════════════════════════
+//  월별 엑셀 다운로드
+// ══════════════════════════════════════════════════════
+function openMonthExcel() {
+  const now=new Date();
+  const ySel=document.getElementById('excelYear');
+  ySel.innerHTML='';
+  for(let y=now.getFullYear();y>=2024;y--) ySel.innerHTML+=`<option value="${y}">${y}년</option>`;
+  const mSel=document.getElementById('excelMonth');
+  mSel.value=String(now.getMonth()+1).padStart(2,'0');
+  document.getElementById('monthExcelPreview').textContent='';
+  document.getElementById('monthExcelModal').style.display='flex';
+}
+function closeMonthExcel() { document.getElementById('monthExcelModal').style.display='none'; }
+
+async function downloadMonthExcel() {
+  await loadSubmissions();
+  const y=document.getElementById('excelYear').value;
+  const m=document.getElementById('excelMonth').value;
+  const prefix=String(y).slice(2)+m; // YYMM
+  const rows=submissionsDB.filter(s=>s.settleCode&&s.settleCode.startsWith(prefix))
+    .sort((a,b)=>a.settleCode.localeCompare(b.settleCode));
+  document.getElementById('monthExcelPreview').textContent=`총 ${rows.length}건 찾음`;
+  if(!rows.length){showToast('해당 월 제출 데이터가 없습니다.',true);return;}
+
+  // ExcelJS 로드
+  if(!window.ExcelJS){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  }
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet(`${y}년${parseInt(m)}월 정산`);
+
+  // 헤더
+  const cols=['정산코드','가이드명','상품명','쇼핑횟수','인원','옵션수익','쇼핑수익','가이드정산','회사수익','환차수익'];
+  ws.addRow(cols);
+  ws.getRow(1).eachCell(c=>{
+    c.font={bold:true,color:{argb:'FFFFFFFF'}};
+    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1A6B8A'}};
+    c.alignment={horizontal:'center'};
+    c.border={bottom:{style:'medium',color:{argb:'FF0A4A6A'}}};
+  });
+  ws.columns=[
+    {width:14},{width:12},{width:18},{width:10},{width:8},
+    {width:13},{width:13},{width:13},{width:13},{width:13}
+  ];
+
+  // 데이터
+  rows.forEach(s=>{
+    const r=ws.addRow([
+      s.settleCode, s.guideName, s.productName||'', s.shopCount||0, s.paxTotal||0,
+      s.optionProfit||0, s.shoppingProfit||0, s.guideSettle||0, s.companyProfit||0, s.exchangeProfit||0,
+    ]);
+    r.eachCell((c,ci)=>{
+      if(ci>=6) { c.numFmt='#,##0'; c.alignment={horizontal:'right'}; }
+      c.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}}};
+    });
+  });
+
+  // 합계 행
+  const total=ws.addRow(['합계','','','',
+    rows.reduce((s,r)=>s+(r.paxTotal||0),0),
+    rows.reduce((s,r)=>s+(r.optionProfit||0),0),
+    rows.reduce((s,r)=>s+(r.shoppingProfit||0),0),
+    rows.reduce((s,r)=>s+(r.guideSettle||0),0),
+    rows.reduce((s,r)=>s+(r.companyProfit||0),0),
+    rows.reduce((s,r)=>s+(r.exchangeProfit||0),0),
+  ]);
+  total.eachCell((c,ci)=>{
+    c.font={bold:true};
+    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+    if(ci>=5){c.numFmt='#,##0';c.alignment={horizontal:'right'};}
+  });
+
+  ws.views=[{state:'frozen',xSplit:0,ySplit:1}];
+
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`가이드정산_${y}년${parseInt(m)}월.xlsx`;
+  a.click();
+  closeMonthExcel();
+}
+
 </script>
 </body>
 </html>
