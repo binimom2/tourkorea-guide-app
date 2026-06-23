@@ -631,6 +631,109 @@
     }
   }
   .print-title-bar { display:none; }
+
+  /* ══════════════════════════════════════════════
+     모바일 반응형 (≤ 640px)
+  ══════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    /* 전체 여백 축소 */
+    body { font-size: 13px; }
+    .app-header { padding: 8px 12px; }
+    .app-header h1 { font-size: 15px; }
+    .app-meta { font-size: 10px; }
+    .main-wrap { padding: 8px; }
+
+    /* 탭 버튼 */
+    .tab-bar { gap: 4px; padding: 6px 8px; overflow-x: auto; flex-wrap: nowrap; }
+    .tab-btn { font-size: 11px; padding: 6px 10px; white-space: nowrap; flex-shrink: 0; }
+
+    /* 기본정보: 4컬럼 → 2컬럼 */
+    #basic-info-grid {
+      grid-template-columns: 1fr 1fr !important;
+    }
+    /* 가이드명 span2 → span1 (2컬럼에서는 span2가 전체 차지) */
+    #basic-info-grid > .field-group[style*="grid-column:span 2"] {
+      grid-column: span 2 !important;
+    }
+    /* 가이드명 span2 유지, 나머지 1칸씩 */
+    .field-group { margin-bottom: 6px; }
+    .field-group label { font-size: 11px; }
+    .field-group input,
+    .field-group select { font-size: 16px; padding: 8px 10px; }
+
+    /* 정산코드 박스 */
+    #settleCodeSec1 { font-size: 13px !important; padding: 8px 6px !important; }
+    #settleSeq { font-size: 15px !important; width: 56px !important; }
+
+    /* 인원 입력 행 */
+    .pax-row { flex-wrap: wrap; gap: 6px; }
+    .pax-item input { width: 52px; font-size: 14px; }
+
+    /* 섹션 카드 */
+    .section-card { border-radius: 8px; margin-bottom: 8px; }
+    .section-header { padding: 8px 12px; }
+    .section-header h3 { font-size: 13px; }
+
+    /* 행사비 열 (내용 넓게) */
+    .col-headers,
+    .expense-row {
+      grid-template-columns: 72px 1fr 46px 62px 20px !important;
+      gap: 4px;
+      padding: 4px 8px;
+    }
+    .col-headers span { font-size: 10px; }
+    .expense-row input,
+    .expense-row select { font-size: 14px !important; padding: 6px 4px !important; }
+
+    /* 일차 탭 */
+    .day-tabs { gap: 4px; padding: 6px 8px; overflow-x: auto; flex-wrap: nowrap; }
+    .day-tab-btn { font-size: 11px; padding: 5px 10px; white-space: nowrap; flex-shrink: 0; }
+    .total-row { padding: 6px 12px; }
+    .total-row span { font-size: 12px; }
+    .btn-add { font-size: 13px; padding: 10px; }
+
+    /* 옵션 테이블 - 가로 스크롤 */
+    .option-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .option-row-grid,
+    .option-headers {
+      min-width: 560px;
+      grid-template-columns: 120px 64px 80px 52px 88px 60px 24px !important;
+      gap: 4px;
+      padding: 4px 8px;
+    }
+    .option-row-grid input,
+    .option-row-grid select { font-size: 14px !important; padding: 6px 4px !important; }
+
+    /* 옵션 요약 카드 */
+    #opt-conv-bar { padding: 10px !important; }
+    #opt-conv-bar .tot-item { font-size: 14px !important; }
+
+    /* 쇼핑 테이블 - 가로 스크롤 */
+    .shop-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .shop-row,
+    .shop-headers {
+      min-width: 500px;
+      grid-template-columns: 85px 58px 40px 68px 40px 64px 24px !important;
+      gap: 4px;
+      padding: 4px 8px;
+    }
+    .shop-row input,
+    .shop-row select { font-size: 14px !important; padding: 6px 4px !important; }
+
+    /* 기준환율 바 */
+    .settle-rate-label { font-size: 11px !important; }
+    .settle-rate-input { font-size: 14px !important; width: 70px !important; padding: 6px 6px !important; }
+
+    /* 정산서 탭 */
+    .settle-grid2,.settle-grid3,.settle-grid4,.settle-grid5 { gap: 6px !important; }
+    .settle-result-row { font-size: 12px !important; }
+    .pay-label { font-size: 10px !important; }
+    .pay-value { font-size: 15px !important; }
+
+    /* 계정관리 / 설정 모달 */
+    .modal-box { width: 95vw !important; max-width: 95vw !important; padding: 16px !important; }
+    .cfg-add-btn { font-size: 12px; padding: 8px 12px; }
+  }
 </style>
 </head>
 <body>
@@ -701,7 +804,7 @@
       <h3>기본 정보</h3>
       <!-- 줄1+2: 하나의 4컬럼 그리드로 완전 통합 -->
       <div id="settleCodeDisplay" style="display:none;"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div id="basic-info-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
         <!-- 줄1 -->
         <div class="field-group" style="grid-column:span 2;margin-bottom:0;">
           <label>가이드명</label>
