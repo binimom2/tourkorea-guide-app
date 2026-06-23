@@ -727,10 +727,10 @@
         <div class="field-group"><label>로컬가이드명</label><input type="text" id="localGuide" placeholder="로컬가이드 입력" oninput="state.info.localGuide=this.value; saveData()"></div>
         <div class="field-group"><label>행사일자</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
         <div class="field-group">
-          <label>박수</label>
+          <label style="visibility:hidden;">-</label>
           <div style="display:flex;align-items:center;gap:4px;">
-            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:60px;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
-            <span style="font-size:13px;color:var(--text-sub);font-weight:600;">박</span>
+            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="flex:1;width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+            <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
           </div>
         </div>
       </div>
