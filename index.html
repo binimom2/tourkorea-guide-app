@@ -821,29 +821,43 @@
       <div class="option-scroll"><div id="option-list"></div></div>
       <button class="btn-add" onclick="addOptionRow()">＋ 옵션 추가</button>
 
-      <!-- 통화별 입금 합계 -->
-      <div style="padding:8px 14px;border-top:1px solid var(--border);background:#f7f9fc;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:10px;font-weight:700;color:var(--text-sub);letter-spacing:0.5px;white-space:nowrap;">통화별 총 입금액</span>
-        <span class="tot-item" id="opt-sum-thb" style="color:var(--primary);">฿ —</span>
-        <span id="opt-sep-usd" style="color:var(--border);font-size:13px;display:none;">,</span>
-        <span class="tot-item" id="opt-sum-usd" style="color:var(--primary);display:none;">$ —</span>
-        <span id="opt-sep-krw" style="color:var(--border);font-size:13px;display:none;">,</span>
-        <span class="tot-item" id="opt-sum-krw" style="color:var(--primary);display:none;">₩ —</span>
-      </div>
-
-      <!-- 환율 적용 바트 환산 + 수익 -->
-      <div id="opt-conv-bar" style="padding:6px 14px 12px;background:#f7f9fc;border-bottom:1px solid var(--border);">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:11px;font-weight:700;color:var(--text-sub);">환산 총입금 (฿)</span>
-          <span class="tot-item" id="opt-converted-total" style="color:#1a6b8a;font-size:14px;">฿ —</span>
-          <span style="font-size:11px;color:var(--text-sub);">−</span>
-          <span style="font-size:11px;font-weight:700;color:var(--text-sub);">원가 합계</span>
-          <span class="tot-item" id="opt-tot-cost" style="color:#E05252;">฿ —</span>
-          <span style="font-size:14px;font-weight:800;color:var(--text-sub);">=</span>
-          <span style="font-size:11px;font-weight:700;color:var(--success);">옵션수익금</span>
-          <span class="tot-item" id="opt-profit-total" style="color:var(--success);font-size:15px;font-weight:800;">฿ —</span>
+      <!-- 통화별 입금 + 수익 요약 -->
+      <div id="opt-conv-bar" style="padding:12px 14px;background:#f8fafc;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+        <!-- 통화별 카드 -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <div id="opt-card-thb" style="flex:1;min-width:90px;background:#fff;border:1.5px solid #c7d2fe;border-radius:10px;padding:8px 12px;">
+            <div style="font-size:10px;font-weight:700;color:#6366f1;margin-bottom:3px;">฿ THB 입금</div>
+            <div class="tot-item" id="opt-sum-thb" style="font-size:15px;font-weight:800;color:#3730a3;">—</div>
+          </div>
+          <div id="opt-card-usd" style="flex:1;min-width:90px;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;padding:8px 12px;display:none;">
+            <div style="font-size:10px;font-weight:700;color:#1d6faa;margin-bottom:3px;">$ USD 입금</div>
+            <div class="tot-item" id="opt-sum-usd" style="font-size:15px;font-weight:800;color:#1a6b8a;">—</div>
+          </div>
+          <div id="opt-card-krw" style="flex:1;min-width:90px;background:#fff;border:1.5px solid #fde68a;border-radius:10px;padding:8px 12px;display:none;">
+            <div style="font-size:10px;font-weight:700;color:#b45309;margin-bottom:3px;">₩ KRW 입금</div>
+            <div class="tot-item" id="opt-sum-krw" style="font-size:15px;font-weight:800;color:#92400e;">—</div>
+          </div>
+        </div>
+        <!-- 수익 계산식 -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;border-radius:10px;padding:10px 14px;border:1.5px solid var(--border);">
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);font-weight:600;margin-bottom:2px;">환산 총입금</div>
+            <div class="tot-item" id="opt-converted-total" style="font-size:14px;font-weight:800;color:#1a6b8a;">฿ —</div>
+          </div>
+          <span style="font-size:20px;font-weight:300;color:#ccc;margin:0 2px;">−</span>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);font-weight:600;margin-bottom:2px;">원가 합계</div>
+            <div class="tot-item" id="opt-tot-cost" style="font-size:14px;font-weight:800;color:#E05252;">฿ —</div>
+          </div>
+          <span style="font-size:20px;font-weight:300;color:#ccc;margin:0 2px;">=</span>
+          <div style="text-align:center;flex:1;background:#f0fdf4;border-radius:8px;padding:6px 12px;">
+            <div style="font-size:10px;color:var(--success);font-weight:700;margin-bottom:2px;">옵션 수익금</div>
+            <div class="tot-item" id="opt-profit-total" style="font-size:16px;font-weight:900;color:var(--success);">฿ —</div>
+          </div>
         </div>
       </div>
+      <span id="opt-sep-usd" style="display:none;"></span>
+      <span id="opt-sep-krw" style="display:none;"></span>
     </div>
   </div>
 
@@ -2166,12 +2180,12 @@ function calcOptionTotal(){
   const elUSD = document.getElementById('opt-sum-usd');
   const elKRW = document.getElementById('opt-sum-krw');
   if(elTHB){ elTHB.textContent = '฿ ' + fmtNum(byCur.THB); elTHB.style.display = byCur.THB>0?'':'none'; }
-  if(elUSD){ elUSD.textContent = '$ ' + fmtNum(byCur.USD); elUSD.style.display = byCur.USD>0?'':'none'; }
-  if(elKRW){ elKRW.textContent = '₩ ' + fmtNum(byCur.KRW); elKRW.style.display = byCur.KRW>0?'':'none'; }
-  const sepUSD = document.getElementById('opt-sep-usd');
-  const sepKRW = document.getElementById('opt-sep-krw');
-  if(sepUSD) sepUSD.style.display = (byCur.THB>0 && byCur.USD>0) ? '' : 'none';
-  if(sepKRW) sepKRW.style.display = (byCur.KRW>0 && (byCur.THB>0||byCur.USD>0)) ? '' : 'none';
+  if(elUSD){ elUSD.textContent = '$ ' + fmtNum(byCur.USD); }
+  if(elKRW){ elKRW.textContent = '₩ ' + fmtNum(byCur.KRW); }
+  const cardUSD = document.getElementById('opt-card-usd');
+  const cardKRW = document.getElementById('opt-card-krw');
+  if(cardUSD) cardUSD.style.display = byCur.USD>0 ? '' : 'none';
+  if(cardKRW) cardKRW.style.display = byCur.KRW>0 ? '' : 'none';
   if(elTHB && byCur.THB===0 && byCur.USD===0 && byCur.KRW===0){ elTHB.textContent='฿ —'; elTHB.style.display=''; }
 
   // 환율 적용 전체 바트 환산 합계
