@@ -1379,16 +1379,15 @@
       <ul id="acc-list" style="list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:8px;"></ul>
       <div style="background:#f8fafc;border-radius:10px;padding:14px;">
         <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:10px;">새 계정 추가</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <input type="text" id="acc-id" placeholder="아이디" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
-          <input type="text" id="acc-name" placeholder="이름" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <input type="password" id="acc-pw" placeholder="비밀번호" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
-          <select id="acc-role" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
-            <option value="op">Manager (운영)</option>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
+          <select id="acc-role" onchange="onAccRoleChange()" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
+            <option value="">-- 역할 선택 --</option>
+            <option value="organizer">Organizer (오거나이저)</option>
+            <option value="op">Manager (매니저)</option>
             <option value="guide">Guide (가이드)</option>
           </select>
+          <input type="text" id="acc-id" placeholder="아이디 입력" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
+          <input type="password" id="acc-pw" placeholder="비밀번호 입력" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
         </div>
         <div class="login-error" id="acc-err" style="margin-bottom:6px;"></div>
         <button onclick="addAccount()" style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">➕ 계정 추가</button>
@@ -1531,10 +1530,11 @@ async function doLogin() {
     _completeLogin(); return;
   }
   const accounts = getAccounts();
-  // 가이드는 이름으로 로그인, Manager/Op는 아이디로 로그인
+  // 가이드는 이름으로, 나머지는 아이디로 로그인
   const found = accounts.find(a =>
     (a.role === 'guide' ? (a.name === id) : (a.id === id)) && a.pw === pw
   );
+
   if (found) {
     currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: found.role };
     currentRole = found.role;
@@ -1550,7 +1550,7 @@ function _completeLogin() {
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appWrap').style.display='block';
   const badgeEl = document.getElementById('roleBadge');
-  const labels = { admin:'Admin', op:'Manager', guide:'Guide' };
+  const labels = { admin:'Admin', organizer:'Organizer', op:'Manager', guide:'Guide' };
   badgeEl.textContent = (labels[currentRole]||currentRole) + ' · ' + (currentUser.name||'');
   badgeEl.className = 'role-badge ' + currentRole;
   applyRoleUI();
@@ -1602,7 +1602,7 @@ function doLogout() {
   document.getElementById('loginError').style.display = 'none';
 }
 
-function canEditMain() { return currentRole === 'admin' || currentRole === 'op'; }
+function canEditMain() { return currentRole === 'admin' || currentRole === 'organizer' || currentRole === 'op'; }
 
 function applyRoleUI() {
   const lockNotice = document.getElementById('main-lock-notice');
@@ -1620,7 +1620,7 @@ function applyRoleUI() {
   const btnSubmit = document.getElementById('btnSubmit');
   if (btnSubmit) btnSubmit.style.display = currentRole === 'guide' ? '' : 'none';
 
-  // 가이드 역할: 정산코드·상품명·쇼핑횟수 입력 잠금
+  // 가이드 역할: 정산코드·상품명·쇼핑횟수 입력 잠금 (organizer/manager/admin은 모두 입력 가능)
   const guideOnly = currentRole === 'guide';
   ['settleSeq','productName','shopCount'].forEach(id => {
     const el = document.getElementById(id);
@@ -3576,9 +3576,14 @@ function closeUserMgr() {
 }
 
 function roleBadge(role){
-  if(role==='admin') return '<span style="background:#e8220a;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">ADMIN</span>';
-  if(role==='op')    return '<span style="background:#2563eb;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">MANAGER</span>';
-  return '<span style="background:#059669;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">GUIDE</span>';
+  const map = {
+    admin:     ['#e8220a','ADMIN'],
+    organizer: ['#7c3aed','ORGANIZER'],
+    op:        ['#2563eb','MANAGER'],
+    guide:     ['#059669','GUIDE'],
+  };
+  const [bg, label] = map[role] || ['#888','?'];
+  return `<span style="background:${bg};color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">${label}</span>`;
 }
 
 function renderAccountList() {
@@ -3698,22 +3703,38 @@ async function changePwAccount(i) {
   showToast('🔑 비밀번호가 변경되었습니다.');
 }
 
+function onAccRoleChange() {
+  const role = document.getElementById('acc-role').value;
+  const idEl = document.getElementById('acc-id');
+  if (role === 'guide') {
+    idEl.placeholder = '이름 입력 (로그인 시 이름 사용)';
+  } else {
+    idEl.placeholder = '아이디 입력';
+  }
+}
+
 async function addAccount() {
-  const id   = (document.getElementById('acc-id').value||'').trim();
-  const name = (document.getElementById('acc-name').value||'').trim();
+  const val  = (document.getElementById('acc-id').value||'').trim();
   const pw   = (document.getElementById('acc-pw').value||'').trim();
   const role = document.getElementById('acc-role').value;
   const err  = document.getElementById('acc-err');
   err.style.display = 'none';
-  if (!id||!pw) { err.textContent='아이디와 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
-  if (id === ADMIN_ID) { err.textContent='이미 사용 중인 아이디입니다.'; err.style.display='block'; return; }
+  if (!role) { err.textContent='역할을 선택해주세요.'; err.style.display='block'; return; }
+  if (!val||!pw) { err.textContent='아이디(이름)와 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
   const accounts = getAccounts();
-  if (accounts.find(a=>a.id===id)) { err.textContent='이미 존재하는 아이디입니다.'; err.style.display='block'; return; }
-  accounts.push({ id, pw, name, role });
+  // 가이드는 name으로, 나머지는 id로 중복 체크
+  if (role === 'guide') {
+    if (accounts.find(a=>a.role==='guide' && a.name===val)) { err.textContent='같은 이름의 가이드가 이미 있습니다.'; err.style.display='block'; return; }
+    accounts.push({ id:'g_'+Date.now(), pw, name:val, role });
+  } else {
+    if (val === ADMIN_ID) { err.textContent='이미 사용 중인 아이디입니다.'; err.style.display='block'; return; }
+    if (accounts.find(a=>a.id===val)) { err.textContent='이미 존재하는 아이디입니다.'; err.style.display='block'; return; }
+    accounts.push({ id:val, pw, name:val, role });
+  }
   await saveAccounts(accounts);
   document.getElementById('acc-id').value='';
-  document.getElementById('acc-name').value='';
   document.getElementById('acc-pw').value='';
+  document.getElementById('acc-role').value='';
   renderAccountList();
   showToast('✅ 계정이 추가되었습니다.');
 }
