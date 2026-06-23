@@ -644,7 +644,7 @@
     </div>
     <div class="login-field">
       <label>아이디</label>
-      <input type="text" id="loginId" placeholder="아이디 입력" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="text" id="loginId" placeholder="아이디 (가이드는 이름 입력)" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-field">
       <label>비밀번호</label>
@@ -1526,14 +1526,17 @@ async function doLogin() {
   await syncAccountsFromSupabase();
 
   if (id === ADMIN_ID && pw === getAdminPw()) {
-    currentUser = { id, name:'관리자', role:'admin' };
+    currentUser = { id, username: id, name:'관리자', role:'admin' };
     currentRole = 'admin';
     _completeLogin(); return;
   }
   const accounts = getAccounts();
-  const found = accounts.find(a => a.id === id && a.pw === pw);
+  // 가이드는 이름으로 로그인, Manager/Op는 아이디로 로그인
+  const found = accounts.find(a =>
+    (a.role === 'guide' ? (a.name === id) : (a.id === id)) && a.pw === pw
+  );
   if (found) {
-    currentUser = { id: found.id, name: found.name||found.id, role: found.role };
+    currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: found.role };
     currentRole = found.role;
     _completeLogin(); return;
   }
@@ -3604,19 +3607,34 @@ function renderAccountList() {
   // 일반 계정
   const accounts = getAccounts();
   accounts.forEach((a, i) => {
+    const isGuide = a.role === 'guide';
+    const loginLabel = isGuide
+      ? `<span style="font-size:11px;color:#888;">로그인: 이름+비번</span>`
+      : `<span style="font-size:11px;color:#888;">ID: ${a.id}</span>`;
     const li = document.createElement('li');
-    li.style.cssText = s;
+    li.style.cssText = s + 'flex-direction:column;align-items:stretch;';
     li.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-weight:700;font-size:13px;">${a.id}</span>
-        ${a.name ? `<span style="font-size:12px;color:#666;">(${a.name})</span>` : ''}
-        ${roleBadge(a.role)}
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:700;font-size:13px;">${a.name||a.id}</span>
+          ${roleBadge(a.role)}
+          ${loginLabel}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${!isGuide ? `<button onclick="toggleIdRow(${i})" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">✏️ 아이디변경</button>` : ''}
+          <button onclick="togglePwRow('pwrow-${i}')" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">🔑 비번변경</button>
+          <button onclick="deleteAccount(${i})" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">삭제</button>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;">
-        <button onclick="togglePwRow('pwrow-${i}')" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">🔑 비번변경</button>
-        <button onclick="deleteAccount(${i})" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">삭제</button>
-      </div>
-      <div id="pwrow-${i}" style="display:none;width:100%;margin-top:6px;">
+      ${!isGuide ? `
+      <div id="idrow-${i}" style="display:none;margin-top:8px;">
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="id-new-${i}" placeholder="새 아이디" value="${a.id}" style="flex:1;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;font-family:inherit;">
+          <button onclick="changeIdAccount(${i})" style="background:#059669;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">변경</button>
+        </div>
+        <div id="id-err-${i}" style="color:#e8220a;font-size:11px;min-height:14px;margin-top:3px;"></div>
+      </div>` : ''}
+      <div id="pwrow-${i}" style="display:none;margin-top:8px;">
         <div style="display:flex;gap:6px;">
           <input type="password" id="pw-new-${i}" placeholder="새 비밀번호" style="flex:1;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;font-family:inherit;">
           <button onclick="changePwAccount(${i})" style="background:#1040cc;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">변경</button>
@@ -3631,8 +3649,29 @@ function togglePwRow(id) {
   const row = document.getElementById(id);
   if (!row) return;
   const open = row.style.display !== 'none';
-  document.querySelectorAll('[id^="pwrow-"]').forEach(r => r.style.display='none');
+  document.querySelectorAll('[id^="pwrow-"],[id^="idrow-"]').forEach(r => r.style.display='none');
   if (!open) row.style.display = 'block';
+}
+function toggleIdRow(i) {
+  const row = document.getElementById(`idrow-${i}`);
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  document.querySelectorAll('[id^="pwrow-"],[id^="idrow-"]').forEach(r => r.style.display='none');
+  if (!open) row.style.display = 'block';
+}
+async function changeIdAccount(i) {
+  const newId = (document.getElementById(`id-new-${i}`).value||'').trim();
+  const err   = document.getElementById(`id-err-${i}`);
+  if (!newId) { err.textContent='아이디를 입력해주세요.'; return; }
+  if (newId === ADMIN_ID) { err.textContent='사용할 수 없는 아이디입니다.'; return; }
+  const accounts = getAccounts();
+  if (accounts.find((a,idx)=>a.id===newId && idx!==i)) { err.textContent='이미 사용 중인 아이디입니다.'; return; }
+  accounts[i].id = newId;
+  await saveAccounts(accounts);
+  document.getElementById(`idrow-${i}`).style.display='none';
+  err.textContent='';
+  renderAccountList();
+  showToast('✅ 아이디가 변경되었습니다.');
 }
 
 async function changePwAdmin() {
