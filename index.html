@@ -1808,9 +1808,12 @@ function addDay(noSwitch) {
       </div>
       <div class="expense-list" id="${dayId}-list"></div>
       <button class="btn-add" onclick="addExpenseRow('${dayId}')">＋ 항목 추가</button>
-      <div class="total-row"><span>${dayNum}일차 합계</span><span id="${dayId}-total">฿0</span></div>
+      <div class="total-row" style="background:#f1f5f9;">
+        <span style="color:#475569;font-size:12px;">${dayNum}일차 당일 합계</span>
+        <span id="${dayId}-total">฿0</span>
+      </div>
       <div class="total-row" id="${dayId}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
-        <span id="${dayId}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;">누적 합계</span>
+        <span id="${dayId}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;"></span>
         <span id="${dayId}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
       </div>
     </div>
@@ -1967,7 +1970,7 @@ function updateCumulativeTotals() {
     } else {
       if (cumEl) cumEl.style.display = '';
       if (cumVal) cumVal.textContent = fmtTHB(running);
-      if (cumLbl) cumLbl.textContent = `1~${i+1}일차 누적 합계`;
+      if (cumLbl) cumLbl.textContent = `1~${i+1}일차 누적`;
     }
   });
 }
