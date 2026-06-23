@@ -1330,6 +1330,8 @@ function doLogin() {
   badgeEl.textContent = labels[role];
   badgeEl.className = 'role-badge ' + role;
   applyRoleUI();
+  // 탭바 즉시 초기 렌더 (Supabase 로드 전에도 표시)
+  try { rebuildTabBar(); switchTab('main'); } catch(e) {}
   // Supabase에서 최신 데이터 불러온 후 로그인 완료
   loadFromSupabase(LS_KEY).then(sbData => {
     if (sbData) localStorage.setItem(LS_KEY, JSON.stringify(sbData));
