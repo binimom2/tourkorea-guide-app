@@ -3054,17 +3054,41 @@ function printAdmin() { doPrint('print-admin', '회 사 정 산 서'); }
 // ══════════════════════════════════
 function confirmReset(){
   if(!confirm('모든 입력 데이터를 초기화하시겠습니까?'))return;
-  const resetFields = ['guideName','agencyName','tourStart','localGuide','advancePay','tourNights','settleSeq','productName'];
-  resetFields.forEach(id=>{ const el=document.getElementById(id);if(el)el.value=''; });
-  ['paxAdult','paxChild','paxTC','shopCount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+
+  // ① 모든 저장 필드 초기화 (옵션 환율 포함)
+  SAVE_FIELD_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    if(id==='inc-rateUSD'||id==='rateUSD') el.value='34.00';
+    else if(id==='inc-rateKRW'||id==='rateKRW') el.value='0.0207';
+    else if(['paxAdult','paxChild','paxTC','shopCount'].includes(id)) el.value='0';
+    else el.value='';
+  });
   const pd=document.getElementById('paxTotalDisplay');if(pd)pd.textContent='0명';
-  // state.info 초기화
+
+  // ② state.info 초기화
   Object.keys(state.info).forEach(k=>{ state.info[k]=''; });
   state.info.paxAdult='0'; state.info.paxChild='0'; state.info.paxTC='0';
   state.info.rateUSD='34.00'; state.info.rateKRW='0.0207';
   state.info.shopCount='0'; state.info.settleSeq='00';
+
+  // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
+  state.optionCurrency = 'THB';
+  SHOP_KEYS.forEach(k=>{
+    state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:5,kbCom:0}];
+  });
+  state.options = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profit:''}];
+  state.expenses = { main: defaultRows() };
+  state.days = [];
+
+  // ④ DOM 일차 패널 제거 후 3일 기본 생성
   document.querySelectorAll('.day-panel').forEach(p=>p.remove());
-  initData(); renderAll(); rebuildTabBar(); saveData(); switchTab('main');
+  addDay(true); addDay(true); addDay(true);
+
+  // ⑤ 전체 렌더 → localStorage 저장
+  renderAll(); rebuildTabBar();
+  SHOP_KEYS.forEach(k=>renderShop(k));
+  saveData(); switchTab('main');
   calcPaxTotal(); syncRate2FromBase(); updateSettleCode();
   showToast('📝 새 보고서를 시작합니다.');
 }
