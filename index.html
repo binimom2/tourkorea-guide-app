@@ -1922,9 +1922,9 @@ function rebuildTabBar() {
   addBtn.textContent = '＋일';
   addBtn.onclick = () => addDay();
   bar.appendChild(addBtn);
-  ['option','shopping','summary'].forEach((t,i) => {
-    bar.appendChild(makeTabBtn(t, ['옵션','쇼핑','📊 정산서'][i]));
-  });
+  const tabDefs = [['option','옵션'],['shopping','쇼핑']];
+  if (currentRole !== 'guide') tabDefs.push(['summary','📊 정산서']);
+  tabDefs.forEach(([t,label]) => bar.appendChild(makeTabBtn(t, label)));
   if (currentRole === 'admin' || currentRole === 'organizer') {
     const subBtn = makeTabBtn('submissions','📋 제출현황');
     subBtn.onclick = () => openSubmissions();
