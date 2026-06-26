@@ -790,14 +790,13 @@
     <div class="header-right">
       <span class="role-badge" id="roleBadge"></span>
       <span class="app-meta" id="todayDate"></span>
-      <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
-      <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 설정</button>
-      <button class="logout-btn admin-only" id="btnMonthExcel" onclick="openMonthExcel()" style="background:rgba(232,135,42,0.35);margin-right:4px;">📊 월별엑셀</button>
-      <button class="logout-btn guide-only" id="btnNewReport" onclick="confirmReset()" style="background:rgba(40,168,122,0.7);margin-right:4px;">📝 새 보고서</button>
       <button class="logout-btn guide-only" id="btnSave" onclick="manuallySave()" style="background:rgba(26,107,138,0.7);margin-right:4px;">💾 저장</button>
       <button class="logout-btn" id="btnSubmit" onclick="submitToAdmin()" style="background:rgba(220,38,38,0.35);margin-right:4px;display:none;">📤 제출</button>
+      <button class="logout-btn guide-only" id="btnNewReport" onclick="confirmReset()" style="background:rgba(40,168,122,0.7);margin-right:4px;">📝 새 보고서</button>
+      <button class="logout-btn admin-only" id="btnMonthExcel" onclick="openMonthExcel()" style="background:rgba(232,135,42,0.35);margin-right:4px;">📥 엑셀 다운로드</button>
+      <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
+      <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 설정</button>
       <button class="logout-btn" onclick="openPwChange()" style="background:rgba(255,255,255,0.15);margin-right:4px;">🔑</button>
-      <button class="logout-btn" onclick="resetData()" style="background:rgba(255,80,80,0.25);margin-right:4px;" title="초기화">🗑</button>
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
@@ -3865,8 +3864,11 @@ function renderAccountList() {
     </div>`;
   ul.appendChild(adminLi);
 
-  // 일반 계정
-  const accounts = getAccounts();
+  // 일반 계정 (역할 순서: organizer → op/manager → guide)
+  const ROLE_ORDER = { organizer:0, op:1, manager:1, guide:2 };
+  const accounts = getAccounts().slice().sort((a,b)=>
+    (ROLE_ORDER[a.role]??9) - (ROLE_ORDER[b.role]??9)
+  );
   accounts.forEach((a, i) => {
     const isGuide = a.role === 'guide';
     const loginLabel = isGuide
