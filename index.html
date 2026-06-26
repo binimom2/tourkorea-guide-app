@@ -1485,20 +1485,10 @@
       </div>
     </div>
 
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
+    <div id="bottomPrintBtns" style="display:flex;gap:8px;margin-bottom:10px;">
       <button class="btn-print" style="flex:1;" onclick="printGuide()">🖨 가이드 정산서 출력</button>
-      <button class="btn-print admin-only" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
+      <button class="btn-print" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn-print print-hide admin-only" style="flex:1;background:#28A87A;" onclick="openMonthExcel()">📊 월별 엑셀 다운로드</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn-print print-hide" style="flex:1;background:#1A6B8A;" onclick="manuallySave()">💾 저장</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;" id="submitBtnWrap">
-      <button class="btn-print print-hide" style="flex:1;background:#dc2626;" onclick="submitToAdmin()">📤 정산서 제출</button>
-    </div>
-    <button class="btn-reset" onclick="confirmReset()">🗑 데이터 초기화</button>
   </div>
 
 </div><!-- /content -->
@@ -1810,6 +1800,9 @@ function applyRoleUI() {
   });
   const sec1 = document.getElementById('settleCodeSec1');
   if (sec1) { sec1.style.opacity = guideOnly ? '0.5' : '1'; }
+  // 하단 출력 버튼: 가이드는 숨김, 어드민/매니저만 표시
+  const bottomPrint = document.getElementById('bottomPrintBtns');
+  if (bottomPrint) bottomPrint.style.display = (currentRole === 'guide') ? 'none' : 'flex';
 
   applyKBVisibility();
 }
