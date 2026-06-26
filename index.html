@@ -640,31 +640,29 @@
   @media (max-width: 640px) {
     /* 전체 여백 축소 */
     body { font-size: 13px; }
-    .app-header { padding: 6px 10px 0; }
-    .app-header h1 { font-size: 15px; }
-    .app-meta { font-size: 10px; }
     .main-wrap { padding: 8px; }
 
     /* ── 헤더 모바일 완전 재설계 ── */
-    .app-header { padding: 8px 12px 0; }
+    .app-header { padding: 6px 10px 0; }
     .app-header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 8px;
-      gap: 6px;
+      padding-bottom: 6px;
+      gap: 4px;
+      flex-wrap: nowrap;
+      overflow: hidden;
     }
-    .app-title { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-    .header-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
-    /* 날짜·admin 버튼 모두 숨김 */
+    .app-title { font-size: 13px; font-weight: 700; white-space: nowrap; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .header-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; flex-wrap: nowrap; }
+    /* 날짜·admin 버튼·🔑·로그아웃 모두 숨김 */
     .app-meta { display: none !important; }
     .app-header .admin-only { display: none !important; }
-    /* 🔑·🗑·로그아웃 숨김 — 제출 버튼만 노출 */
-    .app-header .logout-btn:not(#btnSubmit) { display: none !important; }
-    /* 역할 배지 (가이드명) */
-    .role-badge { font-size: 11px; padding: 3px 8px; white-space: nowrap; }
-    /* 제출 버튼 */
-    #btnSubmit { font-size: 13px; padding: 5px 12px; margin-right: 0 !important; }
+    .app-header .logout-btn:not(#btnSubmit):not(#btnSave):not(#btnNewReport) { display: none !important; }
+    /* 역할 배지 (가이드명): 짧게 */
+    .role-badge { font-size: 10px; padding: 2px 6px; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+    /* 가이드 상단 버튼 - 소형화 */
+    #btnSave, #btnSubmit, #btnNewReport { font-size: 11px; padding: 5px 8px; margin-right: 0 !important; white-space: nowrap; }
 
     /* 탭 버튼 */
     .tab-bar { gap: 4px; padding: 6px 8px; overflow-x: auto; flex-wrap: nowrap; }
@@ -681,32 +679,50 @@
     /* 가이드명 span2 유지, 나머지 1칸씩 */
     .field-group { margin-bottom: 6px; }
     .field-group label { font-size: 11px; }
+    /* iOS 자동 줌 방지: 16px 이상 */
     .field-group input,
     .field-group select { font-size: 16px; padding: 8px 10px; }
 
     /* 정산코드 박스 */
     #settleCodeSec1 { font-size: 13px !important; padding: 8px 6px !important; }
-    #settleSeq { font-size: 15px !important; width: 56px !important; }
+    #settleSeq { font-size: 16px !important; width: 56px !important; }
 
     /* 인원 입력 행 */
     .pax-row { flex-wrap: wrap; gap: 6px; }
-    .pax-item input { width: 52px; font-size: 14px; }
+    .pax-item input { width: 52px; font-size: 16px; }
 
     /* 섹션 카드 */
     .section-card { border-radius: 8px; margin-bottom: 8px; }
     .section-header { padding: 8px 12px; }
     .section-header h3 { font-size: 13px; }
 
-    /* 행사비 열 (내용 넓게) */
-    .col-headers,
-    .expense-row {
-      grid-template-columns: 72px 1fr 46px 62px 18px 20px !important;
+    /* ── 행사비 행: 2줄 레이아웃 (내용란 전체 너비) ── */
+    .col-headers {
+      grid-template-columns: 1fr 48px 72px 24px !important;
       gap: 4px;
       padding: 4px 8px;
     }
-    .col-headers span { font-size: 10px; }
-    .expense-row input,
-    .expense-row select { font-size: 14px !important; padding: 6px 4px !important; }
+    /* 헤더에서 +열·내용열 숨기고 나머지 4칸으로 */
+    .col-headers span:nth-child(2) { display: none; } /* 내용 헤더 숨김 */
+    .col-headers span:nth-child(5) { display: none; } /* + 헤더 숨김 */
+    .col-headers span:nth-child(6) { display: none; } /* ✕ 헤더 숨김 (아래서 재배치) */
+
+    .expense-row {
+      display: grid !important;
+      grid-template-columns: 1fr 48px 72px 24px !important;
+      grid-template-rows: auto auto !important;
+      grid-template-areas:
+        "cat  pax  amt  del"
+        "det  det  det  det" !important;
+      gap: 4px 4px;
+      padding: 6px 8px;
+    }
+    .expense-row > select           { grid-area: cat; font-size: 16px !important; padding: 8px 4px !important; }
+    .expense-row > input:nth-child(2){ grid-area: det; font-size: 16px !important; padding: 8px 10px !important; } /* 내용 */
+    .expense-row > input:nth-child(3){ grid-area: pax; font-size: 16px !important; padding: 8px 4px !important; text-align: right; }
+    .expense-row > input:nth-child(4){ grid-area: amt; font-size: 16px !important; padding: 8px 4px !important; text-align: right; }
+    .expense-row > .btn-insert      { display: none !important; }
+    .expense-row > .btn-delete      { grid-area: del; width: 100%; height: 100%; }
 
     /* 일차 탭 */
     .day-tabs { gap: 4px; padding: 6px 8px; overflow-x: auto; flex-wrap: nowrap; }
@@ -725,7 +741,7 @@
       padding: 4px 8px;
     }
     .option-row-grid input,
-    .option-row-grid select { font-size: 14px !important; padding: 6px 4px !important; }
+    .option-row-grid select { font-size: 16px !important; padding: 6px 4px !important; }
 
     /* 옵션 요약 카드 */
     #opt-conv-bar { padding: 10px !important; }
@@ -741,11 +757,12 @@
       padding: 4px 8px;
     }
     .shop-row input,
-    .shop-row select { font-size: 14px !important; padding: 6px 4px !important; }
+    .shop-row input,
+    .shop-row select { font-size: 16px !important; padding: 6px 4px !important; }
 
     /* 기준환율 바 */
     .settle-rate-label { font-size: 11px !important; }
-    .settle-rate-input { font-size: 14px !important; width: 70px !important; padding: 6px 6px !important; }
+    .settle-rate-input { font-size: 16px !important; width: 70px !important; padding: 6px 6px !important; }
 
     /* 정산서 탭 */
     .settle-grid2,.settle-grid3,.settle-grid4,.settle-grid5 { gap: 6px !important; }
