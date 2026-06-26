@@ -1722,7 +1722,31 @@ function _completeLogin() {
     restoreNewInfoFields();
     const _sb = document.getElementById('btnSubmit');
     if (_sb) _sb.style.display = (currentRole==='guide'||currentRole==='admin') ? '' : 'none';
+    // 가이드: 어드민 수정사항 확인
+    if (currentRole === 'guide') checkAdminEdits();
   });
+}
+
+async function checkAdminEdits() {
+  await loadSubmissions();
+  const username = currentUser && currentUser.username;
+  if (!username) return;
+  // 이 가이드의 제출 중 adminEdited=true 인 것 찾기
+  const edited = submissionsDB.filter(s => s.username === username && s.adminEdited);
+  if (!edited.length) return;
+  // 가장 최근 수정본
+  edited.sort((a,b)=> new Date(b.adminEditedAt)-new Date(a.adminEditedAt));
+  const s = edited[0];
+  const editedAt = (s.adminEditedAt||'').slice(0,16).replace('T',' ');
+  if (!confirm(`📋 어드민이 [${s.settleCode}] 정산서를 수정했습니다.\n수정일시: ${editedAt}\n\n수정된 내용을 불러오시겠습니까?`)) return;
+  // 수정본을 현재 데이터로 적용
+  const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
+  localStorage.setItem(LS_KEY_USER(), JSON.stringify(tempData));
+  loadData(); renderAll(); rebuildTabBar(); switchTab('main');
+  // adminEdited 플래그 해제
+  s.adminEdited = false;
+  await saveSubmissions();
+  showToast('✅ 어드민 수정내용이 반영되었습니다.');
 }
 
 function LS_KEY_USER() { return currentUser ? 'guide_data_' + currentUser.username : LS_KEY; }
@@ -3037,14 +3061,19 @@ function printAdmin() { doPrint('print-admin', '회 사 정 산 서'); }
 // ══════════════════════════════════
 function confirmReset(){
   if(!confirm('모든 입력 데이터를 초기화하시겠습니까?'))return;
-  ['guideName','agencyName','tourStart','localGuide','advancePay','tourNights','settleSeq'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.value='';
-  });
+  const resetFields = ['guideName','agencyName','tourStart','localGuide','advancePay','tourNights','settleSeq','productName'];
+  resetFields.forEach(id=>{ const el=document.getElementById(id);if(el)el.value=''; });
   ['paxAdult','paxChild','paxTC','shopCount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
-  const ps=document.getElementById('productName');if(ps)ps.value='';
-  document.getElementById('paxTotalDisplay').textContent='0명';
+  const pd=document.getElementById('paxTotalDisplay');if(pd)pd.textContent='0명';
+  // state.info 초기화
+  Object.keys(state.info).forEach(k=>{ state.info[k]=''; });
+  state.info.paxAdult='0'; state.info.paxChild='0'; state.info.paxTC='0';
+  state.info.rateUSD='34.00'; state.info.rateKRW='0.0207';
+  state.info.shopCount='0'; state.info.settleSeq='00';
   document.querySelectorAll('.day-panel').forEach(p=>p.remove());
-  initData(); renderAll(); switchTab('main');
+  initData(); renderAll(); rebuildTabBar(); saveData(); switchTab('main');
+  calcPaxTotal(); syncRate2FromBase(); updateSettleCode();
+  showToast('📝 새 보고서를 시작합니다.');
 }
 
 function renderAll(){
@@ -4155,15 +4184,35 @@ async function openSubData(id) {
   rebuildTabBar();
   switchTab('main');
 
+  // 열람 중인 제출 ID 저장
+  window._viewingSubId = id;
+
   // 열람 배너 표시
   const banner = document.createElement('div');
   banner.id = 'viewBanner';
   banner.style.cssText = 'background:#e53935;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;margin-bottom:8px;border-radius:8px;';
-  banner.innerHTML = `📂 열람 중: [${s.settleCode}] ${s.guideName} &nbsp;
+  const saveBtn = currentRole==='admin'
+    ? `<button onclick="saveSubEdits()" style="background:#fff;color:#1a6b8a;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;margin-right:6px;">💾 수정저장</button>`
+    : '';
+  banner.innerHTML = `📂 열람 중: [${s.settleCode}] ${s.guideName} &nbsp;${saveBtn}
     <button onclick="restoreMyData()" style="background:#fff;color:#e53935;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;">✕ 내 데이터로 복귀</button>`;
   document.querySelector('.content').prepend(banner);
 
   showToast(`📂 [${s.settleCode}] ${s.guideName} 열람 중`);
+}
+
+async function saveSubEdits() {
+  const id = window._viewingSubId;
+  if (!id) { showToast('❌ 열람 중인 파일이 없습니다.', true); return; }
+  const s = submissionsDB.find(x=>x.id===id);
+  if (!s) { showToast('❌ 제출 항목을 찾을 수 없습니다.', true); return; }
+  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드가 다음 로그인 시 반영됩니다.`)) return;
+  // 현재 state를 fullData로 저장
+  s.fullData = JSON.parse(JSON.stringify(state));
+  s.adminEdited = true;
+  s.adminEditedAt = new Date().toISOString();
+  await saveSubmissions();
+  showToast('💾 수정내용이 저장되었습니다. 가이드 로그인 시 반영됩니다.');
 }
 
 function restoreMyData() {
