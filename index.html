@@ -977,23 +977,45 @@
       <div class="option-scroll"><div id="option-list"></div></div>
       <button class="btn-add" onclick="addOptionRow()">＋ 옵션 추가</button>
 
-      <!-- 통화별 입금 + 수익 요약 (6칸 테이블) -->
-      <div id="opt-conv-bar" style="background:#f8fafc;border-top:2px solid var(--border);">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;border-bottom:1px solid var(--border);">
-          <div style="padding:6px 10px;font-size:11px;font-weight:700;color:#92400e;border-right:1px solid var(--border);">₩ 입금</div>
-          <div id="opt-card-usd" style="padding:6px 10px;font-size:11px;font-weight:700;color:#1d6faa;border-right:1px solid var(--border);">$ 입금</div>
-          <div style="padding:6px 10px;font-size:11px;font-weight:700;color:#6366f1;border-right:1px solid var(--border);">฿ 입금</div>
-          <div style="padding:6px 10px;font-size:11px;font-weight:700;color:#1a6b8a;border-right:1px solid var(--border);">฿ 환산총액</div>
-          <div style="padding:6px 10px;font-size:11px;font-weight:700;color:#E05252;border-right:1px solid var(--border);">฿ 옵션원가총액</div>
-          <div style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--success);">옵션 수익금</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;">
-          <div style="padding:8px 10px;font-size:15px;font-weight:800;color:#92400e;border-right:1px solid var(--border);"><span class="tot-item" id="opt-sum-krw">—</span></div>
-          <div style="padding:8px 10px;font-size:15px;font-weight:800;color:#1a6b8a;border-right:1px solid var(--border);"><span class="tot-item" id="opt-sum-usd">—</span></div>
-          <div style="padding:8px 10px;font-size:15px;font-weight:800;color:#3730a3;border-right:1px solid var(--border);"><span class="tot-item" id="opt-sum-thb">—</span></div>
-          <div style="padding:8px 10px;font-size:15px;font-weight:800;color:#1a6b8a;border-right:1px solid var(--border);"><span class="tot-item" id="opt-converted-total">—</span></div>
-          <div style="padding:8px 10px;font-size:15px;font-weight:800;color:#E05252;border-right:1px solid var(--border);"><span class="tot-item" id="opt-tot-cost">—</span></div>
-          <div style="padding:8px 10px;font-size:15px;font-weight:900;color:var(--success);background:#f0fdf4;"><span class="tot-item" id="opt-profit-total">—</span></div>
+      <!-- 통화별 입금 + 수익 요약 -->
+      <div id="opt-conv-bar" style="background:#f8fafc;border-top:2px solid var(--border);padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <!-- ₩ 입금 -->
+          <div style="flex:1;min-width:70px;background:#fff;border:1.5px solid #fde68a;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:#92400e;margin-bottom:3px;">₩ 입금</div>
+            <div class="tot-item" id="opt-sum-krw" style="font-size:14px;font-weight:800;color:#92400e;">—</div>
+          </div>
+          <!-- $ 입금 -->
+          <div id="opt-card-usd" style="flex:1;min-width:70px;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:#1d6faa;margin-bottom:3px;">$ 입금</div>
+            <div class="tot-item" id="opt-sum-usd" style="font-size:14px;font-weight:800;color:#1a6b8a;">—</div>
+          </div>
+          <!-- ฿ 입금 -->
+          <div style="flex:1;min-width:70px;background:#fff;border:1.5px solid #c7d2fe;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:#6366f1;margin-bottom:3px;">฿ 입금</div>
+            <div class="tot-item" id="opt-sum-thb" style="font-size:14px;font-weight:800;color:#3730a3;">—</div>
+          </div>
+          <!-- = -->
+          <span style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
+          <!-- ฿ 환산총액 -->
+          <div style="flex:1;min-width:80px;background:#fff;border:1.5px solid #99f6e4;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:#1a6b8a;margin-bottom:3px;">฿ 환산총액</div>
+            <div class="tot-item" id="opt-converted-total" style="font-size:14px;font-weight:800;color:#1a6b8a;">—</div>
+          </div>
+          <!-- - -->
+          <span style="font-size:18px;font-weight:300;color:#94a3b8;">−</span>
+          <!-- ฿ 옵션원가총액 -->
+          <div style="flex:1;min-width:80px;background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:#E05252;margin-bottom:3px;">฿ 옵션원가총액</div>
+            <div class="tot-item" id="opt-tot-cost" style="font-size:14px;font-weight:800;color:#E05252;">—</div>
+          </div>
+          <!-- = -->
+          <span style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
+          <!-- 옵션 수익금 -->
+          <div style="flex:1;min-width:80px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:var(--success);margin-bottom:3px;">옵션 수익금</div>
+            <div class="tot-item" id="opt-profit-total" style="font-size:14px;font-weight:900;color:var(--success);">—</div>
+          </div>
         </div>
       </div>
       <!-- 숨김 ID 유지용 -->
