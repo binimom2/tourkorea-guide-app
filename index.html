@@ -390,18 +390,23 @@
     #inc-guide-pay, #gu-guide-pay, #st-guide-pay { background:#fff176 !important; color:#000 !important; font-weight:800 !important; }
 
     /* ── 기본정보 프린트 레이아웃 ── */
-    #basic-info-grid { grid-template-columns:1.8fr 1fr 1fr 1fr !important; gap:4px 8px !important; margin-bottom:4px !important; }
+    #basic-info-grid { grid-template-columns:2fr 1fr 1fr 1fr !important; gap:3px 8px !important; margin-bottom:3px !important; }
     .field-group label { font-size:9px; color:#555; font-weight:700; }
     .field-group input,.field-group select { padding:2px 5px; font-size:11px; border-radius:3px; }
     /* 가이드명 형광펜 노란색 + 진하게 */
     #guideName { background:#fff176 !important; font-weight:800 !important; color:#000 !important; }
+    /* 총인원 표시 */
+    #paxTotalDisplay { padding:2px 5px !important; font-size:11px !important; }
     /* 정산코드 박스 */
-    #settleCodeSec1 { padding:2px 6px !important; font-size:11px !important; }
-    #settleSeq { font-size:11px !important; padding:2px 4px !important; width:38px !important; }
+    #settleCodeSec1 { padding:2px 4px !important; font-size:10px !important; }
+    #settleSeq { font-size:10px !important; padding:2px 3px !important; width:32px !important; }
+    /* 보조행(줄3) 프린트 */
+    #basic-info-grid > div:last-child { grid-template-columns:1fr 1fr 1fr 0.5fr 1.5fr 1.5fr !important; gap:4px !important; padding-top:3px !important; }
+    .pax-item label { font-size:9px; }
+    .pax-item input { font-size:10px; padding:2px 3px; }
     /* 직원 드롭다운은 프린트에서 숨김 */
     #guideSelect { display:none !important; }
-    /* 정산코드 display (구형 호환) */
-    #settleCodeDisplay { background:#f0f4ff !important; border:1px solid #c7d2fe !important; font-weight:700 !important; color:#3730a3 !important; padding:2px 6px !important; font-size:11px !important; }
+    #settleCodeDisplay { display:none !important; }
     .pax-row { gap:3px; }
     .pax-item label { font-size:9px; }
     .pax-item input,.pax-total { padding:2px; font-size:11px; }
@@ -842,65 +847,67 @@
     <!-- 기본 정보 -->
     <div class="info-card">
       <h3>기본 정보</h3>
-      <!-- 기본정보 그리드 -->
       <div id="settleCodeDisplay" style="display:none;"></div>
-      <div id="basic-info-grid" style="display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr;gap:10px 12px;margin-bottom:12px;">
+      <div id="basic-info-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px 12px;">
 
-        <!-- 줄1: 가이드명 + 정산코드(통합) -->
+        <!-- ── 줄1: 가이드명 / 행사일자+박수 / 행사비지급금 ── -->
         <div class="field-group" style="margin-bottom:0;">
           <label>가이드명</label>
           <input type="text" id="guideName" placeholder="가이드명 입력" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
         </div>
-        <div class="field-group" style="grid-column:span 3;margin-bottom:0;">
-          <label>정산 코드</label>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <div id="settleCodeSec1" style="flex:1;padding:7px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
-            <span style="font-size:16px;font-weight:700;color:#3730a3;flex-shrink:0;">-</span>
-            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:56px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 8px;font-size:15px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
-          </div>
+        <div class="field-group" style="margin-bottom:0;">
+          <label>행사일자</label>
+          <input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()">
         </div>
-
-        <!-- 줄2: 여행사명 / 로컬가이드명 / 행사일자+박수 -->
-        <div class="field-group" style="margin-bottom:0;"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()"></div>
-        <div class="field-group" style="margin-bottom:0;"><label>로컬가이드</label><input type="text" id="localGuide" placeholder="로컬가이드" oninput="state.info.localGuide=this.value; saveData()"></div>
-        <div class="field-group" style="margin-bottom:0;"><label>행사일자</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
         <div class="field-group" style="margin-bottom:0;">
           <label>박수</label>
-          <div style="display:flex;align-items:center;gap:6px;">
+          <div style="display:flex;align-items:center;gap:5px;">
             <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
             <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
           </div>
         </div>
-
-      </div>
-      <!-- 줄4: 행사인원 / 상품명 / 쇼핑횟수 / 행사비지급금 -->
-      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-        <div style="flex:2;min-width:0;">
-          <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">행사인원</label>
-          <div class="pax-row" style="gap:4px;">
-            <div class="pax-item" style="flex:1;min-width:44px;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-            <div class="pax-item" style="flex:1;min-width:44px;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-            <div class="pax-item" style="flex:1;min-width:36px;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-            <div class="pax-item" style="flex:1;min-width:44px;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay">0명</div></div>
+        <div class="field-group" style="margin-bottom:0;border-left:3px solid var(--danger);padding-left:10px;">
+          <label style="color:var(--danger);font-weight:700;">행사비 지급금</label>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <span style="font-size:15px;font-weight:800;color:var(--danger);flex-shrink:0;">฿</span>
+            <input type="text" id="advancePay" class="advance-input" placeholder="0" oninput="state.info.advancePay=this.value; formatAdvance(this); updateAdvancePay(); saveData()" style="font-size:15px;padding:7px 9px;width:100%;flex:1;">
           </div>
         </div>
-        <div style="flex:1;min-width:120px;">
-          <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">상품명</label>
+
+        <!-- ── 줄2: 상품명 / 쇼핑횟수 / 행사인원(총인원) / 정산코드 ── -->
+        <div class="field-group" style="margin-bottom:0;">
+          <label>상품명</label>
           <select id="productName" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:inherit;" onchange="state.info.productName=this.value; saveData()">
             <option value="">-- 선택 --</option>
           </select>
         </div>
-        <div style="min-width:70px;">
-          <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">쇼핑횟수</label>
-          <input type="number" id="shopCount" min="0" max="20" value="0" style="width:70px;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+        <div class="field-group" style="margin-bottom:0;">
+          <label>쇼핑횟수</label>
+          <input type="number" id="shopCount" min="0" max="20" value="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
         </div>
-        <div style="flex:1;min-width:110px;border-left:3px solid var(--danger);padding-left:12px;">
-          <label style="font-size:11px;font-weight:700;color:var(--danger);display:block;margin-bottom:5px;">행사비 지급금</label>
-          <div style="display:flex;align-items:center;gap:5px;">
-            <span style="font-size:15px;font-weight:800;color:var(--danger);">฿</span>
-            <input type="text" id="advancePay" class="advance-input" placeholder="0" oninput="state.info.advancePay=this.value; formatAdvance(this); updateAdvancePay(); saveData()" style="font-size:15px;padding:7px 9px;width:100%;flex:1;">
+        <div class="field-group" style="margin-bottom:0;">
+          <label>행사인원 (총인원)</label>
+          <div class="pax-total" id="paxTotalDisplay" style="padding:7px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div>
+        </div>
+        <div class="field-group" style="margin-bottom:0;">
+          <label>정산 코드</label>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div id="settleCodeSec1" style="flex:1;padding:7px 6px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
+            <span style="font-size:14px;font-weight:700;color:#3730a3;flex-shrink:0;">-</span>
+            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:48px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
+
+        <!-- ── 줄3(보조): 행사인원 상세 / 여행사명 / 로컬가이드 ── -->
+        <div style="grid-column:span 4;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.5fr 1.5fr;gap:8px;padding-top:4px;border-top:1px dashed var(--border);margin-top:2px;">
+          <div class="pax-item"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+          <div class="pax-item"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+          <div class="pax-item"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+          <div style="flex:0;"></div>
+          <div class="field-group" style="margin-bottom:0;"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()"></div>
+          <div class="field-group" style="margin-bottom:0;"><label>로컬가이드</label><input type="text" id="localGuide" placeholder="로컬가이드" oninput="state.info.localGuide=this.value; saveData()"></div>
+        </div>
+
       </div>
     </div>
 
