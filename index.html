@@ -891,23 +891,27 @@
           </div>
         </div>
 
-        <!-- ── 줄3: 행사인원 / 쇼핑횟수 나란히 구분선 ── -->
-        <div style="grid-column:span 12;display:flex;align-items:center;gap:8px;margin:4px 0 0;">
+        <!-- ── 줄3 구분선: 행사인원(8칸) 빈칸(2칸) 쇼핑횟수(2칸) ── -->
+        <div style="grid-column:span 8;display:flex;align-items:center;gap:6px;margin:4px 0 0;">
           <span style="font-size:11px;color:var(--text-sub);font-weight:700;white-space:nowrap;">행사인원</span>
-          <div style="flex:2;border-top:1px dashed var(--border);"></div>
-          <span style="font-size:11px;color:var(--text-sub);font-weight:700;white-space:nowrap;margin-left:8px;">쇼핑횟수</span>
           <div style="flex:1;border-top:1px dashed var(--border);"></div>
         </div>
+        <div style="grid-column:span 2;"></div>
+        <div style="grid-column:span 2;display:flex;align-items:center;gap:6px;margin:4px 0 0;">
+          <span style="font-size:11px;color:var(--text-sub);font-weight:700;white-space:nowrap;">쇼핑횟수</span>
+          <div style="flex:1;border-top:1px dashed var(--border);"></div>
+        </div>
+        <!-- ── 줄3 데이터: 성인(2)|어린이(2)|TC(2)|총인원(2)|빈칸(2)|쇼핑횟수+회(2) ── -->
         <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay" style="padding:7px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div></div>
-        <!-- 쇼핑횟수: 남은 4칸 중 50% 폭 입력 -->
-        <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
-          <label>쇼핑횟수</label>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="shopCount" min="0" max="20" value="0" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
-            <span style="font-size:13px;color:var(--text-sub);font-weight:600;">회</span>
+        <div style="grid-column:span 2;"></div>
+        <div class="field-group" style="grid-column:span 2;margin-bottom:0;">
+          <label style="visibility:hidden;">-</label>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <input type="number" id="shopCount" min="0" max="20" value="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 6px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+            <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">회</span>
           </div>
         </div>
 
