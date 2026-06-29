@@ -887,7 +887,7 @@
           <div class="field-group" style="flex:1;margin-bottom:0;">
             <label>박수</label>
             <div style="display:flex;align-items:center;gap:3px;">
-              <input type="number" id="tourNights" min="1" max="30" placeholder="0" inputmode="numeric" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+              <input type="text" id="tourNights" pattern="[0-9]*" maxlength="2" placeholder="0" inputmode="numeric" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.tourNights=this.value; updateMiniBar(); saveData()">
               <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
             </div>
           </div>
