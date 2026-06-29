@@ -850,15 +850,17 @@
           <label>가이드명</label>
           <input type="text" id="guideName" placeholder="가이드명 입력" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
         </div>
-        <div class="field-group" style="grid-column:span 3;margin-bottom:0;">
-          <label>행사일자</label>
-          <input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()">
-        </div>
-        <div class="field-group" style="grid-column:span 1;margin-bottom:0;">
-          <label>박수</label>
-          <div style="display:flex;align-items:center;gap:3px;">
-            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;min-width:0;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
-            <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
+        <div style="grid-column:span 4;display:flex;gap:6px;align-items:flex-end;">
+          <div class="field-group" style="flex:3;margin-bottom:0;">
+            <label>행사일자</label>
+            <input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()">
+          </div>
+          <div class="field-group" style="flex:1;margin-bottom:0;">
+            <label>박수</label>
+            <div style="display:flex;align-items:center;gap:3px;">
+              <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+              <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
+            </div>
           </div>
         </div>
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;border-left:3px solid var(--danger);padding-left:10px;">
@@ -889,9 +891,11 @@
           <input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()">
         </div>
 
-        <!-- ── 줄3: 행사인원 라벨 + 성인(2)+어린이(2)+TC(2)+총인원(2)=8칸 / 쇼핑횟수 ── -->
-        <div style="grid-column:span 12;border-top:1px dashed var(--border);margin:2px 0;"></div>
-        <div style="grid-column:span 12;font-size:11px;color:var(--text-sub);font-weight:700;margin-bottom:-4px;">행사인원</div>
+        <!-- ── 줄3: 행사인원 구분선(라벨 인라인) ── -->
+        <div style="grid-column:span 12;display:flex;align-items:center;gap:8px;margin:4px 0 0;">
+          <span style="font-size:11px;color:var(--text-sub);font-weight:700;white-space:nowrap;">행사인원</span>
+          <div style="flex:1;border-top:1px dashed var(--border);"></div>
+        </div>
         <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
