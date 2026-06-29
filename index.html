@@ -871,7 +871,11 @@
           </div>
         </div>
 
-        <!-- ── 줄2: 상품명(4) | 정산코드(4) | 여행사명(4) ── -->
+        <!-- ── 줄2: 여행사명(4) | 상품명(4) | 정산코드(4) ── -->
+        <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
+          <label>여행사명</label>
+          <input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()">
+        </div>
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>상품명</label>
           <select id="productName" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:inherit;" onchange="state.info.productName=this.value; saveData()">
@@ -886,10 +890,6 @@
             <input type="text" id="settleSeq" maxlength="2" value="00" style="width:44px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
-        <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
-          <label>여행사명</label>
-          <input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()">
-        </div>
 
         <!-- ── 줄3: 행사인원 구분선(라벨 인라인) ── -->
         <div style="grid-column:span 12;display:flex;align-items:center;gap:8px;margin:4px 0 0;">
@@ -903,7 +903,10 @@
         <!-- 쇼핑횟수: 남은 4칸 중 50% 폭 입력 -->
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>쇼핑횟수</label>
-          <input type="number" id="shopCount" min="0" max="20" value="0" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" id="shopCount" min="0" max="20" value="0" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+            <span style="font-size:13px;color:var(--text-sub);font-weight:600;">회</span>
+          </div>
         </div>
 
       </div>
