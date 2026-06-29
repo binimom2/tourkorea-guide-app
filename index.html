@@ -393,10 +393,10 @@
     #basic-info-grid .big-row { margin-bottom:3px !important; gap:4px !important; }
     /* 줄1: 35/22/13/30 비율 유지 */
     #basic-info-grid .big-row:nth-child(1) { grid-template-columns:35fr 22fr 13fr 30fr !important; }
-    /* 줄2: 22/30/18/30 비율 유지 */
-    #basic-info-grid .big-row:nth-child(2) { grid-template-columns:22fr 30fr 18fr 30fr !important; }
-    /* 줄3: 보조행 */
-    #basic-info-grid .big-row:nth-child(3) { grid-template-columns:1fr 1fr 1fr 1.2fr 2fr !important; padding-top:3px !important; }
+    /* 줄2: 상품명/정산코드/여행사명 3칸 */
+    #basic-info-grid .big-row:nth-child(2) { grid-template-columns:25fr 40fr 35fr !important; }
+    /* 줄3: 성인/어린이/TC/총인원/쇼핑횟수 */
+    #basic-info-grid .big-row:nth-child(3) { grid-template-columns:1fr 1fr 1fr 1.2fr 1.2fr !important; padding-top:3px !important; }
     .field-group label { font-size:9px; color:#555; font-weight:700; }
     .field-group input,.field-group select { padding:2px 5px; font-size:11px; border-radius:3px; }
     #guideName { background:#fff176 !important; font-weight:800 !important; color:#000 !important; }
@@ -876,8 +876,8 @@
           </div>
         </div>
 
-        <!-- ── 줄2: 상품명(22%) / 정산코드(30%) / 총인원(18%) / 여행사명(30%) ── -->
-        <div class="big-row" style="display:grid;grid-template-columns:22fr 30fr 18fr 30fr;gap:8px;margin-bottom:8px;">
+        <!-- ── 줄2: 상품명(25%) / 정산코드-회사입력(40%) / 여행사명(35%) ── -->
+        <div class="big-row" style="display:grid;grid-template-columns:25fr 40fr 35fr;gap:8px;margin-bottom:8px;">
           <div class="field-group" style="margin-bottom:0;">
             <label>상품명</label>
             <select id="productName" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:inherit;" onchange="state.info.productName=this.value; saveData()">
@@ -893,23 +893,21 @@
             </div>
           </div>
           <div class="field-group" style="margin-bottom:0;">
-            <label>총인원</label>
-            <div class="pax-total" id="paxTotalDisplay" style="padding:7px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div>
-          </div>
-          <div class="field-group" style="margin-bottom:0;">
             <label>여행사명</label>
             <input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()">
           </div>
         </div>
 
-        <!-- ── 줄3(보조): 성인/어린이/TC / 쇼핑횟수 / 로컬가이드 ── -->
-        <div class="big-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr 2fr;gap:8px;padding-top:6px;border-top:1px dashed var(--border);">
+        <!-- ── 줄3: 행사인원(성인·어린이·TC) + 총인원 + 쇼핑횟수 ── -->
+        <div class="big-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr 1.2fr;gap:8px;padding-top:6px;border-top:1px dashed var(--border);">
           <div class="pax-item"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
           <div class="pax-item"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
           <div class="pax-item"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+          <div class="pax-item"><label>총인원</label><div class="pax-total" id="paxTotalDisplay" style="padding:7px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div></div>
           <div class="field-group" style="margin-bottom:0;"><label>쇼핑횟수</label><input type="number" id="shopCount" min="0" max="20" value="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()"></div>
-          <div class="field-group" style="margin-bottom:0;"><label>로컬가이드</label><input type="text" id="localGuide" placeholder="로컬가이드" oninput="state.info.localGuide=this.value; saveData()"></div>
         </div>
+        <!-- 로컬가이드 숨김 (데이터 유지용) -->
+        <input type="hidden" id="localGuide" value="" oninput="state.info.localGuide=this.value; saveData()">
 
       </div>
     </div>
