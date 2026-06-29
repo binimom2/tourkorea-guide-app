@@ -887,7 +887,7 @@
           <div class="field-group" style="flex:1;margin-bottom:0;">
             <label>박수</label>
             <div style="display:flex;align-items:center;gap:3px;">
-              <input type="text" id="tourNights" pattern="[0-9]*" maxlength="2" placeholder="0" inputmode="numeric" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.tourNights=this.value; updateMiniBar(); saveData()">
+              <input type="text" id="tourNights" pattern="[0-9]*" maxlength="2" placeholder="0" inputmode="numeric" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.tourNights=this.value; updateMiniBar(); saveData()">
               <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
             </div>
           </div>
@@ -914,7 +914,7 @@
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>쇼핑횟수</label>
           <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="shopCount" min="0" max="20" value="0" inputmode="numeric" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.shopCount=this.value; saveData()">
+            <input type="text" id="shopCount" pattern="[0-9]*" maxlength="2" value="0" inputmode="numeric" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;text-align:center;" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.shopCount=this.value; saveData()">
             <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">회</span>
           </div>
         </div>
@@ -929,9 +929,9 @@
           <div style="flex:1;border-top:1px dashed var(--border);"></div>
         </div>
         <!-- ── 줄3 데이터: 성인(2)|어린이(2)|TC(2)|총인원(2)|정산코드(4) ── -->
-        <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" inputmode="numeric" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-        <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" inputmode="numeric" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-        <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" inputmode="numeric" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="text" id="paxAdult" pattern="[0-9]*" maxlength="3" value="0" inputmode="numeric" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="text" id="paxChild" pattern="[0-9]*" maxlength="3" value="0" inputmode="numeric" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="text" id="paxTC" pattern="[0-9]*" maxlength="3" value="0" inputmode="numeric" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay" style="padding:7px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div></div>
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>정산코드 <span style="font-size:10px;color:var(--text-sub);font-weight:400;">(회사입력)</span></label>
