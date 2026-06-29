@@ -3061,10 +3061,13 @@ function buildPrintGrid() {
     }
   });
 
-  // 총 행사비 합산 계산 후 표시
+  // 총 행사비 합산: 회사지불 + 각 일차 당일합계 (누적행 제외)
   let grandTotal = 0;
-  document.querySelectorAll('#expense-print-grid .total-row span:last-child').forEach(el => {
-    grandTotal += parseFloat((el.textContent||'').replace(/[^0-9.-]/g,'')) || 0;
+  const mainTotEl = document.getElementById('main-total');
+  if (mainTotEl) grandTotal += parseFloat((mainTotEl.textContent||'').replace(/[^0-9.-]/g,'')) || 0;
+  state.days.forEach(d => {
+    const el = document.getElementById(d.id + '-total');
+    if (el) grandTotal += parseFloat((el.textContent||'').replace(/[^0-9.-]/g,'')) || 0;
   });
   const gtBar = document.getElementById('print-grand-total-bar');
   const gtVal = document.getElementById('print-grand-total-val');
