@@ -670,31 +670,28 @@
     .info-card h3 { font-size: 12px; margin-bottom: 6px; }
     .report-title { font-size: 18px; letter-spacing: 4px; padding: 10px 0 8px; }
 
-    /* ── 헤더 모바일 완전 재설계 ── */
+    /* ── 헤더 모바일 3줄 구조 ── */
     .app-header { padding: 6px 10px 0; }
+    /* 줄1: 타이틀 전체 너비 + 줄2: 버튼행 → flex-column */
     .app-header-top {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding-bottom: 6px;
-      gap: 4px;
-      flex-wrap: nowrap;
-      overflow: hidden;
+      gap: 5px;
+      padding-bottom: 5px;
     }
-    .app-title { font-size: 13px; font-weight: 700; white-space: nowrap; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-    .header-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; flex-wrap: nowrap; }
-    /* 날짜·admin 버튼·🔑·로그아웃 모두 숨김 */
+    /* 줄1: 가이드정산서 */
+    .app-title { font-size: 15px; font-weight: 800; letter-spacing: 1px; text-align: center; width: 100%; }
+    /* 줄2: 역할배지 + 버튼들 */
+    .header-right { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap; width: 100%; }
     .app-meta { display: none !important; }
     .app-header .admin-only { display: none !important; }
     .app-header .logout-btn:not(#btnSubmit):not(#btnSave):not(#btnNewReport) { display: none !important; }
-    /* 역할 배지 (가이드명): 짧게 */
-    .role-badge { font-size: 10px; padding: 2px 6px; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
-    /* 가이드 상단 버튼 - 소형화 */
-    #btnSave, #btnSubmit, #btnNewReport { font-size: 11px; padding: 5px 8px; margin-right: 0 !important; white-space: nowrap; }
-
-    /* 탭 버튼 */
-    .tab-bar { gap: 4px; padding: 6px 8px; overflow-x: auto; flex-wrap: nowrap; }
-    .tab-btn { font-size: 11px; padding: 6px 10px; white-space: nowrap; flex-shrink: 0; }
+    .role-badge { font-size: 10px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
+    #btnSave, #btnSubmit, #btnNewReport { font-size: 12px; padding: 6px 12px; margin-right: 0 !important; white-space: nowrap; }
+    /* 줄3: 탭바 */
+    .tab-bar { gap: 4px; padding: 5px 8px; overflow-x: auto; flex-wrap: nowrap; }
+    .tab-btn { font-size: 12px; padding: 6px 12px; white-space: nowrap; flex-shrink: 0; }
 
     /* 기본정보: 2컬럼 그리드로 재배치 */
     #basic-info-grid {
