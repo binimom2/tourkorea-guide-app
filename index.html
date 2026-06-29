@@ -2395,14 +2395,9 @@ function calcOptionTotal(){
   const elTHB = document.getElementById('opt-sum-thb');
   const elUSD = document.getElementById('opt-sum-usd');
   const elKRW = document.getElementById('opt-sum-krw');
-  if(elTHB){ elTHB.textContent = '฿ ' + fmtNum(byCur.THB); elTHB.style.display = byCur.THB>0?'':'none'; }
-  if(elUSD){ elUSD.textContent = '$ ' + fmtNum(byCur.USD); }
-  if(elKRW){ elKRW.textContent = '₩ ' + fmtNum(byCur.KRW); }
-  const cardUSD = document.getElementById('opt-card-usd');
-  const cardKRW = document.getElementById('opt-card-krw');
-  if(cardUSD) cardUSD.style.display = byCur.USD>0 ? '' : 'none';
-  if(cardKRW) cardKRW.style.display = byCur.KRW>0 ? '' : 'none';
-  if(elTHB && byCur.THB===0 && byCur.USD===0 && byCur.KRW===0){ elTHB.textContent='฿ —'; elTHB.style.display=''; }
+  if(elTHB){ elTHB.textContent = byCur.THB>0 ? '฿ ' + fmtNum(byCur.THB) : '—'; }
+  if(elUSD){ elUSD.textContent = byCur.USD>0 ? '$ ' + fmtNum(byCur.USD) : '—'; }
+  if(elKRW){ elKRW.textContent = byCur.KRW>0 ? '₩ ' + fmtNum(byCur.KRW) : '—'; }
 
   // 환율 적용 전체 바트 환산 합계
   const convertedTotal = byCur.THB
