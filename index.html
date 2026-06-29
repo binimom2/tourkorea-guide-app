@@ -969,6 +969,7 @@
       <div class="col-headers">
         <span>구분</span><span>내용</span><span>인원/개수</span><span class="col-amount">금액 (฿)</span><span></span>
       </div>
+      <datalist id="eventContents-list"></datalist>
       <div class="expense-list" id="main-list"></div>
       <div id="main-add-btn-wrap">
         <button class="btn-add" onclick="addExpenseRow('main')">＋ 항목 추가</button>
@@ -1587,6 +1588,7 @@
       <div class="cfg-tab active" id="ctab-categories" onclick="switchCfgTab('categories')">구분</div>
       <div class="cfg-tab" id="ctab-products" onclick="switchCfgTab('products')">상품명</div>
       <div class="cfg-tab" id="ctab-vehicles" onclick="switchCfgTab('vehicles')">차량</div>
+      <div class="cfg-tab" id="ctab-eventContents" onclick="switchCfgTab('eventContents')">행사내용</div>
     </div>
     <div class="cfg-body" id="cfgBody"></div>
   </div>
@@ -1687,7 +1689,7 @@ const ADMIN_PW_DEFAULT = 'admin1234';
 
 let currentRole = null;
 let currentUser = null;
-let appSettings  = { categories:['호텔비','차량비','관광지','식당','골프장','기타'], products:[], vehicles:[] };
+let appSettings  = { categories:['호텔비','차량비','관광지','식당','골프장','기타'], products:[], vehicles:[], eventContents:[] };
 let submissionsDB = [];
 
 // 어드민 비밀번호 (Supabase 저장)
@@ -1726,6 +1728,15 @@ async function loadAppSettings() {
 async function saveAppSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
   await syncToSupabase(SETTINGS_KEY, appSettings);
+  syncEventContentsList();
+}
+
+function syncEventContentsList() {
+  const dl = document.getElementById('eventContents-list');
+  if (!dl) return;
+  dl.innerHTML = (appSettings.eventContents||[])
+    .map(v=>`<option value="${v.replace(/"/g,'&quot;')}">`)
+    .join('');
 }
 async function loadSubmissions() {
   try {
@@ -1790,6 +1801,7 @@ function _completeLogin() {
     const restored = loadData();
     if (!restored) { initData(); renderAll(); calcPaxTotal(); syncRate2FromBase(); }
     rebuildTabBar(); switchTab('main');
+    syncEventContentsList();
     updateGuideDropdown(); updateSettleCode();
     populateProductDropdown();
     restoreNewInfoFields();
@@ -2173,6 +2185,7 @@ function renderExpenses(key) {
         ${cats.map(c=>`<option${row.category===c?' selected':''}>${c}</option>`).join('')}
       </select>
       <input type="text" lang="ko" inputmode="text" placeholder="${detailPlaceholder}" value="${row.detail||''}"
+        list="eventContents-list"
         oninput="updateExpense('${key}','${row.id}','detail',this.value)"
         style="${isRestaurant ? 'border-color:#E8872A;background:#FEF9F4;' : ''}">
       <input type="number" placeholder="인원/개수" value="${row.pax||''}" min="0" oninput="updateExpense('${key}','${row.id}','pax',this.value)">
@@ -3878,7 +3891,7 @@ function closeSettings() { document.getElementById('settingsModal').style.displa
 
 function switchCfgTab(tab) {
   currentCfgTab = tab;
-  ['categories','products','vehicles'].forEach(t=>{
+  ['categories','products','vehicles','eventContents'].forEach(t=>{
     const el=document.getElementById('ctab-'+t);
     if(el) el.classList.toggle('active', t===tab);
   });
@@ -3887,7 +3900,7 @@ function switchCfgTab(tab) {
 
 function renderCfgBody() {
   const body = document.getElementById('cfgBody');
-  const labels = {categories:'구분',products:'상품명',vehicles:'차량'};
+  const labels = {categories:'구분',products:'상품명',vehicles:'차량',eventContents:'행사내용'};
   const items = appSettings[currentCfgTab] || [];
   const rows = items.map((v,i)=>`
     <div class="cfg-list-item">
