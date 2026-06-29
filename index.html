@@ -971,13 +971,13 @@
           <span style="font-size:11px;font-weight:700;color:var(--text-sub);white-space:nowrap;">기준환율</span>
           <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#1a6b8a;">
             $
-            <input type="text" id="rateUSD" inputmode="decimal" placeholder="00.00" value=""
+            <input type="text" id="rateUSD" inputmode="decimal" placeholder="00.00" value="0"
               style="width:66px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;background:#fff;"
               oninput="onBaseRateChange()">
           </label>
           <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#856404;">
             ₩
-            <input type="text" id="rateKRW" inputmode="decimal" placeholder="0.0000" value=""
+            <input type="text" id="rateKRW" inputmode="decimal" placeholder="0.0000" value="0"
               style="width:74px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;background:#fff;"
               oninput="onBaseRateChange()">
           </label>
@@ -1809,7 +1809,7 @@ function resetData() {
    'paxAdult','paxChild','paxTC','advancePay','rateUSD','rateKRW',
    'shopCount','settleSeq'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = (id==='rateUSD')?'34.00':(id==='rateKRW')?'0.0207':(id==='settleSeq')?'00':(id.startsWith('pax'))?'0':'';
+    if (el) el.value = (id==='rateUSD')?'0':(id==='rateKRW')?'0':(id==='settleSeq')?'00':(id.startsWith('pax'))?'0':'';
   });
   const p = document.getElementById('productName'); if(p) p.value='';
   calcPaxTotal(); syncRate2FromBase(); updateSettleCode(); switchTab('main');
@@ -3143,7 +3143,7 @@ function confirmReset(){
   // ② state.info 초기화
   Object.keys(state.info).forEach(k=>{ state.info[k]=''; });
   state.info.paxAdult='0'; state.info.paxChild='0'; state.info.paxTC='0';
-  state.info.rateUSD='34.00'; state.info.rateKRW='0.0207';
+  state.info.rateUSD='0'; state.info.rateKRW='0';
   state.info.shopCount='0'; state.info.settleSeq='00';
 
   // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
