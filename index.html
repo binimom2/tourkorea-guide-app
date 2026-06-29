@@ -1164,24 +1164,28 @@
 
       <!-- 화면 전용 (심플 텍스트) -->
       <div class="pig-screen">
+        <!-- 줄1: 가이드명 | 행사기간 | 행사비지급금 -->
         <div class="pig-screen-row">
           <span class="si-label">가이드명</span><span class="si-value" id="sum-guide">-</span>
           <span class="si-sep">|</span>
-          <span class="si-label">여행사</span><span class="si-value" id="sum-agency">-</span>
+          <span class="si-label">행사기간</span><span class="si-value" id="sum-period">-</span>
           <span class="si-sep">|</span>
-          <span class="si-label">로컬가이드</span><span class="si-value" id="sum-local">-</span>
+          <span class="si-label">행사비지급금</span><span class="si-value" id="sum-advance">-</span>
+        </div>
+        <!-- 줄2: 여행사명 | 상품명 | 쇼핑횟수 | 행사인원 | 정산코드 -->
+        <div class="pig-screen-row">
+          <span class="si-label">여행사</span><span class="si-value" id="sum-agency">-</span>
           <span class="si-sep">|</span>
           <span class="si-label">상품명</span><span class="si-value" id="sum-product">-</span>
           <span class="si-sep">|</span>
           <span class="si-label">쇼핑횟수</span><span class="si-value" id="sum-shopcount">-</span>
-        </div>
-        <div class="pig-screen-row">
-          <span class="si-label">행사기간</span><span class="si-value" id="sum-period">-</span>
           <span class="si-sep">|</span>
           <span class="si-label">행사인원</span><span class="si-value" id="sum-pax">-</span>
           <span class="si-sep">|</span>
-          <span class="si-label">행사비지급금</span><span class="si-value" id="sum-advance">-</span>
+          <span class="si-label">정산코드</span><span class="si-value" id="sum-settle-code">-</span>
         </div>
+        <!-- 숨김 ID 유지 -->
+        <span id="sum-local" style="display:none;"></span>
       </div>
 
       <!-- 프린트 전용 (2줄 그리드) -->
@@ -3008,6 +3012,8 @@ function updateSummary(){
   });
   const sp=document.getElementById('sum-product'); if(sp) sp.textContent=product;
   const sc=document.getElementById('sum-shopcount'); if(sc) sc.textContent=shopCount+'회';
+  const sCode=document.getElementById('sum-settle-code');
+  if(sCode){ const cd=document.getElementById('settleCodeSec1'); const sq=document.getElementById('settleSeq'); sCode.textContent=(cd?.textContent||'-')+'-'+(sq?.value||'00'); }
 
   // 인원 표기
   const adult=parseInt(document.getElementById('paxAdult')?.value)||0;
