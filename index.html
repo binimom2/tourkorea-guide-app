@@ -3272,7 +3272,8 @@ function loadData() {
   // ② state 메모리 복원
   try {
     state.optionCurrency = saved.optionCurrency || 'THB';
-    state.expenses = saved.expenses || { main: defaultRows() };
+    state.expenses = saved.expenses || {};
+    if (!state.expenses.main || state.expenses.main.length === 0) state.expenses.main = defaultRows();
     state.options  = saved.options  || [];
     state.shopping = saved.shopping || {};
     state.days = (saved.days || []).map(d => ({ id: d.id, label: d.label }));
