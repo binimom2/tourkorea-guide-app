@@ -4142,7 +4142,15 @@ async function submitToAdmin() {
     guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||0,
     companyProfit:  getVal('st-company-profit')||getVal('inc-company-profit')||0,
     exchangeProfit: getVal('st-adm-exloss-total')||0,
-    fullData: JSON.parse(JSON.stringify(state)),
+    fullData: (() => {
+      const fd = JSON.parse(JSON.stringify(state));
+      const flds = {};
+      SAVE_FIELD_IDS.forEach(id => { const el=document.getElementById(id); if(el) flds[id]=el.value; });
+      ['incentive','guarantee','settle'].forEach(m => { const c=document.getElementById('chk-'+m); if(c) flds['_chk_settle_'+m]=c.checked; });
+      SHOP_KEYS.forEach(k => { const c=document.getElementById('chk-'+k); if(c) flds['_chk_'+k]=c.checked; });
+      fd.fields = flds;
+      return fd;
+    })(),
   };
   // 같은 코드+유저 이미 있으면 업데이트
   const existing = submissionsDB.findIndex(s=>s.settleCode===code && s.username===sub.username);
@@ -4328,8 +4336,11 @@ async function saveSubEdits() {
   // DOM의 모든 최신 값을 state에 동기화 (환율 포함)
   saveData();
 
-  // 동기화된 state를 fullData로 저장
+  // 동기화된 state + fields를 fullData로 저장
+  const lsRaw = localStorage.getItem(LS_KEY_USER());
+  const lsFields = lsRaw ? (JSON.parse(lsRaw).fields || {}) : {};
   s.fullData = JSON.parse(JSON.stringify(state));
+  s.fullData.fields = lsFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
   await saveSubmissions();
