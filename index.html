@@ -1842,9 +1842,9 @@ function applyRoleUI() {
   const btnNewReport = document.getElementById('btnNewReport');
   if (btnNewReport) btnNewReport.style.display = (currentRole === 'guide' || currentRole === 'admin') ? '' : 'none';
 
-  // 가이드 역할: 정산코드·상품명·쇼핑횟수 입력 잠금 (organizer/manager/admin은 모두 입력 가능)
+  // 가이드 역할: 정산코드(회사입력)만 잠금, 상품명·쇼핑횟수는 가이드 직접 입력
   const guideOnly = currentRole === 'guide';
-  ['settleSeq','productName','shopCount'].forEach(id => {
+  ['settleSeq'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.disabled = guideOnly;
