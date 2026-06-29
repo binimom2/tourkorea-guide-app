@@ -389,20 +389,18 @@
     /* 가이드 정산금 노란색 강조 */
     #inc-guide-pay, #gu-guide-pay, #st-guide-pay { background:#fff176 !important; color:#000 !important; font-weight:800 !important; }
 
-    /* ── 기본정보: 가이드명·여행사·로컬·일자 한 줄 ── */
-    .info-card .info-grid3,
-    .info-card .info-grid2 { display:contents; }
-    .info-card { display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr 1fr; gap:4px; align-items:end; margin-bottom:4px; }
-    .info-card h3 { grid-column:1/-1; font-size:10px; margin-bottom:2px; padding-bottom:2px; }
-    /* 행사인원+지급금 행은 전체 너비로 */
-    .info-card > div:last-child { grid-column:1/-1; }
-    .field-group label { font-size:9px; }
-    .field-group input,.field-group select { padding:2px 4px; font-size:11px; border-radius:3px; }
+    /* ── 기본정보 프린트 레이아웃 ── */
+    #basic-info-grid { grid-template-columns:1.8fr 1fr 1fr 1fr !important; gap:4px 8px !important; margin-bottom:4px !important; }
+    .field-group label { font-size:9px; color:#555; font-weight:700; }
+    .field-group input,.field-group select { padding:2px 5px; font-size:11px; border-radius:3px; }
     /* 가이드명 형광펜 노란색 + 진하게 */
     #guideName { background:#fff176 !important; font-weight:800 !important; color:#000 !important; }
+    /* 정산코드 박스 */
+    #settleCodeSec1 { padding:2px 6px !important; font-size:11px !important; }
+    #settleSeq { font-size:11px !important; padding:2px 4px !important; width:38px !important; }
     /* 직원 드롭다운은 프린트에서 숨김 */
     #guideSelect { display:none !important; }
-    /* 정산코드 프린트 스타일 */
+    /* 정산코드 display (구형 호환) */
     #settleCodeDisplay { background:#f0f4ff !important; border:1px solid #c7d2fe !important; font-weight:700 !important; color:#3730a3 !important; padding:2px 6px !important; font-size:11px !important; }
     .pax-row { gap:3px; }
     .pax-item label { font-size:9px; }
@@ -844,36 +842,36 @@
     <!-- 기본 정보 -->
     <div class="info-card">
       <h3>기본 정보</h3>
-      <!-- 줄1+2: 하나의 4컬럼 그리드로 완전 통합 -->
+      <!-- 기본정보 그리드 -->
       <div id="settleCodeDisplay" style="display:none;"></div>
-      <div id="basic-info-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-        <!-- 줄1 -->
-        <div class="field-group" style="grid-column:span 2;margin-bottom:0;">
+      <div id="basic-info-grid" style="display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr;gap:10px 12px;margin-bottom:12px;">
+
+        <!-- 줄1: 가이드명 + 정산코드(통합) -->
+        <div class="field-group" style="margin-bottom:0;">
           <label>가이드명</label>
           <input type="text" id="guideName" placeholder="가이드명 입력" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
         </div>
-        <div class="field-group" style="margin-bottom:0;">
+        <div class="field-group" style="grid-column:span 3;margin-bottom:0;">
           <label>정산 코드</label>
-          <div id="settleCodeSec1" style="width:100%;padding:7px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
-        </div>
-        <div class="field-group" style="margin-bottom:0;">
-          <label style="visibility:hidden;">-</label>
-          <div style="display:flex;align-items:center;gap:4px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div id="settleCodeSec1" style="flex:1;padding:7px 10px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:14px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
             <span style="font-size:16px;font-weight:700;color:#3730a3;flex-shrink:0;">-</span>
-            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:60px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 8px;font-size:15px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
+            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:56px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 8px;font-size:15px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
-        <!-- 줄2 -->
+
+        <!-- 줄2: 여행사명 / 로컬가이드명 / 행사일자+박수 -->
         <div class="field-group" style="margin-bottom:0;"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()"></div>
-        <div class="field-group" style="margin-bottom:0;"><label>로컬가이드명</label><input type="text" id="localGuide" placeholder="로컬가이드 입력" oninput="state.info.localGuide=this.value; saveData()"></div>
+        <div class="field-group" style="margin-bottom:0;"><label>로컬가이드</label><input type="text" id="localGuide" placeholder="로컬가이드" oninput="state.info.localGuide=this.value; saveData()"></div>
         <div class="field-group" style="margin-bottom:0;"><label>행사일자</label><input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()"></div>
         <div class="field-group" style="margin-bottom:0;">
-          <label style="visibility:hidden;">-</label>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:60px;flex-shrink:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+          <label>박수</label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
             <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
           </div>
         </div>
+
       </div>
       <!-- 줄4: 행사인원 / 상품명 / 쇼핑횟수 / 행사비지급금 -->
       <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
