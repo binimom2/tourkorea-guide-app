@@ -4294,10 +4294,17 @@ async function openSubData(id) {
 async function saveSubEdits() {
   const id = window._viewingSubId;
   if (!id) { showToast('❌ 열람 중인 파일이 없습니다.', true); return; }
+
+  // submissionsDB가 최신인지 확인 후 재검색
+  await loadSubmissions();
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 제출 항목을 찾을 수 없습니다.', true); return; }
   if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드가 다음 로그인 시 반영됩니다.`)) return;
-  // 현재 state를 fullData로 저장
+
+  // DOM의 모든 최신 값을 state에 동기화 (환율 포함)
+  saveData();
+
+  // 동기화된 state를 fullData로 저장
   s.fullData = JSON.parse(JSON.stringify(state));
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
