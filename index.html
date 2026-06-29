@@ -1254,7 +1254,7 @@
             <div class="settle-input-group land-input-group"><label>지상비 (₩)</label><div class="cur-wrap"><span class="cur">₩</span><input type="text" id="inc-land1" data-cur="₩" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcIncentive();saveData()"></div></div>
             <div class="settle-input-group land-input-group"><label>지상비 ($)</label><div class="cur-wrap"><span class="cur">$</span><input type="text" id="inc-land2" data-cur="$" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcIncentive();saveData()"></div></div>
             <div class="settle-input-group land-input-group"><label>지상비 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="inc-land3" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcIncentive();saveData()"></div></div>
-            <div class="settle-display-group"><label>합계</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-land-total">฿ 0</div></div>
+            <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-land-total">฿ 0</div></div>
           </div>
         </div>
 
@@ -1263,12 +1263,12 @@
         <div class="inc-income-section settle-grid3">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="inc-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="inc-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>합계</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-income-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-income-total">฿ 0</div></div>
         </div>
         <!-- 프린트 전용 -->
         <div class="inc-land-income-row" style="display:none;">
-          <div class="settle-display-group"><label>지상비 합계</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-land-total2">฿ 0</div></div>
-          <div class="settle-display-group inc-grand-total-group"><label>수익금+지상비 합계</label><div class="settle-display" style="color:#1a3a8f;font-weight:800;background:#fff0f3;" id="inc-grand-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>지상비 합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-land-total2">฿ 0</div></div>
+          <div class="settle-display-group inc-grand-total-group"><label>수익금+지상비 합계 (฿)</label><div class="settle-display" style="color:#1a3a8f;font-weight:800;background:#fff0f3;" id="inc-grand-total">฿ 0</div></div>
         </div>
 
         <!-- 지출금 -->
@@ -1276,7 +1276,7 @@
         <div class="settle-grid3 inc-exp-print-row">
           <div class="settle-input-group"><label>행사 지출금</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="inc-exp1" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcIncentive();saveData()"></div></div>
           <div class="settle-input-group"><label>TC 정산 지출금</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="inc-exp2" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcIncentive();saveData()"></div></div>
-          <div class="settle-display-group"><label>합계</label><div class="settle-display" style="color:var(--danger);font-weight:800;background:#fff0f3;" id="inc-exp-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;background:#fff0f3;" id="inc-exp-total">฿ 0</div></div>
         </div>
 
         <!-- 최종 정산: 4열 한 줄 -->
@@ -1294,7 +1294,7 @@
             </div>
           </div>
           <div class="settle-display-group">
-            <label>💰 가이드 정산금</label>
+            <label>💰 가이드 정산금 (฿)</label>
             <div class="settle-display" style="color:#1A8A60;font-weight:800;font-size:16px;border:2px solid #1A8A60;background:#e8f9f0;" id="inc-guide-pay">฿ 0</div>
           </div>
           <div class="settle-display-group">
@@ -1325,10 +1325,10 @@
         <!-- 회사 정산 합계 -->
         <div class="settle-section-sub">회사 정산</div>
         <div class="settle-grid4">
-          <div class="settle-display-group"><label>회사 정산금</label><div class="settle-display" id="inc-adm-company">฿ 0</div></div>
-          <div class="settle-display-group"><label>KB 총액</label><div class="settle-display" id="inc-adm-kb">฿ 0</div></div>
+          <div class="settle-display-group"><label>회사 정산금 (฿)</label><div class="settle-display" id="inc-adm-company">฿ 0</div></div>
+          <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="inc-adm-kb">฿ 0</div></div>
           <div class="settle-display-group"><label>지상&amp;기타 수익금 (฿)</label><div class="settle-display" id="inc-adm-land-rev">฿ 0</div></div>
-          <div class="settle-display-group"><label>총 회사 수익금</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="inc-adm-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>총 회사 수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="inc-adm-total">฿ 0</div></div>
         </div>
 
         <!-- 환차손 -->
@@ -1338,7 +1338,7 @@
           <div class="settle-display-group"><label>옵션($) 환차손</label><div class="settle-display" id="inc-adm-exloss-optusd">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비(₩) 환차손</label><div class="settle-display" id="inc-adm-exloss-land1">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비($) 환차손</label><div class="settle-display" id="inc-adm-exloss-land2">฿ 0</div></div>
-          <div class="settle-display-group"><label>환차손 총액</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;" id="inc-adm-exloss-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>환차손 총액 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;" id="inc-adm-exloss-total">฿ 0</div></div>
         </div>
       </div>
     </div>
@@ -1355,7 +1355,7 @@
         <div class="settle-grid3">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="gu-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="gu-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>합계</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-income-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-income-total">฿ 0</div></div>
         </div>
 
         <!-- 절대메꾸기 -->
@@ -1381,7 +1381,7 @@
             </div>
           </div>
           <div class="settle-display-group">
-            <label>💰 가이드 정산금</label>
+            <label>💰 가이드 정산금 (฿)</label>
             <div class="settle-display" style="color:#1A8A60;font-weight:800;font-size:16px;border:2px solid #1A8A60;background:#e8f9f0;" id="gu-guide-pay">฿ 0</div>
           </div>
         </div>
@@ -1415,7 +1415,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
               <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="gu-adm-opt">฿ 0</div></div>
               <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="gu-adm-shop">฿ 0</div></div>
-              <div class="settle-display-group"><label>합계</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-adm-income-total">฿ 0</div></div>
+              <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-adm-income-total">฿ 0</div></div>
             </div>
           </div>
           <!-- 행사지출금 (1열) -->
@@ -1433,10 +1433,10 @@
         </div>
         <div class="settle-section-sub">회사 정산</div>
         <div class="settle-grid4">
-          <div class="settle-display-group"><label>회사 정산금</label><div class="settle-display" id="gu-adm-company">฿ 0</div></div>
-          <div class="settle-display-group"><label>KB 총액</label><div class="settle-display" id="gu-adm-kb">฿ 0</div></div>
+          <div class="settle-display-group"><label>회사 정산금 (฿)</label><div class="settle-display" id="gu-adm-company">฿ 0</div></div>
+          <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="gu-adm-kb">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비 총액 (฿)</label><div class="settle-display" id="gu-adm-land-total">฿ 0</div></div>
-          <div class="settle-display-group"><label>총 회사 수익금</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="gu-adm-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>총 회사 수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="gu-adm-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">환차손</div>
         <div class="settle-grid5">
@@ -1444,7 +1444,7 @@
           <div class="settle-display-group"><label>옵션($) 환차손</label><div class="settle-display" id="gu-adm-exloss-optusd">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비(₩) 환차손</label><div class="settle-display" id="gu-adm-exloss-land1">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비($) 환차손</label><div class="settle-display" id="gu-adm-exloss-land2">฿ 0</div></div>
-          <div class="settle-display-group"><label>환차손 총액</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;" id="gu-adm-exloss-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>환차손 총액 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;" id="gu-adm-exloss-total">฿ 0</div></div>
         </div>
       </div>
     </div>
@@ -1461,7 +1461,7 @@
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="st-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="st-shop">฿ 0</div></div>
           <div class="settle-input-group"><label>TC 정산 지출금 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="st-tc" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" style="color:var(--danger);" oninput="fmtSettleInput(this);calcSettle();saveData()"></div></div>
-          <div class="settle-display-group"><label>수익금 총액</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-income-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>수익금 총액 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-income-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">가이드 일비</div>
         <div style="display:grid;grid-template-columns:1fr 0.5fr 1fr 1.25fr;gap:8px;margin-bottom:8px;align-items:end;">
@@ -1477,11 +1477,11 @@
             </div>
           </div>
           <div class="settle-display-group">
-            <label>정산수익금</label>
+            <label>정산수익금 (฿)</label>
             <div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-opt-settled">฿ 0</div>
           </div>
           <div class="settle-display-group">
-            <label>💰 가이드 정산금</label>
+            <label>💰 가이드 정산금 (฿)</label>
             <div class="settle-display" style="color:#1A8A60;font-weight:800;font-size:16px;border:2px solid #1A8A60;background:#e8f9f0;" id="st-guide-pay">฿ 0</div>
           </div>
         </div>
@@ -1508,13 +1508,13 @@
         <div class="settle-grid3">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="st-adm-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="st-adm-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>합계</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-income-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-income-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">지출금</div>
         <div class="settle-grid3">
           <div class="settle-input-group"><label>행사 지출금 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="st-adm-exp1" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcSettleAdmin();saveData()"></div></div>
-          <div class="settle-display-group"><label>가이드 정산금</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-guide">฿ 0</div></div>
-          <div class="settle-display-group"><label>지출금 합계</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="st-adm-exp-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>가이드 정산금 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-guide">฿ 0</div></div>
+          <div class="settle-display-group"><label>지출금 합계 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="st-adm-exp-total">฿ 0</div></div>
         </div>
         <!-- 계산용 숨김 -->
         <div style="display:none;">
@@ -1525,9 +1525,9 @@
         </div>
         <div class="settle-section-sub">회사 정산</div>
         <div class="settle-grid3">
-          <div class="settle-display-group"><label>회사 정산금</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-company-net2">฿ 0</div></div>
-          <div class="settle-display-group"><label>KB 총액</label><div class="settle-display" id="st-adm-kb">฿ 0</div></div>
-          <div class="settle-display-group"><label>총 회사 수익금</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="st-adm-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>회사 정산금 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-company-net2">฿ 0</div></div>
+          <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="st-adm-kb">฿ 0</div></div>
+          <div class="settle-display-group"><label>총 회사 수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="st-adm-total">฿ 0</div></div>
         </div>
         <!-- 계산용 숨김 -->
         <div style="display:none;"><div id="st-adm-land-total"></div></div>
@@ -1537,7 +1537,7 @@
           <div class="settle-display-group"><label>옵션($) 환차손</label><div class="settle-display" id="st-adm-exloss-optusd">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비(₩) 환차손</label><div class="settle-display" id="st-adm-exloss-land1">฿ 0</div></div>
           <div class="settle-display-group"><label>지상비($) 환차손</label><div class="settle-display" id="st-adm-exloss-land2">฿ 0</div></div>
-          <div class="settle-display-group"><label>환차손 총액</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;" id="st-adm-exloss-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>환차손 총액 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;" id="st-adm-exloss-total">฿ 0</div></div>
         </div>
       </div>
     </div>
