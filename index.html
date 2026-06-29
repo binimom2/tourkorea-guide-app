@@ -842,10 +842,10 @@
     <div class="info-card">
       <h3>기본 정보</h3>
       <div id="settleCodeDisplay" style="display:none;"></div>
-      <!-- 12칸 공통 그리드: 모든 행이 같은 컬럼 기준으로 정렬 -->
+      <!-- 12칸 공통 그리드: 4|4|4 등분 -->
       <div id="basic-info-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px 10px;">
 
-        <!-- ── 줄1: 가이드명(4) / 행사일자(3) / 박수(2) / 행사비지급금(3) ── -->
+        <!-- ── 줄1: 가이드명(4) | 행사일자(3)+박수(1) | 행사비지급금(4) ── -->
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>가이드명</label>
           <input type="text" id="guideName" placeholder="가이드명 입력" oninput="state.info.guideName=this.value; updateMiniBar(); saveData()">
@@ -854,14 +854,14 @@
           <label>행사일자</label>
           <input type="date" id="tourStart" onchange="state.info.tourStart=this.value; updateMiniBar(); updateSettleCode(); saveData()">
         </div>
-        <div class="field-group" style="grid-column:span 2;margin-bottom:0;">
+        <div class="field-group" style="grid-column:span 1;margin-bottom:0;">
           <label>박수</label>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 6px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
-            <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
+          <div style="display:flex;align-items:center;gap:3px;">
+            <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;min-width:0;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+            <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
           </div>
         </div>
-        <div class="field-group" style="grid-column:span 3;margin-bottom:0;border-left:3px solid var(--danger);padding-left:10px;">
+        <div class="field-group" style="grid-column:span 4;margin-bottom:0;border-left:3px solid var(--danger);padding-left:10px;">
           <label style="color:var(--danger);font-weight:700;">행사비 지급금</label>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:15px;font-weight:800;color:var(--danger);flex-shrink:0;">฿</span>
@@ -869,14 +869,14 @@
           </div>
         </div>
 
-        <!-- ── 줄2: 상품명(4) / 정산코드(5) / 여행사명(3) ── -->
+        <!-- ── 줄2: 상품명(4) | 정산코드(4) | 여행사명(4) ── -->
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>상품명</label>
           <select id="productName" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:inherit;" onchange="state.info.productName=this.value; saveData()">
             <option value="">-- 선택 --</option>
           </select>
         </div>
-        <div class="field-group" style="grid-column:span 5;margin-bottom:0;">
+        <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>정산 코드 <span style="font-size:10px;color:var(--text-sub);font-weight:400;">(회사입력)</span></label>
           <div style="display:flex;align-items:center;gap:4px;">
             <div id="settleCodeSec1" style="flex:1;padding:7px 8px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
@@ -884,18 +884,22 @@
             <input type="text" id="settleSeq" maxlength="2" value="00" style="width:44px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
-        <div class="field-group" style="grid-column:span 3;margin-bottom:0;">
+        <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>여행사명</label>
           <input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()">
         </div>
 
-        <!-- ── 줄3: 성인(2) / 어린이(2) / TC(2) / 총인원(3) / 쇼핑횟수(3) ── -->
+        <!-- ── 줄3: 성인(2)+어린이(2)+TC(2)+총인원(2)=8칸 끝 / 쇼핑횟수(50%=2칸) ── -->
         <div style="grid-column:span 12;border-top:1px dashed var(--border);margin:2px 0;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-        <div class="pax-item" style="grid-column:span 3;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay" style="padding:7px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div></div>
-        <div class="field-group" style="grid-column:span 3;margin-bottom:0;"><label>쇼핑횟수</label><input type="number" id="shopCount" min="0" max="20" value="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay" style="padding:7px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div></div>
+        <!-- 쇼핑횟수: 남은 4칸 중 50% 폭 입력 -->
+        <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
+          <label>쇼핑횟수</label>
+          <input type="number" id="shopCount" min="0" max="20" value="0" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+        </div>
 
       </div>
       <input type="hidden" id="localGuide" value="" oninput="state.info.localGuide=this.value; saveData()">
