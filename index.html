@@ -858,7 +858,7 @@
           <div class="field-group" style="flex:1;margin-bottom:0;">
             <label>박수</label>
             <div style="display:flex;align-items:center;gap:3px;">
-              <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+              <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
               <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
             </div>
           </div>
@@ -885,7 +885,7 @@
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>쇼핑횟수</label>
           <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="shopCount" min="0" max="20" value="0" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;" oninput="state.info.shopCount=this.value; saveData()">
+            <input type="number" id="shopCount" min="0" max="20" value="0" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.shopCount=this.value; saveData()">
             <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">회</span>
           </div>
         </div>
