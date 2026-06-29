@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>가이드 정산서</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -649,8 +649,11 @@
   ══════════════════════════════════════════════ */
   @media (max-width: 640px) {
     /* 전체 여백 축소 */
-    body { font-size: 13px; }
-    .main-wrap { padding: 8px; }
+    body { font-size: 12px; }
+    .main-wrap { padding: 6px; }
+    .info-card { padding: 8px 10px; }
+    .info-card h3 { font-size: 12px; margin-bottom: 6px; }
+    .report-title { font-size: 18px; letter-spacing: 4px; padding: 10px 0 8px; }
 
     /* ── 헤더 모바일 완전 재설계 ── */
     .app-header { padding: 6px 10px 0; }
@@ -678,16 +681,25 @@
     .tab-bar { gap: 4px; padding: 6px 8px; overflow-x: auto; flex-wrap: nowrap; }
     .tab-btn { font-size: 11px; padding: 6px 10px; white-space: nowrap; flex-shrink: 0; }
 
-    /* 기본정보: 4컬럼 → 2컬럼 */
+    /* 기본정보: 2컬럼 그리드로 재배치 */
     #basic-info-grid {
       grid-template-columns: 1fr 1fr !important;
+      gap: 6px 8px !important;
     }
-    /* 가이드명 span2 → span1 (2컬럼에서는 span2가 전체 차지) */
-    #basic-info-grid > .field-group[style*="grid-column:span 2"] {
-      grid-column: span 2 !important;
-    }
-    /* 가이드명 span2 유지, 나머지 1칸씩 */
-    .field-group { margin-bottom: 4px; }
+    /* 기본: 모든 자식 → 한 칸(1/2) */
+    #basic-info-grid > * { grid-column: span 1 !important; }
+    /* 가이드명: 전체 너비 */
+    #basic-info-grid > :nth-child(1) { grid-column: span 2 !important; }
+    /* 행사일자+박수(2번째): 1칸, 행사비(3번째): 1칸 → 나란히 */
+    /* 여행사명(4번째): 전체 너비 */
+    #basic-info-grid > :nth-child(4) { grid-column: span 2 !important; }
+    /* 상품명(5번째): 1칸, 쇼핑횟수(6번째): 1칸 → 나란히 */
+    /* 행사인원 divider(7번째): 1칸, 정산코드 divider(8번째): 1칸 → 나란히 */
+    /* pax items (9~12번째): 각 1칸씩 */
+    /* 정산코드 field(13번째): 전체 너비 */
+    #basic-info-grid > :nth-child(13) { grid-column: span 2 !important; }
+
+    .field-group { margin-bottom: 2px; }
     .field-group label { font-size: 10px; }
     /* iOS 자동 줌 방지: 16px 유지, 패딩만 축소 */
     .field-group input,
@@ -875,7 +887,7 @@
           <div class="field-group" style="flex:1;margin-bottom:0;">
             <label>박수</label>
             <div style="display:flex;align-items:center;gap:3px;">
-              <input type="number" id="tourNights" min="1" max="30" placeholder="0" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
+              <input type="number" id="tourNights" min="1" max="30" placeholder="0" inputmode="numeric" style="width:100%;min-width:0;border:1.5px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.tourNights=this.value; updateMiniBar(); saveData()">
               <span style="font-size:12px;color:var(--text-sub);font-weight:600;flex-shrink:0;">박</span>
             </div>
           </div>
@@ -884,7 +896,7 @@
           <label style="color:var(--danger);font-weight:700;display:flex;align-items:center;gap:5px;"><span style="font-size:15px;visibility:hidden;flex-shrink:0;">฿</span>행사비 지급금</label>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:15px;font-weight:800;color:var(--danger);flex-shrink:0;">฿</span>
-            <input type="text" id="advancePay" class="advance-input" placeholder="0" oninput="state.info.advancePay=this.value; formatAdvance(this); updateAdvancePay(); saveData()" style="font-size:15px;padding:7px 8px;width:100%;flex:1;">
+            <input type="text" id="advancePay" class="advance-input" placeholder="0" inputmode="numeric" oninput="state.info.advancePay=this.value; formatAdvance(this); updateAdvancePay(); saveData()" style="font-size:15px;padding:7px 8px;width:100%;flex:1;">
           </div>
         </div>
 
@@ -902,7 +914,7 @@
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>쇼핑횟수</label>
           <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="shopCount" min="0" max="20" value="0" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.shopCount=this.value; saveData()">
+            <input type="number" id="shopCount" min="0" max="20" value="0" inputmode="numeric" style="width:50%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit;text-align:center;" oninput="state.info.shopCount=this.value; saveData()">
             <span style="font-size:13px;color:var(--text-sub);font-weight:600;flex-shrink:0;">회</span>
           </div>
         </div>
@@ -917,9 +929,9 @@
           <div style="flex:1;border-top:1px dashed var(--border);"></div>
         </div>
         <!-- ── 줄3 데이터: 성인(2)|어린이(2)|TC(2)|총인원(2)|정산코드(4) ── -->
-        <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-        <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
-        <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" inputmode="numeric" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" inputmode="numeric" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
+        <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" inputmode="numeric" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>총인원</label><div class="pax-total" id="paxTotalDisplay" style="padding:7px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:center;">0명</div></div>
         <div class="field-group" style="grid-column:span 4;margin-bottom:0;">
           <label>정산코드 <span style="font-size:10px;color:var(--text-sub);font-weight:400;">(회사입력)</span></label>
@@ -1767,6 +1779,16 @@ function _completeLogin() {
     updateGuideDropdown(); updateSettleCode();
     populateProductDropdown();
     restoreNewInfoFields();
+    // 가이드명 자동입력: 빈 경우 로그인 이름으로 채움
+    if (currentRole === 'guide') {
+      const gnEl = document.getElementById('guideName');
+      if (gnEl && !gnEl.value && currentUser && currentUser.name) {
+        gnEl.value = currentUser.name;
+        state.info.guideName = currentUser.name;
+        saveData();
+        updateMiniBar();
+      }
+    }
     const _sb = document.getElementById('btnSubmit');
     if (_sb) _sb.style.display = (currentRole==='guide'||currentRole==='admin') ? '' : 'none';
     // 가이드: 어드민 수정사항 확인
