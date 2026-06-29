@@ -835,9 +835,13 @@
 
   <!-- 인쇄 전용 타이틀 -->
   <div class="print-title-bar" id="printTitleBar">
-    <div style="text-align:right;font-size:11px;color:#555;margin-bottom:6px;" id="print-date-row"></div>
-    <div style="text-align:center;font-size:26px;font-weight:900;letter-spacing:6px;color:var(--primary);">가이드 정산서</div>
-    <div style="text-align:center;font-size:14px;font-weight:700;color:var(--text-main);margin-top:6px;" id="print-guide-subtitle">가이드 정산서</div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--primary);padding-bottom:8px;margin-bottom:4px;">
+      <div style="width:120px;"></div>
+      <div id="print-main-title" style="font-size:26px;font-weight:900;letter-spacing:6px;color:var(--primary);text-align:center;flex:1;">가이드 정산서</div>
+      <div style="width:120px;text-align:right;font-size:11px;color:#555;line-height:1.6;">
+        <div id="print-submit-date"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 미니 정보바 (메인·요약 제외) -->
@@ -3084,8 +3088,25 @@ function doPrint(cls, title) {
   const restoreList = buildPrintGrid();
   document.body.classList.remove('print-guide', 'print-admin');
   document.body.classList.add(cls);
-  const bar = document.getElementById('printTitleBar');
-  if (bar) bar.textContent = title;
+  const mainTitle = document.getElementById('print-main-title');
+  if (mainTitle) mainTitle.textContent = title;
+  // 제출일자: 어드민이 열람 중인 파일의 제출일 또는 오늘
+  const dateEl = document.getElementById('print-submit-date');
+  if (dateEl) {
+    let dateStr = '';
+    if (window._viewingSubId) {
+      const sub = submissionsDB.find(s => s.id === window._viewingSubId);
+      if (sub && sub.submittedAt) {
+        const d = new Date(sub.submittedAt);
+        dateStr = '작성일: ' + d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+      }
+    }
+    if (!dateStr) {
+      const d = new Date();
+      dateStr = '작성일: ' + d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+    }
+    dateEl.textContent = dateStr;
+  }
 
   function onAfterPrint() {
     document.body.classList.remove(cls);
