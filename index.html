@@ -889,8 +889,9 @@
           <input type="text" id="agencyName" placeholder="여행사 입력" oninput="state.info.agencyName=this.value; saveData()">
         </div>
 
-        <!-- ── 줄3: 성인(2)+어린이(2)+TC(2)+총인원(2)=8칸 끝 / 쇼핑횟수(50%=2칸) ── -->
+        <!-- ── 줄3: 행사인원 라벨 + 성인(2)+어린이(2)+TC(2)+총인원(2)=8칸 / 쇼핑횟수 ── -->
         <div style="grid-column:span 12;border-top:1px dashed var(--border);margin:2px 0;"></div>
+        <div style="grid-column:span 12;font-size:11px;color:var(--text-sub);font-weight:700;margin-bottom:-4px;">행사인원</div>
         <div class="pax-item" style="grid-column:span 2;"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="state.info.paxAdult=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="state.info.paxChild=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
         <div class="pax-item" style="grid-column:span 2;"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="state.info.paxTC=this.value; calcPaxTotal(); saveData()" style="width:100%;"></div>
