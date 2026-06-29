@@ -162,21 +162,22 @@
   .lock-notice { background:#FFF3CD; border:1px solid #FFD97D; border-radius:8px; padding:9px 14px; margin:8px 10px; font-size:12px; color:#856404; font-weight:600; display:flex; align-items:center; gap:6px; }
 
   /* ── OPTION ── */
-  .option-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; position:relative; }
+  .option-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   /* 좌측 3칸 고정: 옵션명(130px) | 통화(64px) | 판매가(100px), gap:4px, 좌padding:10px */
+  /* left값 = 이전칸 누적폭+gap (padding은 grid에 있으므로 0부터 시작) */
   .option-headers span:nth-child(1),
-  .option-row-grid > :nth-child(1) { position:sticky; left:10px; z-index:3; background:var(--surface2); }
+  .option-row-grid > :nth-child(1) { position:sticky; left:0; z-index:3; background:#f0f4f8; }
   .option-headers span:nth-child(2),
-  .option-row-grid > :nth-child(2) { position:sticky; left:144px; z-index:3; background:var(--surface2); }
+  .option-row-grid > :nth-child(2) { position:sticky; left:130px; z-index:3; background:#f0f4f8; }
   .option-headers span:nth-child(3),
-  .option-row-grid > :nth-child(3) { position:sticky; left:212px; z-index:3; background:var(--surface2); }
-  /* 짝수 행은 살짝 다른 배경 */
+  .option-row-grid > :nth-child(3) { position:sticky; left:198px; z-index:3; background:#f0f4f8; border-right:2px solid #cbd5e1; }
+  /* 입력 행 배경 (헤더와 구분) */
+  .option-row-grid > :nth-child(1),
+  .option-row-grid > :nth-child(2),
+  .option-row-grid > :nth-child(3) { background:#fff; }
   .option-row-grid:nth-child(even) > :nth-child(1),
   .option-row-grid:nth-child(even) > :nth-child(2),
   .option-row-grid:nth-child(even) > :nth-child(3) { background:#f8fafc; }
-  /* 고정 구간 우측 구분선 */
-  .option-headers span:nth-child(3),
-  .option-row-grid > :nth-child(3) { border-right:2px solid var(--border); padding-right:6px; }
   /* 컬럼: 옵션명 | 통화 | 판매가 | 인원 | 합계 | 원가(฿) | 삭제 */
   .option-row-grid { display:grid; grid-template-columns:130px 64px 100px 46px 100px 90px 28px; gap:4px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--surface2); width:max-content; min-width:100%; }
   .option-row-grid input { border:1px solid var(--border); border-radius:6px; padding:7px 6px; font-size:12px; font-family:inherit; background:var(--surface2); width:100%; box-sizing:border-box; text-align:right; }
@@ -1014,10 +1015,12 @@
         </div>
       </div>
 
-      <div class="option-scroll"><div class="option-headers" id="option-headers-row">
-        <span>옵션명</span><span>통화</span><span>판매가</span><span>인원</span><span>합계</span><span>원가 (฿)</span><span></span>
-      </div></div>
-      <div class="option-scroll"><div id="option-list"></div></div>
+      <div class="option-scroll">
+        <div class="option-headers" id="option-headers-row">
+          <span>옵션명</span><span>통화</span><span>판매가</span><span>인원</span><span>합계</span><span>원가 (฿)</span><span></span>
+        </div>
+        <div id="option-list"></div>
+      </div>
       <button class="btn-add" onclick="addOptionRow()">＋ 옵션 추가</button>
 
       <!-- 통화별 입금 + 수익 요약 -->
