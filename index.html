@@ -1669,13 +1669,13 @@
 
 <!-- ═══ 월별 엑셀 모달 ═══ -->
 <div class="cfg-modal" id="monthExcelModal">
-  <div class="cfg-box" style="max-width:400px;">
+  <div class="cfg-box" style="max-width:440px;">
     <div class="cfg-head">
       <span>📊 월별 엑셀 다운로드</span>
       <button onclick="closeMonthExcel()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
     </div>
     <div class="cfg-body">
-      <div class="month-export-bar">
+      <div class="month-export-bar" style="margin-bottom:12px;">
         <select id="excelYear" style="width:90px;"></select>
         <select id="excelMonth">
           <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
@@ -1683,7 +1683,10 @@
           <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
           <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
         </select>
-        <button onclick="downloadMonthExcel()">📥 다운로드</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:4px;">
+        <button onclick="downloadSettleExcel()" style="width:100%;padding:10px;background:#1a6b8a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📋 정산서 관리 파일 다운로드</button>
+        <button onclick="downloadShoppingExcel()" style="width:100%;padding:10px;background:#e8872a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🛒 쇼핑 매출 정리 파일 다운로드</button>
       </div>
       <div id="monthExcelPreview" style="font-size:12px;color:var(--text-sub);margin-top:8px;"></div>
     </div>
@@ -4626,72 +4629,226 @@ function openMonthExcel() {
 }
 function closeMonthExcel() { document.getElementById('monthExcelModal').style.display='none'; }
 
-async function downloadMonthExcel() {
+// ── 공통: ExcelJS 로드 + 월별 rows 필터 ──────────────────
+async function _getMonthRows() {
   await loadSubmissions();
   const y=document.getElementById('excelYear').value;
   const m=document.getElementById('excelMonth').value;
-  const prefix=String(y).slice(2)+m; // YYMM
-  const rows=submissionsDB.filter(s=>s.settleCode&&s.settleCode.startsWith(prefix))
+  const prefix=String(y).slice(2)+m;
+  const rows=submissionsDB
+    .filter(s=>s.settleCode&&s.settleCode.startsWith(prefix))
     .sort((a,b)=>a.settleCode.localeCompare(b.settleCode));
   document.getElementById('monthExcelPreview').textContent=`총 ${rows.length}건 찾음`;
-  if(!rows.length){showToast('해당 월 제출 데이터가 없습니다.',true);return;}
-
-  // ExcelJS 로드
+  if(!rows.length){showToast('해당 월 제출 데이터가 없습니다.',true);return null;}
   if(!window.ExcelJS){
     await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
   }
+  return {y,m,rows};
+}
+function _xlSave(wb,filename){
+  wb.xlsx.writeBuffer().then(buf=>{
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  });
+}
+function _hdr(cell,txt,bg='FF1A6B8A'){
+  cell.value=txt; cell.font={bold:true,color:{argb:'FFFFFFFF'}};
+  cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+  cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+  cell.border={top:{style:'thin',color:{argb:'FF888888'}},bottom:{style:'thin',color:{argb:'FF888888'}},left:{style:'thin',color:{argb:'FFCCCCCC'}},right:{style:'thin',color:{argb:'FFCCCCCC'}}};
+}
+function _num(cell,v){
+  cell.value=v||0; cell.numFmt='#,##0'; cell.alignment={horizontal:'right'};
+  cell.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}},left:{style:'thin',color:{argb:'FFEEEEEE'}},right:{style:'thin',color:{argb:'FFEEEEEE'}}};
+}
+function _txt(cell,v){
+  cell.value=v||''; cell.alignment={horizontal:'center',vertical:'middle'};
+  cell.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}},left:{style:'thin',color:{argb:'FFEEEEEE'}},right:{style:'thin',color:{argb:'FFEEEEEE'}}};
+}
+
+// ── ① 정산서 관리 파일 ──────────────────────────────────
+async function downloadSettleExcel() {
+  const d=await _getMonthRows(); if(!d)return;
+  const {y,m,rows}=d;
   const wb=new ExcelJS.Workbook();
-  const ws=wb.addWorksheet(`${y}년${parseInt(m)}월 정산`);
+  const ws=wb.addWorksheet(`${y}년${parseInt(m)}월 정산서관리`);
+
+  // 타이틀 행
+  ws.mergeCells(1,1,1,16);
+  const title=ws.getCell(1,1);
+  title.value=`${y}년 ${parseInt(m)}월 투어코리아 가이드 정산서 관리`;
+  title.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
+  title.alignment={horizontal:'center',vertical:'middle'};
+  ws.getRow(1).height=28;
 
   // 헤더
-  const cols=['정산코드','가이드명','상품명','쇼핑횟수','인원','옵션수익','쇼핑수익','가이드정산','회사수익','환차수익'];
-  ws.addRow(cols);
-  ws.getRow(1).eachCell(c=>{
-    c.font={bold:true,color:{argb:'FFFFFFFF'}};
-    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1A6B8A'}};
-    c.alignment={horizontal:'center'};
-    c.border={bottom:{style:'medium',color:{argb:'FF0A4A6A'}}};
-  });
-  ws.columns=[
-    {width:14},{width:12},{width:18},{width:10},{width:8},
-    {width:13},{width:13},{width:13},{width:13},{width:13}
-  ];
+  const HDRS=['순번','일자','가이드','상품명','쇼핑횟수','인원','TC',
+    '옵션수익(฿)','쇼핑수익(฿)','가이드정산(฿)','회사수익(฿)','환차손익(฿)',
+    '인당옵션','인당쇼핑','인당합계','정산코드'];
+  const WIDTHS=[6,10,10,16,8,7,6,13,13,13,13,13,10,10,10,14];
+  ws.columns=WIDTHS.map(w=>({width:w}));
+  const hr=ws.getRow(2);
+  HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
+  hr.height=32;
 
   // 데이터
-  rows.forEach(s=>{
-    const r=ws.addRow([
-      s.settleCode, s.guideName, s.productName||'', s.shopCount||0, s.paxTotal||0,
-      s.optionProfit||0, s.shoppingProfit||0, s.guideSettle||0, s.companyProfit||0, s.exchangeProfit||0,
-    ]);
-    r.eachCell((c,ci)=>{
-      if(ci>=6) { c.numFmt='#,##0'; c.alignment={horizontal:'right'}; }
-      c.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}}};
+  rows.forEach((s,idx)=>{
+    const info=s.fullData&&s.fullData.info||{};
+    const pax=(s.paxTotal||0)-(parseInt(info.paxTC)||0);
+    const opt=s.optionProfit||0, shop=s.shoppingProfit||0;
+    const perOpt=pax>0?Math.round(opt/pax):0;
+    const perShop=pax>0?Math.round(shop/pax):0;
+    const r=ws.addRow([]);
+    const ri=r.number;
+    // 날짜
+    const dt=info.tourStart?new Date(info.tourStart):null;
+    const dateStr=dt?`${dt.getMonth()+1}월 ${dt.getDate()}일`:(s.settleCode||'').slice(0,6);
+    _txt(ws.getCell(ri,1),idx+1);
+    _txt(ws.getCell(ri,2),dateStr);
+    _txt(ws.getCell(ri,3),s.guideName||'');
+    _txt(ws.getCell(ri,4),s.productName||'');
+    _txt(ws.getCell(ri,5),s.shopCount||0);
+    _txt(ws.getCell(ri,6),s.paxTotal||0);
+    _txt(ws.getCell(ri,7),parseInt(info.paxTC)||0);
+    _num(ws.getCell(ri,8),opt);
+    _num(ws.getCell(ri,9),shop);
+    _num(ws.getCell(ri,10),s.guideSettle||0);
+    _num(ws.getCell(ri,11),s.companyProfit||0);
+    _num(ws.getCell(ri,12),s.exchangeProfit||0);
+    _num(ws.getCell(ri,13),perOpt);
+    _num(ws.getCell(ri,14),perShop);
+    _num(ws.getCell(ri,15),perOpt+perShop);
+    _txt(ws.getCell(ri,16),s.settleCode||'');
+    // 짝수 행 배경
+    if(idx%2===1) [8,9,10,11,12,13,14,15].forEach(ci=>{
+      ws.getCell(ri,ci).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7FAFC'}};
     });
   });
 
   // 합계 행
-  const total=ws.addRow(['합계','','','',
-    rows.reduce((s,r)=>s+(r.paxTotal||0),0),
-    rows.reduce((s,r)=>s+(r.optionProfit||0),0),
-    rows.reduce((s,r)=>s+(r.shoppingProfit||0),0),
-    rows.reduce((s,r)=>s+(r.guideSettle||0),0),
-    rows.reduce((s,r)=>s+(r.companyProfit||0),0),
-    rows.reduce((s,r)=>s+(r.exchangeProfit||0),0),
-  ]);
-  total.eachCell((c,ci)=>{
-    c.font={bold:true};
+  const tr=ws.addRow([]);
+  const ti=tr.number;
+  ws.mergeCells(ti,1,ti,7);
+  const tc=ws.getCell(ti,1); tc.value='합  계'; tc.font={bold:true}; tc.alignment={horizontal:'center'};
+  tc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+  [[8,'optionProfit'],[9,'shoppingProfit'],[10,'guideSettle'],[11,'companyProfit'],[12,'exchangeProfit']].forEach(([ci,k])=>{
+    const c=ws.getCell(ti,ci);
+    c.value=rows.reduce((a,s)=>a+(s[k]||0),0);
+    c.numFmt='#,##0'; c.font={bold:true};
     c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
-    if(ci>=5){c.numFmt='#,##0';c.alignment={horizontal:'right'};}
+    c.alignment={horizontal:'right'};
+  });
+  tr.height=22;
+  ws.views=[{state:'frozen',xSplit:0,ySplit:2}];
+
+  _xlSave(wb,`정산서관리_${y}년${parseInt(m)}월.xlsx`);
+  closeMonthExcel();
+}
+
+// ── ② 쇼핑 매출 정리 파일 ──────────────────────────────
+async function downloadShoppingExcel() {
+  const d=await _getMonthRows(); if(!d)return;
+  const {y,m,rows}=d;
+
+  const CENTER_MAP={jewell:'지노잼',latex:'라텍스',beomrung:'범룽디',taiko:'타이코',herb:'타이코허브'};
+  const CENTER_ORDER=['jewell','beomrung','taiko','herb','latex'];
+
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet(`${y}년${parseInt(m)}월 쇼핑매출`);
+
+  // 타이틀 행
+  ws.mergeCells(1,1,1,14);
+  const title=ws.getCell(1,1);
+  title.value=`${y}년 투어코리아 쇼핑센터 매출 & 정산서`;
+  title.font={bold:true,size:14};
+  title.alignment={horizontal:'center',vertical:'middle'};
+  ws.getRow(1).height=28;
+
+  // 헤더
+  const HDRS=['일자','가이드명','상품명','인원','쇼핑센터','상품','COM%','판매총액','COM금액','KB%','KB금액','정산코드','정산완료','비고'];
+  const WIDTHS=[10,10,16,6,10,6,7,12,12,7,12,14,8,12];
+  ws.columns=WIDTHS.map(w=>({width:w}));
+  const hr=ws.getRow(2);
+  HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
+  hr.height=28;
+
+  let rowIdx=3;
+  rows.forEach(s=>{
+    const info=s.fullData&&s.fullData.info||{};
+    const shop=s.fullData&&s.fullData.shopping||{};
+    const dt=info.tourStart?new Date(info.tourStart):null;
+    const dateStr=dt?`${dt.getMonth()+1}월 ${dt.getDate()}일`:(s.settleCode||'').slice(0,6);
+    const guideName=s.guideName||'';
+    const productName=s.productName||'';
+    const pax=s.paxTotal||0;
+    const code=s.settleCode||'';
+
+    // 이 가이드의 첫 데이터 행 기록 (나중에 merge용)
+    const guideStartRow=rowIdx;
+    let guideRowCount=0;
+
+    CENTER_ORDER.forEach(ck=>{
+      const items=(shop[ck]||[]);
+      if(!items.length){
+        // 빈 행 1줄
+        const r=ws.getRow(rowIdx++);
+        _txt(r.getCell(1),dateStr); _txt(r.getCell(2),guideName); _txt(r.getCell(3),productName); _txt(r.getCell(4),pax);
+        _txt(r.getCell(5),CENTER_MAP[ck]||ck); _txt(r.getCell(6),''); _txt(r.getCell(7),'0%');
+        _num(r.getCell(8),0); _num(r.getCell(9),0); _txt(r.getCell(10),''); _num(r.getCell(11),0);
+        _txt(r.getCell(12),code);
+        guideRowCount++;
+        return;
+      }
+      items.forEach(item=>{
+        const r=ws.getRow(rowIdx++);
+        _txt(r.getCell(1),dateStr); _txt(r.getCell(2),guideName); _txt(r.getCell(3),productName); _txt(r.getCell(4),pax);
+        _txt(r.getCell(5),CENTER_MAP[ck]||ck);
+        _txt(r.getCell(6),item.type||'');
+        _txt(r.getCell(7),(item.comPct||0)+'%');
+        _num(r.getCell(8),Math.round(item.saleTHB||0));
+        _num(r.getCell(9),Math.round(item.com||0));
+        _txt(r.getCell(10),(item.kbPct||0)+'%');
+        _num(r.getCell(11),Math.round(item.kb||0));
+        _txt(r.getCell(12),code);
+        guideRowCount++;
+      });
+    });
+
+    // 가이드 그룹 배경색 (짝수 가이드)
+    if(rows.indexOf(s)%2===1){
+      for(let ri=guideStartRow;ri<guideStartRow+guideRowCount;ri++){
+        [1,2,3,4].forEach(ci=>{
+          const c=ws.getCell(ri,ci);
+          c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F4F8'}};
+        });
+      }
+    }
+
+    // 그룹 구분선 (가이드 마지막 행 하단)
+    const lastR=guideStartRow+guideRowCount-1;
+    for(let ci=1;ci<=14;ci++){
+      const c=ws.getCell(lastR,ci);
+      c.border={...c.border,bottom:{style:'medium',color:{argb:'FFAAAAAA'}}};
+    }
   });
 
-  ws.views=[{state:'frozen',xSplit:0,ySplit:1}];
+  // 합계 행
+  const sumRow=ws.getRow(rowIdx);
+  ws.mergeCells(rowIdx,1,rowIdx,7);
+  const sc=ws.getCell(rowIdx,1); sc.value='합  계'; sc.font={bold:true}; sc.alignment={horizontal:'center'};
+  sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+  // 판매총액 합계 (col 8), COM금액 합계 (col 9), KB금액 합계 (col 11)
+  const allItems=rows.flatMap(s=>CENTER_ORDER.flatMap(ck=>(s.fullData&&s.fullData.shopping&&s.fullData.shopping[ck])||[]));
+  [[8,allItems.reduce((a,i)=>a+Math.round(i.saleTHB||0),0)],
+   [9,allItems.reduce((a,i)=>a+Math.round(i.com||0),0)],
+   [11,allItems.reduce((a,i)=>a+Math.round(i.kb||0),0)]].forEach(([ci,v])=>{
+    const c=ws.getCell(rowIdx,ci); c.value=v; c.numFmt='#,##0'; c.font={bold:true};
+    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+    c.alignment={horizontal:'right'};
+  });
 
-  const buf=await wb.xlsx.writeBuffer();
-  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`가이드정산_${y}년${parseInt(m)}월.xlsx`;
-  a.click();
+  ws.views=[{state:'frozen',xSplit:0,ySplit:2}];
+  _xlSave(wb,`쇼핑매출정리_${y}년${parseInt(m)}월.xlsx`);
   closeMonthExcel();
 }
 
