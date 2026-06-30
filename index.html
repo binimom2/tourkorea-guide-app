@@ -1803,6 +1803,16 @@ function _completeLogin() {
     updateGuideDropdown(); updateSettleCode();
     populateProductDropdown();
     restoreNewInfoFields();
+    // 구버전 기본값(34/0.0207) → 0 마이그레이션
+    ['rateUSD','inc-rateUSD'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && (el.value==='34.00'||el.value==='34')) el.value='0';
+    });
+    ['rateKRW','inc-rateKRW'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && (el.value==='0.0207'||el.value==='0.021')) el.value='0';
+    });
+    syncRate2FromBase();
     // 가이드명 자동입력: 빈 경우 로그인 이름으로 채움
     if (currentRole === 'guide') {
       const gnEl = document.getElementById('guideName');
