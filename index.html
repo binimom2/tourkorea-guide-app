@@ -292,6 +292,9 @@
   .settle-guide-card { border-top:none;border-radius:0 0 12px 12px;margin-top:0 !important; }
   .settle-admin-card { border:2px solid #c0392b;border-radius:12px;margin-top:10px; }
   .settle-admin-card h3 { color:#c0392b; }
+  /* manager/guide/organizer: 회사정산서 숨김 */
+  body.role-op .settle-admin-card,
+  body.role-guide .settle-admin-card { display:none !important; }
   .settle-rate-row { display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:8px; }
   .settle-rate-label { font-size:11px;font-weight:700;color:var(--text-sub);white-space:nowrap; }
   .settle-rate-item { display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700; }
@@ -1949,11 +1952,9 @@ function applyRoleUI() {
   const bottomPrint = document.getElementById('bottomPrintBtns');
   if (bottomPrint) bottomPrint.style.display = (currentRole === 'guide') ? 'none' : 'flex';
 
-  // manager(op)는 회사정산서(settle-admin-card) 숨김, 가이드정산서만 표시
-  const showCompany = (currentRole === 'admin' || currentRole === 'organizer');
-  document.querySelectorAll('.settle-admin-card').forEach(el => {
-    el.style.display = showCompany ? '' : 'none';
-  });
+  // body에 role 클래스 부여 (CSS로 역할별 요소 제어)
+  document.body.className = document.body.className.replace(/\brole-\w+/g,'').trim();
+  document.body.classList.add('role-' + currentRole);
 
   applyKBVisibility();
 }
