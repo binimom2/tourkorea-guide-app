@@ -5,19 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>가이드 정산서</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script>
-window.onerror = function(msg, src, line, col, err) {
-  var el = document.getElementById('_jsErrBox');
-  if (!el) { el = document.createElement('div'); el.id='_jsErrBox'; el.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#c0392b;color:#fff;font-size:12px;padding:8px;z-index:99999;word-break:break-all;'; document.body.appendChild(el); }
-  el.textContent = 'JS ERROR: ' + msg + ' (line ' + line + ')';
-  return false;
-};
-window.addEventListener('unhandledrejection', function(e) {
-  var el = document.getElementById('_jsErrBox');
-  if (!el) { el = document.createElement('div'); el.id='_jsErrBox'; el.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#c0392b;color:#fff;font-size:12px;padding:8px;z-index:99999;word-break:break-all;'; document.body.appendChild(el); }
-  el.textContent = 'PROMISE ERROR: ' + (e.reason||'unknown');
-});
-</script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
