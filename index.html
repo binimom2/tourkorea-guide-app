@@ -1800,7 +1800,15 @@ async function doLogin() {
   document.getElementById('loginPw').focus();
 }
 
+function _clearViewBanner() {
+  const b = document.getElementById('viewBanner'); if (b) b.remove();
+  window._viewingSubId = null;
+  window._viewBackupKey = undefined;
+  window._viewBackupRaw = undefined;
+}
+
 function _completeLogin() {
+  _clearViewBanner();
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appWrap').style.display='block';
   const badgeEl = document.getElementById('roleBadge');
@@ -1907,6 +1915,7 @@ function resetData() {
 }
 
 function doLogout() {
+  _clearViewBanner();
   currentRole = null; currentUser = null;
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appWrap').style.display = 'none';
@@ -4584,6 +4593,7 @@ async function saveSubEdits() {
 function restoreMyData() {
   const banner = document.getElementById('viewBanner');
   if (banner) banner.remove();
+  window._viewingSubId = null;  // 열람 상태 해제
   // 백업 데이터를 복원
   if (window._viewBackupKey !== undefined) {
     if (window._viewBackupRaw) {
