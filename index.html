@@ -3355,6 +3355,10 @@ const SAVE_FIELD_IDS = [
 const SHOP_KEYS = ['jewell','latex','beomrung','taiko','herb'];
 
 function manuallySave() {
+  if (window._viewingSubId) {
+    showToast('⚠️ 열람 중입니다. 수정저장 또는 내 데이터로 복귀 후 저장하세요.', true);
+    return;
+  }
   saveData();
   showToast('💾 저장되었습니다.');
 }
@@ -4356,7 +4360,11 @@ async function openSubmissions() {
   renderSubmissions();
   document.getElementById('submissionsModal').style.display='flex';
 }
-function closeSubmissions() { document.getElementById('submissionsModal').style.display='none'; }
+function closeSubmissions() {
+  document.getElementById('submissionsModal').style.display='none';
+  // 열람 중이었으면 모달 닫을 때 자동으로 내 데이터로 복귀
+  if (window._viewingSubId) restoreMyData();
+}
 
 function renderSubmissions() {
   const body = document.getElementById('submissionsBody');
