@@ -3217,11 +3217,17 @@ function confirmReset(){
   });
   const pd=document.getElementById('paxTotalDisplay');if(pd)pd.textContent='0명';
 
+  // 정산코드 표시 영역 강제 초기화
+  const s1=document.getElementById('settleCodeSec1'); if(s1) s1.textContent='-';
+  const sd=document.getElementById('settleCodeDisplay'); if(sd) sd.textContent='';
+  const sq=document.getElementById('settleSeq'); if(sq) sq.value='';
+  const ts=document.getElementById('tourStart'); if(ts) ts.value='';
+
   // ② state.info 초기화
   Object.keys(state.info).forEach(k=>{ state.info[k]=''; });
   state.info.paxAdult='0'; state.info.paxChild='0'; state.info.paxTC='0';
   state.info.rateUSD='0'; state.info.rateKRW='0';
-  state.info.shopCount='0'; state.info.settleSeq='00';
+  state.info.shopCount='0'; state.info.settleSeq=''; state.info.settleCode='-';
 
   // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
   state.optionCurrency = 'THB';
