@@ -50,7 +50,10 @@
   .cfg-add-row { display:flex; gap:8px; margin-top:10px; }
   .cfg-add-row input { flex:1; border:1.5px solid var(--primary); border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; }
   .cfg-add-btn { background:var(--primary); color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:13px; font-weight:700; cursor:pointer; }
-  .del-btn { background:#fee2e2; color:#dc2626; border:none; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px; font-weight:700; }
+  .del-btn  { background:#fee2e2; color:#dc2626; border:none; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px; font-weight:700; }
+  .edit-btn { background:#e0f2fe; color:#0369a1; border:none; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px; font-weight:700; }
+  .cfg-list-item input[readonly] { background:#f8fafc; color:var(--text); cursor:default; }
+  .cfg-list-item input:not([readonly]) { background:#fff; border-color:var(--primary); }
   /* ── SUBMISSIONS VIEW ── */
   .sub-card { border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; background:#fff; }
   .sub-card:hover { border-color:var(--primary); background:var(--primary-light); }
@@ -3963,7 +3966,8 @@ function renderCfgBody() {
   const items = appSettings[currentCfgTab] || [];
   const rows = items.map((v,i)=>`
     <div class="cfg-list-item">
-      <input value="${v}" oninput="appSettings['${currentCfgTab}'][${i}]=this.value; debounceSaveCfg();">
+      <input id="cfg-inp-${i}" value="${v.replace(/"/g,'&quot;')}" readonly>
+      <button class="edit-btn" onclick="startEditCfg(${i})">수정</button>
       <button class="del-btn" onclick="removeCfgItem(${i})">삭제</button>
     </div>`).join('');
   body.innerHTML = `
@@ -3976,6 +3980,23 @@ function renderCfgBody() {
 
 let _cfgSaveTimer;
 function debounceSaveCfg() { clearTimeout(_cfgSaveTimer); _cfgSaveTimer=setTimeout(()=>saveAppSettings(),1000); }
+
+function startEditCfg(i) {
+  const inp = document.getElementById('cfg-inp-' + i);
+  if (!inp) return;
+  inp.readOnly = false;
+  inp.focus();
+  inp.select();
+  inp.oninput = () => { appSettings[currentCfgTab][i] = inp.value; };
+  inp.onblur = () => {
+    inp.readOnly = true;
+    appSettings[currentCfgTab][i] = inp.value.trim();
+    saveAppSettings();
+    if (currentCfgTab === 'products') populateProductDropdown();
+    if (currentCfgTab === 'categories') renderAll();
+  };
+  inp.onkeydown = (e) => { if (e.key === 'Enter') inp.blur(); };
+}
 
 function addCfgItem() {
   const inp=document.getElementById('cfgNewItem');
