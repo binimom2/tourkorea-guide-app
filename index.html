@@ -1967,7 +1967,7 @@ function initData() {
   state.days = [];
   state.options = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', cost:'', profit:'' }];
   ['jewell','latex','beomrung','taiko','herb'].forEach(k => {
-    state.shopping[k] = [{ id:uid(), name:'', type:'', dc:'', sale:'', com:'', commission:0, kbPct:5, kbCom:0 }];
+    state.shopping[k] = [{ id:uid(), name:'', type:'', dc:'', sale:'', com:'', commission:0, kbPct:getDefaultKbPct(k,''), kbCom:0 }];
   });
   // 일차 패널 정리
   document.querySelectorAll('.day-panel').forEach(p => p.remove());
@@ -2537,13 +2537,6 @@ function renderShop(key) {
       if(t==='회사보고') o.style.color='#c0392b';
       typeEl.appendChild(o);
     });
-    typeEl.addEventListener('change', e=>{
-      row.type=e.target.value;
-      // 회사보고 선택 시 select 색상 변경
-      typeEl.style.color = e.target.value==='회사보고' ? '#c0392b' : '';
-    });
-    if(row.type==='회사보고') typeEl.style.color='#c0392b';
-
     // D/C%
     const inDC = document.createElement('input');
     inDC.type='number'; inDC.placeholder='0'; inDC.min='0'; inDC.max='100'; inDC.step='0.1';
@@ -2556,12 +2549,9 @@ function renderShop(key) {
     inSale.value = row.sale ? fmtNumSigned(row.sale) : '';
     inSale.style.textAlign='right';
     inSale.addEventListener('input', e=>{
-      // 마이너스 부호 + 숫자 + 소수점만 허용
       let raw = e.target.value.replace(/,/g,'').replace(/[^0-9.\-]/g,'');
-      // 맨 앞에만 마이너스 허용
       if(raw.indexOf('-')>0) raw = raw.replace(/-/g,'');
       row.sale = raw;
-      // 커서가 맨 앞 '-' 뒤에 있을 때 포맷 건드리지 않음
       if(raw !== '-') e.target.value = raw ? fmtNumSigned(raw) : '';
       recalcShopRow(key,row,div);
     });
@@ -2579,13 +2569,34 @@ function renderShop(key) {
     inCommission.dataset.role='commission';
     inCommission.value = row.commission ? fmtNum(row.commission) : '';
 
-    // KB% (Admin만 노출) - 기본값 5
+    // KB% (Admin만 노출)
     const inKBPct = document.createElement('input');
-    inKBPct.type='number'; inKBPct.placeholder='5'; inKBPct.min='0'; inKBPct.max='100'; inKBPct.step='0.1';
+    inKBPct.type='number'; inKBPct.placeholder='0'; inKBPct.min='0'; inKBPct.max='100'; inKBPct.step='0.1';
     inKBPct.className='kb-col';
-    inKBPct.value = (row.kbPct !== '' && row.kbPct != null) ? row.kbPct : 5;
-    if (row.kbPct === '' || row.kbPct == null) row.kbPct = 5;
+    // 저장값 없으면 매장·구분 기본값 적용
+    if (row.kbPct === '' || row.kbPct == null) row.kbPct = getDefaultKbPct(key, row.type||'');
+    inKBPct.value = row.kbPct;
     inKBPct.addEventListener('input', e=>{ row.kbPct=e.target.value; recalcShopRow(key,row,div); });
+
+    // 회사보고 고정값 적용 함수
+    function applyTypeDefaults(t) {
+      typeEl.style.color = t==='회사보고' ? '#c0392b' : '';
+      if (t==='회사보고') {
+        row.com=100; inCom.value=100; inCom.readOnly=true; inCom.style.background='#f0f0f0';
+        row.kbPct=0; inKBPct.value=0; inKBPct.readOnly=true; inKBPct.style.background='#f0f0f0';
+      } else {
+        inCom.readOnly=false; inCom.style.background='';
+        inKBPct.readOnly=false; inKBPct.style.background='';
+        // 구분 변경 시 KB% 기본값 업데이트 (기존 값 0이거나 기본값이었던 경우만)
+        const newKb = getDefaultKbPct(key, t);
+        row.kbPct = newKb; inKBPct.value = newKb;
+      }
+      recalcShopRow(key,row,div);
+    }
+
+    typeEl.addEventListener('change', e=>{ row.type=e.target.value; applyTypeDefaults(e.target.value); scheduleSave(); });
+    // 초기 렌더 시 회사보고 상태 적용
+    if(row.type==='회사보고') applyTypeDefaults('회사보고');
 
     // KB COM = 판매액 × KB% (readonly, Admin만 노출)
     const inKBCom = document.createElement('input');
@@ -2657,8 +2668,17 @@ function updateShop(key,id,field,val){
   if(r){ r[field]=val; scheduleSave(); }
 }
 
+// 매장·구분별 KB% 기본값
+function getDefaultKbPct(key, type) {
+  if (type === '회사보고') return 0;
+  if (key === 'latex' || key === 'herb') return 7;
+  if (key === 'beomrung' || key === 'taiko') return (type==='A'||type==='B') ? 7 : 5;
+  return 5; // jewell
+}
+
 function addShopRow(key) {
-  state.shopping[key].push({id:uid(),name:SHOP_NAMES[key]||'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:5,kbCom:0});
+  const defKb = getDefaultKbPct(key, '');
+  state.shopping[key].push({id:uid(),name:SHOP_NAMES[key]||'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:defKb,kbCom:0});
   renderShop(key);
   scheduleSave();
 }
@@ -3206,7 +3226,7 @@ function confirmReset(){
   // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
   state.optionCurrency = 'THB';
   SHOP_KEYS.forEach(k=>{
-    state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:5,kbCom:0}];
+    state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:getDefaultKbPct(k,''),kbCom:0}];
     // 체크박스 해제 + 패널 숨김
     const chk = document.getElementById('chk-'+k);
     if(chk){ chk.checked=false; }
