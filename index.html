@@ -1792,11 +1792,13 @@ function _completeLogin() {
   try { rebuildTabBar(); switchTab('main'); } catch(e) {}
   // 비동기 데이터 로드
   const userDataKey = 'guide_data_' + currentUser.username;
+  const _loginSeq = ++_loginLoadSeq;  // 리셋이 일어나면 이 번호는 무효화됨
   Promise.all([
     loadFromSupabase(userDataKey),
     loadAppSettings(),
     loadSubmissions(),
   ]).then(([sbData])=>{
+    if (_loginSeq !== _loginLoadSeq) return;  // 리셋으로 무효화된 로드 → 무시
     if (sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
     const restored = loadData();
     if (!restored) { initData(); renderAll(); calcPaxTotal(); syncRate2FromBase(); }
@@ -3177,6 +3179,7 @@ function printAdmin() { doPrint('print-admin', '회 사 정 산 서'); }
 // ══════════════════════════════════
 function confirmReset(){
   if(!confirm('새 보고서를 작성하시겠습니까?'))return;
+  _loginLoadSeq++;  // 진행 중인 비동기 Supabase 로드 무효화
 
   // ① 모든 저장 필드 초기화 (옵션 환율 포함)
   SAVE_FIELD_IDS.forEach(id=>{
@@ -3452,6 +3455,7 @@ function loadData() {
 
 // 데이터 변경 시 자동저장 (지연 없음 — 데이터 유실 방지)
 let _saveTimer = null;
+let _loginLoadSeq = 0;
 function scheduleSave() {
   saveData();
 }
