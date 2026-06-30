@@ -52,6 +52,8 @@
   .cfg-add-btn { background:var(--primary); color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:13px; font-weight:700; cursor:pointer; }
   .del-btn  { background:#fee2e2; color:#dc2626; border:none; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px; font-weight:700; }
   .edit-btn { background:#e0f2fe; color:#0369a1; border:none; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px; font-weight:700; }
+  .ord-btn  { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:5px; padding:2px 6px; cursor:pointer; font-size:13px; line-height:1; }
+  .ord-btn:disabled { opacity:0.25; cursor:default; }
   .cfg-list-item input[readonly] { background:#f8fafc; color:var(--text); cursor:default; }
   .cfg-list-item input:not([readonly]) { background:#fff; border-color:var(--primary); }
   /* ── SUBMISSIONS VIEW ── */
@@ -3966,6 +3968,10 @@ function renderCfgBody() {
   const items = appSettings[currentCfgTab] || [];
   const rows = items.map((v,i)=>`
     <div class="cfg-list-item">
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+        <button class="ord-btn" ${i===0?'disabled':''} onclick="moveCfgItem(${i},-1)" title="위로">▲</button>
+        <button class="ord-btn" ${i===items.length-1?'disabled':''} onclick="moveCfgItem(${i},1)" title="아래로">▼</button>
+      </div>
       <input id="cfg-inp-${i}" value="${v.replace(/"/g,'&quot;')}" readonly>
       <button class="edit-btn" onclick="startEditCfg(${i})">수정</button>
       <button class="del-btn" onclick="removeCfgItem(${i})">삭제</button>
@@ -4013,6 +4019,17 @@ function removeCfgItem(i) {
   appSettings[currentCfgTab].splice(i,1);
   saveAppSettings();
   renderCfgBody();
+  if(currentCfgTab==='products') populateProductDropdown();
+}
+
+function moveCfgItem(i, dir) {
+  const arr = appSettings[currentCfgTab];
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  saveAppSettings();
+  renderCfgBody();
+  if(currentCfgTab==='categories') renderAll();
   if(currentCfgTab==='products') populateProductDropdown();
 }
 
