@@ -1795,8 +1795,19 @@ function _completeLogin() {
   ]).then(([sbData])=>{
     if (_loginSeq !== _loginLoadSeq) return;  // 리셋으로 무효화된 로드 → 무시
     if (sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
+    // 구버전 categories 마이그레이션: 기존 기본값이면 새 기본값으로 교체
+    const OLD_CATS = ['호텔비','차량비','관광지','식당','골프장','기타'];
+    if (appSettings.categories && appSettings.categories.join(',') === OLD_CATS.join(',')) {
+      appSettings.categories = ['메인','1일','2일','3일'];
+      saveAppSettings();
+    }
+    // vehicles 키 제거 (미사용)
+    if ('vehicles' in appSettings) { delete appSettings.vehicles; saveAppSettings(); }
+
     const restored = loadData();
-    if (!restored) { initData(); renderAll(); calcPaxTotal(); syncRate2FromBase(); }
+    if (!restored) { initData(); }
+    // appSettings 로드 후 항상 재렌더링 (구분 드롭다운 정확히 반영)
+    renderAll(); calcPaxTotal(); syncRate2FromBase();
     rebuildTabBar(); switchTab('main');
     syncEventContentsList();
     updateGuideDropdown(); updateSettleCode();
