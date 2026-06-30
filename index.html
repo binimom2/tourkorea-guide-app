@@ -1405,7 +1405,7 @@
         <!-- 절대메꾸기 -->
         <div class="settle-section-sub">절대메꾸기</div>
         <div class="settle-grid3">
-          <div class="settle-input-group"><label>절대메꾸기 금액 (฿/인)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="gu-amount" data-cur="฿" inputmode="numeric" placeholder="2000" class="settle-input" oninput="fmtSettleInput(this);calcGuarantee();saveData()"></div></div>
+          <div class="settle-input-group"><label>절대메꾸기 금액 (฿/인)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="gu-amount" data-cur="฿" inputmode="numeric" placeholder="" class="settle-input" oninput="fmtSettleInput(this);calcGuarantee();saveData()"></div></div>
           <div class="settle-display-group"><label>인원</label><div class="settle-display" id="gu-pax-count">0명</div></div>
           <div class="settle-display-group"><label>절대메꾸기 합계</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="gu-guarantee-total">฿ 0</div></div>
         </div>
@@ -1928,11 +1928,11 @@ function applyRoleUI() {
     el.style.display = currentRole === 'admin' ? '' : 'none';
   });
   const btnSubmit = document.getElementById('btnSubmit');
-  if (btnSubmit) btnSubmit.style.display = (currentRole === 'guide' || currentRole === 'admin') ? '' : 'none';
+  if (btnSubmit) btnSubmit.style.display = (currentRole === 'guide' || currentRole === 'admin' || currentRole === 'op') ? '' : 'none';
   const btnSave = document.getElementById('btnSave');
-  if (btnSave) btnSave.style.display = (currentRole === 'guide' || currentRole === 'admin') ? '' : 'none';
+  if (btnSave) btnSave.style.display = (currentRole === 'guide' || currentRole === 'admin' || currentRole === 'op') ? '' : 'none';
   const btnNewReport = document.getElementById('btnNewReport');
-  if (btnNewReport) btnNewReport.style.display = (currentRole === 'guide' || currentRole === 'admin') ? '' : 'none';
+  if (btnNewReport) btnNewReport.style.display = (currentRole === 'guide' || currentRole === 'admin' || currentRole === 'op') ? '' : 'none';
 
   // 가이드 역할: 정산코드(회사입력)만 잠금, 상품명·쇼핑횟수는 가이드 직접 입력
   const guideOnly = currentRole === 'guide';
