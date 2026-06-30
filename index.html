@@ -3199,6 +3199,19 @@ function confirmReset(){
   state.optionCurrency = 'THB';
   SHOP_KEYS.forEach(k=>{
     state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:5,kbCom:0}];
+    // 체크박스 해제 + 패널 숨김
+    const chk = document.getElementById('chk-'+k);
+    if(chk){ chk.checked=false; }
+    const cat = document.getElementById('cat-'+k);
+    if(cat){ cat.style.display='none'; }
+  });
+  updateShopCheckedLabels();
+  // 정산 방식 체크박스 초기화
+  ['incentive','guarantee','settle'].forEach(m=>{
+    const chk=document.getElementById('chk-'+m);
+    if(chk) chk.checked=false;
+    const panel=document.getElementById('panel-'+m);
+    if(panel) panel.style.display='none';
   });
   state.options = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profit:''}];
   state.expenses = { main: defaultRows() };
