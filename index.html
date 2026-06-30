@@ -1856,7 +1856,7 @@ function _completeLogin() {
       }
     }
     const _sb = document.getElementById('btnSubmit');
-    if (_sb) _sb.style.display = (currentRole==='guide'||currentRole==='admin') ? '' : 'none';
+    if (_sb) _sb.style.display = (currentRole==='guide'||currentRole==='admin'||currentRole==='op') ? '' : 'none';
     // 가이드: 어드민 수정사항 확인
     if (currentRole === 'guide') checkAdminEdits();
   });
