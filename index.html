@@ -1006,10 +1006,6 @@
               style="width:74px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;background:#fff;"
               oninput="onBaseRateChange()">
           </label>
-          <button id="btn-fetch-rate" onclick="fetchAutoRate()" class="print-hide"
-            style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">
-            🔄 환율 자동
-          </button>
         </div>
       </div>
 
@@ -1269,8 +1265,8 @@
           <h3 style="font-size:15px;">📄 가이드 정산서</h3>
           <div class="settle-rate-row base-rate-row" style="margin:0;border:none;padding:0;background:none;">
             <span class="settle-rate-label">기준환율</span>
-            <label class="settle-rate-item">$ <input type="text" id="inc-rateUSD" class="settle-rate-input" inputmode="decimal" value="34.00" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/달러</span></label>
-            <label class="settle-rate-item">₩ <input type="text" id="inc-rateKRW" class="settle-rate-input" inputmode="decimal" value="0.0207" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/원</span></label>
+            <label class="settle-rate-item">$ <input type="text" id="inc-rateUSD" class="settle-rate-input" inputmode="decimal" value="0" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/달러</span></label>
+            <label class="settle-rate-item">₩ <input type="text" id="inc-rateKRW" class="settle-rate-input" inputmode="decimal" value="0" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/원</span></label>
           </div>
         </div>
 
@@ -1925,7 +1921,7 @@ const state = {
   shopping: { jewell:[], latex:[], beomrung:[], taiko:[], herb:[] },
   info: { guideName:'', agencyName:'', localGuide:'', tourStart:'', tourNights:'',
           paxAdult:'0', paxChild:'0', paxTC:'0', advancePay:'',
-          rateUSD:'34.00', rateKRW:'0.0207', guideCode:'',
+          rateUSD:'0', rateKRW:'0', guideCode:'',
           productName:'', shopCount:'0', settleSeq:'00' }
 };
 
@@ -2310,10 +2306,10 @@ function getCurrencySym(code) {
   return c ? c.sym : '฿';
 }
 function getRateUSD() {
-  return parseFloat((document.getElementById('rateUSD')||{}).value)||34.00;
+  return parseFloat((document.getElementById('rateUSD')||{}).value)||0;
 }
 function getRateKRW() {
-  return parseFloat((document.getElementById('rateKRW')||{}).value)||0.0207;
+  return parseFloat((document.getElementById('rateKRW')||{}).value)||0;
 }
 // 해당 통화 금액을 바트로 환산
 function toTHB(amount, currency) {
@@ -2744,10 +2740,10 @@ function fmtSettleInput(input) {
 //  환율 동기화 (옵션탭 ↔ 인센티브 기준환율, 환율2 자동계산)
 // ══════════════════════════════════
 function syncRate2FromBase() {
-  const baseUSD = pv('inc-rateUSD') || 34;
-  const baseKRW = pv('inc-rateKRW') || 0.0207;
-  const r2USD = (baseUSD + 1).toFixed(2);
-  const r2KRW = (baseKRW + 0.001).toFixed(4);
+  const baseUSD = pv('inc-rateUSD');
+  const baseKRW = pv('inc-rateKRW');
+  const r2USD = baseUSD > 0 ? (baseUSD + 1).toFixed(2) : '0';
+  const r2KRW = baseKRW > 0 ? (baseKRW + 0.001).toFixed(4) : '0';
   ['inc-rate2USD','gu-rate2USD','st-rate2USD'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = r2USD;
@@ -2803,7 +2799,7 @@ function toggleSettleMethod(key, checked) {
 
 // ── 인센티브 ──
 function calcIncentive() {
-  const rUSD=pv('inc-rateUSD')||34, rKRW=pv('inc-rateKRW')||0.0207;
+  const rUSD=pv('inc-rateUSD'), rKRW=pv('inc-rateKRW');
   const land1thb = pv('inc-land1')*rKRW;
   const land2thb = pv('inc-land2')*rUSD;
   const land3thb = pv('inc-land3');
@@ -2841,8 +2837,8 @@ function calcIncentive() {
 }
 
 function calcIncentiveAdmin() {
-  const rUSD=pv('inc-rateUSD')||34, rKRW=pv('inc-rateKRW')||0.0207;
-  const r2USD=pv('inc-rate2USD')||35, r2KRW=pv('inc-rate2KRW')||0.0217;
+  const rUSD=pv('inc-rateUSD'), rKRW=pv('inc-rateKRW');
+  const r2USD=pv('inc-rate2USD'), r2KRW=pv('inc-rate2KRW');
   const admLandKRW=pv('inc-adm-land-krw');
   // 지상&기타 수익금 → 환율2 적용
   const admLandTHB=admLandKRW*r2KRW;
@@ -2884,8 +2880,8 @@ function calcIncentiveAdmin() {
 
 // ── 절대메꾸기 ──
 function calcGuarantee() {
-  const rUSD=pv('inc-rateUSD')||getRateUSD()||34;
-  const rKRW=pv('inc-rateKRW')||getRateKRW()||0.0207;
+  const rUSD=pv('inc-rateUSD')||getRateUSD();
+  const rKRW=pv('inc-rateKRW')||getRateKRW();
   const opt=getOptProfit(rUSD,rKRW);
   const shop=getShopProfit();
   const incomeTotal=opt+shop;
@@ -2918,8 +2914,8 @@ function calcGuarantee() {
 }
 
 function calcGuaranteeAdmin() {
-  const rUSD=pv('inc-rateUSD')||getRateUSD()||34, rKRW=pv('inc-rateKRW')||getRateKRW()||0.0207;
-  const r2USD=pv('gu-rate2USD')||35, r2KRW=pv('gu-rate2KRW')||0.0217;
+  const rUSD=pv('inc-rateUSD')||getRateUSD(), rKRW=pv('inc-rateKRW')||getRateKRW();
+  const r2USD=pv('gu-rate2USD'), r2KRW=pv('gu-rate2KRW');
   const l1=pv('gu-land1'), l2=pv('gu-land2'), l3=pv('gu-land3');
   const landTotal=l1*rKRW+l2*rUSD+l3;
   document.getElementById('gu-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
@@ -2966,8 +2962,8 @@ function calcGuaranteeAdmin() {
 
 // ── 정산 ──
 function calcSettle() {
-  const rUSD=pv('inc-rateUSD')||getRateUSD()||34;
-  const rKRW=pv('inc-rateKRW')||getRateKRW()||0.0207;
+  const rUSD=pv('inc-rateUSD')||getRateUSD();
+  const rKRW=pv('inc-rateKRW')||getRateKRW();
   const opt=getOptProfit(rUSD,rKRW);
   const shop=getShopProfit();
   const tc=pv('st-tc');
@@ -2987,8 +2983,8 @@ function calcSettle() {
 }
 
 function calcSettleAdmin() {
-  const rUSD=pv('inc-rateUSD')||getRateUSD()||34, rKRW=pv('inc-rateKRW')||getRateKRW()||0.0207;
-  const r2USD=pv('st-rate2USD')||35, r2KRW=pv('st-rate2KRW')||0.0217;
+  const rUSD=pv('inc-rateUSD')||getRateUSD(), rKRW=pv('inc-rateKRW')||getRateKRW();
+  const r2USD=pv('st-rate2USD'), r2KRW=pv('st-rate2KRW');
   const l1=pv('st-land1'), l2=pv('st-land2'), l3=pv('st-land3');
   const landTotal=l1*rKRW+l2*rUSD+l3;
   document.getElementById('st-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
@@ -3185,8 +3181,7 @@ function confirmReset(){
   SAVE_FIELD_IDS.forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
-    if(id==='inc-rateUSD'||id==='rateUSD') el.value='34.00';
-    else if(id==='inc-rateKRW'||id==='rateKRW') el.value='0.0207';
+    if(id==='inc-rateUSD'||id==='rateUSD'||id==='inc-rateKRW'||id==='rateKRW') el.value='0';
     else if(['paxAdult','paxChild','paxTC','shopCount'].includes(id)) el.value='0';
     else el.value='';
   });
