@@ -2509,7 +2509,8 @@ function calcOptionTotal(){
   }
 
   // 상단 배지
-  document.getElementById('option-total-badge').textContent = '수익: ฿ ' + fmtNum(Math.round(profitTHB));
+  const _optBadge = document.getElementById('option-total-badge');
+  if (_optBadge) _optBadge.textContent = '수익: ฿ ' + fmtNum(Math.round(profitTHB));
 }
 
 // ══════════════════════════════════
