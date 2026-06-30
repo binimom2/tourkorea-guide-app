@@ -57,13 +57,30 @@
   .cfg-list-item input[readonly] { background:#f8fafc; color:var(--text); cursor:default; }
   .cfg-list-item input:not([readonly]) { background:#fff; border-color:var(--primary); }
   /* ── SUBMISSIONS VIEW ── */
-  .sub-card { border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; background:#fff; }
+  .sub-card { border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:6px; transition:all 0.2s; background:#fff; }
   .sub-card:hover { border-color:var(--primary); background:var(--primary-light); }
   .sub-card .sc-code { font-size:13px; font-weight:800; color:var(--primary); }
   .sub-card .sc-meta { font-size:11px; color:var(--text-sub); margin-top:3px; }
   .sub-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
   .sub-badge.new { background:#d1fae5; color:#065f46; }
   .sub-badge.seen { background:#e5e7eb; color:#6b7280; }
+  /* 연/월/일 계층 */
+  .sub-year-hd,.sub-month-hd,.sub-day-hd { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+  .sub-year-hd  { background:var(--primary); color:#fff; padding:8px 14px; border-radius:8px; margin-bottom:6px; font-weight:700; font-size:14px; }
+  .sub-month-hd { background:#e8f4f8; color:var(--primary); padding:6px 12px; border-radius:7px; margin-bottom:4px; font-weight:700; font-size:13px; }
+  .sub-day-hd   { background:var(--surface2); color:var(--text); padding:5px 12px; border-radius:6px; margin-bottom:4px; font-size:12px; font-weight:600; }
+  .sub-fold-icon { margin-left:auto; transition:transform 0.2s; }
+  .collapsed > .sub-year-hd .sub-fold-icon,
+  .collapsed > .sub-month-hd .sub-fold-icon,
+  .collapsed > .sub-day-hd .sub-fold-icon { transform:rotate(-90deg); }
+  .sub-year-body,.sub-month-body,.sub-day-body { transition:none; }
+  .sub-year-block.collapsed > .sub-year-body,
+  .sub-month-block.collapsed > .sub-month-body,
+  .sub-day-block.collapsed > .sub-day-body { display:none; }
+  .sub-year-block { margin-bottom:10px; }
+  .sub-month-block { margin-left:10px; margin-bottom:6px; }
+  .sub-day-block { margin-left:10px; margin-bottom:4px; }
+  .sub-day-body { margin-left:4px; }
   /* ── MONTH PICKER ── */
   .month-export-bar { display:flex; gap:8px; align-items:center; padding:10px 0; flex-wrap:wrap; }
   .month-export-bar select { border:1.5px solid var(--border); border-radius:7px; padding:6px 10px; font-size:13px; font-family:inherit; }
@@ -4337,21 +4354,77 @@ function closeSubmissions() { document.getElementById('submissionsModal').style.
 function renderSubmissions() {
   const body = document.getElementById('submissionsBody');
   if(!submissionsDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">제출된 정산서가 없습니다.</p>'; return; }
-  const sorted = [...submissionsDB].sort((a,b)=>a.settleCode.localeCompare(b.settleCode));
-  body.innerHTML = sorted.map(s=>`
-    <div class="sub-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span></div>
-          <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
-          <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-          <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>
-          <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>
-        </div>
+
+  // 날짜 내림차순 정렬
+  const sorted = [...submissionsDB].sort((a,b)=>(b.submittedAt||b.settleCode).localeCompare(a.submittedAt||a.settleCode));
+
+  // 연 > 월 > 일 그룹핑
+  const tree = {}; // { '2026': { '06': { '26': [sub,...] } } }
+  sorted.forEach(s => {
+    const dt = s.submittedAt ? new Date(s.submittedAt) : null;
+    const y = dt ? String(dt.getFullYear()) : ('20'+s.settleCode.slice(0,2));
+    const m = dt ? String(dt.getMonth()+1).padStart(2,'0') : s.settleCode.slice(2,4);
+    const d = dt ? String(dt.getDate()).padStart(2,'0') : s.settleCode.slice(4,6);
+    if(!tree[y]) tree[y]={};
+    if(!tree[y][m]) tree[y][m]={};
+    if(!tree[y][m][d]) tree[y][m][d]=[];
+    tree[y][m][d].push(s);
+  });
+
+  const MONTH_KO = ['','1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  let html = '';
+  Object.keys(tree).sort((a,b)=>b-a).forEach(y => {
+    const newInYear = Object.values(tree[y]).flatMap(mv=>Object.values(mv).flat()).some(s=>s.status==='new');
+    html += `<div class="sub-year-block">
+      <div class="sub-year-hd" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span>${y}년</span>
+        ${newInYear?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
+        <span class="sub-fold-icon">▾</span>
       </div>
-    </div>`).join('');
+      <div class="sub-year-body">`;
+    Object.keys(tree[y]).sort((a,b)=>b-a).forEach(m => {
+      const newInMonth = Object.values(tree[y][m]).flat().some(s=>s.status==='new');
+      html += `<div class="sub-month-block">
+        <div class="sub-month-hd" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span>${MONTH_KO[parseInt(m)]}</span>
+          ${newInMonth?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
+          <span class="sub-fold-icon">▾</span>
+        </div>
+        <div class="sub-month-body">`;
+      Object.keys(tree[y][m]).sort((a,b)=>b-a).forEach(d => {
+        const dayItems = tree[y][m][d];
+        const newInDay = dayItems.some(s=>s.status==='new');
+        html += `<div class="sub-day-block">
+          <div class="sub-day-hd" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>${y}-${m}-${d}</span>
+            <span style="color:#888;font-size:11px;">${dayItems.length}건</span>
+            ${newInDay?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
+            <span class="sub-fold-icon">▾</span>
+          </div>
+          <div class="sub-day-body">`;
+        dayItems.forEach(s => {
+          html += `<div class="sub-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span></div>
+                <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
+                <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+                <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>
+                <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>
+              </div>
+            </div>
+          </div>`;
+        });
+        html += `</div></div>`; // sub-day-body / sub-day-block
+      });
+      html += `</div></div>`; // sub-month-body / sub-month-block
+    });
+    html += `</div></div>`; // sub-year-body / sub-year-block
+  });
+  body.innerHTML = html;
 }
 
 async function deleteSubData(id) {
