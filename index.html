@@ -3520,19 +3520,23 @@ function loadData() {
   try { calcSettle(); calcSettleAdmin(); } catch(e) {}
   try { updateAdvancePay(); } catch(e) {}
 
-  // ⑦ 쇼핑 복원
+  // ⑦ 쇼핑 복원 — 저장된 체크박스 상태(fields._chk_*)를 우선 사용
   try {
     SHOP_KEYS.forEach(k => {
       const chk = document.getElementById('chk-' + k);
       if (!chk) return;
-      const hasRows = (state.shopping[k]||[]).some(r => r.sale && parseFloat(r.sale) !== 0);
-      const shouldShow = hasRows;
-      chk.checked = shouldShow;
-      if (shouldShow) {
-        const cat = document.getElementById('cat-' + k);
-        if (cat) cat.style.display = 'block';
-        renderShop(k);
+      const cat = document.getElementById('cat-' + k);
+      // fields에 명시적으로 저장된 체크 상태가 있으면 그것을 사용,
+      // 없으면(구버전 데이터) sale 유무로 추정
+      let shouldShow;
+      if (fields['_chk_' + k] !== undefined) {
+        shouldShow = !!fields['_chk_' + k];
+      } else {
+        shouldShow = (state.shopping[k]||[]).some(r => r.sale && parseFloat(r.sale) !== 0);
       }
+      chk.checked = shouldShow;
+      if (cat) cat.style.display = shouldShow ? 'block' : 'none';
+      if (shouldShow) renderShop(k);
     });
     updateShopCheckedLabels();
   } catch(e) {}
