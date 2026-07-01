@@ -1558,9 +1558,9 @@
         <div class="settle-section-sub">지출금</div>
         <div class="settle-grid4">
           <div class="settle-input-group"><label>행사 지출금 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="st-adm-exp1" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcSettleAdmin();saveData()"></div></div>
+          <div class="settle-display-group"><label>TC 정산금 (฿)</label><div class="settle-display" style="color:var(--danger);" id="st-adm-tc">฿ 0</div></div>
           <div class="settle-display-group"><label>가이드 정산금 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-guide">฿ 0</div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="st-adm-exp-total">฿ 0</div></div>
-          <div></div>
         </div>
         <div class="settle-section-sub">회사 정산 <span style="font-size:11px;color:#888;font-weight:400;margin-left:6px;">지상비 + 수익금 − 지출금 = 총 회사수익금</span></div>
         <div class="settle-grid4">
@@ -3091,7 +3091,8 @@ function calcSettleAdmin() {
   const optPct=pv('st-opt-pct')||50;
   const guidePay=daily+Math.round(netIncome*optPct/100);
   const admExp1=pv('st-adm-exp1');
-  const admExpTotal=admExp1+guidePay;
+  const admExpTotal=admExp1+tc+guidePay;
+  const _stTcEl=document.getElementById('st-adm-tc'); if(_stTcEl) _stTcEl.textContent='฿ '+fmtNum(Math.round(tc));
   document.getElementById('st-adm-guide').textContent='฿ '+fmtNum(Math.round(guidePay));
   document.getElementById('st-adm-exp-total').textContent='฿ '+fmtNum(Math.round(admExpTotal));
 
