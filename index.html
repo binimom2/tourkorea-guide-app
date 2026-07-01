@@ -3506,9 +3506,11 @@ function loadData() {
     });
     ['incentive','guarantee','settle'].forEach(method => {
       const chk = document.getElementById('chk-' + method);
-      if (chk && fields['_chk_settle_' + method] !== undefined) {
-        chk.checked = !!fields['_chk_settle_' + method];
-        if (chk.checked) toggleSettleMethod(method, true);
+      if (chk) {
+        const saved = fields['_chk_settle_' + method];
+        const isChecked = saved !== undefined ? !!saved : false;
+        chk.checked = isChecked;
+        toggleSettleMethod(method, isChecked);
       }
     });
     // 가이드 정산 비율 기본값 50% 보장
