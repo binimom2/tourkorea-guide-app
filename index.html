@@ -4533,24 +4533,24 @@ async function openSubData(id) {
   s.status = 'seen';
   await saveSubmissions();
 
+  // 공통: fullData를 내 localStorage 키에 임시 기록 → loadData()가 읽게 함
+  const myKey = LS_KEY_USER();
   if (currentRole === 'admin') {
-    // 어드민: 백업 불필요 — 열기 전 항상 깨끗하게 초기화
+    // 어드민: 백업 없음 (항상 빈 화면이 기준)
     window._viewBackupKey = undefined;
     window._viewBackupRaw = undefined;
   } else {
-    // 가이드/오거나이저: 현재 내 데이터를 백업 (단, 이미 열람 중이면 기존 백업 유지)
+    // 가이드/오거나이저: 이미 열람 중이 아닐 때만 백업 저장 (연속 열람 시 원본 보호)
     if (!window._viewingSubId) {
-      const myKey = LS_KEY_USER();
       window._viewBackupKey = myKey;
       window._viewBackupRaw = localStorage.getItem(myKey);
     }
-    const myKey = LS_KEY_USER();
-    const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
-    localStorage.setItem(myKey, JSON.stringify(tempData));
   }
+  // fullData를 localStorage에 써서 loadData()가 읽게 함
+  const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
+  localStorage.setItem(myKey, JSON.stringify(tempData));
 
   // 제출현황 모달 닫기 (auto-restore 방지용 플래그 임시 해제)
-  const prevId = window._viewingSubId;
   window._viewingSubId = null;
   document.getElementById('submissionsModal').style.display='none';
 
@@ -4558,20 +4558,7 @@ async function openSubData(id) {
   const oldBanner = document.getElementById('viewBanner');
   if (oldBanner) oldBanner.remove();
 
-  // 어드민은 state에 직접 로드 (localStorage 경유 없이)
-  if (currentRole === 'admin') {
-    const fd = s.fullData;
-    state = JSON.parse(JSON.stringify({
-      info: fd.info || {},
-      days: fd.days || [],
-      expenses: fd.expenses || [],
-      options: fd.options || [],
-      shopping: fd.shopping || [],
-      optionCurrency: fd.optionCurrency || 'THB'
-    }));
-  } else {
-    loadData();
-  }
+  loadData();
   renderAll();
   rebuildTabBar();
   switchTab('main');
