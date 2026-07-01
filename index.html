@@ -3510,6 +3510,9 @@ function loadData() {
         if (chk.checked) toggleSettleMethod(method, true);
       }
     });
+    // 가이드 정산 비율 기본값 50% 보장
+    const pctEl = document.getElementById('inc-guide-pct');
+    if (pctEl && (pctEl.value === '' || pctEl.value === '0')) pctEl.value = '50';
   } catch(e) {}
 
   // ⑥ 계산 갱신
