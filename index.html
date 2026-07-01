@@ -1455,35 +1455,32 @@
           <div class="settle-input-group"><label>지상비 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="gu-land3" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcGuaranteeAdmin();saveData()"></div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-land-total">฿ 0</div></div>
         </div>
-        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;">
-          <!-- 수익금 (3열) -->
-          <div style="flex:3;min-width:0;">
-            <div class="settle-section-sub">수익금</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
-              <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="gu-adm-opt">฿ 0</div></div>
-              <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="gu-adm-shop">฿ 0</div></div>
-              <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-adm-income-total">฿ 0</div></div>
-            </div>
-          </div>
-          <!-- 행사지출금 (1열) -->
-          <div style="flex:1;min-width:0;">
-            <div class="settle-section-sub">행사지출금</div>
-            <div class="settle-input-group"><label>합계 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="gu-adm-exp1" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcGuaranteeAdmin();saveData()"></div></div>
-          </div>
-        </div>
-        <!-- TC 없음 - 계산용 숨김 -->
-        <div style="display:none;"><span id="gu-adm-exp-total">฿ 0</span><input type="hidden" id="gu-adm-exp2" value="0"></div>
-        <!-- 숨김 처리된 계산용 요소 -->
-        <div style="display:none;">
-          <div id="gu-adm-exp-display"></div>
-          <div id="gu-adm-exp3-display"></div>
-        </div>
-        <div class="settle-section-sub">회사 정산</div>
+        <div class="settle-section-sub">수익금</div>
         <div class="settle-grid4">
-          <div class="settle-display-group"><label>회사 정산금 (฿)</label><div class="settle-display" id="gu-adm-company">฿ 0</div></div>
+          <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="gu-adm-opt">฿ 0</div></div>
+          <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="gu-adm-shop">฿ 0</div></div>
           <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="gu-adm-kb">฿ 0</div></div>
-          <div class="settle-display-group"><label>지상비 총액 (฿)</label><div class="settle-display" id="gu-adm-land-total">฿ 0</div></div>
-          <div class="settle-display-group"><label>총 회사 수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="gu-adm-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-adm-income-total">฿ 0</div></div>
+        </div>
+        <div class="settle-section-sub">지출금</div>
+        <div class="settle-grid4">
+          <div class="settle-input-group"><label>행사 지출금 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="gu-adm-exp1" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcGuaranteeAdmin();saveData()"></div></div>
+          <div class="settle-display-group"><label>가이드 정산금 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-adm-guide-pay">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="gu-adm-exp-total-new">฿ 0</div></div>
+          <div></div>
+        </div>
+        <div class="settle-section-sub">회사 정산 <span style="font-size:11px;color:#888;font-weight:400;margin-left:6px;">지상비 + 수익금 − 지출금 = 총 회사수익금</span></div>
+        <div class="settle-grid4">
+          <div class="settle-display-group"><label>지상비 총액 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-final-land">฿ 0</div></div>
+          <div class="settle-display-group"><label>수익금 총액 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-final-income">฿ 0</div></div>
+          <div class="settle-display-group"><label>지출금 총액 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="gu-final-exp">฿ 0</div></div>
+          <div class="settle-display-group"><label>총 회사수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;font-weight:800;font-size:14px;" id="gu-adm-total">฿ 0</div></div>
+        </div>
+        <!-- 계산용 숨김 -->
+        <div style="display:none;">
+          <div id="gu-adm-company"></div><div id="gu-adm-land-total"></div>
+          <div id="gu-adm-exp-total"></div><input type="hidden" id="gu-adm-exp2" value="0">
+          <div id="gu-adm-exp-display"></div><div id="gu-adm-exp3-display"></div>
         </div>
         <div class="settle-section-sub">환차손</div>
         <div class="settle-grid5">
@@ -3007,22 +3004,25 @@ function calcGuaranteeAdmin() {
   document.getElementById('gu-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
   document.getElementById('gu-adm-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
 
-  // 옵션+쇼핑 수익금
-  const opt=getOptProfit(rUSD,rKRW);
-  const shop=getShopProfit();
-  const incomeTotal=opt+shop;
+  // 옵션+쇼핑+KB 수익금
+  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit(), kb=getKBTotal();
+  const incomeTotal=opt+shop+kb;
   document.getElementById('gu-adm-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('gu-adm-shop').textContent='฿ '+fmtNum(Math.round(shop));
+  document.getElementById('gu-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
   document.getElementById('gu-adm-income-total').textContent='฿ '+fmtNum(Math.round(incomeTotal));
   document.getElementById('gu-adm-income-total').style.color='var(--primary)';
-  document.getElementById('gu-adm-exp-display').textContent='฿ '+fmtNum(Math.round(incomeTotal));
 
-  // 행사지출금
-  const admExp1=pv('gu-adm-exp1'), admExp2=pv('gu-adm-exp2');
-  const admExpTotal=admExp1+admExp2;
-  document.getElementById('gu-adm-exp-total').textContent='฿ '+fmtNum(Math.round(admExpTotal));
-  document.getElementById('gu-adm-exp3-display').textContent='฿ '+fmtNum(Math.round(admExpTotal));
+  // 지출금: 행사지출금 + 가이드정산금
+  const admExp1=pv('gu-adm-exp1');
+  const pct=pv('gu-guide-pct')||55;
+  const netForGuide=(opt+shop)-(pv('gu-amount')*(parseInt(document.getElementById('paxAdult')?.value||0)+parseInt(document.getElementById('paxChild')?.value||0)));
+  const guidePay=netForGuide<=0?0:Math.round(netForGuide*pct/100);
+  const expTotal=admExp1+guidePay;
+  const _gpEl=document.getElementById('gu-adm-guide-pay'); if(_gpEl) _gpEl.textContent='฿ '+fmtNum(Math.round(guidePay));
+  const _etEl=document.getElementById('gu-adm-exp-total-new'); if(_etEl) _etEl.textContent='฿ '+fmtNum(Math.round(expTotal));
 
+  // 환차손
   const exlossOptKRW=calcExLoss('KRW',rKRW,r2KRW);
   const exlossOptUSD=calcExLoss('USD',rUSD,r2USD);
   const exlossLand1=l1*(r2KRW-rKRW), exlossLand2=l2*(r2USD-rUSD);
@@ -3033,15 +3033,13 @@ function calcGuaranteeAdmin() {
   document.getElementById('gu-adm-exloss-land2').textContent='฿ '+fmtNum(Math.round(Math.abs(exlossLand2)));
   document.getElementById('gu-adm-exloss-total').textContent='฿ '+fmtNum(Math.round(Math.abs(exlossTotal)));
 
-  const pct=pv('gu-guide-pct')||55;
-  const net=incomeTotal-(pv('gu-amount')*(parseInt(document.getElementById('paxAdult')?.value||0)+parseInt(document.getElementById('paxChild')?.value||0)));
-  const guidePay=net<=0?0:Math.round(net*pct/100);
-  const compSettle=net<=0?net:Math.round(net*(100-pct)/100);
-  const kb=getKBTotal();
-  document.getElementById('gu-adm-company').textContent='฿ '+fmtNum(Math.round(Math.abs(compSettle)));
-  document.getElementById('gu-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
+  // 회사 정산: 지상비 + 수익금 - 지출금 = 총회사수익금
+  const compTotal=landTotal+incomeTotal-expTotal;
+  const _fl=document.getElementById('gu-final-land'); if(_fl) _fl.textContent='฿ '+fmtNum(Math.round(landTotal));
+  const _fi=document.getElementById('gu-final-income'); if(_fi) _fi.textContent='฿ '+fmtNum(Math.round(incomeTotal));
+  const _fe=document.getElementById('gu-final-exp'); if(_fe){ _fe.textContent='฿ '+fmtNum(Math.round(expTotal)); _fe.style.color='var(--danger)'; }
   const guAdmTotalEl=document.getElementById('gu-adm-total');
-  const guAdmTotalVal=Math.round(landTotal+incomeTotal-admExpTotal-guidePay+kb);
+  const guAdmTotalVal=Math.round(compTotal);
   guAdmTotalEl.textContent=(guAdmTotalVal<0?'-฿ ':'฿ ')+fmtNum(Math.abs(guAdmTotalVal));
   guAdmTotalEl.style.color=guAdmTotalVal<0?'var(--danger)':'var(--primary)';
 }
