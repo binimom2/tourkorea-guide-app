@@ -4608,9 +4608,17 @@ function restoreMyData() {
   if (banner) banner.remove();
   window._viewingSubId = null;
   if (currentRole === 'admin') {
-    // 어드민은 백업 없음 — 빈 상태로 초기화
+    // 어드민: 임시 localStorage 삭제 + 모든 state 초기화
+    localStorage.removeItem(LS_KEY_USER());
     window._viewBackupKey = undefined;
     window._viewBackupRaw = undefined;
+    // state.info 초기화
+    Object.keys(state.info).forEach(k => { state.info[k] = ''; });
+    // DOM 기본정보 필드 초기화
+    ['guideName','agencyName','localGuide','tourStart','tourNights',
+     'paxAdult','paxChild','paxTC','advancePay','productName',
+     'shopCount','settleSeq','rateUSD','rateKRW','inc-rateUSD','inc-rateKRW'
+    ].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
     initData();
     renderAll();
     rebuildTabBar();
