@@ -1823,13 +1823,15 @@ function _completeLogin() {
   // 비동기 데이터 로드
   const userDataKey = 'guide_data_' + currentUser.username;
   const _loginSeq = ++_loginLoadSeq;  // 리셋이 일어나면 이 번호는 무효화됨
+  // 어드민은 빈 화면으로 시작 — Supabase 개인 데이터 로드 없이 제출현황만 로드
+  const supabaseLoad = (currentRole === 'admin') ? Promise.resolve(null) : loadFromSupabase(userDataKey);
   Promise.all([
-    loadFromSupabase(userDataKey),
+    supabaseLoad,
     loadAppSettings(),
     loadSubmissions(),
   ]).then(([sbData])=>{
     if (_loginSeq !== _loginLoadSeq) return;  // 리셋으로 무효화된 로드 → 무시
-    if (sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
+    if (currentRole !== 'admin' && sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
     // 잘못된 마이그레이션 복구: ['메인','1일','2일','3일']이면 원래 기본값으로 되돌림
     const WRONG_CATS = ['메인','1일','2일','3일'];
     const DEFAULT_CATS = ['호텔비','차량비','관광지','식당','골프장','기타'];
@@ -1840,8 +1842,9 @@ function _completeLogin() {
     // vehicles 키 제거 (미사용)
     if ('vehicles' in appSettings) { delete appSettings.vehicles; saveAppSettings(); }
 
-    const restored = loadData();
-    if (!restored) { initData(); }
+    // 어드민은 항상 빈 화면
+    if (currentRole === 'admin') { initData(); }
+    else { const restored = loadData(); if (!restored) { initData(); } }
     // appSettings 로드 후 항상 재렌더링 (구분 드롭다운 정확히 반영)
     renderAll(); calcPaxTotal(); syncRate2FromBase();
     rebuildTabBar(); switchTab('main');
@@ -4374,8 +4377,8 @@ async function openSubmissions() {
 }
 function closeSubmissions() {
   document.getElementById('submissionsModal').style.display='none';
-  // 열람 중이었으면 모달 닫을 때 자동으로 내 데이터로 복귀
-  if (window._viewingSubId) restoreMyData();
+  // 어드민 외: 모달 닫을 때 열람 중이면 자동 복귀
+  if (window._viewingSubId && currentRole !== 'admin') restoreMyData();
 }
 
 function renderSubmissions() {
@@ -4524,30 +4527,51 @@ async function openSubData(id) {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
-  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.\n현재 내 작업 데이터는 유지됩니다.`)) return;
+  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.`)) return;
   showToast('⏳ 불러오는 중...');
 
   s.status = 'seen';
   await saveSubmissions();
 
-  // 현재 내 데이터를 백업 키에 저장
-  const myKey = LS_KEY_USER();
-  const myBackup = localStorage.getItem(myKey);
-  window._viewBackupKey   = myKey;
-  window._viewBackupRaw   = myBackup;
+  if (currentRole === 'admin') {
+    // 어드민: 백업 불필요 — 열기 전 항상 깨끗하게 초기화
+    window._viewBackupKey = undefined;
+    window._viewBackupRaw = undefined;
+  } else {
+    // 가이드/오거나이저: 현재 내 데이터를 백업 (단, 이미 열람 중이면 기존 백업 유지)
+    if (!window._viewingSubId) {
+      const myKey = LS_KEY_USER();
+      window._viewBackupKey = myKey;
+      window._viewBackupRaw = localStorage.getItem(myKey);
+    }
+    const myKey = LS_KEY_USER();
+    const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
+    localStorage.setItem(myKey, JSON.stringify(tempData));
+  }
 
-  // 제출 데이터를 임시로 내 키에 써서 loadData()가 읽게 함
-  const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
-  localStorage.setItem(myKey, JSON.stringify(tempData));
-
-  closeSubmissions();
+  // 제출현황 모달 닫기 (auto-restore 방지용 플래그 임시 해제)
+  const prevId = window._viewingSubId;
+  window._viewingSubId = null;
+  document.getElementById('submissionsModal').style.display='none';
 
   // 기존 배너 제거
   const oldBanner = document.getElementById('viewBanner');
   if (oldBanner) oldBanner.remove();
 
-  // loadData()로 UI 복원 (검증된 함수)
-  loadData();
+  // 어드민은 state에 직접 로드 (localStorage 경유 없이)
+  if (currentRole === 'admin') {
+    const fd = s.fullData;
+    state = JSON.parse(JSON.stringify({
+      info: fd.info || {},
+      days: fd.days || [],
+      expenses: fd.expenses || [],
+      options: fd.options || [],
+      shopping: fd.shopping || [],
+      optionCurrency: fd.optionCurrency || 'THB'
+    }));
+  } else {
+    loadData();
+  }
   renderAll();
   rebuildTabBar();
   switchTab('main');
@@ -4559,11 +4583,10 @@ async function openSubData(id) {
   const banner = document.createElement('div');
   banner.id = 'viewBanner';
   banner.style.cssText = 'background:#e53935;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;margin-bottom:8px;border-radius:8px;';
-  const saveBtn = currentRole==='admin'
-    ? `<button onclick="saveSubEdits()" style="background:#fff;color:#1a6b8a;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;margin-right:6px;">💾 수정저장</button>`
-    : '';
+  const saveBtn = `<button onclick="saveSubEdits()" style="background:#fff;color:#1a6b8a;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;margin-right:6px;">💾 수정저장</button>`;
+  const closeLabel = currentRole === 'admin' ? '✕ 닫기' : '✕ 내 데이터로 복귀';
   banner.innerHTML = `📂 열람 중: [${s.settleCode}] ${s.guideName} &nbsp;${saveBtn}
-    <button onclick="restoreMyData()" style="background:#fff;color:#e53935;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;">✕ 내 데이터로 복귀</button>`;
+    <button onclick="restoreMyData()" style="background:#fff;color:#e53935;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;">${closeLabel}</button>`;
   document.querySelector('.content').prepend(banner);
 
   showToast(`📂 [${s.settleCode}] ${s.guideName} 열람 중`);
@@ -4596,22 +4619,33 @@ async function saveSubEdits() {
 function restoreMyData() {
   const banner = document.getElementById('viewBanner');
   if (banner) banner.remove();
-  window._viewingSubId = null;  // 열람 상태 해제
-  // 백업 데이터를 복원
-  if (window._viewBackupKey !== undefined) {
-    if (window._viewBackupRaw) {
-      localStorage.setItem(window._viewBackupKey, window._viewBackupRaw);
-    } else {
-      localStorage.removeItem(window._viewBackupKey);
-    }
+  window._viewingSubId = null;
+  if (currentRole === 'admin') {
+    // 어드민은 백업 없음 — 빈 상태로 초기화
     window._viewBackupKey = undefined;
     window._viewBackupRaw = undefined;
+    initData();
+    renderAll();
+    rebuildTabBar();
+    switchTab('main');
+    showToast('✅ 닫았습니다.');
+  } else {
+    // 가이드/오거나이저: 백업 복원
+    if (window._viewBackupKey !== undefined) {
+      if (window._viewBackupRaw) {
+        localStorage.setItem(window._viewBackupKey, window._viewBackupRaw);
+      } else {
+        localStorage.removeItem(window._viewBackupKey);
+      }
+      window._viewBackupKey = undefined;
+      window._viewBackupRaw = undefined;
+    }
+    loadData();
+    renderAll();
+    rebuildTabBar();
+    switchTab('main');
+    showToast('✅ 내 데이터로 복귀했습니다.');
   }
-  loadData();
-  renderAll();
-  rebuildTabBar();
-  switchTab('main');
-  showToast('✅ 내 데이터로 복귀했습니다.');
 }
 
 // ══════════════════════════════════════════════════════
