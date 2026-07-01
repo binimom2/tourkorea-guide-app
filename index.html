@@ -1552,32 +1552,32 @@
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-land-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">수익금</div>
-        <div class="settle-grid3">
+        <div class="settle-grid4">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="st-adm-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="st-adm-shop">฿ 0</div></div>
+          <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="st-adm-kb">฿ 0</div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-income-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">지출금</div>
-        <div class="settle-grid3">
+        <div class="settle-grid4">
           <div class="settle-input-group"><label>행사 지출금 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="st-adm-exp1" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" oninput="fmtSettleInput(this);calcSettleAdmin();saveData()"></div></div>
           <div class="settle-display-group"><label>가이드 정산금 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-guide">฿ 0</div></div>
-          <div class="settle-display-group"><label>지출금 합계 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="st-adm-exp-total">฿ 0</div></div>
+          <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="st-adm-exp-total">฿ 0</div></div>
+          <div></div>
+        </div>
+        <div class="settle-section-sub">회사 정산 <span style="font-size:11px;color:#888;font-weight:400;margin-left:6px;">지상비 + 수익금 − 지출금 = 총 회사수익금</span></div>
+        <div class="settle-grid4">
+          <div class="settle-display-group"><label>지상비 총액 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-final-land">฿ 0</div></div>
+          <div class="settle-display-group"><label>수익금 총액 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-final-income">฿ 0</div></div>
+          <div class="settle-display-group"><label>지출금 총액 (฿)</label><div class="settle-display" style="color:var(--danger);font-weight:800;" id="st-final-exp">฿ 0</div></div>
+          <div class="settle-display-group"><label>총 회사수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;font-weight:800;font-size:14px;" id="st-adm-total">฿ 0</div></div>
         </div>
         <!-- 계산용 숨김 -->
         <div style="display:none;">
-          <div id="st-adm-company-net"></div>
-          <div id="gu-adm-company"></div>
-          <div id="st-adm-exp-display"></div>
-          <div id="st-adm-exp3-display"></div>
+          <div id="st-adm-company-net"></div><div id="st-adm-company-net2"></div>
+          <div id="gu-adm-company"></div><div id="st-adm-exp-display"></div>
+          <div id="st-adm-exp3-display"></div><div id="st-adm-land-total"></div>
         </div>
-        <div class="settle-section-sub">회사 정산</div>
-        <div class="settle-grid3">
-          <div class="settle-display-group"><label>회사 정산금 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-company-net2">฿ 0</div></div>
-          <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="st-adm-kb">฿ 0</div></div>
-          <div class="settle-display-group"><label>총 회사 수익금 (฿)</label><div class="settle-display" style="background:#fff0f3;color:var(--danger);font-weight:800;font-size:14px;" id="st-adm-total">฿ 0</div></div>
-        </div>
-        <!-- 계산용 숨김 -->
-        <div style="display:none;"><div id="st-adm-land-total"></div></div>
         <div class="settle-section-sub">환차손</div>
         <div class="settle-grid5">
           <div class="settle-display-group"><label>옵션 (₩)</label><div class="settle-display" id="st-adm-exloss-optkrw">฿ 0</div></div>
@@ -3076,14 +3076,15 @@ function calcSettleAdmin() {
   document.getElementById('st-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
   document.getElementById('st-adm-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
 
-  // 옵션+쇼핑 수익금
-  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit();
-  const incomeTotal=opt+shop;
+  // 옵션+쇼핑+KB 수익금
+  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit(), kb=getKBTotal();
+  const incomeTotal=opt+shop+kb;
   document.getElementById('st-adm-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('st-adm-shop').textContent='฿ '+fmtNum(Math.round(shop));
+  document.getElementById('st-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
   document.getElementById('st-adm-income-total').textContent='฿ '+fmtNum(Math.round(incomeTotal));
   document.getElementById('st-adm-income-total').style.color='var(--primary)';
-  document.getElementById('st-adm-exp-display').textContent='฿ '+fmtNum(Math.round(incomeTotal));
+  const _expDisp=document.getElementById('st-adm-exp-display'); if(_expDisp) _expDisp.textContent='฿ '+fmtNum(Math.round(incomeTotal));
 
   // 지출금 계산
   const daily=pv('st-daily');
@@ -3093,16 +3094,10 @@ function calcSettleAdmin() {
   const guidePay=daily+Math.round(netIncome*optPct/100);
   const admExp1=pv('st-adm-exp1');
   const admExpTotal=admExp1+guidePay;
-  const companyNet=landTotal+incomeTotal-admExpTotal;
   document.getElementById('st-adm-guide').textContent='฿ '+fmtNum(Math.round(guidePay));
   document.getElementById('st-adm-exp-total').textContent='฿ '+fmtNum(Math.round(admExpTotal));
-  const companyNetVal=Math.round(companyNet);
-  ['st-adm-company-net','st-adm-company-net2'].forEach(id=>{
-    const el=document.getElementById(id); if(!el) return;
-    el.textContent=(companyNetVal<0?'-฿ ':'฿ ')+fmtNum(Math.abs(companyNetVal));
-    el.style.color=companyNetVal<0?'var(--danger)':'var(--primary)';
-  });
 
+  // 환차손
   const exlossOptKRW=calcExLoss('KRW',rKRW,r2KRW);
   const exlossOptUSD=calcExLoss('USD',rUSD,r2USD);
   const exlossLand1=l1*(r2KRW-rKRW), exlossLand2=l2*(r2USD-rUSD);
@@ -3113,10 +3108,12 @@ function calcSettleAdmin() {
   document.getElementById('st-adm-exloss-land2').textContent='฿ '+fmtNum(Math.round(Math.abs(exlossLand2)));
   document.getElementById('st-adm-exloss-total').textContent='฿ '+fmtNum(Math.round(Math.abs(exlossTotal)));
 
-  const kb=getKBTotal();
-  // 총 회사 수익금: 회사정산금 + KB
-  const compTotal=companyNet+kb;
-  document.getElementById('st-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
+  // 회사 정산: 지상비 + 수익금 - 지출금 = 총회사수익금
+  const compTotal=landTotal+incomeTotal-admExpTotal;
+  const _fl=document.getElementById('st-final-land'); if(_fl) _fl.textContent='฿ '+fmtNum(Math.round(landTotal));
+  const _fi=document.getElementById('st-final-income'); if(_fi) _fi.textContent='฿ '+fmtNum(Math.round(incomeTotal));
+  const _fe=document.getElementById('st-final-exp');
+  if(_fe){ _fe.textContent='฿ '+fmtNum(Math.round(admExpTotal)); _fe.style.color='var(--danger)'; }
   const stAdmTotalEl=document.getElementById('st-adm-total');
   const stAdmTotalVal=Math.round(compTotal);
   stAdmTotalEl.textContent=(stAdmTotalVal<0?'-฿ ':'฿ ')+fmtNum(Math.abs(stAdmTotalVal));
