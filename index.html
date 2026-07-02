@@ -1793,9 +1793,9 @@ async function doLogin() {
       _completeLogin(); return;
     }
 
-    // 가이드는 이름으로, 나머지는 아이디로 로그인
+    // 가이드는 이름으로, 나머지는 아이디로 로그인 (아이디 대소문자 무시)
     const found = accounts.find(a =>
-      (a.role === 'guide' ? (a.name === id) : (a.id === id)) && a.pw === pw
+      (a.role === 'guide' ? (a.name === id) : (a.id.toLowerCase() === id.toLowerCase())) && a.pw === pw
     );
 
     if (found) {
