@@ -1804,11 +1804,17 @@ async function doLogin() {
       _completeLogin(); return;
     }
 
-    if (accounts.length === 0) {
-      err.textContent = '⚠️ 계정 로드 실패 - 새로고침 후 재시도';
-    } else {
-      const ids = accounts.filter(a=>a.role!=='guide').map(a=>a.id).join(', ');
-      err.textContent = `로그인 실패. 입력ID: "${id}" / 등록계정: [${ids}]`;
+    {
+      const nonGuide = accounts.filter(a=>a.role!=='guide');
+      const matched = nonGuide.find(a=>a.id.toLowerCase()===id.toLowerCase());
+      if (accounts.length === 0) {
+        err.textContent = `[v2] 계정없음 - Supabase오류`;
+      } else if (!matched) {
+        const ids = nonGuide.map(a=>a.id).join(',');
+        err.textContent = `[v2] ID불일치: 입력="${id}" 목록=[${ids}]`;
+      } else {
+        err.textContent = `[v2] PW불일치: 입력="${pw}" 저장="${matched.pw}"`;
+      }
     }
     err.style.display = 'block';
     document.getElementById('loginPw').value = '';
