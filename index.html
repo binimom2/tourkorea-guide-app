@@ -1805,9 +1805,10 @@ async function doLogin() {
     }
 
     if (accounts.length === 0) {
-      err.textContent = '⚠️ 계정 로드 실패 (계정수:0) - 네트워크 확인 후 새로고침';
+      err.textContent = '⚠️ 계정 로드 실패 - 새로고침 후 재시도';
     } else {
-      err.textContent = `아이디 또는 비밀번호가 올바르지 않습니다. (계정수:${accounts.length})`;
+      const ids = accounts.filter(a=>a.role!=='guide').map(a=>a.id).join(', ');
+      err.textContent = `로그인 실패. 입력ID: "${id}" / 등록계정: [${ids}]`;
     }
     err.style.display = 'block';
     document.getElementById('loginPw').value = '';
