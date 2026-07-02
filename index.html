@@ -1805,9 +1805,9 @@ async function doLogin() {
     }
 
     if (accounts.length === 0) {
-      err.textContent = '네트워크 오류. 잠시 후 다시 시도해주세요.';
+      err.textContent = '⚠️ 계정 로드 실패 (계정수:0) - 네트워크 확인 후 새로고침';
     } else {
-      err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+      err.textContent = `아이디 또는 비밀번호가 올바르지 않습니다. (계정수:${accounts.length})`;
     }
     err.style.display = 'block';
     document.getElementById('loginPw').value = '';
