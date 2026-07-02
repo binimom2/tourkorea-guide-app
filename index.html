@@ -846,7 +846,7 @@
     </div>
     <div class="login-field">
       <label>아이디</label>
-      <input type="text" id="loginId" placeholder="아이디 (가이드는 이름 입력)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="text" id="loginId" placeholder="아이디 (가이드는 이름 입력)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-field">
       <label>비밀번호</label>
@@ -1783,20 +1783,20 @@ async function doLogin() {
   if (btn) { btn.textContent = '로그인 중...'; btn.disabled = true; }
 
   try {
-    // Supabase 동기화 (최대 2회 시도)
-    await syncAccountsFromSupabase();
-    let accounts = getAccounts();
-    // 계정 목록이 비어있으면 1회 재시도
-    if (accounts.length === 0) {
-      await syncAccountsFromSupabase();
-      accounts = getAccounts();
-    }
-
     if (id === ADMIN_ID && pw === getAdminPw()) {
       currentUser = { id, username: id, name:'관리자', role:'admin' };
       currentRole = 'admin';
       _completeLogin(); return;
     }
+
+    // Supabase 직접 조회 (localStorage 우회)
+    let accounts = [];
+    try {
+      const { data: row } = await sb.from('guide_data').select('data').eq('data_key', ACC_KEY).single();
+      if (row && Array.isArray(row.data)) accounts = row.data;
+    } catch(e) {}
+    // Supabase 실패 시 localStorage 폴백
+    if (accounts.length === 0) accounts = getAccounts();
 
     // 가이드는 이름으로, 나머지는 아이디로 로그인 (아이디 대소문자 무시)
     const found = accounts.find(a =>
@@ -1804,6 +1804,7 @@ async function doLogin() {
     );
 
     if (found) {
+      localStorage.setItem(ACC_KEY, JSON.stringify(accounts));
       currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: found.role };
       currentRole = found.role;
       _completeLogin(); return;
