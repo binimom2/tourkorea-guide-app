@@ -1773,31 +1773,48 @@ async function doLogin() {
   const id = (document.getElementById('loginId').value||'').trim();
   const pw = (document.getElementById('loginPw').value||'').trim();
   const err = document.getElementById('loginError');
+  const btn = document.querySelector('.login-btn');
   err.style.display = 'none';
+  if (btn) { btn.textContent = '로그인 중...'; btn.disabled = true; }
 
-  // 어드민 체크 (Supabase 동기화 후)
-  await syncAccountsFromSupabase();
+  try {
+    // Supabase 동기화 (최대 2회 시도)
+    await syncAccountsFromSupabase();
+    let accounts = getAccounts();
+    // 계정 목록이 비어있으면 1회 재시도
+    if (accounts.length === 0) {
+      await syncAccountsFromSupabase();
+      accounts = getAccounts();
+    }
 
-  if (id === ADMIN_ID && pw === getAdminPw()) {
-    currentUser = { id, username: id, name:'관리자', role:'admin' };
-    currentRole = 'admin';
-    _completeLogin(); return;
+    if (id === ADMIN_ID && pw === getAdminPw()) {
+      currentUser = { id, username: id, name:'관리자', role:'admin' };
+      currentRole = 'admin';
+      _completeLogin(); return;
+    }
+
+    // 가이드는 이름으로, 나머지는 아이디로 로그인
+    const found = accounts.find(a =>
+      (a.role === 'guide' ? (a.name === id) : (a.id === id)) && a.pw === pw
+    );
+
+    if (found) {
+      currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: found.role };
+      currentRole = found.role;
+      _completeLogin(); return;
+    }
+
+    if (accounts.length === 0) {
+      err.textContent = '네트워크 오류. 잠시 후 다시 시도해주세요.';
+    } else {
+      err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+    }
+    err.style.display = 'block';
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginPw').focus();
+  } finally {
+    if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
   }
-  const accounts = getAccounts();
-  // 가이드는 이름으로, 나머지는 아이디로 로그인
-  const found = accounts.find(a =>
-    (a.role === 'guide' ? (a.name === id) : (a.id === id)) && a.pw === pw
-  );
-
-  if (found) {
-    currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: found.role };
-    currentRole = found.role;
-    _completeLogin(); return;
-  }
-  err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
-  err.style.display = 'block';
-  document.getElementById('loginPw').value = '';
-  document.getElementById('loginPw').focus();
 }
 
 function _clearViewBanner() {
