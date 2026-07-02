@@ -1726,8 +1726,10 @@ function getAccounts() {
 async function saveAccounts(arr) {
   localStorage.setItem(ACC_KEY, JSON.stringify(arr));
   try {
-    await sb.from('guide_data').upsert({ data_key: ACC_KEY, data: arr, updated_at: new Date().toISOString() });
-  } catch(e) { console.warn('saveAccounts Supabase sync failed:', e); }
+    const res = await sb.from('guide_data').upsert({ data_key: ACC_KEY, data: arr, updated_at: new Date().toISOString() });
+    if (res.error) showToast('⚠️ Supabase 저장 실패: ' + res.error.message, true);
+    else showToast(`✅ 계정 저장 완료 (${arr.length}개, 모바일 적용됨)`);
+  } catch(e) { showToast('❌ Supabase 오류: ' + e.message, true); }
 }
 
 // Supabase에서 계정 동기화
