@@ -1725,7 +1725,9 @@ function getAccounts() {
 }
 async function saveAccounts(arr) {
   localStorage.setItem(ACC_KEY, JSON.stringify(arr));
-  await syncToSupabase(ACC_KEY, arr);
+  try {
+    await sb.from('guide_data').upsert({ data_key: ACC_KEY, data: arr, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('saveAccounts Supabase sync failed:', e); }
 }
 
 // Supabase에서 계정 동기화
@@ -4121,7 +4123,6 @@ async function openUserMgr() {
 function closeUserMgr() {
   document.getElementById('userMgrModal').style.display='none';
   document.getElementById('acc-id').value='';
-  document.getElementById('acc-name').value='';
   document.getElementById('acc-pw').value='';
   document.getElementById('acc-err').style.display='none';
 }
