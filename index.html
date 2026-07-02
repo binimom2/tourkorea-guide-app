@@ -853,7 +853,11 @@
       <input type="password" id="loginPw" placeholder="비밀번호 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">로그인</button>
-    <div class="login-error" id="loginError">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="login-error" id="loginError"></div>
+    <div style="text-align:center;margin-top:10px;">
+      <button onclick="testSupabase()" style="background:none;border:1px solid #ccc;border-radius:6px;padding:4px 10px;font-size:11px;color:#888;cursor:pointer;">🔍 연결 진단</button>
+      <span style="font-size:10px;color:#ccc;margin-left:8px;">v0702-4</span>
+    </div>
   </div>
 </div>
 
@@ -1774,6 +1778,20 @@ async function saveSubmissions() {
   await syncToSupabase(SUBS_KEY, submissionsDB);
 }
 
+async function testSupabase() {
+  const err = document.getElementById('loginError');
+  err.textContent = '🔍 Supabase 조회 중...';
+  err.style.display = 'block';
+  try {
+    const { data: row, error } = await sb.from('guide_data').select('data').eq('data_key', ACC_KEY).single();
+    if (error) { err.textContent = '❌ Supabase 오류: ' + error.message; return; }
+    if (!row || !Array.isArray(row.data)) { err.textContent = '⚠️ 계정 데이터 없음 (저장 안 됨)'; return; }
+    const ids = row.data.filter(a=>a.role!=='guide').map(a=>a.id).join(', ');
+    err.textContent = `✅ Supabase 정상 | 계정 ${row.data.length}개 | ID: [${ids}]`;
+  } catch(e) {
+    err.textContent = '❌ 연결 실패: ' + e.message;
+  }
+}
 async function doLogin() {
   const id = (document.getElementById('loginId').value||'').trim();
   const pw = (document.getElementById('loginPw').value||'').trim();
