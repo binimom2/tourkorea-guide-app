@@ -1633,6 +1633,7 @@
         </div>
         <div class="login-error" id="acc-err" style="margin-bottom:6px;"></div>
         <button onclick="addAccount()" style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">➕ 계정 추가</button>
+        <button onclick="forceSyncAccounts()" style="width:100%;background:#e67e22;color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;">☁️ Supabase 강제 동기화</button>
       </div>
     </div>
   </div>
@@ -4263,6 +4264,16 @@ function onAccRoleChange() {
     idEl.placeholder = '이름 입력 (로그인 시 이름 사용)';
   } else {
     idEl.placeholder = '아이디 입력';
+  }
+}
+
+async function forceSyncAccounts() {
+  const accounts = getAccounts();
+  try {
+    await sb.from('guide_data').upsert({ data_key: ACC_KEY, data: accounts, updated_at: new Date().toISOString() });
+    showToast(`✅ Supabase 동기화 완료 (계정 ${accounts.length}개)`);
+  } catch(e) {
+    showToast('❌ 동기화 실패: ' + e.message, true);
   }
 }
 
