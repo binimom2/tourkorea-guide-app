@@ -846,11 +846,11 @@
     </div>
     <div class="login-field">
       <label>아이디</label>
-      <input type="text" id="loginId" placeholder="아이디 (가이드는 이름 입력)" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="text" id="loginId" placeholder="아이디 (가이드는 이름 입력)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-field">
       <label>비밀번호</label>
-      <input type="password" id="loginPw" placeholder="비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="loginPw" placeholder="비밀번호 입력" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">로그인</button>
     <div class="login-error" id="loginError">아이디 또는 비밀번호가 올바르지 않습니다.</div>
