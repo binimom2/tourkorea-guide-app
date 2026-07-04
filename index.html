@@ -64,6 +64,7 @@
   .sub-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
   .sub-badge.new { background:#d1fae5; color:#065f46; }
   .sub-badge.seen { background:#e5e7eb; color:#6b7280; }
+  .sub-badge.settled { background:#dbeafe; color:#1e40af; }
   /* 연/월/일 계층 */
   .sub-year-hd,.sub-month-hd,.sub-day-hd { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
   .sub-year-hd  { background:var(--primary); color:#fff; padding:8px 14px; border-radius:8px; margin-bottom:6px; font-weight:700; font-size:14px; }
@@ -1592,7 +1593,7 @@
 
     <div id="bottomPrintBtns" style="display:flex;gap:8px;margin-bottom:10px;">
       <button class="btn-print" style="flex:1;" onclick="printGuide()">🖨 가이드 정산서 출력</button>
-      <button class="btn-print" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
+      <button class="btn-print admin-only" id="btnPrintAdmin" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
     </div>
   </div>
 
@@ -2138,7 +2139,7 @@ function rebuildTabBar() {
   const tabDefs = [['option','옵션'],['shopping','쇼핑']];
   if (currentRole !== 'guide') tabDefs.push(['summary','📊 정산서']);
   tabDefs.forEach(([t,label]) => bar.appendChild(makeTabBtn(t, label)));
-  if (currentRole === 'admin' || currentRole === 'organizer') {
+  if (currentRole === 'admin' || currentRole === 'organizer' || currentRole === 'op') {
     const subBtn = makeTabBtn('submissions','📋 제출현황');
     subBtn.onclick = () => openSubmissions();
     bar.appendChild(subBtn);
@@ -4448,8 +4449,12 @@ function renderSubmissions() {
   const body = document.getElementById('submissionsBody');
   if(!submissionsDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">제출된 정산서가 없습니다.</p>'; return; }
 
+  // 매니저: 정산완료되지 않은 건만 열람 가능
+  const visibleDB = (currentRole === 'op') ? submissionsDB.filter(s => !s.settled) : submissionsDB;
+  if (currentRole === 'op' && !visibleDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">정산완료되지 않은 정산서가 없습니다.</p>'; return; }
+
   // 날짜 내림차순 정렬
-  const sorted = [...submissionsDB].sort((a,b)=>(b.submittedAt||b.settleCode).localeCompare(a.submittedAt||a.settleCode));
+  const sorted = [...visibleDB].sort((a,b)=>(b.submittedAt||b.settleCode).localeCompare(a.submittedAt||a.settleCode));
 
   // 연 > 월 > 일 그룹핑
   const tree = {}; // { '2026': { '06': { '26': [sub,...] } } }
@@ -4500,13 +4505,14 @@ function renderSubmissions() {
           html += `<div class="sub-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <div>
-                <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span></div>
+                <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.settled?' <span class="sub-badge settled">정산완료</span>':''}</div>
                 <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
                 <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
               </div>
               <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
                 <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>
-                <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>
+                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료'}</button>` : ''}
+                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
               </div>
             </div>
           </div>`;
@@ -4528,6 +4534,16 @@ async function deleteSubData(id) {
   await saveSubmissions();
   renderSubmissions();
   showToast('🗑 삭제되었습니다.');
+}
+
+async function toggleSubSettled(id) {
+  if (currentRole !== 'admin') return;
+  const s = submissionsDB.find(x=>x.id===id);
+  if (!s) return;
+  s.settled = !s.settled;
+  await saveSubmissions();
+  renderSubmissions();
+  showToast(s.settled ? '✅ 정산완료 처리되었습니다.' : '↩ 정산완료가 취소되었습니다.');
 }
 
 async function markSubSeen(id) {
