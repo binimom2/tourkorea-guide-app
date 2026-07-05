@@ -1674,9 +1674,17 @@
       <button onclick="closeMonthExcel()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
     </div>
     <div class="cfg-body">
-      <div class="month-export-bar" style="margin-bottom:12px;">
+      <div class="month-export-bar" style="margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;">
         <select id="excelYear" style="width:90px;"></select>
         <select id="excelMonth">
+          <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+          <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+          <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+        <span style="color:#888;">~</span>
+        <select id="excelYearEnd" style="width:90px;"></select>
+        <select id="excelMonthEnd">
           <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
           <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
           <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
@@ -4723,31 +4731,43 @@ function restoreMyData() {
 // ══════════════════════════════════════════════════════
 function openMonthExcel() {
   const now=new Date();
+  const yearOpts=(()=>{let s='';for(let y=now.getFullYear();y>=2024;y--) s+=`<option value="${y}">${y}년</option>`;return s;})();
+  const curMonth=String(now.getMonth()+1).padStart(2,'0');
   const ySel=document.getElementById('excelYear');
-  ySel.innerHTML='';
-  for(let y=now.getFullYear();y>=2024;y--) ySel.innerHTML+=`<option value="${y}">${y}년</option>`;
-  const mSel=document.getElementById('excelMonth');
-  mSel.value=String(now.getMonth()+1).padStart(2,'0');
+  ySel.innerHTML=yearOpts;
+  document.getElementById('excelMonth').value=curMonth;
+  const ySelEnd=document.getElementById('excelYearEnd');
+  ySelEnd.innerHTML=yearOpts;
+  document.getElementById('excelMonthEnd').value=curMonth;
   document.getElementById('monthExcelPreview').textContent='';
   document.getElementById('monthExcelModal').style.display='flex';
 }
 function closeMonthExcel() { document.getElementById('monthExcelModal').style.display='none'; }
 
-// ── 공통: ExcelJS 로드 + 월별 rows 필터 ──────────────────
+// ── 공통: ExcelJS 로드 + 선택 기간(시작~종료 년월) rows 필터 ──
 async function _getMonthRows() {
   await loadSubmissions();
-  const y=document.getElementById('excelYear').value;
-  const m=document.getElementById('excelMonth').value;
-  const prefix=String(y).slice(2)+m;
+  const y1=document.getElementById('excelYear').value;
+  const m1=document.getElementById('excelMonth').value;
+  const y2=document.getElementById('excelYearEnd').value;
+  const m2=document.getElementById('excelMonthEnd').value;
+  const p1=String(y1).slice(2)+m1;
+  const p2=String(y2).slice(2)+m2;
+  const lo=p1<=p2?p1:p2, hi=p1<=p2?p2:p1;
   const rows=submissionsDB
-    .filter(s=>s.settleCode&&s.settleCode.startsWith(prefix))
+    .filter(s=>s.settleCode&&s.settleCode.slice(0,4)>=lo&&s.settleCode.slice(0,4)<=hi)
     .sort((a,b)=>a.settleCode.localeCompare(b.settleCode));
+  // 기간 라벨 (같은 년/월이면 단일 표기, 아니면 범위 표기)
+  const loY=lo.slice(0,2), loM=lo.slice(2), hiY=hi.slice(0,2), hiM=hi.slice(2);
+  const label = (lo===hi)
+    ? `20${loY}년${parseInt(loM)}월`
+    : (loY===hiY ? `20${loY}년${parseInt(loM)}월~${parseInt(hiM)}월` : `20${loY}년${parseInt(loM)}월~20${hiY}년${parseInt(hiM)}월`);
   document.getElementById('monthExcelPreview').textContent=`총 ${rows.length}건 찾음`;
-  if(!rows.length){showToast('해당 월 제출 데이터가 없습니다.',true);return null;}
+  if(!rows.length){showToast('해당 기간 제출 데이터가 없습니다.',true);return null;}
   if(!window.ExcelJS){
     await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
   }
-  return {y,m,rows};
+  return {label,rows};
 }
 function _xlSave(wb,filename){
   wb.xlsx.writeBuffer().then(buf=>{
@@ -4755,35 +4775,40 @@ function _xlSave(wb,filename){
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   });
 }
+function _borderAll(){
+  const b={style:'thin',color:{argb:'FFBFBFBF'}};
+  return {top:b,bottom:b,left:b,right:b};
+}
 function _hdr(cell,txt,bg='FF1A6B8A'){
   cell.value=txt; cell.font={bold:true,color:{argb:'FFFFFFFF'}};
   cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
   cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};
-  cell.border={top:{style:'thin',color:{argb:'FF888888'}},bottom:{style:'thin',color:{argb:'FF888888'}},left:{style:'thin',color:{argb:'FFCCCCCC'}},right:{style:'thin',color:{argb:'FFCCCCCC'}}};
+  cell.border=_borderAll();
 }
 function _num(cell,v){
   cell.value=v||0; cell.numFmt='#,##0'; cell.alignment={horizontal:'right'};
-  cell.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}},left:{style:'thin',color:{argb:'FFEEEEEE'}},right:{style:'thin',color:{argb:'FFEEEEEE'}}};
+  cell.border=_borderAll();
 }
 function _txt(cell,v){
   cell.value=v||''; cell.alignment={horizontal:'center',vertical:'middle'};
-  cell.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}},left:{style:'thin',color:{argb:'FFEEEEEE'}},right:{style:'thin',color:{argb:'FFEEEEEE'}}};
+  cell.border=_borderAll();
 }
 
 // ── ① 정산서 관리 파일 ──────────────────────────────────
 async function downloadSettleExcel() {
   const d=await _getMonthRows(); if(!d)return;
-  const {y,m,rows}=d;
+  const {label,rows}=d;
   const wb=new ExcelJS.Workbook();
-  const ws=wb.addWorksheet(`${y}년${parseInt(m)}월 정산서관리`);
+  const ws=wb.addWorksheet(`${label} 정산서관리`);
+  ws.properties.defaultRowHeight=22;
 
   // 타이틀 행
   ws.mergeCells(1,1,1,16);
   const title=ws.getCell(1,1);
-  title.value=`${y}년 ${parseInt(m)}월 투어코리아 가이드 정산서 관리`;
+  title.value=`${label} 투어코리아 가이드 정산서 관리`;
   title.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
   title.alignment={horizontal:'center',vertical:'middle'};
-  ws.getRow(1).height=28;
+  ws.getRow(1).height=22;
 
   // 헤더
   const HDRS=['순번','일자','가이드','상품명','쇼핑횟수','인원','TC',
@@ -4793,7 +4818,7 @@ async function downloadSettleExcel() {
   ws.columns=WIDTHS.map(w=>({width:w}));
   const hr=ws.getRow(2);
   HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
-  hr.height=32;
+  hr.height=22;
 
   // 데이터
   rows.forEach((s,idx)=>{
@@ -4845,14 +4870,14 @@ async function downloadSettleExcel() {
   tr.height=22;
   ws.views=[{state:'frozen',xSplit:0,ySplit:2}];
 
-  _xlSave(wb,`정산서관리_${y}년${parseInt(m)}월.xlsx`);
+  _xlSave(wb,`정산서관리_${label}.xlsx`);
   closeMonthExcel();
 }
 
 // ── ② 쇼핑 매출 정리 파일 (1번째 시트: 통합본 / 이후: 쇼핑센터별 시트) ──
 async function downloadShoppingExcel() {
   const d=await _getMonthRows(); if(!d)return;
-  const {y,m,rows}=d;
+  const {label,rows}=d;
 
   const CENTER_MAP={jewell:'지노잼',latex:'라텍스',beomrung:'범룽디',taiko:'타이코',herb:'타이코허브'};
   const CENTER_ORDER=['jewell','beomrung','taiko','herb','latex'];
@@ -4864,6 +4889,7 @@ async function downloadShoppingExcel() {
 
   function writeSheet(sheetName, title, centers) {
     const ws=wb.addWorksheet(sheetName);
+    ws.properties.defaultRowHeight=22;
 
     // 타이틀 행
     ws.mergeCells(1,1,1,14);
@@ -4871,13 +4897,13 @@ async function downloadShoppingExcel() {
     t.value=title;
     t.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
     t.alignment={horizontal:'center',vertical:'middle'};
-    ws.getRow(1).height=28;
+    ws.getRow(1).height=22;
 
     // 헤더
     ws.columns=WIDTHS.map(w=>({width:w}));
     const hr=ws.getRow(2);
     HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
-    hr.height=28;
+    hr.height=22;
 
     let rowIdx=3;
     let sumSale=0, sumKb=0, sumComm=0;
@@ -4925,7 +4951,7 @@ async function downloadShoppingExcel() {
 
     if(rowIdx===3){
       ws.mergeCells(3,1,3,14);
-      const c=ws.getCell(3,1); c.value='해당 월 데이터 없음'; c.alignment={horizontal:'center'}; c.font={color:{argb:'FFAAAAAA'}};
+      const c=ws.getCell(3,1); c.value='해당 기간 데이터 없음'; c.alignment={horizontal:'center'}; c.font={color:{argb:'FFAAAAAA'}};
     } else {
       ws.mergeCells(rowIdx,1,rowIdx,7);
       const sc=ws.getCell(rowIdx,1); sc.value='합  계'; sc.font={bold:true}; sc.alignment={horizontal:'center'};
@@ -4941,13 +4967,13 @@ async function downloadShoppingExcel() {
   }
 
   // ① 통합본 (전체 센터, 첫 번째 시트)
-  writeSheet('통합본', `${y}년 ${parseInt(m)}월 쇼핑센터 통합매출`, CENTER_ORDER);
+  writeSheet('통합본', `${label} 쇼핑센터 통합매출`, CENTER_ORDER);
   // ② 센터별 개별 시트
   CENTER_ORDER.forEach(ck=>{
-    writeSheet(CENTER_MAP[ck], `${y}년 ${parseInt(m)}월 ${CENTER_MAP[ck]} 쇼핑매출`, [ck]);
+    writeSheet(CENTER_MAP[ck], `${label} ${CENTER_MAP[ck]} 쇼핑매출`, [ck]);
   });
 
-  _xlSave(wb,`쇼핑매출정리_${y}년${parseInt(m)}월.xlsx`);
+  _xlSave(wb,`쇼핑매출정리_${label}.xlsx`);
   closeMonthExcel();
 }
 
