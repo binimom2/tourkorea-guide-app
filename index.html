@@ -4876,6 +4876,92 @@ async function downloadSettleExcel() {
   tr.height=22;
   ws.views=[{state:'frozen',xSplit:0,ySplit:2}];
 
+  // ══ 1달 누계정산서 (하단 요약) ══
+  // 상품명별 집계 (상품명에 '모두'/'투코' 포함 여부로 그룹 분류)
+  const prodMap={};
+  rows.forEach(s=>{
+    const name=s.productName||'(미지정)';
+    if(!prodMap[name]) prodMap[name]={count:0,pax:0,profit:0};
+    prodMap[name].count++;
+    prodMap[name].pax+=(s.paxTotal||0);
+    prodMap[name].profit+=(s.companyProfit||0);
+  });
+  const groupOf=name=>name.includes('모두')?'모두':(name.includes('투코')?'투코':'기타');
+  const groups={'모두':[],'투코':[],'기타':[]};
+  Object.keys(prodMap).forEach(name=>{ groups[groupOf(name)].push({name,...prodMap[name]}); });
+
+  let cIdx=ti+3;
+  ws.mergeCells(cIdx,1,cIdx,6);
+  const sTitle=ws.getCell(cIdx,1); sTitle.value=`${label} 누계정산서`;
+  sTitle.font={bold:true,size:13,color:{argb:'FF1A6B8A'}}; sTitle.alignment={horizontal:'center',vertical:'middle'};
+  ws.getRow(cIdx).height=22;
+  cIdx++;
+
+  const SUM_HDRS=['구분','상품명','총팀수','인원수','수익금','그룹합계'];
+  SUM_HDRS.forEach((h,i)=>_hdr(ws.getCell(cIdx,i+1),h));
+  ws.getRow(cIdx).height=22;
+  cIdx++;
+
+  ['모두','투코','기타'].forEach(gname=>{
+    const list=groups[gname];
+    if(!list.length) return;
+    const groupStartRow=cIdx;
+    list.forEach(p=>{
+      const rr=cIdx;
+      ws.getRow(rr).height=22;
+      _txt(ws.getCell(rr,2),p.name);
+      _txt(ws.getCell(rr,3),p.count);
+      _txt(ws.getCell(rr,4),p.pax);
+      _num(ws.getCell(rr,5),Math.round(p.profit));
+      cIdx++;
+    });
+    const groupEndRow=cIdx-1;
+    ws.mergeCells(groupStartRow,1,groupEndRow,1);
+    const gCell=ws.getCell(groupStartRow,1); gCell.value=gname;
+    gCell.font={bold:true}; gCell.alignment={horizontal:'center',vertical:'middle'};
+    const groupTotal=list.reduce((a,p)=>a+p.profit,0);
+    ws.mergeCells(groupStartRow,6,groupEndRow,6);
+    const gt=ws.getCell(groupStartRow,6); gt.value=Math.round(groupTotal); gt.numFmt='#,##0';
+    gt.font={bold:true,color:{argb:'FF1A6B8A'}}; gt.alignment={horizontal:'center',vertical:'middle'};
+    for(let rr=groupStartRow; rr<=groupEndRow; rr++){
+      for(let ci=1; ci<=6; ci++) ws.getCell(rr,ci).border=_borderAll();
+    }
+    _thickBottom(ws, groupEndRow, 6);
+  });
+
+  // 누계 / 환차손수익 (전체 합계, 우측 열에 최종수익금 병합 표시)
+  const totalTeams=rows.length;
+  const totalPax=rows.reduce((a,s)=>a+(s.paxTotal||0),0);
+  const totalProfit=rows.reduce((a,s)=>a+(s.companyProfit||0),0);
+  const totalExchange=rows.reduce((a,s)=>a+(s.exchangeProfit||0),0);
+
+  const cumRow=cIdx;
+  ws.getRow(cumRow).height=22;
+  ws.mergeCells(cumRow,1,cumRow,2);
+  const cumLabel=ws.getCell(cumRow,1); cumLabel.value='누계';
+  cumLabel.font={bold:true}; cumLabel.alignment={horizontal:'center',vertical:'middle'};
+  _txt(ws.getCell(cumRow,3),totalTeams);
+  _txt(ws.getCell(cumRow,4),totalPax);
+  _num(ws.getCell(cumRow,5),Math.round(totalProfit));
+  [1,2,3,4,5].forEach(ci=>{ ws.getCell(cumRow,ci).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}}; });
+  cIdx++;
+
+  const exRow=cIdx;
+  ws.getRow(exRow).height=22;
+  ws.mergeCells(exRow,1,exRow,4);
+  const exLabel=ws.getCell(exRow,1); exLabel.value='환차손수익';
+  exLabel.font={bold:true}; exLabel.alignment={horizontal:'center',vertical:'middle'};
+  _num(ws.getCell(exRow,5),Math.round(totalExchange));
+  [1,2,3,4,5].forEach(ci=>{ ws.getCell(exRow,ci).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}}; });
+  cIdx++;
+
+  ws.mergeCells(cumRow,6,exRow,6);
+  const grandCell=ws.getCell(cumRow,6);
+  grandCell.value=Math.round(totalProfit+totalExchange); grandCell.numFmt='#,##0';
+  grandCell.font={bold:true,size:13,color:{argb:'FF1A6B8A'}}; grandCell.alignment={horizontal:'center',vertical:'middle'};
+  grandCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};
+  for(let rr=cumRow; rr<=exRow; rr++){ for(let ci=1; ci<=6; ci++) ws.getCell(rr,ci).border=_borderAll(); }
+
   _xlSave(wb,`정산서관리_${label}.xlsx`);
   closeMonthExcel();
 }
