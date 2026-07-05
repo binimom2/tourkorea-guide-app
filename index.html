@@ -4776,8 +4776,15 @@ function _xlSave(wb,filename){
   });
 }
 function _borderAll(){
-  const b={style:'thin',color:{argb:'FFBFBFBF'}};
+  const b={style:'dotted',color:{argb:'FF999999'}};
   return {top:b,bottom:b,left:b,right:b};
+}
+// 정산코드(그룹) 경계 표시 — 회색 굵은 실선 가로선
+function _thickBottom(ws,rowNum,numCols){
+  for(let ci=1; ci<=numCols; ci++){
+    const c=ws.getCell(rowNum,ci);
+    c.border={...(c.border||{}), bottom:{style:'medium',color:{argb:'FF808080'}}};
+  }
 }
 function _hdr(cell,txt,bg='FF1A6B8A'){
   cell.value=txt; cell.font={bold:true,color:{argb:'FFFFFFFF'}};
@@ -4852,6 +4859,8 @@ async function downloadSettleExcel() {
     if(idx%2===1) [8,9,10,11,12,13,14,15].forEach(ci=>{
       ws.getCell(ri,ci).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7FAFC'}};
     });
+    // 정산코드별 구분선
+    _thickBottom(ws, ri, 16);
   });
 
   // 합계 행
@@ -4913,6 +4922,7 @@ async function downloadShoppingExcel() {
       const productName=s.productName||'';
       const pax=s.paxTotal||0;
       const code=s.settleCode||'';
+      const groupStartRow=rowIdx;
 
       centers.forEach(ck=>{
         // 체크(선택)되지 않은 쇼핑센터는 제외 — 구버전 데이터(체크값 없음)는 실제 입력값 유무로 판단
@@ -4947,6 +4957,8 @@ async function downloadShoppingExcel() {
           sumSale+=sale; sumKb+=kbCom; sumComm+=commission;
         });
       });
+      // 정산코드별 구분선
+      if(rowIdx>groupStartRow) _thickBottom(ws, rowIdx-1, 14);
     });
 
     if(rowIdx===3){
