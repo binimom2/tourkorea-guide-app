@@ -4849,7 +4849,7 @@ async function downloadSettleExcel() {
   closeMonthExcel();
 }
 
-// ── ② 쇼핑 매출 정리 파일 (쇼핑센터별 시트 분리) ──────────
+// ── ② 쇼핑 매출 정리 파일 (1번째 시트: 통합본 / 이후: 쇼핑센터별 시트) ──
 async function downloadShoppingExcel() {
   const d=await _getMonthRows(); if(!d)return;
   const {y,m,rows}=d;
@@ -4862,15 +4862,15 @@ async function downloadShoppingExcel() {
 
   const wb=new ExcelJS.Workbook();
 
-  CENTER_ORDER.forEach(ck=>{
-    const ws=wb.addWorksheet(CENTER_MAP[ck]);
+  function writeSheet(sheetName, title, centers) {
+    const ws=wb.addWorksheet(sheetName);
 
     // 타이틀 행
     ws.mergeCells(1,1,1,14);
-    const title=ws.getCell(1,1);
-    title.value=`${y}년 ${parseInt(m)}월 ${CENTER_MAP[ck]} 쇼핑매출`;
-    title.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
-    title.alignment={horizontal:'center',vertical:'middle'};
+    const t=ws.getCell(1,1);
+    t.value=title;
+    t.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
+    t.alignment={horizontal:'center',vertical:'middle'};
     ws.getRow(1).height=28;
 
     // 헤더
@@ -4883,36 +4883,37 @@ async function downloadShoppingExcel() {
     let sumSale=0, sumKb=0, sumComm=0;
 
     rows.forEach(s=>{
-      const items=(s.fullData&&s.fullData.shopping&&s.fullData.shopping[ck])||[];
-      if(!items.length) return;
       const guideName=s.guideName||'';
       const productName=s.productName||'';
       const pax=s.paxTotal||0;
       const code=s.settleCode||'';
 
-      items.forEach(item=>{
-        const sale=parseFloat((item.sale||'').toString().replace(/,/g,''))||0;
-        const dc=parseFloat(item.dc)||0;
-        const com=parseFloat(item.com)||0;
-        const kbPct=parseFloat(item.kbPct)||0;
-        const commission=item.commission||0;
-        const kbCom=item.kbCom||0;
-        const r=ws.getRow(rowIdx++);
-        _txt(r.getCell(1),code);
-        _txt(r.getCell(2),guideName);
-        _txt(r.getCell(3),productName);
-        _txt(r.getCell(4),pax);
-        _txt(r.getCell(5),CENTER_MAP[ck]);
-        _txt(r.getCell(6),item.type||'');
-        _txt(r.getCell(7),dc+'%');
-        _num(r.getCell(8),Math.round(sale));
-        _txt(r.getCell(9),com+'%');
-        _txt(r.getCell(10),kbPct+'%');
-        _num(r.getCell(11),Math.round(kbCom));
-        _num(r.getCell(12),Math.round(commission));
-        _txt(r.getCell(13),'');
-        _txt(r.getCell(14),'');
-        sumSale+=sale; sumKb+=kbCom; sumComm+=commission;
+      centers.forEach(ck=>{
+        const items=(s.fullData&&s.fullData.shopping&&s.fullData.shopping[ck])||[];
+        items.forEach(item=>{
+          const sale=parseFloat((item.sale||'').toString().replace(/,/g,''))||0;
+          const dc=parseFloat(item.dc)||0;
+          const com=parseFloat(item.com)||0;
+          const kbPct=parseFloat(item.kbPct)||0;
+          const commission=item.commission||0;
+          const kbCom=item.kbCom||0;
+          const r=ws.getRow(rowIdx++);
+          _txt(r.getCell(1),code);
+          _txt(r.getCell(2),guideName);
+          _txt(r.getCell(3),productName);
+          _txt(r.getCell(4),pax);
+          _txt(r.getCell(5),CENTER_MAP[ck]);
+          _txt(r.getCell(6),item.type||'');
+          _txt(r.getCell(7),dc+'%');
+          _num(r.getCell(8),Math.round(sale));
+          _txt(r.getCell(9),com+'%');
+          _txt(r.getCell(10),kbPct+'%');
+          _num(r.getCell(11),Math.round(kbCom));
+          _num(r.getCell(12),Math.round(commission));
+          _txt(r.getCell(13),'');
+          _txt(r.getCell(14),'');
+          sumSale+=sale; sumKb+=kbCom; sumComm+=commission;
+        });
       });
     });
 
@@ -4931,6 +4932,13 @@ async function downloadShoppingExcel() {
     }
 
     ws.views=[{state:'frozen',xSplit:0,ySplit:2}];
+  }
+
+  // ① 통합본 (전체 센터, 첫 번째 시트)
+  writeSheet('통합본', `${y}년 ${parseInt(m)}월 쇼핑센터 통합매출`, CENTER_ORDER);
+  // ② 센터별 개별 시트
+  CENTER_ORDER.forEach(ck=>{
+    writeSheet(CENTER_MAP[ck], `${y}년 ${parseInt(m)}월 ${CENTER_MAP[ck]} 쇼핑매출`, [ck]);
   });
 
   _xlSave(wb,`쇼핑매출정리_${y}년${parseInt(m)}월.xlsx`);
