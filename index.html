@@ -4377,14 +4377,27 @@ async function confirmPwChange() {
 function _getProfitVal(id) { return parseFloat(((document.getElementById(id)||{}).textContent||'0').replace(/[฿,\s]/g,''))||0; }
 function collectProfitFields() {
   const getVal = _getProfitVal;
+  // 가이드정산금/회사수익금/환차손익은 정산방법(정산/인센티브/절대메꾸기)별로 계산식이 완전히 다르므로
+  // 값의 크기로 우선순위를 매기지 않고, 실제로 체크된 정산방법의 필드만 사용한다.
+  // (다른 방법의 필드에 이전에 계산했던 값이 남아있으면 OR 우선순위 방식은 엉뚱한 값을 고를 수 있음)
+  const PREFIX = { settle:'st', incentive:'inc', guarantee:'gu' };
+  const checked = Object.entries(PREFIX).filter(([m])=>document.getElementById('chk-'+m)?.checked).map(([,p])=>p);
+
+  let guideSettle=0, companyProfit=0, exchangeProfit=0;
+  checked.forEach(p=>{
+    guideSettle    += getVal(p+'-guide-pay');
+    companyProfit  += getVal(p+'-adm-total');
+    exchangeProfit += getVal(p+'-adm-exloss-total');
+  });
+
   return {
-    // 가이드 정산서 중 옵션/쇼핑 수익금, 회사정산서 중 총회사수익금 (정산방법 3종: settle/incentive/guarantee)
-    // 정산방법 체크박스를 하나도 선택하지 않은 경우를 대비해 옵션/쇼핑 탭 자체의 합계(opt-profit-total/shop-total)로 최종 폴백
+    // 가이드 정산서 중 옵션/쇼핑 수익금은 정산방법과 무관하게 동일하게 계산되므로 그대로 사용
+    // (정산방법 체크박스를 하나도 선택하지 않은 경우를 대비해 옵션/쇼핑 탭 자체의 합계로 최종 폴백)
     optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||getVal('opt-profit-total')||0,
     shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||getVal('shop-total')||0,
-    guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||getVal('gu-guide-pay')||0,
-    companyProfit:  getVal('st-adm-total')||getVal('inc-adm-total')||getVal('gu-adm-total')||0,
-    exchangeProfit: getVal('st-adm-exloss-total')||getVal('inc-adm-exloss-total')||getVal('gu-adm-exloss-total')||0,
+    guideSettle,
+    companyProfit,
+    exchangeProfit,
   };
 }
 
