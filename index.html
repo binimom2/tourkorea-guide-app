@@ -4394,11 +4394,12 @@ async function submitToAdmin() {
     paxTotal,
     submittedAt: new Date().toISOString(),
     status: 'new',
-    optionProfit:   getVal('st-opt-total')||getVal('inc-opt-total')||0,
-    shoppingProfit: getVal('st-shop-total')||0,
-    guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||0,
-    companyProfit:  getVal('st-company-profit')||getVal('inc-company-profit')||0,
-    exchangeProfit: getVal('st-adm-exloss-total')||0,
+    // 가이드 정산서 중 옵션/쇼핑 수익금, 회사정산서 중 총회사수익금 (정산방법 3종: settle/incentive/guarantee)
+    optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||0,
+    shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||0,
+    guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||getVal('gu-guide-pay')||0,
+    companyProfit:  getVal('st-adm-total')||getVal('inc-adm-total')||getVal('gu-adm-total')||0,
+    exchangeProfit: getVal('st-adm-exloss-total')||getVal('inc-adm-exloss-total')||getVal('gu-adm-exloss-total')||0,
     fullData: (() => {
       const fd = JSON.parse(JSON.stringify(state));
       const flds = {};
