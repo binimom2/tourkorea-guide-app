@@ -4371,6 +4371,24 @@ async function confirmPwChange() {
 }
 
 // ══════════════════════════════════════════════════════
+//  가이드/어드민 정산서 - 화면(DOM)에서 수익 요약값 수집
+// ══════════════════════════════════════════════════════
+// 음수 표기가 '-฿ 1,234'처럼 부호와 숫자 사이에 공백이 있는 경우까지 대응
+function _getProfitVal(id) { return parseFloat(((document.getElementById(id)||{}).textContent||'0').replace(/[฿,\s]/g,''))||0; }
+function collectProfitFields() {
+  const getVal = _getProfitVal;
+  return {
+    // 가이드 정산서 중 옵션/쇼핑 수익금, 회사정산서 중 총회사수익금 (정산방법 3종: settle/incentive/guarantee)
+    // 정산방법 체크박스를 하나도 선택하지 않은 경우를 대비해 옵션/쇼핑 탭 자체의 합계(opt-profit-total/shop-total)로 최종 폴백
+    optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||getVal('opt-profit-total')||0,
+    shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||getVal('shop-total')||0,
+    guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||getVal('gu-guide-pay')||0,
+    companyProfit:  getVal('st-adm-total')||getVal('inc-adm-total')||getVal('gu-adm-total')||0,
+    exchangeProfit: getVal('st-adm-exloss-total')||getVal('inc-adm-exloss-total')||getVal('gu-adm-exloss-total')||0,
+  };
+}
+
+// ══════════════════════════════════════════════════════
 //  가이드 → 어드민 제출
 // ══════════════════════════════════════════════════════
 async function submitToAdmin() {
@@ -4382,8 +4400,6 @@ async function submitToAdmin() {
   const productName = (document.getElementById('productName')||{}).value || '';
   const shopCount = parseInt((document.getElementById('shopCount')||{}).value)||0;
 
-  // 수익 데이터 수집 (음수 표기가 '-฿ 1,234'처럼 부호와 숫자 사이에 공백이 있는 경우까지 대응)
-  const getVal = id => parseFloat(((document.getElementById(id)||{}).textContent||'0').replace(/[฿,\s]/g,''))||0;
   const sub = {
     id: 'sub_'+Date.now(),
     settleCode: code,
@@ -4394,13 +4410,7 @@ async function submitToAdmin() {
     paxTotal,
     submittedAt: new Date().toISOString(),
     status: 'new',
-    // 가이드 정산서 중 옵션/쇼핑 수익금, 회사정산서 중 총회사수익금 (정산방법 3종: settle/incentive/guarantee)
-    // 정산방법 체크박스를 하나도 선택하지 않은 경우를 대비해 옵션/쇼핑 탭 자체의 합계(opt-profit-total/shop-total)로 최종 폴백
-    optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||getVal('opt-profit-total')||0,
-    shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||getVal('shop-total')||0,
-    guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||getVal('gu-guide-pay')||0,
-    companyProfit:  getVal('st-adm-total')||getVal('inc-adm-total')||getVal('gu-adm-total')||0,
-    exchangeProfit: getVal('st-adm-exloss-total')||getVal('inc-adm-exloss-total')||getVal('gu-adm-exloss-total')||0,
+    ...collectProfitFields(),
     fullData: (() => {
       const fd = JSON.parse(JSON.stringify(state));
       const flds = {};
@@ -4684,6 +4694,13 @@ async function saveSubEdits() {
   s.fullData.fields = lsFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
+
+  // 정산서관리/누계정산서 엑셀에서 쓰는 요약 수치도 최신 화면값으로 갱신
+  Object.assign(s, collectProfitFields());
+  const paxEl=document.getElementById('paxTotalDisplay'); if(paxEl) s.paxTotal=parseInt(paxEl.textContent)||s.paxTotal;
+  const shopCountEl=document.getElementById('shopCount'); if(shopCountEl) s.shopCount=parseInt(shopCountEl.value)||s.shopCount;
+  const productEl=document.getElementById('productName'); if(productEl) s.productName=productEl.value||s.productName;
+
   await saveSubmissions();
   showToast('💾 수정내용이 저장되었습니다. 가이드 로그인 시 반영됩니다.');
 }
