@@ -4382,8 +4382,8 @@ async function submitToAdmin() {
   const productName = (document.getElementById('productName')||{}).value || '';
   const shopCount = parseInt((document.getElementById('shopCount')||{}).value)||0;
 
-  // 수익 데이터 수집
-  const getVal = id => parseFloat(((document.getElementById(id)||{}).textContent||'0').replace(/[฿,]/g,''))||0;
+  // 수익 데이터 수집 (음수 표기가 '-฿ 1,234'처럼 부호와 숫자 사이에 공백이 있는 경우까지 대응)
+  const getVal = id => parseFloat(((document.getElementById(id)||{}).textContent||'0').replace(/[฿,\s]/g,''))||0;
   const sub = {
     id: 'sub_'+Date.now(),
     settleCode: code,
@@ -4395,8 +4395,9 @@ async function submitToAdmin() {
     submittedAt: new Date().toISOString(),
     status: 'new',
     // 가이드 정산서 중 옵션/쇼핑 수익금, 회사정산서 중 총회사수익금 (정산방법 3종: settle/incentive/guarantee)
-    optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||0,
-    shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||0,
+    // 정산방법 체크박스를 하나도 선택하지 않은 경우를 대비해 옵션/쇼핑 탭 자체의 합계(opt-profit-total/shop-total)로 최종 폴백
+    optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||getVal('opt-profit-total')||0,
+    shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||getVal('shop-total')||0,
     guideSettle:    getVal('st-guide-pay')||getVal('inc-guide-pay')||getVal('gu-guide-pay')||0,
     companyProfit:  getVal('st-adm-total')||getVal('inc-adm-total')||getVal('gu-adm-total')||0,
     exchangeProfit: getVal('st-adm-exloss-total')||getVal('inc-adm-exloss-total')||getVal('gu-adm-exloss-total')||0,
