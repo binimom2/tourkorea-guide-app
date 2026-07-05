@@ -4653,13 +4653,14 @@ function renderGuideLedger() {
 
   submissionsDB.forEach(s=>{
     const k = keyOf(s);
-    if (!byGuide[k]) byGuide[k] = { username: s.username||'', guideName: s.guideName||k, settleTotal:0, paidTotal:0, payments:[] };
+    if (!byGuide[k]) byGuide[k] = { username: s.username||'', guideName: s.guideName||k, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
     byGuide[k].settleTotal += (s.guideSettle||0);
+    byGuide[k].settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0 });
     if (s.guideName) byGuide[k].guideName = s.guideName;
   });
   paymentsDB.forEach(p=>{
     const k = p.guideUsername || p.guideName || '(미상)';
-    if (!byGuide[k]) byGuide[k] = { username: p.guideUsername||'', guideName: p.guideName||k, settleTotal:0, paidTotal:0, payments:[] };
+    if (!byGuide[k]) byGuide[k] = { username: p.guideUsername||'', guideName: p.guideName||k, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
     byGuide[k].paidTotal += (p.amount||0);
     byGuide[k].payments.push(p);
   });
@@ -4693,13 +4694,19 @@ function renderGuideLedger() {
           <div style="font-size:16px;font-weight:800;color:${cumulative>0?'#c0392b':'#1a8a60'};">฿${fmtNum(cumulative)}</div>
         </div>
       </div>
-      ${expanded ? renderLedgerDetail(k, sortedPayments, isAdmin, carry) : ''}
+      ${expanded ? renderLedgerDetail(k, sortedPayments, isAdmin, carry, g.settlements) : ''}
     </div>`;
   });
   body.innerHTML = html;
 }
 
-function renderLedgerDetail(key, sortedPayments, isAdmin, carry) {
+function renderLedgerDetail(key, sortedPayments, isAdmin, carry, settlements) {
+  const settleRows = (settlements||[]).slice().sort((a,b)=>(a.settleCode||'').localeCompare(b.settleCode||''))
+    .map(s=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
+      <span>${s.settleCode||'-'}</span>
+      <span>฿${fmtNum(s.amount||0)}</span>
+    </div>`).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0;">제출된 정산서 없음</div>';
+
   const rows = sortedPayments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
       <span>${p.date||'-'}${p.memo?(' · '+p.memo):''}</span>
       <span style="display:flex;align-items:center;gap:6px;">
@@ -4725,6 +4732,9 @@ function renderLedgerDetail(key, sortedPayments, isAdmin, carry) {
 
   return `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);" onclick="event.stopPropagation()">
     ${carryForm}
+    <div style="font-size:11px;color:#888;font-weight:700;margin-bottom:2px;">📋 정산금액 내역 (제출된 정산서 기준)</div>
+    ${settleRows}
+    <div style="font-size:11px;color:#888;font-weight:700;margin:10px 0 2px;">💵 지급 내역</div>
     ${rows}
     ${addForm}
   </div>`;
