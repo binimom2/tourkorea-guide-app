@@ -1811,6 +1811,21 @@ async function savePayments() {
   await syncToSupabase(PAYMENTS_KEY, paymentsDB);
 }
 
+// 가이드별 최초 이월금 (앱 도입 전부터 있던 미정산 잔액)
+const CARRYOVER_KEY = 'guide_carryover_v1';
+let carryoverDB = {}; // { [guideKey]: amount }
+async function loadCarryover() {
+  try {
+    const d = await loadFromSupabase(CARRYOVER_KEY);
+    if (d) { carryoverDB = d; localStorage.setItem(CARRYOVER_KEY, JSON.stringify(carryoverDB)); }
+    else { carryoverDB = JSON.parse(localStorage.getItem(CARRYOVER_KEY)||'{}'); }
+  } catch(e) { carryoverDB = {}; }
+}
+async function saveCarryover() {
+  localStorage.setItem(CARRYOVER_KEY, JSON.stringify(carryoverDB));
+  await syncToSupabase(CARRYOVER_KEY, carryoverDB);
+}
+
 async function testSupabase() {
   const err = document.getElementById('loginError');
   err.textContent = '🔍 Supabase 조회 중...';
@@ -4617,6 +4632,7 @@ async function markSubSeen(id) {
 async function openGuideLedger() {
   await loadSubmissions();
   await loadPayments();
+  await loadCarryover();
   window._ledgerExpanded = null;
   renderGuideLedger();
   document.getElementById('ledgerModal').style.display='flex';
@@ -4660,7 +4676,8 @@ function renderGuideLedger() {
   let html = '';
   keys.forEach(k=>{
     const g = byGuide[k];
-    const remain = g.settleTotal - g.paidTotal;
+    const carry = carryoverDB[k] || 0;
+    const cumulative = carry + g.settleTotal - g.paidTotal;
     const sortedPayments = g.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const lastPay = sortedPayments[0];
     const expanded = window._ledgerExpanded === k;
@@ -4668,21 +4685,21 @@ function renderGuideLedger() {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;" onclick="toggleLedgerExpand('${k}')">
         <div>
           <div class="sc-code">${g.guideName}</div>
-          <div class="sc-meta">정산금액 ฿${fmtNum(g.settleTotal)} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
+          <div class="sc-meta">이월금 ฿${fmtNum(carry)} · 정산금액 ฿${fmtNum(g.settleTotal)} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
           <div class="sc-meta">최근 지급일: ${lastPay ? lastPay.date : '-'}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:11px;color:#888;">잔여 정산금</div>
-          <div style="font-size:16px;font-weight:800;color:${remain>0?'#c0392b':'#1a8a60'};">฿${fmtNum(remain)}</div>
+          <div style="font-size:11px;color:#888;">누적분</div>
+          <div style="font-size:16px;font-weight:800;color:${cumulative>0?'#c0392b':'#1a8a60'};">฿${fmtNum(cumulative)}</div>
         </div>
       </div>
-      ${expanded ? renderLedgerDetail(k, sortedPayments, isAdmin) : ''}
+      ${expanded ? renderLedgerDetail(k, sortedPayments, isAdmin, carry) : ''}
     </div>`;
   });
   body.innerHTML = html;
 }
 
-function renderLedgerDetail(key, sortedPayments, isAdmin) {
+function renderLedgerDetail(key, sortedPayments, isAdmin, carry) {
   const rows = sortedPayments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
       <span>${p.date||'-'}${p.memo?(' · '+p.memo):''}</span>
       <span style="display:flex;align-items:center;gap:6px;">
@@ -4690,6 +4707,13 @@ function renderLedgerDetail(key, sortedPayments, isAdmin) {
         ${isAdmin?`<button onclick="event.stopPropagation();deletePayment('${p.id}')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:12px;">✕</button>`:''}
       </span>
     </div>`).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0;">지급 내역 없음</div>';
+
+  const carryForm = isAdmin ? `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;" onclick="event.stopPropagation()">
+      <span style="font-size:12px;color:#888;white-space:nowrap;">최초 이월금(฿)</span>
+      <input type="text" id="carry-${key}" value="${carry||''}" placeholder="0" inputmode="numeric" style="flex:1;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <button onclick="event.stopPropagation();setCarryover('${key}')" style="background:#555;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">저장</button>
+    </div>` : '';
 
   const addForm = isAdmin ? `
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;" onclick="event.stopPropagation()">
@@ -4700,9 +4724,20 @@ function renderLedgerDetail(key, sortedPayments, isAdmin) {
     </div>` : '';
 
   return `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);" onclick="event.stopPropagation()">
+    ${carryForm}
     ${rows}
     ${addForm}
   </div>`;
+}
+
+async function setCarryover(key) {
+  if (currentRole !== 'admin') return;
+  const el = document.getElementById('carry-'+key);
+  const amount = parseFloat((el.value||'').replace(/,/g,''))||0;
+  carryoverDB[key] = amount;
+  await saveCarryover();
+  showToast('✅ 최초 이월금이 저장되었습니다.');
+  renderGuideLedger();
 }
 
 function toggleLedgerExpand(key) {
