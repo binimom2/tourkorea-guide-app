@@ -4993,7 +4993,6 @@ async function downloadSettleExcel() {
 
   // 누계 / 환차손수익 (전체 합계, 우측 열에 최종수익금 병합 표시)
   const totalTeams=rows.length;
-  const totalPax=rows.reduce((a,s)=>a+(s.paxTotal||0),0);
   const totalProfit=rows.reduce((a,s)=>a+(s.companyProfit||0),0);
   const totalExchange=rows.reduce((a,s)=>a+(s.exchangeProfit||0),0);
 
