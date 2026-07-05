@@ -1666,6 +1666,17 @@
   </div>
 </div>
 
+<!-- ═══ 가이드 정산수첩 모달 ═══ -->
+<div class="cfg-modal" id="ledgerModal">
+  <div class="cfg-box" style="max-width:640px;">
+    <div class="cfg-head">
+      <span>📒 가이드 정산수첩</span>
+      <button onclick="closeGuideLedger()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body" id="ledgerBody"></div>
+  </div>
+</div>
+
 <!-- ═══ 월별 엑셀 모달 ═══ -->
 <div class="cfg-modal" id="monthExcelModal">
   <div class="cfg-box" style="max-width:440px;">
@@ -1781,6 +1792,23 @@ async function loadSubmissions() {
 async function saveSubmissions() {
   localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
   await syncToSupabase(SUBS_KEY, submissionsDB);
+}
+
+// ══════════════════════════════════════════════════════
+//  가이드 정산수첩 - 지급 내역 (Supabase 저장)
+// ══════════════════════════════════════════════════════
+const PAYMENTS_KEY = 'guide_payments_v1';
+let paymentsDB = []; // [{id, guideUsername, guideName, amount, date, memo, createdAt}]
+async function loadPayments() {
+  try {
+    const d = await loadFromSupabase(PAYMENTS_KEY);
+    if (d) { paymentsDB = d; localStorage.setItem(PAYMENTS_KEY, JSON.stringify(paymentsDB)); }
+    else { paymentsDB = JSON.parse(localStorage.getItem(PAYMENTS_KEY)||'[]'); }
+  } catch(e) { paymentsDB = []; }
+}
+async function savePayments() {
+  localStorage.setItem(PAYMENTS_KEY, JSON.stringify(paymentsDB));
+  await syncToSupabase(PAYMENTS_KEY, paymentsDB);
 }
 
 async function testSupabase() {
@@ -2148,6 +2176,9 @@ function rebuildTabBar() {
     subBtn.onclick = () => openSubmissions();
     bar.appendChild(subBtn);
   }
+  const ledgerBtn = makeTabBtn('ledger','📒 가이드정산수첩');
+  ledgerBtn.onclick = () => openGuideLedger();
+  bar.appendChild(ledgerBtn);
   const active = document.querySelector(`.tab-btn[data-tab="${currentTab}"]`);
   if (active) active.classList.add('active');
 }
@@ -4578,6 +4609,134 @@ async function toggleSubSettled(id) {
 async function markSubSeen(id) {
   const s=submissionsDB.find(x=>x.id===id);
   if(s){s.status='seen'; await saveSubmissions(); renderSubmissions();}
+}
+
+// ══════════════════════════════════════════════════════
+//  가이드 정산수첩 (옵션+쇼핑 정산금액 - 회사 지급액 = 잔여 정산금)
+// ══════════════════════════════════════════════════════
+async function openGuideLedger() {
+  await loadSubmissions();
+  await loadPayments();
+  window._ledgerExpanded = null;
+  renderGuideLedger();
+  document.getElementById('ledgerModal').style.display='flex';
+}
+function closeGuideLedger() {
+  document.getElementById('ledgerModal').style.display='none';
+  window._ledgerExpanded = null;
+}
+
+function renderGuideLedger() {
+  const body = document.getElementById('ledgerBody');
+  const isGuideView = currentRole === 'guide';
+  const isAdmin = currentRole === 'admin';
+
+  // 가이드별 집계: username(내부 고유 id) 기준, 없으면 guideName으로 대체
+  const byGuide = {};
+  const keyOf = s => s.username || s.guideName || '(미상)';
+
+  submissionsDB.forEach(s=>{
+    const k = keyOf(s);
+    if (!byGuide[k]) byGuide[k] = { username: s.username||'', guideName: s.guideName||k, settleTotal:0, paidTotal:0, payments:[] };
+    byGuide[k].settleTotal += (s.guideSettle||0);
+    if (s.guideName) byGuide[k].guideName = s.guideName;
+  });
+  paymentsDB.forEach(p=>{
+    const k = p.guideUsername || p.guideName || '(미상)';
+    if (!byGuide[k]) byGuide[k] = { username: p.guideUsername||'', guideName: p.guideName||k, settleTotal:0, paidTotal:0, payments:[] };
+    byGuide[k].paidTotal += (p.amount||0);
+    byGuide[k].payments.push(p);
+  });
+
+  let keys = Object.keys(byGuide);
+  if (isGuideView) {
+    keys = keys.filter(k => byGuide[k].username === currentUser.username
+      || (!byGuide[k].username && byGuide[k].guideName === currentUser.name));
+  }
+  keys.sort((a,b)=>byGuide[a].guideName.localeCompare(byGuide[b].guideName,'ko'));
+
+  if (!keys.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">표시할 정산 내역이 없습니다.</p>'; return; }
+
+  let html = '';
+  keys.forEach(k=>{
+    const g = byGuide[k];
+    const remain = g.settleTotal - g.paidTotal;
+    const sortedPayments = g.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const lastPay = sortedPayments[0];
+    const expanded = window._ledgerExpanded === k;
+    html += `<div class="sub-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;" onclick="toggleLedgerExpand('${k}')">
+        <div>
+          <div class="sc-code">${g.guideName}</div>
+          <div class="sc-meta">정산금액 ฿${fmtNum(g.settleTotal)} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
+          <div class="sc-meta">최근 지급일: ${lastPay ? lastPay.date : '-'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:11px;color:#888;">잔여 정산금</div>
+          <div style="font-size:16px;font-weight:800;color:${remain>0?'#c0392b':'#1a8a60'};">฿${fmtNum(remain)}</div>
+        </div>
+      </div>
+      ${expanded ? renderLedgerDetail(k, sortedPayments, isAdmin) : ''}
+    </div>`;
+  });
+  body.innerHTML = html;
+}
+
+function renderLedgerDetail(key, sortedPayments, isAdmin) {
+  const rows = sortedPayments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
+      <span>${p.date||'-'}${p.memo?(' · '+p.memo):''}</span>
+      <span style="display:flex;align-items:center;gap:6px;">
+        ฿${fmtNum(p.amount||0)}
+        ${isAdmin?`<button onclick="event.stopPropagation();deletePayment('${p.id}')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:12px;">✕</button>`:''}
+      </span>
+    </div>`).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0;">지급 내역 없음</div>';
+
+  const addForm = isAdmin ? `
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;" onclick="event.stopPropagation()">
+      <input type="date" id="pay-date-${key}" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <input type="text" id="pay-amount-${key}" placeholder="지급액(฿)" inputmode="numeric" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <input type="text" id="pay-memo-${key}" placeholder="메모(선택)" style="flex:1;min-width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <button onclick="event.stopPropagation();addPayment('${key}')" style="background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">지급 추가</button>
+    </div>` : '';
+
+  return `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);" onclick="event.stopPropagation()">
+    ${rows}
+    ${addForm}
+  </div>`;
+}
+
+function toggleLedgerExpand(key) {
+  window._ledgerExpanded = (window._ledgerExpanded === key) ? null : key;
+  renderGuideLedger();
+}
+
+async function addPayment(key) {
+  if (currentRole !== 'admin') return;
+  const dateEl = document.getElementById('pay-date-'+key);
+  const amtEl = document.getElementById('pay-amount-'+key);
+  const memoEl = document.getElementById('pay-memo-'+key);
+  const date = dateEl.value;
+  const amount = parseFloat((amtEl.value||'').replace(/,/g,''))||0;
+  if (!date) { showToast('❌ 날짜를 입력해주세요.', true); return; }
+  if (!amount) { showToast('❌ 지급액을 입력해주세요.', true); return; }
+
+  const src = submissionsDB.find(s=>(s.username||s.guideName)===key)
+           || paymentsDB.find(p=>(p.guideUsername||p.guideName)===key);
+  const guideName = src ? (src.guideName||key) : key;
+  const guideUsername = src ? (src.username||src.guideUsername||'') : '';
+
+  paymentsDB.push({ id:'pay_'+Date.now(), guideUsername, guideName, amount, date, memo:(memoEl.value||'').trim(), createdAt:new Date().toISOString() });
+  await savePayments();
+  showToast('✅ 지급 내역이 저장되었습니다.');
+  renderGuideLedger();
+}
+
+async function deletePayment(id) {
+  if (currentRole !== 'admin') return;
+  if (!confirm('이 지급 내역을 삭제하시겠습니까?')) return;
+  paymentsDB = paymentsDB.filter(p=>p.id!==id);
+  await savePayments();
+  renderGuideLedger();
 }
 
 function applyStateToUI() {
