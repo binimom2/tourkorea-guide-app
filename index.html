@@ -4810,7 +4810,7 @@ async function downloadSettleExcel() {
   ws.properties.defaultRowHeight=22;
 
   // 타이틀 행
-  ws.mergeCells(1,1,1,16);
+  ws.mergeCells(1,1,1,15);
   const title=ws.getCell(1,1);
   title.value=`${label} 투어코리아 가이드 정산서 관리`;
   title.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
@@ -4818,10 +4818,10 @@ async function downloadSettleExcel() {
   ws.getRow(1).height=22;
 
   // 헤더
-  const HDRS=['순번','일자','가이드','상품명','쇼핑횟수','인원','TC',
+  const HDRS=['순번','정산코드','가이드','상품명','쇼핑횟수','인원','TC',
     '옵션수익(฿)','쇼핑수익(฿)','가이드정산(฿)','회사수익(฿)','환차손익(฿)',
-    '인당옵션','인당쇼핑','인당합계','정산코드'];
-  const WIDTHS=[6,10,10,16,8,7,6,13,13,13,13,13,10,10,10,14];
+    '인당옵션(옵션금/인원)','인당쇼핑(총쇼핑금/인원)','인당합계(인당옵션+쇼핑합계)'];
+  const WIDTHS=[6,14,10,16,8,7,6,13,13,13,13,13,14,14,14];
   ws.columns=WIDTHS.map(w=>({width:w}));
   const hr=ws.getRow(2);
   HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
@@ -4837,11 +4837,8 @@ async function downloadSettleExcel() {
     const r=ws.addRow([]);
     r.height=22;
     const ri=r.number;
-    // 날짜
-    const dt=info.tourStart?new Date(info.tourStart):null;
-    const dateStr=dt?`${dt.getMonth()+1}월 ${dt.getDate()}일`:(s.settleCode||'').slice(0,6);
     _txt(ws.getCell(ri,1),idx+1);
-    _txt(ws.getCell(ri,2),dateStr);
+    _txt(ws.getCell(ri,2),s.settleCode||'');
     _txt(ws.getCell(ri,3),s.guideName||'');
     _txt(ws.getCell(ri,4),s.productName||'');
     _txt(ws.getCell(ri,5),s.shopCount||0);
@@ -4855,13 +4852,12 @@ async function downloadSettleExcel() {
     _num(ws.getCell(ri,13),perOpt);
     _num(ws.getCell(ri,14),perShop);
     _num(ws.getCell(ri,15),perOpt+perShop);
-    _txt(ws.getCell(ri,16),s.settleCode||'');
     // 짝수 행 배경
     if(idx%2===1) [8,9,10,11,12,13,14,15].forEach(ci=>{
       ws.getCell(ri,ci).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7FAFC'}};
     });
     // 정산코드별 구분선
-    _thickBottom(ws, ri, 16);
+    _thickBottom(ws, ri, 15);
   });
 
   // 합계 행
