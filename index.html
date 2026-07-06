@@ -4646,19 +4646,26 @@ function _buildLedgerData() {
   // 가이드별 집계: username(내부 고유 id) 기준, 없으면 guideName으로 대체
   const byGuide = {};
   const keyOf = s => s.username || s.guideName || '(미상)';
+  const ensure = (k, guideName, username) => {
+    if (!byGuide[k]) byGuide[k] = { username: username||'', guideName: guideName||k, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
+    return byGuide[k];
+  };
+
+  // 아직 제출 이력이 없는 가이드도 이월금 설정 등을 위해 목록에 먼저 포함
+  getAccounts().filter(a=>a.role==='guide').forEach(a=>{ ensure(a.id, a.name, a.id); });
 
   submissionsDB.forEach(s=>{
     const k = keyOf(s);
-    if (!byGuide[k]) byGuide[k] = { username: s.username||'', guideName: s.guideName||k, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
-    byGuide[k].settleTotal += (s.guideSettle||0);
-    byGuide[k].settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0 });
-    if (s.guideName) byGuide[k].guideName = s.guideName;
+    const g = ensure(k, s.guideName, s.username);
+    g.settleTotal += (s.guideSettle||0);
+    g.settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0 });
+    if (s.guideName) g.guideName = s.guideName;
   });
   paymentsDB.forEach(p=>{
     const k = p.guideUsername || p.guideName || '(미상)';
-    if (!byGuide[k]) byGuide[k] = { username: p.guideUsername||'', guideName: p.guideName||k, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
-    byGuide[k].paidTotal += (p.amount||0);
-    byGuide[k].payments.push(p);
+    const g = ensure(k, p.guideName, p.guideUsername);
+    g.paidTotal += (p.amount||0);
+    g.payments.push(p);
   });
   return byGuide;
 }
