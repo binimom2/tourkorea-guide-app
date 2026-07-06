@@ -4642,6 +4642,22 @@ function closeGuideLedger() {
   window._ledgerSelected = null;
 }
 
+// 정산코드에서 만든 제출건의 행사일자 추출 (tourStart 우선, 없으면 정산코드에서 유추)
+function _settleDateOf(s) {
+  const info = s.fullData && s.fullData.info;
+  if (info && info.tourStart) return info.tourStart;
+  const code = s.settleCode||'';
+  if (code.length>=6) return '20'+code.slice(0,2)+'-'+code.slice(2,4)+'-'+code.slice(4,6);
+  return '';
+}
+// 이월금 저장 포맷 정규화 (구버전엔 숫자만 저장돼 있었음)
+function _carryOf(key) {
+  const c = carryoverDB[key];
+  if (c == null) return { amount:0, date:'' };
+  if (typeof c === 'number') return { amount:c, date:'' };
+  return { amount:c.amount||0, date:c.date||'' };
+}
+
 function _buildLedgerData() {
   // 가이드별 집계: username(내부 고유 id) 기준, 없으면 guideName으로 대체
   const byGuide = {};
@@ -4658,7 +4674,7 @@ function _buildLedgerData() {
     const k = keyOf(s);
     const g = ensure(k, s.guideName, s.username);
     g.settleTotal += (s.guideSettle||0);
-    g.settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0 });
+    g.settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0, date: _settleDateOf(s) });
     if (s.guideName) g.guideName = s.guideName;
   });
   paymentsDB.forEach(p=>{
@@ -4702,7 +4718,7 @@ function renderGuideLedger() {
   let html = '';
   keys.forEach(k=>{
     const g = byGuide[k];
-    const carry = carryoverDB[k] || 0;
+    const carry = _carryOf(k).amount;
     const cumulative = carry + g.settleTotal - g.paidTotal;
     html += `<div class="sub-card" style="cursor:pointer;" onclick="selectLedgerGuide('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -4727,33 +4743,63 @@ function backToLedgerList() {
 }
 
 function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
-  const carry = carryoverDB[key] || 0;
+  const { amount:carry, date:carryDate } = _carryOf(key);
   const cumulative = carry + g.settleTotal - g.paidTotal;
-  const sortedPayments = g.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
-  const settleRows = g.settlements.slice().sort((a,b)=>(a.settleCode||'').localeCompare(b.settleCode||''))
-    .map(s=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
-      <span>${s.settleCode||'-'}</span>
-      <span>฿${fmtNum(s.amount||0)}</span>
-    </div>`).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0;">제출된 정산서 없음</div>';
+  // 통장정리 방식 장부: 최초 이월금 → 이후 정산/지급을 날짜순으로 나열하며 누적 잔액 계산
+  const entries = [
+    ...g.settlements.map(s=>({ date:s.date||'', type:'settle', label:s.settleCode||'-', amount:s.amount||0 })),
+    ...g.payments.map(p=>({ date:p.date||'', type:'pay', label:p.memo||'지급', amount:p.amount||0, id:p.id })),
+  ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
-  const payRows = sortedPayments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
-      <span>${p.date||'-'}${p.memo?(' · '+p.memo):''}</span>
-      <span style="display:flex;align-items:center;gap:6px;">
-        ฿${fmtNum(p.amount||0)}
-        ${isAdmin?`<button onclick="deletePayment('${p.id}')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:12px;">✕</button>`:''}
-      </span>
-    </div>`).join('') || '<div style="font-size:12px;color:#aaa;padding:6px 0;">지급 내역 없음</div>';
+  let running = carry;
+  const bodyRows = entries.map(e=>{
+    running += (e.type==='settle' ? e.amount : -e.amount);
+    return `<tr>
+      <td style="padding:5px 4px;font-size:12px;">${e.date||'-'}</td>
+      <td style="padding:5px 4px;font-size:12px;color:#666;">${e.label}</td>
+      <td style="padding:5px 4px;font-size:12px;text-align:right;color:#1a6b8a;">${e.type==='settle'?('฿'+fmtNum(e.amount)):''}</td>
+      <td style="padding:5px 4px;font-size:12px;text-align:right;color:#c0392b;">${e.type==='pay'?('฿'+fmtNum(e.amount)):''}</td>
+      <td style="padding:5px 4px;font-size:12px;text-align:right;font-weight:700;">฿${fmtNum(running)}</td>
+      <td style="padding:5px 4px;text-align:center;">${e.type==='pay'&&isAdmin?`<button onclick="deletePayment('${e.id}')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:12px;">✕</button>`:''}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="padding:10px;text-align:center;color:#aaa;font-size:12px;">정산/지급 내역 없음</td></tr>`;
+
+  const passbook = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="padding:6px 4px;font-size:11px;color:#666;text-align:left;">일자</th>
+          <th style="padding:6px 4px;font-size:11px;color:#666;text-align:left;">내용</th>
+          <th style="padding:6px 4px;font-size:11px;color:#666;text-align:right;">정산금</th>
+          <th style="padding:6px 4px;font-size:11px;color:#666;text-align:right;">지급금</th>
+          <th style="padding:6px 4px;font-size:11px;color:#666;text-align:right;">잔액</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:#fffbea;">
+          <td style="padding:5px 4px;font-size:12px;">${carryDate||'-'}</td>
+          <td style="padding:5px 4px;font-size:12px;font-weight:700;">최초 이월금</td>
+          <td style="padding:5px 4px;font-size:12px;text-align:right;">-</td>
+          <td style="padding:5px 4px;font-size:12px;text-align:right;">-</td>
+          <td style="padding:5px 4px;font-size:12px;text-align:right;font-weight:700;">฿${fmtNum(carry)}</td>
+          <td></td>
+        </tr>
+        ${bodyRows}
+      </tbody>
+    </table>`;
 
   const carryForm = isAdmin ? `
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-      <span style="font-size:12px;color:#888;white-space:nowrap;">최초 이월금(฿)</span>
-      <input type="text" id="carry-${key}" value="${carry||''}" placeholder="0" inputmode="numeric" style="flex:1;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:#888;white-space:nowrap;">최초 이월금</span>
+      <input type="date" id="carry-date-${key}" value="${carryDate}" style="border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <input type="text" id="carry-${key}" value="${carry||''}" placeholder="금액(฿)" inputmode="numeric" style="flex:1;min-width:80px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
       <button onclick="setCarryover('${key}')" style="background:#555;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">저장</button>
     </div>` : '';
 
   const addForm = isAdmin ? `
-    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
       <input type="date" id="pay-date-${key}" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
       <input type="text" id="pay-amount-${key}" placeholder="지급액(฿)" inputmode="numeric" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
       <input type="text" id="pay-memo-${key}" placeholder="메모(선택)" style="flex:1;min-width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
@@ -4774,10 +4820,7 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
     </div>
     <div style="margin-top:10px;padding:10px 12px;background:#fafafa;border-radius:10px;">
       ${carryForm}
-      <div style="font-size:11px;color:#888;font-weight:700;margin-bottom:2px;">📋 정산금액 내역 (제출된 정산서 기준)</div>
-      ${settleRows}
-      <div style="font-size:11px;color:#888;font-weight:700;margin:10px 0 2px;">💵 입출금(지급) 내역</div>
-      ${payRows}
+      ${passbook}
       ${addForm}
     </div>`;
 }
@@ -4785,8 +4828,10 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
 async function setCarryover(key) {
   if (currentRole !== 'admin') return;
   const el = document.getElementById('carry-'+key);
+  const dateEl = document.getElementById('carry-date-'+key);
   const amount = parseFloat((el.value||'').replace(/,/g,''))||0;
-  carryoverDB[key] = amount;
+  const date = dateEl ? dateEl.value : '';
+  carryoverDB[key] = { amount, date };
   await saveCarryover();
   showToast('✅ 최초 이월금이 저장되었습니다.');
   renderGuideLedger();
