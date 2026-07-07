@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.3, maximum-scale=5.0, user-scalable=yes"/>
+<title>여행사 상세예약 관리</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;font-family:inherit;}
+html,body{height:100%;}
+body{font-family:'Noto Sans KR',sans-serif;background:#eef1f6;color:#1c2430;font-size:13px;}
+a{color:inherit;}
+button,input,select,textarea{font-family:inherit;font-size:inherit;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#c3cad6;border-radius:5px;}
+
+/* ── LOGIN ── */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#1a2540,#0d1526);display:flex;align-items:center;justify-content:center;z-index:999;}
+.login-box{background:#fff;border-radius:16px;padding:36px 30px;width:330px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.35);}
+.login-box h1{font-size:20px;font-weight:900;color:#1a2540;text-align:center;}
+.login-box p{font-size:11.5px;color:#8892a0;text-align:center;margin-top:4px;margin-bottom:22px;}
+.login-field{margin-bottom:12px;}
+.login-field input{width:100%;padding:11px 12px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13.5px;background:#f8f9fb;}
+.login-field input:focus{outline:none;border-color:#3457d5;background:#fff;}
+.login-btn{width:100%;padding:12px;background:#3457d5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;}
+.login-btn:hover{background:#2a46b3;}
+.login-btn:disabled{opacity:0.6;cursor:default;}
+.login-err{color:#e0483f;font-size:11.5px;text-align:center;margin-top:10px;display:none;}
+
+/* ── APP SHELL ── */
+#app{display:none;min-height:100vh;flex-direction:column;}
+header.topbar{background:#161f38;color:#fff;padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.brand{font-weight:900;font-size:16px;letter-spacing:0.3px;display:flex;align-items:center;gap:8px;}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:#4fd1a5;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:#c4cbdb;}
+.role-chip{background:#2a3760;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#8fb4ff;}
+.tbtn{padding:7px 13px;border-radius:7px;border:1px solid #3a4670;background:#1f2a4d;color:#dfe4f2;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;}
+.tbtn:hover{background:#2a3760;}
+.tbtn-primary{background:#3457d5;border-color:#3457d5;color:#fff;}
+.tbtn-primary:hover{background:#2a46b3;}
+
+/* ── STATS ── */
+.stats{background:#fff;border-bottom:1px solid #e3e7ee;padding:10px 22px;display:flex;gap:22px;flex-wrap:wrap;font-size:12px;}
+.stats b{color:#161f38;}
+.stats .grp{display:flex;gap:10px;align-items:center;padding-right:18px;border-right:1px solid #edf0f5;}
+.stats .grp:last-child{border-right:none;}
+.stats .grp-name{font-weight:800;color:#3457d5;}
+.stats .chip{color:#6b7484;}
+
+/* ── FILTER BAR ── */
+.filterbar{background:#fff;border-bottom:1px solid #e3e7ee;padding:10px 22px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.filterbar input,.filterbar select{padding:7px 10px;border:1px solid #dfe3ea;border-radius:7px;font-size:12px;background:#f8f9fb;}
+.filterbar input[type="date"]{color:#333;}
+.filterbar .search{flex:1;min-width:140px;}
+.viewToggle{display:flex;border:1px solid #dfe3ea;border-radius:7px;overflow:hidden;}
+.viewToggle button{padding:7px 14px;border:none;background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:#6b7484;}
+.viewToggle button.active{background:#3457d5;color:#fff;}
+.spacer{flex:1;}
+
+/* ── MAIN ── */
+main{flex:1;padding:18px 22px 40px;}
+
+/* ── CALENDAR ── */
+.cal-head{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px;}
+.cal-head h2{font-size:18px;font-weight:800;color:#161f38;}
+.cal-nav{background:#fff;border:1px solid #dfe3ea;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#3457d5;}
+.cal-grid{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(20,30,60,0.05);}
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);background:#f4f6fa;border-bottom:1px solid #e3e7ee;}
+.cal-dow div{padding:9px;text-align:center;font-size:11.5px;font-weight:800;color:#8892a0;}
+.cal-dow div:first-child{color:#e0483f;}
+.cal-dow div:last-child{color:#3457d5;}
+.cal-body{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{min-height:104px;border-right:1px solid #eef0f5;border-bottom:1px solid #eef0f5;padding:6px 6px;position:relative;cursor:pointer;transition:background .12s;}
+.cal-cell:hover{background:#f7f9fd;}
+.cal-cell.out{background:#fafbfc;cursor:default;}
+.cal-cell.out:hover{background:#fafbfc;}
+.cal-daynum{font-size:11.5px;font-weight:700;color:#495066;margin-bottom:4px;}
+.cal-cell:nth-child(7n+1) .cal-daynum{color:#e0483f;}
+.cal-cell:nth-child(7n) .cal-daynum{color:#3457d5;}
+.cal-item{font-size:10.5px;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:3px solid #d99a1c;background:#fdf3de;color:#20304f;}
+.cal-item:hover{filter:brightness(0.97);}
+.cal-item.proc-FINAL{border-color:#1a8a52;background:#e2f7ec;}
+.cal-item.is-cancel{border-color:#9aa1af;background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
+.cal-more{font-size:10px;color:#8892a0;padding:1px 5px;cursor:pointer;}
+
+/* ── LIST TABLE ── */
+.list-wrap{background:#fff;border-radius:12px;overflow:auto;box-shadow:0 2px 10px rgba(20,30,60,0.05);}
+table.rlist{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+table.rlist th{background:#f4f6fa;padding:10px 12px;text-align:left;font-size:11px;color:#6b7484;border-bottom:1px solid #e3e7ee;position:sticky;top:0;}
+table.rlist td{padding:10px 12px;border-bottom:1px solid #f0f2f6;}
+table.rlist tr:hover td{background:#f7f9fd;}
+table.rlist tr{cursor:pointer;}
+.badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
+.badge-proc-FINAL{background:#e2f7ec;color:#1a8a52;}
+.badge-proc-NEW,.badge-proc-PROCESS{background:#fdf3de;color:#a3720c;}
+.badge-cancel{background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
+.empty-row td{text-align:center;color:#9aa1af;padding:40px;}
+
+/* ── MODAL (RESERVATION) ── */
+.rov{position:fixed;inset:0;background:rgba(15,20,35,0.55);z-index:800;display:none;align-items:flex-start;justify-content:center;padding:26px 14px;overflow:auto;}
+.rov.open{display:flex;}
+.rmodal{background:#f5f6f9;border-radius:14px;width:100%;max-width:1180px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,0.4);}
+.rmodal-hd{background:#161f38;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;}
+.rmodal-hd h2{font-size:16px;font-weight:800;}
+.rmodal-hd .code{font-size:11.5px;color:#8fb4ff;background:#1f2a4d;padding:3px 10px;border-radius:10px;}
+.rmodal-close{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;}
+.rmodal-body{display:grid;grid-template-columns:300px 1fr;gap:0;max-height:78vh;overflow:auto;}
+.rmodal-side{background:#fff;padding:20px;border-right:1px solid #e8eaf0;}
+.rmodal-main{padding:20px 22px;}
+.f-row{margin-bottom:12px;}
+.f-row label{display:block;font-size:11px;font-weight:700;color:#8892a0;margin-bottom:5px;letter-spacing:.2px;}
+.f-row input,.f-row select,.f-row textarea{width:100%;padding:9px 10px;border:1.3px solid #e2e6ee;border-radius:7px;font-size:12.5px;background:#fafbfd;}
+.f-row textarea{resize:vertical;min-height:52px;}
+.f-row input:focus,.f-row select:focus,.f-row textarea:focus{outline:none;border-color:#3457d5;background:#fff;}
+.f-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.f-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.sec-divider{font-size:11px;font-weight:800;color:#3457d5;letter-spacing:.5px;margin:20px 0 10px;text-transform:uppercase;}
+.sec-divider:first-child{margin-top:0;}
+
+/* sub-sections */
+.subsec{background:#fff;border:1px solid #e8eaf0;border-radius:10px;margin-bottom:16px;overflow:hidden;}
+.subsec-hd{display:flex;align-items:center;padding:11px 14px;background:#f8f9fc;border-bottom:1px solid #eceef3;}
+.subsec-hd h3{font-size:12.5px;font-weight:800;color:#161f38;}
+.subsec-hd .cnt{font-size:11px;color:#8892a0;margin-left:6px;}
+.subsec-add{margin-left:auto;background:#3457d5;color:#fff;border:none;padding:5px 11px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;}
+.subsec-add:hover{background:#2a46b3;}
+table.subtbl{width:100%;border-collapse:collapse;font-size:11.5px;}
+table.subtbl th{padding:7px 10px;text-align:left;color:#8892a0;font-size:10.5px;background:#fbfbfd;border-bottom:1px solid #eef0f5;white-space:nowrap;}
+table.subtbl td{padding:7px 10px;border-bottom:1px solid #f3f4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+table.subtbl tr:last-child td{border-bottom:none;}
+.subtbl-empty{padding:16px;text-align:center;color:#b0b6c2;font-size:11.5px;}
+.row-actions{display:flex;gap:8px;}
+.row-actions a{font-size:11px;font-weight:700;cursor:pointer;}
+.act-edit{color:#3457d5;}
+.act-del{color:#e0483f;}
+.ledger-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:720px){.ledger-grid{grid-template-columns:1fr;}}
+
+.rmodal-ft{padding:14px 22px;background:#fff;border-top:1px solid #e8eaf0;display:flex;gap:10px;justify-content:flex-end;}
+.btn{padding:10px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-ghost{background:#eef0f5;color:#4a5164;}
+.btn-ghost:hover{background:#e2e5ee;}
+.btn-danger{background:#fdeceb;color:#e0483f;}
+.btn-danger:hover{background:#fbdbd8;}
+.btn-save{background:#3457d5;color:#fff;}
+.btn-save:hover{background:#2a46b3;}
+
+/* ── SUB-ROW EDITOR MINI MODAL ── */
+.sov{position:fixed;inset:0;background:rgba(15,20,35,0.55);z-index:900;display:none;align-items:center;justify-content:center;padding:16px;}
+.sov.open{display:flex;}
+.smodal{background:#fff;border-radius:12px;width:100%;max-width:480px;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;}
+.smodal-hd{padding:14px 20px;background:#161f38;color:#fff;font-size:13.5px;font-weight:800;display:flex;align-items:center;}
+.smodal-hd button{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;}
+.smodal-body{padding:18px 20px;max-height:64vh;overflow:auto;}
+.smodal-ft{padding:14px 20px;border-top:1px solid #eceef3;display:flex;gap:8px;justify-content:flex-end;}
+
+/* ── MASTER DATA (코드/고객사관리) ── */
+.mtabs{display:flex;gap:4px;padding:0 20px;background:#161f38;}
+.mtabs button{padding:10px 14px;border:none;background:transparent;color:#9aa6c4;font-size:12px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;}
+.mtabs button.active{color:#fff;border-color:#4fd1a5;}
+.code-row{display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;margin-bottom:6px;}
+.code-row .tag{font-weight:800;font-size:11.5px;color:#3457d5;background:#eaefff;padding:2px 8px;border-radius:6px;}
+.code-row .lbl{font-size:12px;color:#4a5164;}
+.code-addrow{display:flex;gap:8px;margin-bottom:14px;}
+.code-addrow input{flex:1;}
+.cust-card{border:1px solid #e8eaf0;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.cust-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cust-card-hd b{font-size:13px;color:#161f38;}
+.mgr-chip{display:inline-flex;align-items:center;gap:6px;background:#eef2fe;color:#20304f;padding:3px 9px;border-radius:12px;font-size:11px;margin:3px 4px 0 0;}
+.mgr-chip a{color:#e0483f;cursor:pointer;font-weight:800;}
+.mgr-addrow{display:flex;gap:6px;margin-top:8px;}
+.mgr-addrow input{flex:1;padding:6px 8px;font-size:11.5px;border:1px solid #e2e6ee;border-radius:6px;}
+.subsec-placeholder{padding:70px 20px;text-align:center;color:#9aa1af;font-size:13px;background:#fff;border:1px dashed #dfe3ea;border-radius:10px;}
+.phrase-picker{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
+.phrase-chip{background:#eef2fe;color:#20304f;border:1px solid #d6e0fb;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;}
+.phrase-chip:hover{background:#dde6fd;}
+.phrase-row{display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;margin-bottom:6px;}
+.phrase-row span{font-size:12px;color:#4a5164;flex:1;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#161f38;color:#fff;padding:12px 22px;border-radius:9px;font-size:12.5px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,0.3);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media (max-width:900px){
+  .rmodal-body{grid-template-columns:1fr;}
+  .rmodal-side{border-right:none;border-bottom:1px solid #e8eaf0;}
+  .cal-cell{min-height:76px;}
+  .stats{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>여행사 상세예약</h1>
+    <p>Travel Reservation Management</p>
+    <div class="login-field"><input type="text" id="login-id" placeholder="아이디" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="login-field"><input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span>여행사 상세예약</div>
+    <div class="topbar-right">
+      <span id="whoami"></span>
+      <button class="tbtn" id="btnCodes" onclick="openCodeModal()" style="display:none;">🏷 코드관리</button>
+      <button class="tbtn" id="btnCustomers" onclick="openCustomerModal()" style="display:none;">🏢 고객사관리</button>
+      <button class="tbtn" id="btnVendors" onclick="openVendorModal()" style="display:none;">🏬 거래처/업체관리</button>
+      <button class="tbtn" id="btnPhrases" onclick="openPhraseModal()" style="display:none;">📋 INCLUDES/DECLUDES 관리</button>
+      <button class="tbtn" id="btnAccounts" onclick="openAccountModal()" style="display:none;">👤 계정관리</button>
+      <button class="tbtn" onclick="doLogout()">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="stats" id="statsBar"></div>
+
+  <div class="filterbar">
+    <input type="date" id="f-from"/>
+    <span style="color:#b0b6c2;">~</span>
+    <input type="date" id="f-to"/>
+    <select id="f-division"><option value="">전체 구분</option></select>
+    <select id="f-type"><option value="">전체 유형</option></select>
+    <select id="f-proc"><option value="">전체 진행</option></select>
+    <select id="f-status"><option value="">전체 상태</option></select>
+    <input type="text" class="search" id="f-search" placeholder="예약자/고객사/담당자/CODE 검색" oninput="renderAll()"/>
+    <div class="viewToggle">
+      <button id="vtCal" class="active" onclick="setView('cal')">📅 캘린더</button>
+      <button id="vtList" onclick="setView('list')">📋 목록</button>
+    </div>
+    <button class="tbtn-primary" onclick="openReservation(null)">＋ 신규예약</button>
+  </div>
+
+  <main>
+    <div id="calView">
+      <div class="cal-head">
+        <div class="cal-nav" onclick="calMove(-1)">◀ 이전달</div>
+        <h2 id="calTitle"></h2>
+        <div class="cal-nav" onclick="calMove(1)">다음달 ▶</div>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+        <div class="cal-body" id="calBody"></div>
+      </div>
+    </div>
+    <div id="listView" style="display:none;">
+      <div class="list-wrap">
+        <table class="rlist">
+          <thead><tr>
+            <th>CODE</th><th>구분</th><th>유형</th><th>상태</th><th>체크인</th><th>체크아웃</th>
+            <th>예약명</th><th>고객사</th><th>담당자</th><th>인원</th>
+          </tr></thead>
+          <tbody id="listBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── RESERVATION MODAL ── -->
+<div class="rov" id="rov" onclick="if(event.target===this)closeReservation()">
+  <div class="rmodal">
+    <div class="rmodal-hd">
+      <h2 id="rmTitle">신규예약</h2>
+      <span class="code" id="rmCode">-</span>
+      <button class="rmodal-close" onclick="closeReservation()">✕</button>
+    </div>
+    <div class="rmodal-body">
+      <div class="rmodal-side">
+        <div class="sec-divider">BASIC INFO</div>
+        <div class="f-row2">
+          <div class="f-row"><label>OFFICE</label><select id="r-office"></select></div>
+          <div class="f-row"><label>DIVISION</label><select id="r-division"></select></div>
+        </div>
+        <div class="f-row3">
+          <div class="f-row"><label>TYPE</label><select id="r-type" onchange="onDateChange()"></select></div>
+          <div class="f-row"><label>PROC</label><select id="r-proc"></select></div>
+          <div class="f-row"><label>STATUS</label><select id="r-status"></select></div>
+        </div>
+        <div class="f-row2">
+          <div class="f-row"><label>CHECK-IN</label><input type="date" id="r-datein" onchange="onDateChange()"/></div>
+          <div class="f-row"><label>CHECK-OUT</label><input type="date" id="r-dateout"/></div>
+        </div>
+        <div class="f-row"><label>RESERVATION NAME</label><input type="text" id="r-name" placeholder="e.g. Busan 3N5D"/></div>
+
+        <div class="sec-divider">CUSTOMER INFO</div>
+        <div class="f-row2">
+          <div class="f-row"><label>CUSTOMER</label><select id="r-customer" onchange="onCustomerChange()"></select></div>
+          <div class="f-row"><label>MANAGER</label><select id="r-manager"></select></div>
+        </div>
+        <div class="f-row2">
+          <div class="f-row"><label>AGENT</label><input type="text" id="r-agent" list="dl-agents"/></div>
+          <div class="f-row"><label>TC</label><input type="text" id="r-tc"/></div>
+        </div>
+        <div class="f-row"><label>PAX (ADULT+CHILD+INFANT)</label>
+          <div class="f-row3">
+            <input type="number" id="r-adt" min="0" placeholder="ADULT"/>
+            <input type="number" id="r-chd" min="0" placeholder="CHILD"/>
+            <input type="number" id="r-inf" min="0" placeholder="INFANT"/>
+          </div>
+        </div>
+        <div class="f-row"><label>PICKET</label><textarea id="r-picket" placeholder="Airport pickup signboard text"></textarea></div>
+
+        <div class="sec-divider">REMARKS</div>
+        <div class="f-row"><label>REMARK</label><textarea id="r-remark"></textarea></div>
+        <div class="f-row"><label>INCLUDES</label>
+          <div class="phrase-picker" id="includes-picker"></div>
+          <textarea id="r-includes"></textarea>
+        </div>
+        <div class="f-row"><label>DECLUDES</label>
+          <div class="phrase-picker" id="decludes-picker"></div>
+          <textarea id="r-decludes"></textarea>
+        </div>
+        <div class="f-row"><label>MEMO</label><textarea id="r-memo"></textarea></div>
+      </div>
+
+      <div class="rmodal-main" id="subsecHost"></div>
+    </div>
+    <div class="rmodal-ft">
+      <button class="btn btn-danger" id="btnDeleteRes" onclick="deleteReservation()" style="display:none;">예약 삭제</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" onclick="closeReservation()">취소</button>
+      <button class="btn btn-save" id="btnSaveRes" onclick="saveReservation()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SUB-ROW EDITOR ── -->
+<div class="sov" id="sov" onclick="if(event.target===this)closeSubEditor()">
+  <div class="smodal">
+    <div class="smodal-hd"><span id="soTitle">항목 추가</span><button onclick="closeSubEditor()">✕</button></div>
+    <div class="smodal-body" id="soBody"></div>
+    <div class="smodal-ft">
+      <button class="btn btn-ghost" onclick="closeSubEditor()">취소</button>
+      <button class="btn btn-save" onclick="saveSubRow()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── BALANCE MODAL ── -->
+<div class="sov" id="balanceModal" onclick="if(event.target===this)closeBalanceModal()">
+  <div class="smodal" style="max-width:420px;">
+    <div class="smodal-hd"><span>💰 Balance</span><button onclick="closeBalanceModal()">✕</button></div>
+    <div class="smodal-body" id="balanceBody"></div>
+  </div>
+</div>
+
+<!-- ── ACCOUNT MODAL ── -->
+<div class="sov" id="accModal" onclick="if(event.target===this)closeAccountModal()">
+  <div class="smodal" style="max-width:420px;">
+    <div class="smodal-hd"><span>계정 관리</span><button onclick="closeAccountModal()">✕</button></div>
+    <div class="smodal-body">
+      <div class="f-row2">
+        <input type="text" id="acc-id" placeholder="아이디"/>
+        <input type="password" id="acc-pw" placeholder="비밀번호"/>
+      </div>
+      <button class="btn btn-save" style="width:100%;margin-top:8px;" onclick="addAccount()">계정 추가</button>
+      <div id="acc-err" style="color:#e0483f;font-size:11.5px;margin-top:6px;"></div>
+      <ul id="accList" style="list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:8px;"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- ── CODE MODAL ── -->
+<div class="sov" id="codeModal" onclick="if(event.target===this)closeCodeModal()">
+  <div class="smodal" style="max-width:440px;">
+    <div class="smodal-hd"><span>코드 관리</span><button onclick="closeCodeModal()">✕</button></div>
+    <div class="mtabs" id="codeTabs"></div>
+    <div class="smodal-body">
+      <div class="code-addrow">
+        <input type="text" id="code-new-code" placeholder="코드 (예: TKB)"/>
+        <input type="text" id="code-new-label" placeholder="라벨 (예: 방콕)"/>
+        <button class="btn btn-save" onclick="addCodeItem()">추가</button>
+      </div>
+      <div id="codeListBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CUSTOMER MODAL ── -->
+<div class="sov" id="customerModal" onclick="if(event.target===this)closeCustomerModal()">
+  <div class="smodal" style="max-width:520px;">
+    <div class="smodal-hd"><span>고객사 관리</span><button onclick="closeCustomerModal()">✕</button></div>
+    <div class="smodal-body">
+      <div class="code-addrow">
+        <input type="text" id="cust-new-name" placeholder="고객사명 (예: 모두투어)"/>
+        <button class="btn btn-save" onclick="addCustomer()">고객사 추가</button>
+      </div>
+      <div id="custListBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VENDOR MODAL ── -->
+<div class="sov" id="vendorModal" onclick="if(event.target===this)closeVendorModal()">
+  <div class="smodal" style="max-width:460px;">
+    <div class="smodal-hd"><span>거래처/업체 관리</span><button onclick="closeVendorModal()">✕</button></div>
+    <div class="mtabs" id="vendorTabs"></div>
+    <div class="smodal-body">
+      <div class="code-addrow">
+        <input type="text" id="vendor-new-name" placeholder="업체/이름"/>
+        <input type="text" id="vendor-new-phone" placeholder="연락처 (선택)"/>
+        <button class="btn btn-save" onclick="addVendorItem()">추가</button>
+      </div>
+      <div id="vendorListBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PHRASE MODAL (INCLUDES/DECLUDES) ── -->
+<div class="sov" id="phraseModal" onclick="if(event.target===this)closePhraseModal()">
+  <div class="smodal" style="max-width:460px;">
+    <div class="smodal-hd"><span>INCLUDES / DECLUDES 문구 관리</span><button onclick="closePhraseModal()">✕</button></div>
+    <div class="mtabs" id="phraseTabs"></div>
+    <div class="smodal-body">
+      <div class="code-addrow">
+        <input type="text" id="phrase-new-text" placeholder="문구 입력 (예: 노쇼핑, 노옵션 팀입니다.)"/>
+        <button class="btn btn-save" onclick="addPhraseItem()">추가</button>
+      </div>
+      <div id="phraseListBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 거래처/업체 자동완성용 datalist (JS로 내용 채움) -->
+<datalist id="dl-agents"></datalist>
+<datalist id="dl-flightSched"></datalist>
+<datalist id="dl-hotels"></datalist>
+<datalist id="dl-golfs"></datalist>
+<datalist id="dl-guides"></datalist>
+<datalist id="dl-vehicles"></datalist>
+<datalist id="dl-shows"></datalist>
+<datalist id="dl-shops"></datalist>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════ SUPABASE (가이드정산서와 같은 프로젝트, trv_ 접두어로 분리) ══════════════════════════ */
+const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+async function sbSave(key,data){
+  localStorage.setItem(key,JSON.stringify(data));
+  try{
+    const{error}=await sb.from('guide_data').upsert({data_key:key,data,updated_at:new Date().toISOString()});
+    if(error) showToast('❌ 동기화 실패: '+error.message);
+  }catch(e){ showToast('❌ Supabase 오류: '+e.message); }
+}
+async function sbLoad(key){
+  try{
+    const{data:row}=await sb.from('guide_data').select('data').eq('data_key',key).single();
+    if(row&&row.data!==undefined&&row.data!==null){ localStorage.setItem(key,JSON.stringify(row.data)); return row.data; }
+  }catch(e){}
+  return null;
+}
+const TRV_KEYS=['trv_reservations','trv_codes','trv_customers','trv_accounts','trv_admin_pw',
+  'trv_vendor_agents','trv_vendor_flightSched','trv_vendor_hotels','trv_vendor_golfs','trv_vendor_guides','trv_vendor_vehicles','trv_vendor_shows','trv_vendor_shops',
+  'trv_phrases_includes','trv_phrases_decludes'];
+async function loadAllFromSupabase(){
+  await Promise.all(TRV_KEYS.map(k=>sbLoad(k)));
+}
+
+/* ══════════════════════════ AUTH ══════════════════════════ */
+const ADMIN_ID='admin';
+const ADMIN_PW_DEFAULT='admin1234';
+function getAdminPw(){return localStorage.getItem('trv_admin_pw')||ADMIN_PW_DEFAULT;}
+async function setAdminPw(pw){ await sbSave('trv_admin_pw',pw); }
+function getAccounts(){try{return JSON.parse(localStorage.getItem('trv_accounts')||'[]');}catch{return[];}}
+async function saveAccounts(arr){ await sbSave('trv_accounts',arr); }
+
+let currentUser=null;
+
+async function doLogin(){
+  const id=document.getElementById('login-id').value.trim();
+  const pw=document.getElementById('login-pw').value.trim();
+  const err=document.getElementById('login-err');
+  const btn=document.querySelector('.login-btn');
+  err.style.display='none';
+  if(btn){btn.textContent='로그인 중...';btn.disabled=true;}
+  try{
+    // 이 기기의 로컬 캐시가 오래됐을 수 있으니 로그인 시도 시 계정/관리자비번을 Supabase에서 먼저 새로고침
+    await Promise.all([sbLoad('trv_accounts'),sbLoad('trv_admin_pw')]);
+
+    if(id.toLowerCase()===ADMIN_ID.toLowerCase()&&pw===getAdminPw()){
+      currentUser={id,role:'admin'};
+      await enterApp();return;
+    }
+    const found=getAccounts().find(a=>a.id.toLowerCase()===id.toLowerCase()&&a.pw===pw);
+    if(found){
+      currentUser={id:found.id,role:found.role||'staff'};
+      await enterApp();return;
+    }
+    err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
+    err.style.display='block';
+    document.getElementById('login-pw').value='';
+  } finally {
+    if(btn){btn.textContent='로그인';btn.disabled=false;}
+  }
+}
+async function enterApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('whoami').textContent=`${currentUser.id} (${currentUser.role==='admin'?'관리자':'직원'})`;
+  if(currentUser.role==='admin'){
+    document.getElementById('btnAccounts').style.display='';
+    document.getElementById('btnCodes').style.display='';
+    document.getElementById('btnCustomers').style.display='';
+    document.getElementById('btnVendors').style.display='';
+    document.getElementById('btnPhrases').style.display='';
+  }
+  await loadAllFromSupabase();
+  renderVendorDatalists();
+  renderPhrasePickers();
+  loadData();
+  renderFilters();
+  renderAll();
+}
+function doLogout(){
+  if(!confirm('로그아웃 하시겠습니까?'))return;
+  currentUser=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('login-id').value='';
+  document.getElementById('login-pw').value='';
+}
+
+/* ── 계정관리 ── */
+function openAccountModal(){document.getElementById('accModal').classList.add('open');renderAccList();}
+function closeAccountModal(){document.getElementById('accModal').classList.remove('open');}
+function renderAccList(){
+  const ul=document.getElementById('accList');
+  ul.innerHTML=getAccounts().map((a,i)=>`
+    <li style="display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;">
+      <span style="font-weight:700;font-size:12px;">${a.id}</span>
+      <span style="font-size:10.5px;color:#8892a0;">${a.role||'staff'}</span>
+      <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delAccount(${i})">삭제</a>
+    </li>`).join('')||'<div class="subtbl-empty">등록된 직원 계정이 없습니다</div>';
+}
+async function addAccount(){
+  const id=document.getElementById('acc-id').value.trim();
+  const pw=document.getElementById('acc-pw').value.trim();
+  const err=document.getElementById('acc-err');
+  if(!id||!pw){err.textContent='아이디/비밀번호를 입력해주세요.';return;}
+  const accounts=getAccounts();
+  if(accounts.find(a=>a.id===id)){err.textContent='이미 존재하는 아이디입니다.';return;}
+  accounts.push({id,pw,role:'staff'});
+  await saveAccounts(accounts);
+  err.textContent='';
+  document.getElementById('acc-id').value='';document.getElementById('acc-pw').value='';
+  renderAccList();
+  showToast('✅ 계정이 추가되었습니다');
+}
+async function delAccount(i){
+  const accounts=getAccounts();accounts.splice(i,1);await saveAccounts(accounts);renderAccList();
+}
+
+/* ══════════════════════════ CODE MASTER DATA ══════════════════════════ */
+const DEFAULT_CODES={
+  offices:[{code:'TKB',label:'방콕'}],
+  divisions:[{code:'TK',label:'투어코리아'},{code:'MD',label:'모두투어'}],
+  types:[{code:'GRP',label:'그룹'},{code:'PACK',label:'패키지'},{code:'GOLF',label:'골프'},{code:'FIT',label:'개별'},{code:'ETC',label:'기타'}],
+  procs:[{code:'NEW',label:'뉴부킹'},{code:'PROCESS',label:'진행중'},{code:'FINAL',label:'확정'}],
+  statuses:[{code:'NORMAL',label:'정상'},{code:'CANCEL',label:'취소'}],
+};
+const CODE_TABS=[
+  {key:'offices',label:'오피스'},{key:'divisions',label:'구분'},{key:'types',label:'유형'},
+  {key:'procs',label:'진행'},{key:'statuses',label:'상태'},
+];
+function getCodes(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('trv_codes')||'null');
+    if(saved) return Object.assign(JSON.parse(JSON.stringify(DEFAULT_CODES)),saved);
+  }catch{}
+  return JSON.parse(JSON.stringify(DEFAULT_CODES));
+}
+async function saveCodes(c){ await sbSave('trv_codes',c); }
+function codeLabel(listName,code){
+  const item=(getCodes()[listName]||[]).find(c=>c.code===code);
+  return item?`${item.code}[${item.label}]`:(code||'-');
+}
+function fillSelectFromCodes(selectId,listName,selected){
+  const list=getCodes()[listName]||[];
+  const sel=document.getElementById(selectId);
+  sel.innerHTML=list.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
+  if(selected) sel.value=selected;
+}
+
+let codeModalTab='offices';
+function openCodeModal(){
+  document.getElementById('codeModal').classList.add('open');
+  document.getElementById('codeTabs').innerHTML=CODE_TABS.map(t=>
+    `<button class="${t.key===codeModalTab?'active':''}" onclick="switchCodeTab('${t.key}')">${t.label}</button>`).join('');
+  renderCodeList();
+}
+function closeCodeModal(){ document.getElementById('codeModal').classList.remove('open'); }
+function switchCodeTab(key){
+  codeModalTab=key;
+  document.querySelectorAll('#codeTabs button').forEach(b=>b.classList.toggle('active',b.textContent===CODE_TABS.find(t=>t.key===key).label));
+  renderCodeList();
+}
+function renderCodeList(){
+  const codes=getCodes();
+  const list=codes[codeModalTab]||[];
+  document.getElementById('codeListBody').innerHTML=list.length?list.map((c,i)=>`
+    <div class="code-row">
+      <span class="tag">${c.code}</span><span class="lbl">${escapeHtml(c.label)}</span>
+      <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delCodeItem(${i})">삭제</a>
+    </div>`).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+}
+async function addCodeItem(){
+  const codeEl=document.getElementById('code-new-code'), labelEl=document.getElementById('code-new-label');
+  const code=codeEl.value.trim().toUpperCase(), label=labelEl.value.trim();
+  if(!code||!label){showToast('⚠ 코드와 라벨을 모두 입력해주세요');return;}
+  const codes=getCodes();
+  codes[codeModalTab]=codes[codeModalTab]||[];
+  if(codes[codeModalTab].find(c=>c.code===code)){showToast('⚠ 이미 존재하는 코드입니다');return;}
+  codes[codeModalTab].push({code,label});
+  await saveCodes(codes);
+  codeEl.value='';labelEl.value='';
+  renderCodeList();
+  showToast('✅ 코드가 추가되었습니다');
+}
+async function delCodeItem(i){
+  const codes=getCodes();
+  codes[codeModalTab].splice(i,1);
+  await saveCodes(codes);
+  renderCodeList();
+}
+
+/* ══════════════════════════ 고객사/담당자 ══════════════════════════ */
+function getCustomers(){ try{return JSON.parse(localStorage.getItem('trv_customers')||'[]');}catch{return[];} }
+async function saveCustomers(arr){ await sbSave('trv_customers',arr); }
+
+function openCustomerModal(){ document.getElementById('customerModal').classList.add('open'); renderCustomerList(); }
+function closeCustomerModal(){ document.getElementById('customerModal').classList.remove('open'); }
+function renderCustomerList(){
+  const customers=getCustomers();
+  document.getElementById('custListBody').innerHTML=customers.length?customers.map((c,ci)=>`
+    <div class="cust-card">
+      <div class="cust-card-hd">
+        <b>${escapeHtml(c.name)}</b>
+        <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delCustomer(${ci})">고객사 삭제</a>
+      </div>
+      <div>${(c.managers||[]).map((m,mi)=>`<span class="mgr-chip">${escapeHtml(m.name)}<a onclick="delManager(${ci},${mi})">✕</a></span>`).join('')||'<span style="color:#b0b6c2;font-size:11.5px;">등록된 담당자가 없습니다</span>'}</div>
+      <div class="mgr-addrow">
+        <input type="text" id="mgr-new-${ci}" placeholder="담당자명 (예: 박광민 매니저)"/>
+        <button class="btn btn-save" style="padding:6px 12px;font-size:11.5px;" onclick="addManager(${ci})">담당자 추가</button>
+      </div>
+    </div>`).join(''):'<div class="subtbl-empty">등록된 고객사가 없습니다</div>';
+}
+async function addCustomer(){
+  const nameEl=document.getElementById('cust-new-name');
+  const name=nameEl.value.trim();
+  if(!name){showToast('⚠ 고객사명을 입력해주세요');return;}
+  const customers=getCustomers();
+  if(customers.find(c=>c.name===name)){showToast('⚠ 이미 존재하는 고객사입니다');return;}
+  customers.push({id:'cu_'+Date.now(),name,managers:[]});
+  await saveCustomers(customers);
+  nameEl.value='';
+  renderCustomerList();
+  showToast('✅ 고객사가 추가되었습니다');
+}
+async function delCustomer(ci){
+  const customers=getCustomers();
+  customers.splice(ci,1);
+  await saveCustomers(customers);
+  renderCustomerList();
+}
+async function addManager(ci){
+  const input=document.getElementById(`mgr-new-${ci}`);
+  const name=input.value.trim();
+  if(!name)return;
+  const customers=getCustomers();
+  customers[ci].managers=customers[ci].managers||[];
+  customers[ci].managers.push({name});
+  await saveCustomers(customers);
+  renderCustomerList();
+}
+async function delManager(ci,mi){
+  const customers=getCustomers();
+  customers[ci].managers.splice(mi,1);
+  await saveCustomers(customers);
+  renderCustomerList();
+}
+
+/* ══════════════════════════ 거래처/업체 마스터 (항공사/호텔/골프/가이드/차량/쇼/쇼핑샵) ══════════════════════════ */
+const VENDOR_KEYS=[
+  {key:'agents',label:'거래처'},
+  {key:'flightSched',label:'항공편(편수/시간)'},
+  {key:'hotels',label:'호텔'},
+  {key:'golfs',label:'골프장'},
+  {key:'guides',label:'가이드'},
+  {key:'vehicles',label:'차량업체'},
+  {key:'shows',label:'쇼/공연장'},
+  {key:'shops',label:'쇼핑샵'},
+];
+function getVendors(key){ try{return JSON.parse(localStorage.getItem('trv_vendor_'+key)||'[]');}catch{return[];} }
+async function saveVendors(key,arr){ await sbSave('trv_vendor_'+key,arr); }
+function findVendor(key,name){ return getVendors(key).find(v=>v.name===name); }
+
+function renderVendorDatalists(){
+  VENDOR_KEYS.forEach(v=>{
+    const dl=document.getElementById(`dl-${v.key}`);
+    if(dl) dl.innerHTML=getVendors(v.key).map(item=>`<option value="${escapeAttr(item.name)}">`).join('');
+  });
+}
+
+let vendorModalTab='agents';
+function openVendorModal(){
+  document.getElementById('vendorModal').classList.add('open');
+  document.getElementById('vendorTabs').innerHTML=VENDOR_KEYS.map(v=>
+    `<button class="${v.key===vendorModalTab?'active':''}" onclick="switchVendorTab('${v.key}')">${v.label}</button>`).join('');
+  renderVendorList();
+}
+function closeVendorModal(){
+  document.getElementById('vendorModal').classList.remove('open');
+  renderVendorDatalists();
+}
+function switchVendorTab(key){
+  vendorModalTab=key;
+  document.querySelectorAll('#vendorTabs button').forEach(b=>b.classList.toggle('active',b.textContent===VENDOR_KEYS.find(v=>v.key===key).label));
+  renderVendorList();
+}
+function renderVendorList(){
+  const list=getVendors(vendorModalTab);
+  document.getElementById('vendorListBody').innerHTML=list.length?list.map((v,i)=>`
+    <div class="code-row">
+      <span class="tag">${escapeHtml(v.name)}</span><span class="lbl">${escapeHtml(v.phone||'')}</span>
+      <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
+    </div>`).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+}
+async function addVendorItem(){
+  const nameEl=document.getElementById('vendor-new-name'), phoneEl=document.getElementById('vendor-new-phone');
+  const name=nameEl.value.trim(), phone=phoneEl.value.trim();
+  if(!name){showToast('⚠ 이름/업체명을 입력해주세요');return;}
+  const list=getVendors(vendorModalTab);
+  if(list.find(v=>v.name===name)){showToast('⚠ 이미 등록된 항목입니다');return;}
+  list.push({name,phone});
+  await saveVendors(vendorModalTab,list);
+  nameEl.value='';phoneEl.value='';
+  renderVendorList();
+  showToast('✅ 등록되었습니다');
+}
+async function delVendorItem(i){
+  const list=getVendors(vendorModalTab);
+  list.splice(i,1);
+  await saveVendors(vendorModalTab,list);
+  renderVendorList();
+}
+
+/* ══════════════════════════ INCLUDES / DECLUDES 문구 코드 ══════════════════════════ */
+const PHRASE_TABS=[{key:'includes',label:'INCLUDES'},{key:'decludes',label:'DECLUDES'}];
+function getPhrases(key){ try{return JSON.parse(localStorage.getItem('trv_phrases_'+key)||'[]');}catch{return[];} }
+async function savePhrases(key,arr){ await sbSave('trv_phrases_'+key,arr); }
+function circledNum(n){
+  const circled=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮'];
+  return circled[n-1]||`(${n})`;
+}
+
+let phraseModalTab='includes';
+function openPhraseModal(){
+  document.getElementById('phraseModal').classList.add('open');
+  document.getElementById('phraseTabs').innerHTML=PHRASE_TABS.map(t=>
+    `<button class="${t.key===phraseModalTab?'active':''}" onclick="switchPhraseTab('${t.key}')">${t.label}</button>`).join('');
+  renderPhraseListModal();
+}
+function closePhraseModal(){
+  document.getElementById('phraseModal').classList.remove('open');
+  renderPhrasePickers();
+}
+function switchPhraseTab(key){
+  phraseModalTab=key;
+  document.querySelectorAll('#phraseTabs button').forEach(b=>b.classList.toggle('active',b.textContent===PHRASE_TABS.find(t=>t.key===key).label));
+  renderPhraseListModal();
+}
+function renderPhraseListModal(){
+  const list=getPhrases(phraseModalTab);
+  document.getElementById('phraseListBody').innerHTML=list.length?list.map((p,i)=>`
+    <div class="phrase-row"><span>${escapeHtml(p)}</span><a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delPhraseItem(${i})">삭제</a></div>`).join('')
+    :'<div class="subtbl-empty">등록된 문구가 없습니다</div>';
+}
+async function addPhraseItem(){
+  const el=document.getElementById('phrase-new-text');
+  const text=el.value.trim();
+  if(!text){showToast('⚠ 문구를 입력해주세요');return;}
+  const list=getPhrases(phraseModalTab);
+  list.push(text);
+  await savePhrases(phraseModalTab,list);
+  el.value='';
+  renderPhraseListModal();
+  showToast('✅ 문구가 추가되었습니다');
+}
+async function delPhraseItem(i){
+  const list=getPhrases(phraseModalTab);
+  list.splice(i,1);
+  await savePhrases(phraseModalTab,list);
+  renderPhraseListModal();
+}
+function renderPhrasePickers(){
+  ['includes','decludes'].forEach(key=>{
+    const host=document.getElementById(`${key}-picker`);
+    if(!host)return;
+    const list=getPhrases(key);
+    host.innerHTML=list.map(p=>`<span class="phrase-chip" onclick="insertPhrase('${key}',${JSON.stringify(p).replace(/"/g,'&quot;')})">＋ ${escapeHtml(p)}</span>`).join('');
+  });
+}
+function insertPhrase(key,text){
+  const ta=document.getElementById(key==='includes'?'r-includes':'r-decludes');
+  const existingLines=ta.value.split('\n').filter(l=>l.trim());
+  const n=existingLines.length+1;
+  const line=`${circledNum(n)} ${text}`;
+  ta.value=ta.value.trim()?`${ta.value}\n${line}`:line;
+}
+
+/* ══════════════════════════ DATA ══════════════════════════ */
+const SUBSECTIONS=[
+  {key:'flights',label:'FLIGHTS',fields:[
+    {k:'arrival',label:'도착편/시간',type:'text',vendorKey:'flightSched'},
+    {k:'departure',label:'출발편/시간',type:'text',vendorKey:'flightSched'},
+    {k:'term',label:'박수',type:'number'},
+    {k:'adt',label:'성인',type:'number'},
+    {k:'chd',label:'아동',type:'number'},
+    {k:'inf',label:'유아',type:'number'},
+    {k:'tc',label:'TC',type:'number'},
+    {k:'remark',label:'비고',type:'text'},
+  ],summaryFn:(rows)=>{
+    if(!rows.length)return'';
+    const s=(k)=>rows.reduce((a,r)=>a+(parseInt(r[k])||0),0);
+    return `${s('adt')+s('chd')}+${s('tc')}TC(${s('inf')}INF)`;
+  }},
+  {key:'hotels',label:'HOTELS',fields:[
+    {k:'hotel',label:'호텔명',type:'text',vendorKey:'hotels'},
+    {k:'roomtype',label:'룸타입',type:'text'},
+    {k:'chkin',label:'체크인',type:'date'},
+    {k:'nights',label:'박수',type:'number'},
+    {k:'sgl',label:'SGL',type:'number'},{k:'twn',label:'TWN',type:'number'},{k:'dbl',label:'DBL',type:'number'},{k:'trp',label:'TRP',type:'number'},{k:'gd',label:'G/D',type:'number'},
+    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'paying',label:'지불조건',type:'text'},
+    {k:'remark',label:'비고(컨펌번호 등)',type:'text'},
+  ]},
+  {key:'golfs',label:'GOLF',fields:[
+    {k:'date',label:'날짜',type:'date'},
+    {k:'club',label:'골프장',type:'text',vendorKey:'golfs'},
+    {k:'hole',label:'홀수',type:'number'},
+    {k:'pax',label:'인원',type:'number'},
+    {k:'teeup',label:'티업시간',type:'text'},
+    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'remark',label:'비고',type:'text'},
+  ]},
+  {key:'guides',label:'GUIDES',fields:[
+    {k:'name',label:'가이드명',type:'text',vendorKey:'guides',vendorPhoneField:'phone'},
+    {k:'phone',label:'연락처',type:'text'},
+    {k:'lguide',label:'L-GUIDE(현지)',type:'text'},
+    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'remark',label:'비고',type:'text'},
+  ]},
+  {key:'vehicles',label:'VEHICLES',fields:[
+    {k:'company',label:'차량업체',type:'text',vendorKey:'vehicles'},
+    {k:'info',label:'차량/기사 정보',type:'text'},
+    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'remark',label:'비고',type:'text'},
+  ]},
+  {key:'shows',label:'공연/식당/마사지',fields:[
+    {k:'name',label:'명칭',type:'text',vendorKey:'shows'},
+    {k:'date',label:'날짜',type:'date'},
+    {k:'time',label:'시간',type:'text'},
+    {k:'adt',label:'성인',type:'number'},{k:'chd',label:'아동',type:'number'},{k:'tc',label:'T/C',type:'number'},
+    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'remark',label:'비고',type:'text'},
+  ]},
+  {key:'shopping',label:'쇼핑',fields:[
+    {k:'center',label:'쇼핑센터',type:'text',vendorKey:'shops'},
+    {k:'remark',label:'비고',type:'text'},
+  ]},
+  {key:'deposits',label:'입금',ledger:true,fields:[
+    {k:'date',label:'날짜',type:'date'},
+    {k:'who',label:'거래처/고객',type:'text'},
+    {k:'acc',label:'계정',type:'text'},
+    {k:'currency',label:'통화',type:'text'},
+    {k:'amount',label:'금액',type:'number'},
+    {k:'summary',label:'적요',type:'text'},
+  ]},
+  {key:'withdrawals',label:'출금',ledger:true,fields:[
+    {k:'date',label:'날짜',type:'date'},
+    {k:'who',label:'거래처/고객',type:'text'},
+    {k:'acc',label:'계정',type:'text'},
+    {k:'currency',label:'통화',type:'text'},
+    {k:'amount',label:'금액',type:'number'},
+    {k:'summary',label:'적요',type:'text'},
+  ]},
+];
+
+let reservations=[];
+function loadData(){
+  try{ reservations=JSON.parse(localStorage.getItem('trv_reservations')||'[]'); }catch{ reservations=[]; }
+}
+async function saveData(){
+  await sbSave('trv_reservations',reservations);
+}
+
+/* ══════════════════════════ FILTERS / VIEW ══════════════════════════ */
+let currentView='cal';
+function setView(v){
+  currentView=v;
+  document.getElementById('vtCal').classList.toggle('active',v==='cal');
+  document.getElementById('vtList').classList.toggle('active',v==='list');
+  document.getElementById('calView').style.display=v==='cal'?'':'none';
+  document.getElementById('listView').style.display=v==='list'?'':'none';
+  renderAll();
+}
+function renderFilters(){
+  const codes=getCodes();
+  const fill=(id,list,allLabel)=>{
+    document.getElementById(id).innerHTML=`<option value="">${allLabel}</option>`+
+      list.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
+  };
+  fill('f-division',codes.divisions,'전체 구분');
+  fill('f-type',codes.types,'전체 유형');
+  fill('f-proc',codes.procs,'전체 진행');
+  fill('f-status',codes.statuses,'전체 상태');
+  ['f-from','f-to','f-division','f-type','f-proc','f-status'].forEach(id=>{
+    document.getElementById(id).onchange=renderAll;
+  });
+}
+function getFiltered(){
+  const from=document.getElementById('f-from').value;
+  const to=document.getElementById('f-to').value;
+  const div=document.getElementById('f-division').value;
+  const typ=document.getElementById('f-type').value;
+  const proc=document.getElementById('f-proc').value;
+  const st=document.getElementById('f-status').value;
+  const q=(document.getElementById('f-search').value||'').trim().toLowerCase();
+  return reservations.filter(r=>{
+    if(from&&r.dateout<from) return false;
+    if(to&&r.datein>to) return false;
+    if(div&&r.division!==div) return false;
+    if(typ&&r.type!==typ) return false;
+    if(proc&&r.proc!==proc) return false;
+    if(st&&r.status!==st) return false;
+    if(q){
+      const hay=[r.code,r.name,r.customer,r.manager].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function renderAll(){
+  renderStats();
+  if(currentView==='cal') renderCalendar(); else renderList();
+}
+function renderStats(){
+  const byDiv={};
+  reservations.forEach(r=>{
+    const d=r.division||'미분류';
+    byDiv[d]=byDiv[d]||{};
+    const t=r.type||'ETC';
+    byDiv[d][t]=(byDiv[d][t]||0)+1;
+  });
+  const bar=document.getElementById('statsBar');
+  const groups=Object.entries(byDiv);
+  if(!groups.length){bar.innerHTML='<span class="chip">등록된 예약이 없습니다</span>';return;}
+  bar.innerHTML=groups.map(([d,types])=>{
+    const total=Object.values(types).reduce((a,b)=>a+b,0);
+    const parts=Object.entries(types).map(([t,c])=>`${t}(${c})`).join(' ');
+    return `<div class="grp"><span class="grp-name">${codeLabel('divisions',d)}(${total})</span><span class="chip">${parts}</span></div>`;
+  }).join('');
+}
+
+/* ══════════════════════════ CALENDAR ══════════════════════════ */
+let calY,calM;
+function calMove(delta){
+  calM+=delta;
+  if(calM<0){calM=11;calY--;}
+  if(calM>11){calM=0;calY++;}
+  renderCalendar();
+}
+function renderCalendar(){
+  if(calY==null){const t=new Date();calY=t.getFullYear();calM=t.getMonth();}
+  document.getElementById('calTitle').textContent=`${calY}년 ${calM+1}월`;
+  const first=new Date(calY,calM,1);
+  const startDow=first.getDay();
+  const daysInMonth=new Date(calY,calM+1,0).getDate();
+  const list=getFiltered();
+  const byDate={};
+  list.forEach(r=>{ (byDate[r.datein]=byDate[r.datein]||[]).push(r); });
+
+  let html='';
+  for(let i=0;i<startDow;i++) html+=`<div class="cal-cell out"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items=byDate[dateStr]||[];
+    const shown=items.slice(0,3);
+    const more=items.length-shown.length;
+    html+=`<div class="cal-cell" onclick="openReservation(null,'${dateStr}')">
+      <div class="cal-daynum">${d}</div>
+      ${shown.map(r=>`<div class="cal-item proc-${r.proc}${r.status==='CANCEL'?' is-cancel':''}" onclick="event.stopPropagation();openReservation('${r.id}')">${escapeHtml(summaryLine(r))}</div>`).join('')}
+      ${more>0?`<div class="cal-more" onclick="event.stopPropagation();openDayList('${dateStr}')">+${more}건 더보기</div>`:''}
+    </div>`;
+  }
+  const totalCells=startDow+daysInMonth;
+  const trail=(7-(totalCells%7))%7;
+  for(let i=0;i<trail;i++) html+=`<div class="cal-cell out"></div>`;
+  document.getElementById('calBody').innerHTML=html;
+}
+function summaryLine(r){
+  const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
+  return `[${r.type||'-'}] ${r.name||'(제목없음)'} · ${pax?pax+'명 · ':''}${r.manager||''}`;
+}
+function statusBadge(r){
+  const cls=r.status==='CANCEL'?'badge-cancel':`badge-proc-${r.proc}`;
+  const text=r.status==='CANCEL'?codeLabel('statuses','CANCEL'):codeLabel('procs',r.proc);
+  return `<span class="badge ${cls}">${text}</span>`;
+}
+function openDayList(dateStr){
+  document.getElementById('f-from').value=dateStr;
+  document.getElementById('f-to').value=dateStr;
+  setView('list');
+}
+
+/* ══════════════════════════ LIST ══════════════════════════ */
+function renderList(){
+  const list=getFiltered().sort((a,b)=>(a.datein||'').localeCompare(b.datein||''));
+  const body=document.getElementById('listBody');
+  if(!list.length){ body.innerHTML='<tr class="empty-row"><td colspan="10">조건에 맞는 예약이 없습니다</td></tr>'; return; }
+  body.innerHTML=list.map(r=>{
+    const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0)+(parseInt(r.inf)||0);
+    return `<tr onclick="openReservation('${r.id}')">
+      <td>${r.code||'-'}</td>
+      <td>${codeLabel('divisions',r.division)}</td>
+      <td>${codeLabel('types',r.type)}</td>
+      <td>${statusBadge(r)}</td>
+      <td>${r.datein||'-'}</td>
+      <td>${r.dateout||'-'}</td>
+      <td>${escapeHtml(r.name||'-')}</td>
+      <td>${escapeHtml(r.customer||'-')}</td>
+      <td>${escapeHtml(r.manager||'-')}</td>
+      <td>${pax||'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══════════════════════════ RESERVATION MODAL ══════════════════════════ */
+let editingId=null;
+let modalMode='create'; // 'create' | 'edit'
+function genCode(datein,type){
+  const d=(datein||'').replace(/-/g,'').slice(2)||'000000';
+  const seq=String(reservations.filter(r=>r.type===type).length+1).padStart(4,'0');
+  return `${d}-${type||'ETC'}-${seq}`;
+}
+function genCodePreview(datein,type){
+  if(!datein) return '자동생성 (체크인 입력시 표시)';
+  return `${datein.replace(/-/g,'').slice(2)}-${type||'-'}`;
+}
+function blankReservation(){
+  const codes=getCodes();
+  return {id:'id_'+Date.now()+Math.random().toString(36).slice(2,7),code:'',
+    office:(codes.offices[0]||{}).code||'',division:(codes.divisions[0]||{}).code||'',
+    type:(codes.types[0]||{}).code||'',proc:(codes.procs[0]||{}).code||'',status:(codes.statuses[0]||{}).code||'',
+    datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',memo:'',
+    createdAt:'',updatedAt:'',
+    flights:[],hotels:[],golfs:[],guides:[],vehicles:[],shows:[],shopping:[],deposits:[],withdrawals:[]};
+}
+function formatDT(iso){
+  if(!iso)return'-';
+  const d=new Date(iso);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+let workingRes=null;
+function fillCustomerSelect(selectedCustomer,selectedManager){
+  const customers=getCustomers();
+  const sel=document.getElementById('r-customer');
+  sel.innerHTML='<option value="">선택안함</option>'+customers.map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  sel.value=selectedCustomer||'';
+  fillManagerSelect(selectedCustomer,selectedManager);
+}
+function fillManagerSelect(customerName,selectedManager){
+  const customers=getCustomers();
+  const cust=customers.find(c=>c.name===customerName);
+  const sel=document.getElementById('r-manager');
+  const managers=(cust&&cust.managers)||[];
+  sel.innerHTML='<option value="">선택안함</option>'+managers.map(m=>`<option value="${escapeAttr(m.name)}">${escapeHtml(m.name)}</option>`).join('');
+  sel.value=selectedManager||'';
+}
+function onCustomerChange(){ fillManagerSelect(document.getElementById('r-customer').value,''); }
+
+function openReservation(id,presetDate){
+  editingId=id;
+  modalMode=id?'edit':'create';
+  workingRes=id?JSON.parse(JSON.stringify(reservations.find(r=>r.id===id))):blankReservation();
+  if(!id&&presetDate) workingRes.datein=presetDate;
+  renderVendorDatalists();
+  renderPhrasePickers();
+
+  fillSelectFromCodes('r-office','offices',workingRes.office);
+  fillSelectFromCodes('r-division','divisions',workingRes.division);
+  fillSelectFromCodes('r-type','types',workingRes.type);
+  fillSelectFromCodes('r-proc','procs',workingRes.proc);
+  fillSelectFromCodes('r-status','statuses',workingRes.status);
+  fillCustomerSelect(workingRes.customer,workingRes.manager);
+
+  document.getElementById('rmTitle').textContent=modalMode==='edit'?'예약 수정 (EditReservation)':'신규예약 (AddReservation)';
+  document.getElementById('rmCode').textContent=workingRes.code||genCodePreview(workingRes.datein,workingRes.type);
+  document.getElementById('btnDeleteRes').style.display=modalMode==='edit'?'':'none';
+  document.getElementById('btnSaveRes').textContent=modalMode==='edit'?'저장':'생성';
+
+  document.getElementById('r-datein').value=workingRes.datein;
+  document.getElementById('r-dateout').value=workingRes.dateout;
+  document.getElementById('r-name').value=workingRes.name;
+  document.getElementById('r-agent').value=workingRes.agent;
+  document.getElementById('r-tc').value=workingRes.tc;
+  document.getElementById('r-adt').value=workingRes.adt;
+  document.getElementById('r-chd').value=workingRes.chd;
+  document.getElementById('r-inf').value=workingRes.inf;
+  document.getElementById('r-picket').value=workingRes.picket;
+  document.getElementById('r-remark').value=workingRes.remark;
+  document.getElementById('r-includes').value=workingRes.includes;
+  document.getElementById('r-decludes').value=workingRes.decludes;
+  document.getElementById('r-memo').value=workingRes.memo||'';
+
+  renderSubsections();
+  document.getElementById('rov').classList.add('open');
+}
+function closeReservation(){
+  document.getElementById('rov').classList.remove('open');
+  workingRes=null;editingId=null;
+}
+function onDateChange(){
+  if(modalMode==='create'){
+    document.getElementById('rmCode').textContent=genCodePreview(document.getElementById('r-datein').value,document.getElementById('r-type').value);
+  }
+}
+
+function renderSubsections(){
+  const host=document.getElementById('subsecHost');
+  if(modalMode==='create'){
+    host.innerHTML=`<div class="subsec-placeholder">먼저 기본정보를 입력해 예약을 생성하면<br/>항공·호텔·가이드·차량 등 세부 배정과 입출금 내역을 등록할 수 있습니다.</div>`;
+    return;
+  }
+  const normal=SUBSECTIONS.filter(s=>!s.ledger);
+  const ledger=SUBSECTIONS.filter(s=>s.ledger);
+  host.innerHTML=`
+    <div class="sec-divider" id="assignSection">배정 내역 (FLIGHTS/HOTELS/GOLF/GUIDES/VEHICLES/SHOW/SHOPPING)</div>
+    ${normal.map(sec=>subsecHtml(sec)).join('')}
+    <div class="sec-divider">입출금 정산</div>
+    <div class="ledger-grid">${ledger.map(sec=>subsecHtml(sec)).join('')}</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:6px;">
+      <div style="font-size:10.5px;color:#9aa1af;">createdAt: ${formatDT(workingRes.createdAt)}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}</div>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" onclick="goToAssignments()">🧭 Directions</button>
+      <button class="btn btn-ghost" onclick="showBalanceModal()">💰 Balance</button>
+    </div>
+  `;
+}
+function goToAssignments(){
+  const el=document.getElementById('assignSection');
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function subsecHtml(sec){
+  const rows=workingRes[sec.key]||[];
+  const cols=sec.fields;
+  const summary=sec.summaryFn?sec.summaryFn(rows):'';
+  return `
+  <div class="subsec">
+    <div class="subsec-hd">
+      <h3>${sec.label}</h3><span class="cnt">(${rows.length})</span>
+      <button class="subsec-add" onclick="openSubEditor('${sec.key}',null)">＋ 추가</button>
+    </div>
+    ${rows.length?`<table class="subtbl"><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr></thead>
+    <tbody>${rows.map((row,i)=>`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
+      <td><div class="row-actions"><a class="act-edit" onclick="openSubEditor('${sec.key}',${i})">수정</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">삭제</a></div></td>
+    </tr>`).join('')}</tbody></table>`
+    :`<div class="subtbl-empty">등록된 항목이 없습니다</div>`}
+    ${summary?`<div style="padding:8px 14px;font-size:11px;color:#8892a0;border-top:1px solid #f3f4f8;">${escapeHtml(summary)}</div>`:''}
+  </div>`;
+}
+function fmtVal(v,col){
+  if(v===undefined||v===null||v==='') return '-';
+  if(col.k==='amount') return Number(v).toLocaleString();
+  return v;
+}
+
+async function saveReservation(){
+  workingRes.office=document.getElementById('r-office').value;
+  workingRes.division=document.getElementById('r-division').value;
+  workingRes.type=document.getElementById('r-type').value;
+  workingRes.proc=document.getElementById('r-proc').value;
+  workingRes.status=document.getElementById('r-status').value;
+  workingRes.datein=document.getElementById('r-datein').value;
+  workingRes.dateout=document.getElementById('r-dateout').value;
+  workingRes.name=document.getElementById('r-name').value.trim();
+  workingRes.customer=document.getElementById('r-customer').value;
+  workingRes.manager=document.getElementById('r-manager').value;
+  workingRes.agent=document.getElementById('r-agent').value.trim();
+  workingRes.tc=document.getElementById('r-tc').value.trim();
+  workingRes.adt=document.getElementById('r-adt').value;
+  workingRes.chd=document.getElementById('r-chd').value;
+  workingRes.inf=document.getElementById('r-inf').value;
+  workingRes.picket=document.getElementById('r-picket').value.trim();
+  workingRes.remark=document.getElementById('r-remark').value.trim();
+  workingRes.includes=document.getElementById('r-includes').value.trim();
+  workingRes.decludes=document.getElementById('r-decludes').value.trim();
+  workingRes.memo=document.getElementById('r-memo').value.trim();
+
+  if(!workingRes.datein){showToast('⚠ 체크인 날짜를 입력해주세요');return;}
+  if(!workingRes.name){showToast('⚠ 예약명을 입력해주세요');return;}
+
+  if(modalMode==='create'){
+    workingRes.code=genCode(workingRes.datein,workingRes.type);
+    workingRes.createdAt=new Date().toISOString();
+    workingRes.updatedAt=workingRes.createdAt;
+    reservations.push(workingRes);
+    await saveData();
+    editingId=workingRes.id;
+    modalMode='edit';
+    document.getElementById('rmTitle').textContent='예약 수정 (EditReservation)';
+    document.getElementById('rmCode').textContent=workingRes.code;
+    document.getElementById('btnDeleteRes').style.display='';
+    document.getElementById('btnSaveRes').textContent='저장';
+    renderSubsections();
+    renderFilters();renderAll();
+    showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요.');
+  } else {
+    workingRes.updatedAt=new Date().toISOString();
+    const idx=reservations.findIndex(r=>r.id===editingId);
+    reservations[idx]=workingRes;
+    await saveData();
+    closeReservation();
+    renderFilters();renderAll();
+    showToast('✅ 예약이 저장되었습니다');
+  }
+}
+async function deleteReservation(){
+  if(!confirm('이 예약을 삭제할까요? 삭제된 데이터는 복구할 수 없습니다.'))return;
+  reservations=reservations.filter(r=>r.id!==editingId);
+  await saveData();
+  closeReservation();
+  renderFilters();renderAll();
+  showToast('🗑 예약이 삭제되었습니다');
+}
+
+/* ══════════════════════════ BALANCE ══════════════════════════ */
+function calcBalance(res){
+  const byCur={};
+  (res.deposits||[]).forEach(d=>{
+    const cur=d.currency||'-';
+    byCur[cur]=byCur[cur]||{deposit:0,withdrawal:0};
+    byCur[cur].deposit+=Number(d.amount)||0;
+  });
+  (res.withdrawals||[]).forEach(w=>{
+    const cur=w.currency||'-';
+    byCur[cur]=byCur[cur]||{deposit:0,withdrawal:0};
+    byCur[cur].withdrawal+=Number(w.amount)||0;
+  });
+  return byCur;
+}
+function showBalanceModal(){
+  const bal=calcBalance(workingRes);
+  const entries=Object.entries(bal);
+  document.getElementById('balanceBody').innerHTML=entries.length?entries.map(([cur,v])=>{
+    const net=v.withdrawal+v.deposit;
+    return `<div class="phrase-row" style="align-items:flex-start;flex-direction:column;gap:4px;">
+      <b style="font-size:13px;color:#161f38;">${escapeHtml(cur)}</b>
+      <span>DEPOSITS (지출): ${v.deposit.toLocaleString()}</span>
+      <span>WITHDRAWALS (입금): ${v.withdrawal.toLocaleString()}</span>
+      <span style="font-weight:800;color:${net>=0?'#1a8a52':'#e0483f'};">NET BALANCE: ${net.toLocaleString()}</span>
+    </div>`;
+  }).join(''):'<div class="subtbl-empty">등록된 입출금 내역이 없습니다</div>';
+  document.getElementById('balanceModal').classList.add('open');
+}
+function closeBalanceModal(){ document.getElementById('balanceModal').classList.remove('open'); }
+
+/* ══════════════════════════ SUB-ROW EDITOR ══════════════════════════ */
+let subEditCtx=null;
+function openSubEditor(sectionKey,index){
+  const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
+  subEditCtx={sectionKey,index};
+  document.getElementById('soTitle').textContent=`${sec.label} ${index===null?'추가':'수정'}`;
+  const row=index===null?{}:workingRes[sectionKey][index];
+  document.getElementById('soBody').innerHTML=sec.fields.map(f=>{
+    const val=row[f.k]??'';
+    if(f.type==='select'){
+      return `<div class="f-row"><label>${f.label}</label><select id="so-${f.k}">${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`;
+    }
+    if(f.vendorKey){
+      const onpick=f.vendorPhoneField?` onchange="onVendorPick('${f.vendorKey}',this.value,'so-${f.vendorPhoneField}')"`:'';
+      return `<div class="f-row"><label>${f.label} <span style="font-weight:400;color:#b0b6c2;">(등록된 목록에서 선택되거나 직접 입력)</span></label><input type="text" id="so-${f.k}" list="dl-${f.vendorKey}" value="${escapeAttr(val)}"${onpick}/></div>`;
+    }
+    return `<div class="f-row"><label>${f.label}</label><input type="${f.type}" id="so-${f.k}" value="${escapeAttr(val)}"/></div>`;
+  }).join('');
+  renderVendorDatalists();
+  document.getElementById('sov').classList.add('open');
+}
+function onVendorPick(vendorKey,name,phoneFieldId){
+  const v=findVendor(vendorKey,name);
+  if(v&&v.phone) document.getElementById(phoneFieldId).value=v.phone;
+}
+function closeSubEditor(){
+  document.getElementById('sov').classList.remove('open');
+  subEditCtx=null;
+}
+function saveSubRow(){
+  const sec=SUBSECTIONS.find(s=>s.key===subEditCtx.sectionKey);
+  const row={};
+  sec.fields.forEach(f=>{ row[f.k]=document.getElementById(`so-${f.k}`).value; });
+  const arr=workingRes[subEditCtx.sectionKey]=workingRes[subEditCtx.sectionKey]||[];
+  if(subEditCtx.index===null) arr.push(row); else arr[subEditCtx.index]=row;
+  closeSubEditor();
+  renderSubsections();
+}
+function delSubRow(sectionKey,index){
+  workingRes[sectionKey].splice(index,1);
+  renderSubsections();
+}
+
+/* ══════════════════════════ UTIL ══════════════════════════ */
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+let toastTimer=null;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+</script>
+</body>
+</html>
