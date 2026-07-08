@@ -218,7 +218,7 @@ table.subtbl tr:last-child td{border-bottom:none;}
 
   <div class="stats" id="statsBar"></div>
 
-  <div class="filterbar">
+  <div class="filterbar" id="resFilters">
     <input type="date" id="f-from"/>
     <span style="color:#b0b6c2;">~</span>
     <input type="date" id="f-to"/>
@@ -230,8 +230,21 @@ table.subtbl tr:last-child td{border-bottom:none;}
     <div class="viewToggle">
       <button id="vtCal" class="active" onclick="setView('cal')">📅 캘린더</button>
       <button id="vtList" onclick="setView('list')">📋 목록</button>
+      <button id="vtCost" onclick="setView('cost')">💰 원가서</button>
     </div>
     <button class="tbtn-primary" onclick="openReservation(null)">＋ 신규예약</button>
+  </div>
+
+  <div class="filterbar" id="costFilters" style="display:none;">
+    <div class="mtabs" id="costTabs" style="background:transparent;padding:0;"></div>
+    <input type="text" id="cf-region" placeholder="지역 (예: 방콕)" style="width:120px;" oninput="renderCostTable()"/>
+    <input type="text" class="search" id="cf-search" placeholder="이름/비고 검색" oninput="renderCostTable()"/>
+    <div class="viewToggle">
+      <button id="vtCal2" onclick="setView('cal')">📅 캘린더</button>
+      <button id="vtList2" onclick="setView('list')">📋 목록</button>
+      <button id="vtCost2" class="active" onclick="setView('cost')">💰 원가서</button>
+    </div>
+    <button class="tbtn-primary" onclick="openCostRowEditor(null)">＋ 항목 추가</button>
   </div>
 
   <main>
@@ -254,6 +267,14 @@ table.subtbl tr:last-child td{border-bottom:none;}
             <th>예약명</th><th>고객사</th><th>담당자</th><th>인원</th>
           </tr></thead>
           <tbody id="listBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="costView" style="display:none;">
+      <div class="list-wrap">
+        <table class="rlist" id="costTable">
+          <thead><tr id="costTableHead"></tr></thead>
+          <tbody id="costTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -335,7 +356,7 @@ table.subtbl tr:last-child td{border-bottom:none;}
     <div class="smodal-body" id="soBody"></div>
     <div class="smodal-ft">
       <button class="btn btn-ghost" onclick="closeSubEditor()">취소</button>
-      <button class="btn btn-save" onclick="saveSubRow()">저장</button>
+      <button class="btn btn-save" onclick="document.getElementById('sov').dataset.mode==='cost'?saveCostRow():saveSubRow()">저장</button>
     </div>
   </div>
 </div>
@@ -459,7 +480,8 @@ async function sbLoad(key){
 }
 const TRV_KEYS=['trv_reservations','trv_codes','trv_customers','trv_accounts','trv_admin_pw',
   'trv_vendor_agents','trv_vendor_flightSched','trv_vendor_hotels','trv_vendor_golfs','trv_vendor_guides','trv_vendor_vehicles','trv_vendor_shows','trv_vendor_shops',
-  'trv_phrases_includes','trv_phrases_decludes'];
+  'trv_phrases_includes','trv_phrases_decludes',
+  'trv_cost_golf','trv_cost_hotel','trv_cost_attraction'];
 async function loadAllFromSupabase(){
   await Promise.all(TRV_KEYS.map(k=>sbLoad(k)));
 }
@@ -894,6 +916,105 @@ const SUBSECTIONS=[
   ]},
 ];
 
+/* ══════════════════════════ 원가서 (호텔/골프장/관광지 요금표) ══════════════════════════ */
+const COST_CATEGORIES=[
+  {key:'golf',label:'골프장',fields:[
+    {k:'name',label:'골프장명',type:'text'},
+    {k:'region',label:'지역',type:'text'},
+    {k:'hole',label:'홀',type:'text'},
+    {k:'wd',label:'주중(WD)',type:'number'},
+    {k:'we',label:'주말(WE)',type:'number'},
+    {k:'caddy',label:'캐디',type:'number'},
+    {k:'cart',label:'카트',type:'number'},
+    {k:'close',label:'휴장일',type:'text'},
+    {k:'remark',label:'비고',type:'textarea'},
+  ]},
+  {key:'hotel',label:'호텔',fields:[
+    {k:'name',label:'호텔명',type:'text'},
+    {k:'region',label:'지역',type:'text'},
+    {k:'roomtype',label:'룸타입',type:'text'},
+    {k:'sgl',label:'싱글(SGL)',type:'number'},
+    {k:'twn',label:'트윈(TWN)',type:'number'},
+    {k:'dbl',label:'더블(DBL)',type:'number'},
+    {k:'remark',label:'비고',type:'textarea'},
+  ]},
+  {key:'attraction',label:'관광지 입장료',fields:[
+    {k:'name',label:'관광지명',type:'text'},
+    {k:'region',label:'지역',type:'text'},
+    {k:'adult',label:'성인',type:'number'},
+    {k:'child',label:'아동',type:'number'},
+    {k:'remark',label:'비고',type:'textarea'},
+  ]},
+];
+function getCostRows(catKey){ try{return JSON.parse(localStorage.getItem('trv_cost_'+catKey)||'[]');}catch{return[];} }
+async function saveCostRows(catKey,arr){ await sbSave('trv_cost_'+catKey,arr); }
+
+let costTab='golf';
+function renderCostView(){
+  document.getElementById('costTabs').innerHTML=COST_CATEGORIES.map(c=>
+    `<button class="${c.key===costTab?'active':''}" onclick="switchCostTab('${c.key}')">${c.label}</button>`).join('');
+  renderCostTable();
+}
+function switchCostTab(key){
+  costTab=key;
+  document.querySelectorAll('#costTabs button').forEach(b=>b.classList.toggle('active',b.textContent===COST_CATEGORIES.find(c=>c.key===key).label));
+  document.getElementById('cf-region').value='';
+  document.getElementById('cf-search').value='';
+  renderCostTable();
+}
+function renderCostTable(){
+  const cat=COST_CATEGORIES.find(c=>c.key===costTab);
+  const cols=cat.fields;
+  document.getElementById('costTableHead').innerHTML=cols.map(c=>`<th>${c.label}</th>`).join('')+'<th></th>';
+  const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
+  const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
+  let rows=getCostRows(costTab);
+  if(region) rows=rows.filter(r=>(r.region||'').toLowerCase().includes(region));
+  if(q) rows=rows.filter(r=>[(r.name||''),(r.remark||'')].join(' ').toLowerCase().includes(q));
+  const body=document.getElementById('costTableBody');
+  if(!rows.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${cols.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
+  body.innerHTML=rows.map((row,i)=>`<tr>${cols.map(c=>`<td>${escapeHtml(fmtCostVal(row[c.k],c))}</td>`).join('')}
+    <td><div class="row-actions"><a class="act-edit" onclick="openCostRowEditor(${i})">수정</a><a class="act-del" onclick="delCostRow(${i})">삭제</a></div></td></tr>`).join('');
+}
+function fmtCostVal(v,col){
+  if(v===undefined||v===null||v==='') return '-';
+  if(col.type==='number') return Number(v).toLocaleString();
+  return v;
+}
+let costEditIndex=null;
+function openCostRowEditor(index){
+  const cat=COST_CATEGORIES.find(c=>c.key===costTab);
+  costEditIndex=index;
+  const rows=getCostRows(costTab);
+  const row=index===null?{}:rows[index];
+  document.getElementById('soTitle').textContent=`${cat.label} ${index===null?'추가':'수정'}`;
+  document.getElementById('soBody').innerHTML=cat.fields.map(f=>{
+    const val=row[f.k]??'';
+    if(f.type==='textarea') return `<div class="f-row"><label>${f.label}</label><textarea id="so-${f.k}">${escapeHtml(val)}</textarea></div>`;
+    return `<div class="f-row"><label>${f.label}</label><input type="${f.type}" id="so-${f.k}" value="${escapeAttr(val)}"/></div>`;
+  }).join('');
+  document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').classList.add('open');
+}
+async function saveCostRow(){
+  const cat=COST_CATEGORIES.find(c=>c.key===costTab);
+  const row={};
+  cat.fields.forEach(f=>{ row[f.k]=document.getElementById(`so-${f.k}`).value; });
+  const rows=getCostRows(costTab);
+  if(costEditIndex===null) rows.push(row); else rows[costEditIndex]=row;
+  await saveCostRows(costTab,rows);
+  closeSubEditor();
+  renderCostTable();
+  showToast('✅ 저장되었습니다');
+}
+async function delCostRow(i){
+  if(!confirm('이 항목을 삭제할까요?'))return;
+  const rows=getCostRows(costTab);
+  rows.splice(i,1);
+  await saveCostRows(costTab,rows);
+  renderCostTable();
+}
+
 let reservations=[];
 function loadData(){
   try{ reservations=JSON.parse(localStorage.getItem('trv_reservations')||'[]'); }catch{ reservations=[]; }
@@ -906,11 +1027,15 @@ async function saveData(){
 let currentView='cal';
 function setView(v){
   currentView=v;
-  document.getElementById('vtCal').classList.toggle('active',v==='cal');
-  document.getElementById('vtList').classList.toggle('active',v==='list');
+  ['vtCal','vtList','vtCost','vtCal2','vtList2','vtCost2'].forEach(id=>{
+    const b=document.getElementById(id); if(b) b.classList.toggle('active', id.startsWith('vt'+({cal:'Cal',list:'List',cost:'Cost'})[v]));
+  });
   document.getElementById('calView').style.display=v==='cal'?'':'none';
   document.getElementById('listView').style.display=v==='list'?'':'none';
-  renderAll();
+  document.getElementById('costView').style.display=v==='cost'?'':'none';
+  document.getElementById('resFilters').style.display=v==='cost'?'none':'';
+  document.getElementById('costFilters').style.display=v==='cost'?'':'none';
+  if(v==='cost'){ renderCostView(); } else { renderAll(); }
 }
 function renderFilters(){
   const codes=getCodes();
@@ -1277,6 +1402,7 @@ function closeBalanceModal(){ document.getElementById('balanceModal').classList.
 /* ══════════════════════════ SUB-ROW EDITOR ══════════════════════════ */
 let subEditCtx=null;
 function openSubEditor(sectionKey,index){
+  document.getElementById('sov').dataset.mode='res';
   const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
   subEditCtx={sectionKey,index};
   document.getElementById('soTitle').textContent=`${sec.label} ${index===null?'추가':'수정'}`;
