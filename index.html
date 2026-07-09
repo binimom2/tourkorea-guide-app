@@ -1706,6 +1706,7 @@
       <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:4px;">
         <button onclick="downloadSettleExcel()" style="width:100%;padding:10px;background:#1a6b8a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📋 정산서 관리 파일 다운로드</button>
         <button onclick="downloadShoppingExcel()" style="width:100%;padding:10px;background:#e8872a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🛒 쇼핑 매출 정리 파일 다운로드</button>
+        <button onclick="downloadLedgerExcel()" style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📒 가이드별 정산수첩 다운로드 (가이드별 시트)</button>
       </div>
       <div id="monthExcelPreview" style="font-size:12px;color:var(--text-sub);margin-top:8px;"></div>
     </div>
@@ -5430,6 +5431,105 @@ async function downloadShoppingExcel() {
   });
 
   _xlSave(wb,`쇼핑매출정리_${label}.xlsx`);
+  closeMonthExcel();
+}
+
+// ── ③ 가이드별 정산수첩 (전체 가이드, 가이드별 시트 분리) ──
+function _sheetNameSafe(name, used) {
+  let n = (name||'가이드').replace(/[\\\/\?\*\[\]:]/g,'').slice(0,31) || '가이드';
+  let base = n, i = 2;
+  while (used.has(n)) { n = base.slice(0,28) + '_' + (i++); }
+  used.add(n);
+  return n;
+}
+
+async function downloadLedgerExcel() {
+  await loadSubmissions();
+  await loadPayments();
+  await loadCarryover();
+  const byGuide = _buildLedgerData();
+  const keys = Object.keys(byGuide).sort((a,b)=>byGuide[a].guideName.localeCompare(byGuide[b].guideName,'ko'));
+  if (!keys.length) { showToast('정산 내역이 없습니다.', true); return; }
+
+  if(!window.ExcelJS){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  }
+
+  const wb = new ExcelJS.Workbook();
+  const usedNames = new Set();
+  const HDRS = ['일자','내용','정산금(฿)','지급금(฿)','잔액(฿)'];
+  const WIDTHS = [14,20,15,15,15];
+
+  keys.forEach(k=>{
+    const g = byGuide[k];
+    const { amount:carry, date:carryDate } = _carryOf(k);
+    const entries = [
+      ...g.settlements.map(s=>({ date:s.date||'', type:'settle', label:s.settleCode||'-', amount:s.amount||0 })),
+      ...g.payments.map(p=>({ date:p.date||'', type:'pay', label:p.memo||'지급', amount:p.amount||0 })),
+    ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+
+    const ws = wb.addWorksheet(_sheetNameSafe(g.guideName, usedNames));
+    ws.properties.defaultRowHeight = 22;
+    ws.columns = WIDTHS.map(w=>({width:w}));
+
+    ws.mergeCells(1,1,1,5);
+    const title = ws.getCell(1,1);
+    title.value = `${g.guideName} 정산수첩`;
+    title.font = {bold:true,size:14,color:{argb:'FF1A6B8A'}};
+    title.alignment = {horizontal:'center',vertical:'middle'};
+    ws.getRow(1).height = 22;
+
+    const hr = ws.getRow(2);
+    HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
+    hr.height = 22;
+
+    let running = carry;
+    let ri = 3;
+    const r0 = ws.getRow(ri);
+    r0.height = 22;
+    _txt(r0.getCell(1), carryDate||'-');
+    _txt(r0.getCell(2), '최초 이월금');
+    _txt(r0.getCell(3), '');
+    _txt(r0.getCell(4), '');
+    _num(r0.getCell(5), carry);
+    r0.getCell(2).font = {bold:true};
+    ri++;
+
+    if (!entries.length) {
+      ws.mergeCells(ri,1,ri,5);
+      const c = ws.getCell(ri,1); c.value='정산/지급 내역 없음'; c.alignment={horizontal:'center'}; c.font={color:{argb:'FFAAAAAA'}};
+      ri++;
+    } else {
+      entries.forEach(e=>{
+        running += (e.type==='settle' ? e.amount : -e.amount);
+        const r = ws.getRow(ri);
+        r.height = 22;
+        _txt(r.getCell(1), e.date||'-');
+        _txt(r.getCell(2), e.label);
+        if (e.type==='settle') _num(r.getCell(3), e.amount); else _txt(r.getCell(3), '');
+        if (e.type==='pay') _num(r.getCell(4), e.amount); else _txt(r.getCell(4), '');
+        _num(r.getCell(5), running);
+        r.getCell(5).font = {bold:true};
+        ri++;
+      });
+    }
+
+    const sumRow = ws.getRow(ri);
+    sumRow.height = 22;
+    ws.mergeCells(ri,1,ri,2);
+    const sc = ws.getCell(ri,1); sc.value='합계'; sc.font={bold:true}; sc.alignment={horizontal:'center'};
+    sc.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+    _num(ws.getCell(ri,3), g.settleTotal);
+    _num(ws.getCell(ri,4), g.paidTotal);
+    _num(ws.getCell(ri,5), running);
+    [1,2,3,4,5].forEach(ci=>{ const c=ws.getCell(ri,ci); c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}}; c.font={...(c.font||{}),bold:true}; });
+
+    ws.views = [{state:'frozen', xSplit:0, ySplit:2}];
+  });
+
+  const today = new Date();
+  const label = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  _xlSave(wb, `가이드별정산수첩_${label}.xlsx`);
   closeMonthExcel();
 }
 
