@@ -4668,6 +4668,13 @@ function _buildLedgerData() {
     g.paidTotal += (p.amount||0);
     g.payments.push(p);
   });
+
+  // 정산수첩에서 노출 제외할 가이드
+  const LEDGER_EXCLUDED_GUIDES = ['노가이드','조수영'];
+  Object.keys(byGuide).forEach(k=>{
+    if (LEDGER_EXCLUDED_GUIDES.includes(byGuide[k].guideName)) delete byGuide[k];
+  });
+
   return byGuide;
 }
 
@@ -4700,10 +4707,12 @@ function renderGuideLedger() {
 
   // 기본: 가이드 목록 화면
   let html = '';
+  let totalCumulative = 0;
   keys.forEach(k=>{
     const g = byGuide[k];
     const carry = _carryOf(k).amount;
     const cumulative = carry + g.settleTotal - g.paidTotal;
+    totalCumulative += cumulative;
     html += `<div class="sub-card" style="cursor:pointer;" onclick="selectLedgerGuide('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="sc-code">${g.guideName}</div>
@@ -4714,6 +4723,14 @@ function renderGuideLedger() {
       </div>
     </div>`;
   });
+  html += `<div class="sub-card" style="background:#f1f5f9;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="sc-code" style="font-weight:800;">가이드 정산금총합</div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:15px;font-weight:800;color:${totalCumulative>0?'#c0392b':'#1a8a60'};">฿${fmtNum(totalCumulative)}</div>
+      </div>
+    </div>
+  </div>`;
   body.innerHTML = html;
 }
 
