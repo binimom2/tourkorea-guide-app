@@ -2874,7 +2874,7 @@ function getComFromDcTable(key, dc, type) {
     table = table[type];
     if (!table) return null;
   }
-  const dcNum = parseFloat(dc);
+  const dcNum = (dc === '' || dc === null || dc === undefined) ? 0 : parseFloat(dc);
   if (isNaN(dcNum)) return null;
   return Object.prototype.hasOwnProperty.call(table, dcNum) ? table[dcNum] : null;
 }
