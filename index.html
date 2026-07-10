@@ -2701,7 +2701,7 @@ function renderShop(key) {
     inDC.value = row.dc||'';
     inDC.addEventListener('input', e=>{
       row.dc=e.target.value;
-      const mapped = getComFromDcTable(key, row.dc);
+      const mapped = getComFromDcTable(key, row.dc, row.type);
       if (mapped !== null && row.type !== '회사보고') { row.com = mapped; inCom.value = mapped; }
       recalcShopRow(key,row,div);
     });
@@ -2722,7 +2722,7 @@ function renderShop(key) {
     // COM (소수점 1자리) - DC 매핑표에 있는 값이면 자동 반영
     const inCom = document.createElement('input');
     inCom.type='number'; inCom.placeholder='0.0'; inCom.min='0'; inCom.max='100'; inCom.step='0.1';
-    const mappedComOnRender = getComFromDcTable(key, row.dc);
+    const mappedComOnRender = getComFromDcTable(key, row.dc, row.type);
     if (mappedComOnRender !== null && row.type !== '회사보고') { row.com = mappedComOnRender; }
     inCom.value = row.com||'';
     inCom.addEventListener('input', e=>{ row.com=e.target.value; recalcShopRow(key,row,div); });
@@ -2755,6 +2755,9 @@ function renderShop(key) {
         // 구분 변경 시 KB% 기본값 업데이트 (기존 값 0이거나 기본값이었던 경우만)
         const newKb = getDefaultKbPct(key, t);
         row.kbPct = newKb; inKBPct.value = newKb;
+        // 구분(A/B/C/D)별 DC→COM 매핑표 재적용
+        const mappedCom = getComFromDcTable(key, row.dc, t);
+        if (mappedCom !== null) { row.com = mappedCom; inCom.value = mappedCom; }
       }
       recalcShopRow(key,row,div);
     }
@@ -2845,11 +2848,30 @@ const DC_COM_TABLES = {
     20:50, 21:49.5, 22:49, 23:48.5, 24:48, 25:47.5, 26:47, 27:46.5, 28:46, 29:45.5,
     30:45, 31:44, 32:43, 33:42, 34:41, 35:40, 36:39, 37:38, 38:37, 39:36, 40:35
   },
-  herb: { 0:50 }
+  herb: { 0:50 },
+  // 범룽디·타이코는 구분(A/B/C/D)별로 매핑표가 다름
+  beomrung: {
+    A: { 0:55, 5:50, 10:45, 15:40, 20:35, 25:30, 30:25 },
+    B: { 0:45, 5:40, 10:35, 15:30, 20:25, 25:20, 30:15 },
+    C: { 0:35, 5:30, 10:25, 15:20, 20:15, 25:10, 30:5 },
+    D: { 0:25, 5:20, 10:15, 15:10, 20:5 }
+  },
+  taiko: {
+    A: { 0:55, 5:50, 10:45, 15:40, 20:35, 25:30, 30:25 },
+    B: { 0:45, 5:40, 10:35, 15:30, 20:25, 25:20, 30:15 },
+    C: { 0:35, 5:30, 10:25, 15:20, 20:15, 25:10, 30:5 },
+    D: { 0:25, 5:20, 10:15, 15:10, 20:5 }
+  }
 };
-function getComFromDcTable(key, dc) {
-  const table = DC_COM_TABLES[key];
+// 구분(A/B/C/D)별로 매핑표를 따로 쓰는 매장
+const DC_COM_BY_TYPE_SHOPS = ['beomrung','taiko'];
+function getComFromDcTable(key, dc, type) {
+  let table = DC_COM_TABLES[key];
   if (!table) return null;
+  if (DC_COM_BY_TYPE_SHOPS.includes(key)) {
+    table = table[type];
+    if (!table) return null;
+  }
   const dcNum = parseFloat(dc);
   if (isNaN(dcNum)) return null;
   return Object.prototype.hasOwnProperty.call(table, dcNum) ? table[dcNum] : null;
