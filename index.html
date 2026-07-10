@@ -1728,6 +1728,7 @@ const SUBS_KEY     = 'guide_submissions_v1';
 const ACC_KEY      = 'guide_accounts_v1';   // [{id,pw,name,role}]
 const ADMIN_ID     = 'admin';
 const ADMIN_PW_DEFAULT = 'admin1234';
+const ELEVATED_ADMIN_IDS = ['lds1207'];   // 이 계정들은 로그인 시 admin과 동일한 권한으로 처리
 
 let currentRole = null;
 let currentUser = null;
@@ -1873,8 +1874,10 @@ async function doLogin() {
 
     if (found) {
       localStorage.setItem(ACC_KEY, JSON.stringify(accounts));
-      currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: found.role };
-      currentRole = found.role;
+      // lds1207: admin과 동일한 권한 부여 (요청에 의해 admin으로 완전 alias 처리)
+      const grantedRole = ELEVATED_ADMIN_IDS.includes(found.id.toLowerCase()) ? 'admin' : found.role;
+      currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: grantedRole };
+      currentRole = grantedRole;
       _completeLogin(); return;
     }
 
