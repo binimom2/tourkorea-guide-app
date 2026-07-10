@@ -5385,8 +5385,8 @@ async function downloadShoppingExcel() {
   const CENTER_MAP={jewell:'지노잼',latex:'라텍스',beomrung:'범룽디',taiko:'타이코',herb:'타이코허브'};
   const CENTER_ORDER=['jewell','beomrung','taiko','herb','latex'];
 
-  const HDRS=['정산코드','가이드명','상품명','인원','쇼핑센터','구분','D/C%','판매액','COM%','KB%','KBCOM','COM합산','입금일자','비고'];
-  const WIDTHS=[14,10,16,6,10,8,7,12,7,7,12,12,12,14];
+  const HDRS=['정산코드','가이드명','상품명','인원','쇼핑센터','구분','D/C%','판매액','COM%','COM금액','KB%','KB금액','총COM합산','입금일자','비고'];
+  const WIDTHS=[14,10,16,6,10,8,7,12,7,12,7,12,12,12,14];
   const TYPE_COLORS={ '외상':'FF00008B', '회사보고':'FFFF69B4', '반품':'FF8B0000' };
 
   const wb=new ExcelJS.Workbook();
@@ -5396,7 +5396,7 @@ async function downloadShoppingExcel() {
     ws.properties.defaultRowHeight=22;
 
     // 타이틀 행
-    ws.mergeCells(1,1,1,14);
+    ws.mergeCells(1,1,1,15);
     const t=ws.getCell(1,1);
     t.value=title;
     t.font={bold:true,size:14,color:{argb:'FF1A6B8A'}};
@@ -5445,15 +5445,16 @@ async function downloadShoppingExcel() {
           _txt(r.getCell(7),dc+'%');
           _num(r.getCell(8),Math.round(sale));
           _txt(r.getCell(9),com+'%');
-          _txt(r.getCell(10),kbPct+'%');
-          _num(r.getCell(11),Math.round(kbCom));
-          _num(r.getCell(12),Math.round(commission));
-          _txt(r.getCell(13),'');
+          _num(r.getCell(10),Math.round(commission));
+          _txt(r.getCell(11),kbPct+'%');
+          _num(r.getCell(12),Math.round(kbCom));
+          _num(r.getCell(13),Math.round(commission+kbCom));
           _txt(r.getCell(14),'');
+          _txt(r.getCell(15),'');
           // 구분별 강조색 (외상=진한파랑, 회사보고=분홍, 반품=진한빨강)
           const tColor=TYPE_COLORS[type];
           if(tColor){
-            for(let ci=1; ci<=14; ci++){
+            for(let ci=1; ci<=15; ci++){
               const cell=r.getCell(ci);
               cell.font={...(cell.font||{}), color:{argb:tColor}, bold:true};
             }
@@ -5462,19 +5463,19 @@ async function downloadShoppingExcel() {
         });
       });
       // 정산코드별 구분선
-      if(rowIdx>groupStartRow) _thickBottom(ws, rowIdx-1, 14);
+      if(rowIdx>groupStartRow) _thickBottom(ws, rowIdx-1, 15);
     });
 
     if(rowIdx===3){
       ws.getRow(3).height=22;
-      ws.mergeCells(3,1,3,14);
+      ws.mergeCells(3,1,3,15);
       const c=ws.getCell(3,1); c.value='해당 기간 데이터 없음'; c.alignment={horizontal:'center'}; c.font={color:{argb:'FFAAAAAA'}};
     } else {
       ws.getRow(rowIdx).height=22;
       ws.mergeCells(rowIdx,1,rowIdx,7);
       const sc=ws.getCell(rowIdx,1); sc.value='합  계'; sc.font={bold:true}; sc.alignment={horizontal:'center'};
       sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
-      [[8,sumSale],[11,sumKb],[12,sumComm]].forEach(([ci,v])=>{
+      [[8,sumSale],[10,sumComm],[12,sumKb],[13,sumComm+sumKb]].forEach(([ci,v])=>{
         const c=ws.getCell(rowIdx,ci); c.value=Math.round(v); c.numFmt='#,##0'; c.font={bold:true};
         c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
         c.alignment={horizontal:'right'};
