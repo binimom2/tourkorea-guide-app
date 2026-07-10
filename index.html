@@ -2697,7 +2697,12 @@ function renderShop(key) {
     const inDC = document.createElement('input');
     inDC.type='number'; inDC.placeholder='0'; inDC.min='0'; inDC.max='100'; inDC.step='0.1';
     inDC.value = row.dc||'';
-    inDC.addEventListener('input', e=>{ row.dc=e.target.value; recalcShopRow(key,row,div); });
+    inDC.addEventListener('input', e=>{
+      row.dc=e.target.value;
+      const mapped = getComFromDcTable(key, row.dc);
+      if (mapped !== null && row.type !== '회사보고') { row.com = mapped; inCom.value = mapped; }
+      recalcShopRow(key,row,div);
+    });
 
     // 판매액 (text 타입 + 콤마 포맷, 마이너스 허용)
     const inSale = document.createElement('input');
@@ -2712,9 +2717,11 @@ function renderShop(key) {
       recalcShopRow(key,row,div);
     });
 
-    // COM (소수점 1자리)
+    // COM (소수점 1자리) - DC 매핑표에 있는 값이면 자동 반영
     const inCom = document.createElement('input');
     inCom.type='number'; inCom.placeholder='0.0'; inCom.min='0'; inCom.max='100'; inCom.step='0.1';
+    const mappedComOnRender = getComFromDcTable(key, row.dc);
+    if (mappedComOnRender !== null && row.type !== '회사보고') { row.com = mappedComOnRender; }
     inCom.value = row.com||'';
     inCom.addEventListener('input', e=>{ row.com=e.target.value; recalcShopRow(key,row,div); });
 
@@ -2822,6 +2829,21 @@ function recalcShopRow(key, row, div) {
 function updateShop(key,id,field,val){
   const r=(state.shopping[key]||[]).find(r=>r.id===id);
   if(r){ r[field]=val; scheduleSave(); }
+}
+
+// 매장별 D/C% → COM% 매핑표 (표에 없는 값은 수동입력)
+const DC_COM_TABLES = {
+  latex: {
+    20:50, 21:49.5, 22:49, 23:48.5, 24:48, 25:47.5, 26:47, 27:46.5, 28:46, 29:45.5,
+    30:45, 31:44, 32:43, 33:42, 34:41, 35:40, 36:39, 37:38, 38:37, 39:36, 40:35
+  }
+};
+function getComFromDcTable(key, dc) {
+  const table = DC_COM_TABLES[key];
+  if (!table) return null;
+  const dcNum = parseFloat(dc);
+  if (isNaN(dcNum)) return null;
+  return Object.prototype.hasOwnProperty.call(table, dcNum) ? table[dcNum] : null;
 }
 
 // 매장·구분별 KB% 기본값
