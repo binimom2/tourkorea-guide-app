@@ -1101,8 +1101,8 @@
       </div>
 
       <div class="option-scroll">
-        <div class="option-headers" id="gigatip-headers-row">
-          <span>항목명</span><span>통화</span><span>판매가</span><span>인원</span><span>합계</span><span>구분</span><span></span>
+        <div class="option-headers" id="gigatip-headers-row" style="grid-template-columns:160px 64px 100px 46px 100px 28px;">
+          <span>구분</span><span>통화</span><span>판매가</span><span>인원</span><span>합계</span><span></span>
         </div>
         <div id="gigatip-list"></div>
       </div>
@@ -2166,7 +2166,7 @@ function initData() {
   state.expenses = { main: defaultRows() };
   state.days = [];
   state.options = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', cost:'', profit:'' }];
-  state.gigatip = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', type:'기가팁' }];
+  state.gigatip = [{ id:uid(), currency:'THB', price:'', pax:'', total:'', type:'기가팁' }];
   ['jewell','latex','beomrung','taiko','herb'].forEach(k => {
     const defDc = k === 'herb' ? 0 : '';
     const defCom = k === 'herb' ? 50 : '';
@@ -2703,13 +2703,22 @@ function renderGigatip() {
     if (!row.type) row.type = '기가팁';
     const div=document.createElement('div');
     div.className='option-row-grid';
+    div.style.gridTemplateColumns='160px 64px 100px 46px 100px 28px';
     div.dataset.rid = row.id;
 
-    // 항목명
-    const inName = document.createElement('input');
-    inName.type='text'; inName.placeholder='항목명'; inName.value=row.name||'';
-    inName.style.textAlign='left';
-    inName.addEventListener('input', e=>{ row.name=e.target.value; });
+    // 구분 (기가팁 / TC정산금)
+    const selType = document.createElement('select');
+    GIGATIP_TYPES.forEach(t=>{
+      const opt=document.createElement('option');
+      opt.value=t; opt.textContent=t;
+      if((row.type||'기가팁')===t) opt.selected=true;
+      selType.appendChild(opt);
+    });
+    selType.addEventListener('change', e=>{
+      row.type=e.target.value;
+      calcGigatipTotal();
+      scheduleSave();
+    });
 
     // 통화 선택 (행별)
     const selCur = document.createElement('select');
@@ -2757,31 +2766,16 @@ function renderGigatip() {
     inTotal.value = row.total ? fmtNum(row.total) : '';
     inTotal.style.background='#e8f4e8'; inTotal.style.fontWeight='700'; inTotal.style.textAlign='right';
 
-    // 구분 (기가팁 / TC정산금)
-    const selType = document.createElement('select');
-    GIGATIP_TYPES.forEach(t=>{
-      const opt=document.createElement('option');
-      opt.value=t; opt.textContent=t;
-      if((row.type||'기가팁')===t) opt.selected=true;
-      selType.appendChild(opt);
-    });
-    selType.addEventListener('change', e=>{
-      row.type=e.target.value;
-      calcGigatipTotal();
-      scheduleSave();
-    });
-
     // 삭제
     const btnDel = document.createElement('button');
     btnDel.className='btn-delete'; btnDel.textContent='✕';
     btnDel.addEventListener('click', ()=>{ deleteGigatip(row.id); });
 
-    div.appendChild(inName);
+    div.appendChild(selType);
     div.appendChild(selCur);
     div.appendChild(inPrice);
     div.appendChild(inPax);
     div.appendChild(inTotal);
-    div.appendChild(selType);
     div.appendChild(btnDel);
     list.appendChild(div);
   });
@@ -2797,7 +2791,7 @@ function calcGigatipRowDOM(row, div) {
   calcGigatipTotal();
 }
 
-function addGigatipRow(){state.gigatip.push({id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',type:'기가팁'});renderGigatip();scheduleSave();}
+function addGigatipRow(){state.gigatip.push({id:uid(),currency:'THB',price:'',pax:'',total:'',type:'기가팁'});renderGigatip();scheduleSave();}
 function deleteGigatip(id){state.gigatip=state.gigatip.filter(r=>r.id!==id);renderGigatip();scheduleSave();}
 
 // 기가팁(통화별)/TC정산금(฿환산) 합계 표시 + 정산서 지상비·TC정산금란에 자동 반영
@@ -3664,7 +3658,7 @@ function confirmReset(){
     if(panel) panel.style.display='none';
   });
   state.options = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profit:''}];
-  state.gigatip = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',type:'기가팁'}];
+  state.gigatip = [{id:uid(),currency:'THB',price:'',pax:'',total:'',type:'기가팁'}];
   state.expenses = { main: defaultRows() };
   state.days = [];
 
