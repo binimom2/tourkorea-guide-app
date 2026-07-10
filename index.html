@@ -1102,50 +1102,35 @@
 
       <div class="option-scroll">
         <div class="option-headers" id="gigatip-headers-row">
-          <span>항목명</span><span>통화</span><span>판매가</span><span>인원</span><span>합계</span><span>원가 (฿)</span><span></span>
+          <span>항목명</span><span>통화</span><span>판매가</span><span>인원</span><span>합계</span><span>구분</span><span></span>
         </div>
         <div id="gigatip-list"></div>
       </div>
       <button class="btn-add" onclick="addGigatipRow()">＋ 항목 추가</button>
 
-      <!-- 통화별 입금 + 수익 요약 -->
+      <!-- 통화별 합계 (자동으로 정산서 지상비/TC정산금란에 반영) -->
       <div id="gigatip-conv-bar" style="background:#f8fafc;border-top:2px solid var(--border);padding:10px 12px;">
+        <div style="font-size:10px;color:var(--text-sub);margin-bottom:6px;">기가팁 합계는 정산서 지상비(₩/$/฿)란에, TC정산금 합계는 정산서 TC정산금란에 자동 반영됩니다.</div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <!-- ₩ 입금 -->
+          <!-- ₩ 기가팁 -->
           <div style="flex:1;min-width:70px;background:#fff;border:1.5px solid #fde68a;border-radius:10px;padding:7px 10px;">
-            <div style="font-size:10px;font-weight:700;color:#92400e;margin-bottom:3px;">₩ 입금</div>
+            <div style="font-size:10px;font-weight:700;color:#92400e;margin-bottom:3px;">₩ 기가팁</div>
             <div class="tot-item" id="gigatip-sum-krw" style="font-size:14px;font-weight:800;color:#92400e;">—</div>
           </div>
-          <!-- $ 입금 -->
+          <!-- $ 기가팁 -->
           <div style="flex:1;min-width:70px;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;padding:7px 10px;">
-            <div style="font-size:10px;font-weight:700;color:#1d6faa;margin-bottom:3px;">$ 입금</div>
+            <div style="font-size:10px;font-weight:700;color:#1d6faa;margin-bottom:3px;">$ 기가팁</div>
             <div class="tot-item" id="gigatip-sum-usd" style="font-size:14px;font-weight:800;color:#1a6b8a;">—</div>
           </div>
-          <!-- ฿ 입금 -->
+          <!-- ฿ 기가팁 -->
           <div style="flex:1;min-width:70px;background:#fff;border:1.5px solid #c7d2fe;border-radius:10px;padding:7px 10px;">
-            <div style="font-size:10px;font-weight:700;color:#6366f1;margin-bottom:3px;">฿ 입금</div>
+            <div style="font-size:10px;font-weight:700;color:#6366f1;margin-bottom:3px;">฿ 기가팁</div>
             <div class="tot-item" id="gigatip-sum-thb" style="font-size:14px;font-weight:800;color:#3730a3;">—</div>
           </div>
-          <!-- = -->
-          <span style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
-          <!-- ฿ 환산총액 -->
-          <div style="flex:1;min-width:80px;background:#fff;border:1.5px solid #99f6e4;border-radius:10px;padding:7px 10px;">
-            <div style="font-size:10px;font-weight:700;color:#1a6b8a;margin-bottom:3px;">฿ 환산총액</div>
-            <div class="tot-item" id="gigatip-converted-total" style="font-size:14px;font-weight:800;color:#1a6b8a;">—</div>
-          </div>
-          <!-- - -->
-          <span style="font-size:18px;font-weight:300;color:#94a3b8;">−</span>
-          <!-- ฿ 원가총액 -->
-          <div style="flex:1;min-width:80px;background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:7px 10px;">
-            <div style="font-size:10px;font-weight:700;color:#E05252;margin-bottom:3px;">฿ 원가총액</div>
-            <div class="tot-item" id="gigatip-tot-cost" style="font-size:14px;font-weight:800;color:#E05252;">—</div>
-          </div>
-          <!-- = -->
-          <span style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
-          <!-- 수익금 -->
-          <div style="flex:1;min-width:80px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
-            <div style="font-size:10px;font-weight:700;color:var(--success);margin-bottom:3px;">기가팁&TC 수익금</div>
-            <div class="tot-item" id="gigatip-profit-total" style="font-size:14px;font-weight:900;color:var(--success);">—</div>
+          <!-- TC정산금 (฿ 환산) -->
+          <div style="flex:1;min-width:100px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
+            <div style="font-size:10px;font-weight:700;color:var(--success);margin-bottom:3px;">TC정산금 (฿ 환산)</div>
+            <div class="tot-item" id="gigatip-tc-total" style="font-size:14px;font-weight:900;color:var(--success);">—</div>
           </div>
         </div>
       </div>
@@ -1370,10 +1355,9 @@
 
         <!-- 수익금 -->
         <div class="settle-section-sub">수익금</div>
-        <div class="inc-income-section settle-grid4">
+        <div class="inc-income-section settle-grid3">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="inc-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="inc-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>기가팁&TC (฿)</label><div class="settle-display" id="inc-gigatip">฿ 0</div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-income-total">฿ 0</div></div>
         </div>
         <!-- 프린트 전용 -->
@@ -1463,10 +1447,9 @@
         <h3>📄 가이드 정산서</h3>
         <!-- 옵션·쇼핑 수익 -->
         <div class="settle-section-sub">수익금</div>
-        <div class="settle-grid4">
+        <div class="settle-grid3">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="gu-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="gu-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>기가팁&TC (฿)</label><div class="settle-display" id="gu-gigatip">฿ 0</div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-income-total">฿ 0</div></div>
         </div>
 
@@ -1521,10 +1504,9 @@
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-land-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">수익금</div>
-        <div class="settle-grid5">
+        <div class="settle-grid4">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="gu-adm-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="gu-adm-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>기가팁&TC (฿)</label><div class="settle-display" id="gu-adm-gigatip">฿ 0</div></div>
           <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="gu-adm-kb">฿ 0</div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="gu-adm-income-total">฿ 0</div></div>
         </div>
@@ -1567,10 +1549,9 @@
       <div class="summary-card settle-guide-card">
         <h3>📄 가이드 정산서</h3>
         <div class="settle-section-sub">수익금</div>
-        <div class="settle-grid5">
+        <div class="settle-grid4">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="st-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="st-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>기가팁&TC (฿)</label><div class="settle-display" id="st-gigatip">฿ 0</div></div>
           <div class="settle-input-group"><label>TC 정산 지출금 (฿)</label><div class="cur-wrap"><span class="cur">฿</span><input type="text" id="st-tc" data-cur="฿" inputmode="numeric" placeholder="0" class="settle-input" style="color:var(--danger);" oninput="fmtSettleInput(this);calcSettle();saveData()"></div></div>
           <div class="settle-display-group"><label>수익금 총액 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-income-total">฿ 0</div></div>
         </div>
@@ -1616,10 +1597,9 @@
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-land-total">฿ 0</div></div>
         </div>
         <div class="settle-section-sub">수익금</div>
-        <div class="settle-grid5">
+        <div class="settle-grid4">
           <div class="settle-display-group"><label>옵션 수익금 (฿)</label><div class="settle-display" id="st-adm-opt">฿ 0</div></div>
           <div class="settle-display-group"><label>쇼핑 수익금 (฿)</label><div class="settle-display" id="st-adm-shop">฿ 0</div></div>
-          <div class="settle-display-group"><label>기가팁&TC (฿)</label><div class="settle-display" id="st-adm-gigatip">฿ 0</div></div>
           <div class="settle-display-group"><label>KB 총액 (฿)</label><div class="settle-display" id="st-adm-kb">฿ 0</div></div>
           <div class="settle-display-group"><label>합계 (฿)</label><div class="settle-display" style="color:var(--primary);font-weight:800;" id="st-adm-income-total">฿ 0</div></div>
         </div>
@@ -2186,7 +2166,7 @@ function initData() {
   state.expenses = { main: defaultRows() };
   state.days = [];
   state.options = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', cost:'', profit:'' }];
-  state.gigatip = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', cost:'', profitTHB:0 }];
+  state.gigatip = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', type:'기가팁' }];
   ['jewell','latex','beomrung','taiko','herb'].forEach(k => {
     const defDc = k === 'herb' ? 0 : '';
     const defCom = k === 'herb' ? 50 : '';
@@ -2712,13 +2692,15 @@ function calcOptionTotal(){
 }
 
 // ══════════════════════════════════
-//  기가팁 & TC정산금 (옵션탭과 동일 구조)
+//  기가팁 & TC정산금 (옵션탭과 동일 구조, 원가 없음 + 구분(기가팁/TC정산금))
 // ══════════════════════════════════
+const GIGATIP_TYPES = ['기가팁','TC정산금'];
 function renderGigatip() {
   const list=document.getElementById('gigatip-list');
   if(!list) return;
   list.innerHTML='';
   state.gigatip.forEach(row=>{
+    if (!row.type) row.type = '기가팁';
     const div=document.createElement('div');
     div.className='option-row-grid';
     div.dataset.rid = row.id;
@@ -2775,17 +2757,18 @@ function renderGigatip() {
     inTotal.value = row.total ? fmtNum(row.total) : '';
     inTotal.style.background='#e8f4e8'; inTotal.style.fontWeight='700'; inTotal.style.textAlign='right';
 
-    // 원가 (text + 콤마)
-    const inCost = document.createElement('input');
-    inCost.type='text'; inCost.placeholder='0'; inCost.inputMode='numeric';
-    inCost.value = row.cost ? fmtNum(row.cost) : '';
-    inCost.style.textAlign='right';
-    inCost.dataset.role='cost';
-    inCost.addEventListener('input', e=>{
-      const raw = e.target.value.replace(/,/g,'').replace(/[^0-9.]/g,'');
-      row.cost = raw;
-      e.target.value = raw ? fmtNum(raw) : '';
-      calcGigatipRowDOM(row, div);
+    // 구분 (기가팁 / TC정산금)
+    const selType = document.createElement('select');
+    GIGATIP_TYPES.forEach(t=>{
+      const opt=document.createElement('option');
+      opt.value=t; opt.textContent=t;
+      if((row.type||'기가팁')===t) opt.selected=true;
+      selType.appendChild(opt);
+    });
+    selType.addEventListener('change', e=>{
+      row.type=e.target.value;
+      calcGigatipTotal();
+      scheduleSave();
     });
 
     // 삭제
@@ -2798,7 +2781,7 @@ function renderGigatip() {
     div.appendChild(inPrice);
     div.appendChild(inPax);
     div.appendChild(inTotal);
-    div.appendChild(inCost);
+    div.appendChild(selType);
     div.appendChild(btnDel);
     list.appendChild(div);
   });
@@ -2808,57 +2791,57 @@ function renderGigatip() {
 function calcGigatipRowDOM(row, div) {
   const price  = parseFloat((row.price||'').toString().replace(/,/g,''))||0;
   const pax    = parseFloat(row.pax)||0;
-  const cost   = parseFloat((row.cost||'').toString().replace(/,/g,''))||0;
   row.total    = price * pax;
-  row.profitTHB = toTHB(row.total, row.currency||'THB') - cost;
   const totalEl = div.querySelector('[data-role="total"]');
   if(totalEl) totalEl.value = row.total ? fmtNum(row.total) : '';
   calcGigatipTotal();
 }
 
-function addGigatipRow(){state.gigatip.push({id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profitTHB:0});renderGigatip();scheduleSave();}
+function addGigatipRow(){state.gigatip.push({id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',type:'기가팁'});renderGigatip();scheduleSave();}
 function deleteGigatip(id){state.gigatip=state.gigatip.filter(r=>r.id!==id);renderGigatip();scheduleSave();}
 
+// 기가팁(통화별)/TC정산금(฿환산) 합계 표시 + 정산서 지상비·TC정산금란에 자동 반영
 function calcGigatipTotal(){
-  const byCur = {THB:0, USD:0, KRW:0};
+  const tipByCur = {THB:0, USD:0, KRW:0};
+  let tcTHB = 0;
   state.gigatip.forEach(r=>{
     const cur = r.currency||'THB';
-    byCur[cur] = (byCur[cur]||0) + (parseFloat((r.total||'').toString().replace(/,/g,''))||0);
+    const total = parseFloat((r.total||'').toString().replace(/,/g,''))||0;
+    if ((r.type||'기가팁') === 'TC정산금') {
+      tcTHB += toTHB(total, cur);
+    } else {
+      tipByCur[cur] = (tipByCur[cur]||0) + total;
+    }
   });
 
   const elTHB = document.getElementById('gigatip-sum-thb');
   const elUSD = document.getElementById('gigatip-sum-usd');
   const elKRW = document.getElementById('gigatip-sum-krw');
-  if(elTHB){ elTHB.textContent = byCur.THB>0 ? '฿ ' + fmtNum(byCur.THB) : '—'; }
-  if(elUSD){ elUSD.textContent = byCur.USD>0 ? '$ ' + fmtNum(byCur.USD) : '—'; }
-  if(elKRW){ elKRW.textContent = byCur.KRW>0 ? '₩ ' + fmtNum(byCur.KRW) : '—'; }
+  if(elTHB){ elTHB.textContent = tipByCur.THB>0 ? '฿ ' + fmtNum(tipByCur.THB) : '—'; }
+  if(elUSD){ elUSD.textContent = tipByCur.USD>0 ? '$ ' + fmtNum(tipByCur.USD) : '—'; }
+  if(elKRW){ elKRW.textContent = tipByCur.KRW>0 ? '₩ ' + fmtNum(tipByCur.KRW) : '—'; }
+  const tcEl = document.getElementById('gigatip-tc-total');
+  if(tcEl){ tcEl.textContent = tcTHB>0 ? '฿ ' + fmtNum(Math.round(tcTHB)) : '—'; }
 
-  const convertedTotal = byCur.THB
-    + byCur.USD * getRateUSD()
-    + byCur.KRW * getRateKRW();
-  const convEl = document.getElementById('gigatip-converted-total');
-  if(convEl) convEl.textContent = '฿ ' + fmtNum(Math.round(convertedTotal));
-
-  const costTotal = state.gigatip.reduce((s,r)=>s+(parseFloat((r.cost||'').toString().replace(/,/g,''))||0), 0);
-  const costEl = document.getElementById('gigatip-tot-cost');
-  if(costEl) costEl.textContent = '฿ ' + fmtNum(Math.round(costTotal));
-
-  const profitTHB = convertedTotal - costTotal;
-  const profitEl = document.getElementById('gigatip-profit-total');
-  if(profitEl){
-    profitEl.textContent = (profitTHB>=0?'฿ ':'-฿ ') + fmtNum(Math.abs(Math.round(profitTHB)));
-    profitEl.style.color = profitTHB>=0 ? 'var(--success)' : 'var(--danger)';
-  }
+  applyGigatipToSettlement(tipByCur, tcTHB);
 }
 
-function getGigatipProfit(rUSD, rKRW) {
-  const byCur = {THB:0, USD:0, KRW:0};
-  state.gigatip.forEach(r=>{
-    const cur = r.currency||'THB';
-    byCur[cur] = (byCur[cur]||0) + (parseFloat((r.total||'').toString().replace(/,/g,''))||0);
-  });
-  const cost = state.gigatip.reduce((s,r)=>s+(parseFloat((r.cost||'').toString().replace(/,/g,''))||0), 0);
-  return (byCur.THB + byCur.USD*(rUSD||getRateUSD()) + byCur.KRW*(rKRW||getRateKRW())) - cost;
+// 기가팁 합계가 있는 통화만, TC정산금 항목이 있을 때만 해당 정산서 필드를 덮어씀 (기존 수동입력값은 항목이 없으면 그대로 유지)
+function applyGigatipToSettlement(tipByCur, tcTHB) {
+  const hasKRW = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='KRW');
+  const hasUSD = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='USD');
+  const hasTHB = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='THB');
+  const hasTC  = state.gigatip.some(r=>(r.type||'기가팁')==='TC정산금');
+
+  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value = val ? fmtNum(Math.round(val)) : ''; };
+
+  if (hasKRW) ['inc-land1','gu-land1','st-land1'].forEach(id=>setVal(id, tipByCur.KRW));
+  if (hasUSD) ['inc-land2','gu-land2','st-land2'].forEach(id=>setVal(id, tipByCur.USD));
+  if (hasTHB) ['inc-land3','gu-land3','st-land3'].forEach(id=>setVal(id, tipByCur.THB));
+  if (hasTC)  setVal('st-tc', tcTHB);
+
+  if (hasKRW || hasUSD || hasTHB) { calcIncentive(); calcGuarantee(); calcSettle(); }
+  else if (hasTC) { calcSettle(); }
 }
 
 // ══════════════════════════════════
@@ -3269,8 +3252,7 @@ function calcIncentive() {
   const landTotal = land1thb+land2thb+land3thb;
   const opt = getOptProfit(rUSD,rKRW);
   const shop = getShopProfit();
-  const gigatip = getGigatipProfit(rUSD,rKRW);
-  const incomeTotal = opt+shop+gigatip;
+  const incomeTotal = opt+shop;
   const exp1=pv('inc-exp1'), exp2=pv('inc-exp2');
   const expTotal=exp1+exp2;
   const net = landTotal+incomeTotal-expTotal;
@@ -3280,7 +3262,6 @@ function calcIncentive() {
 
   document.getElementById('inc-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('inc-shop').textContent='฿ '+fmtNum(Math.round(shop));
-  const incGigatipEl=document.getElementById('inc-gigatip'); if(incGigatipEl) incGigatipEl.textContent='฿ '+fmtNum(Math.round(gigatip));
   document.getElementById('inc-income-total').textContent='฿ '+fmtNum(Math.round(incomeTotal));
   document.getElementById('inc-income-total').style.color='var(--primary)';
   const grandEl=document.getElementById('inc-grand-total');
@@ -3324,7 +3305,7 @@ function calcIncentiveAdmin() {
 
   const net=pv('inc-guide-pct')>0 ? (()=>{
     const l1=(pv('inc-land1')||0)*rKRW, l2=(pv('inc-land2')||0)*rUSD, l3=pv('inc-land3');
-    const inc=getOptProfit(rUSD,rKRW)+getShopProfit()+getGigatipProfit(rUSD,rKRW);
+    const inc=getOptProfit(rUSD,rKRW)+getShopProfit();
     const exp=pv('inc-exp1')+pv('inc-exp2');
     return l1+l2+l3+inc-exp;
   })() : 0;
@@ -3350,8 +3331,7 @@ function calcGuarantee() {
   const rKRW=pv('inc-rateKRW')||getRateKRW();
   const opt=getOptProfit(rUSD,rKRW);
   const shop=getShopProfit();
-  const gigatip=getGigatipProfit(rUSD,rKRW);
-  const incomeTotal=opt+shop+gigatip;
+  const incomeTotal=opt+shop;
   const adult=parseInt(document.getElementById('paxAdult')?.value)||0;
   const child=parseInt(document.getElementById('paxChild')?.value)||0;
   const paxCount=adult+child;
@@ -3364,7 +3344,6 @@ function calcGuarantee() {
 
   document.getElementById('gu-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('gu-shop').textContent='฿ '+fmtNum(Math.round(shop));
-  const guGigatipEl=document.getElementById('gu-gigatip'); if(guGigatipEl) guGigatipEl.textContent='฿ '+fmtNum(Math.round(gigatip));
   document.getElementById('gu-income-total').textContent='฿ '+fmtNum(Math.round(incomeTotal));
   document.getElementById('gu-income-total').style.color='var(--primary)';
   document.getElementById('gu-pax-count').textContent=paxCount+'명';
@@ -3389,20 +3368,19 @@ function calcGuaranteeAdmin() {
   document.getElementById('gu-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
   document.getElementById('gu-adm-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
 
-  // 옵션+쇼핑+KB+기가팁 수익금
-  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit(), kb=getKBTotal(), gigatip=getGigatipProfit(rUSD,rKRW);
-  const incomeTotal=opt+shop+kb+gigatip;
+  // 옵션+쇼핑+KB 수익금
+  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit(), kb=getKBTotal();
+  const incomeTotal=opt+shop+kb;
   document.getElementById('gu-adm-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('gu-adm-shop').textContent='฿ '+fmtNum(Math.round(shop));
   document.getElementById('gu-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
-  const guAdmGigatipEl=document.getElementById('gu-adm-gigatip'); if(guAdmGigatipEl) guAdmGigatipEl.textContent='฿ '+fmtNum(Math.round(gigatip));
   document.getElementById('gu-adm-income-total').textContent='฿ '+fmtNum(Math.round(incomeTotal));
   document.getElementById('gu-adm-income-total').style.color='var(--primary)';
 
   // 지출금: 행사지출금 + 가이드정산금
   const admExp1=pv('gu-adm-exp1');
   const pct=pv('gu-guide-pct')||55;
-  const netForGuide=(opt+shop+gigatip)-(pv('gu-amount')*(parseInt(document.getElementById('paxAdult')?.value||0)+parseInt(document.getElementById('paxChild')?.value||0)));
+  const netForGuide=(opt+shop)-(pv('gu-amount')*(parseInt(document.getElementById('paxAdult')?.value||0)+parseInt(document.getElementById('paxChild')?.value||0)));
   const guidePay=netForGuide<=0?0:Math.round(netForGuide*pct/100);
   const expTotal=admExp1+guidePay;
   const _gpEl=document.getElementById('gu-adm-guide-pay'); if(_gpEl) _gpEl.textContent='฿ '+fmtNum(Math.round(guidePay));
@@ -3436,9 +3414,8 @@ function calcSettle() {
   const rKRW=pv('inc-rateKRW')||getRateKRW();
   const opt=getOptProfit(rUSD,rKRW);
   const shop=getShopProfit();
-  const gigatip=getGigatipProfit(rUSD,rKRW);
   const tc=pv('st-tc');
-  const netIncome=opt+shop+gigatip-tc;
+  const netIncome=opt+shop-tc;
   const daily=pv('st-daily');
   const optPct=pv('st-opt-pct')||50;
   const optSettled=Math.round(netIncome*optPct/100);
@@ -3446,7 +3423,6 @@ function calcSettle() {
 
   document.getElementById('st-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('st-shop').textContent='฿ '+fmtNum(Math.round(shop));
-  const stGigatipEl=document.getElementById('st-gigatip'); if(stGigatipEl) stGigatipEl.textContent='฿ '+fmtNum(Math.round(gigatip));
   document.getElementById('st-income-total').textContent='฿ '+fmtNum(Math.round(netIncome));
   document.getElementById('st-income-total').style.color=netIncome>=0?'var(--primary)':'var(--danger)';
   document.getElementById('st-opt-settled').textContent='฿ '+fmtNum(Math.round(optSettled));
@@ -3462,13 +3438,12 @@ function calcSettleAdmin() {
   document.getElementById('st-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
   document.getElementById('st-adm-land-total').textContent='฿ '+fmtNum(Math.round(landTotal));
 
-  // 옵션+쇼핑+KB+기가팁 수익금
-  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit(), kb=getKBTotal(), gigatip=getGigatipProfit(rUSD,rKRW);
-  const incomeTotal=opt+shop+kb+gigatip;
+  // 옵션+쇼핑+KB 수익금
+  const opt=getOptProfit(rUSD,rKRW), shop=getShopProfit(), kb=getKBTotal();
+  const incomeTotal=opt+shop+kb;
   document.getElementById('st-adm-opt').textContent='฿ '+fmtNum(Math.round(opt));
   document.getElementById('st-adm-shop').textContent='฿ '+fmtNum(Math.round(shop));
   document.getElementById('st-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
-  const stAdmGigatipEl=document.getElementById('st-adm-gigatip'); if(stAdmGigatipEl) stAdmGigatipEl.textContent='฿ '+fmtNum(Math.round(gigatip));
   document.getElementById('st-adm-income-total').textContent='฿ '+fmtNum(Math.round(incomeTotal));
   document.getElementById('st-adm-income-total').style.color='var(--primary)';
   const _expDisp=document.getElementById('st-adm-exp-display'); if(_expDisp) _expDisp.textContent='฿ '+fmtNum(Math.round(incomeTotal));
@@ -3476,7 +3451,7 @@ function calcSettleAdmin() {
   // 지출금 계산
   const daily=pv('st-daily');
   const tc=pv('st-tc');
-  const netIncome=opt+shop+gigatip-tc;
+  const netIncome=opt+shop-tc;
   const optPct=pv('st-opt-pct')||50;
   const guidePay=daily+Math.round(netIncome*optPct/100);
   const admExp1=pv('st-adm-exp1');
@@ -3689,7 +3664,7 @@ function confirmReset(){
     if(panel) panel.style.display='none';
   });
   state.options = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profit:''}];
-  state.gigatip = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profitTHB:0}];
+  state.gigatip = [{id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',type:'기가팁'}];
   state.expenses = { main: defaultRows() };
   state.days = [];
 
@@ -4652,7 +4627,6 @@ function collectProfitFields() {
     // (정산방법 체크박스를 하나도 선택하지 않은 경우를 대비해 옵션/쇼핑 탭 자체의 합계로 최종 폴백)
     optionProfit:   getVal('st-opt')||getVal('inc-opt')||getVal('gu-opt')||getVal('opt-profit-total')||0,
     shoppingProfit: getVal('st-shop')||getVal('inc-shop')||getVal('gu-shop')||getVal('shop-total')||0,
-    gigatipProfit:  getVal('st-gigatip')||getVal('inc-gigatip')||getVal('gu-gigatip')||getVal('gigatip-profit-total')||0,
     guideSettle,
     companyProfit,
     exchangeProfit,
