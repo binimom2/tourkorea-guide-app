@@ -4646,9 +4646,12 @@ function _buildLedgerData() {
   // 계정의 내부 id(username)는 계정을 재생성하면 바뀔 수 있어 예전 제출건과 어긋날 수 있지만,
   // 가이드 이름은 계정 생성 시 중복이 금지되어 있어 더 안정적인 식별자로 사용한다.
   const byGuide = {};
-  const keyOf = s => s.guideName || s.username || '(미상)';
+  // 앞뒤 공백이 섞여 저장된 이름 때문에 같은 가이드가 다른 사람으로 나뉘는 걸 방지
+  const keyOf = s => (s.guideName || s.username || '(미상)').trim();
   const ensure = (k, guideName, username) => {
-    if (!byGuide[k]) byGuide[k] = { username: username||'', guideName: guideName||k, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
+    k = (k||'').trim();
+    const gName = (guideName||k).trim();
+    if (!byGuide[k]) byGuide[k] = { username: username||'', guideName: gName, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
     else if (username && !byGuide[k].username) byGuide[k].username = username;
     return byGuide[k];
   };
@@ -4663,7 +4666,7 @@ function _buildLedgerData() {
     g.settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0, date: _settleDateOf(s) });
   });
   paymentsDB.forEach(p=>{
-    const k = p.guideName || p.guideUsername || '(미상)';
+    const k = (p.guideName || p.guideUsername || '(미상)').trim();
     const g = ensure(k, p.guideName, p.guideUsername);
     g.paidTotal += (p.amount||0);
     g.payments.push(p);
