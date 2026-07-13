@@ -160,8 +160,15 @@ table.subtbl tr:last-child td{border-bottom:none;}
 .mtabs button{padding:10px 14px;border:none;background:transparent;color:#9aa6c4;font-size:12px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;}
 .mtabs button.active{color:#fff;border-color:#4fd1a5;}
 .code-row{display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;margin-bottom:6px;}
+.code-row.inactive{opacity:0.55;}
 .code-row .tag{font-weight:800;font-size:11.5px;color:#3457d5;background:#eaefff;padding:2px 8px;border-radius:6px;}
 .code-row .lbl{font-size:12px;color:#4a5164;}
+.code-order{display:flex;flex-direction:column;gap:1px;}
+.code-order-btn{cursor:pointer;font-size:9px;line-height:1;color:#8892a0;padding:2px;}
+.code-order-btn:hover{color:#3457d5;}
+.code-active-toggle{margin-left:auto;cursor:pointer;font-size:11px;font-weight:700;padding:2px 8px;border-radius:11px;white-space:nowrap;}
+.code-active-toggle.on{color:#1a8a52;background:#e2f7ec;}
+.code-active-toggle.off{color:#8890a0;background:#f0f1f4;}
 .code-addrow{display:flex;gap:8px;margin-bottom:14px;}
 .code-addrow input{flex:1;}
 .cust-card{border:1px solid #e8eaf0;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
@@ -604,8 +611,12 @@ function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
   return item?`${item.code}[${item.label}]`:(code||'-');
 }
+function _firstActiveCode(list){
+  return ((list||[]).find(c=>c.active!==false)||list[0]||{}).code||'';
+}
 function fillSelectFromCodes(selectId,listName,selected){
-  const list=getCodes()[listName]||[];
+  // 미사용 처리된 코드는 신규 선택지에서 제외하되, 이미 지정된 값(기존 예약)은 계속 보이도록 유지
+  const list=(getCodes()[listName]||[]).filter(c=>c.active!==false||c.code===selected);
   const sel=document.getElementById(selectId);
   sel.innerHTML=list.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
   if(selected) sel.value=selected;
@@ -627,11 +638,36 @@ function switchCodeTab(key){
 function renderCodeList(){
   const codes=getCodes();
   const list=codes[codeModalTab]||[];
-  document.getElementById('codeListBody').innerHTML=list.length?list.map((c,i)=>`
-    <div class="code-row">
+  document.getElementById('codeListBody').innerHTML=list.length?list.map((c,i)=>{
+    const active=c.active!==false;
+    return `
+    <div class="code-row${active?'':' inactive'}">
+      <span class="code-order">
+        <a class="code-order-btn" style="${i===0?'visibility:hidden;':''}" onclick="moveCodeItem(${i},-1)">▲</a>
+        <a class="code-order-btn" style="${i===list.length-1?'visibility:hidden;':''}" onclick="moveCodeItem(${i},1)">▼</a>
+      </span>
       <span class="tag">${c.code}</span><span class="lbl">${escapeHtml(c.label)}</span>
-      <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delCodeItem(${i})">삭제</a>
-    </div>`).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+      <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleCodeActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+      <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delCodeItem(${i})">삭제</a>
+    </div>`;
+  }).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+}
+async function moveCodeItem(i,dir){
+  const codes=getCodes();
+  const list=codes[codeModalTab];
+  const j=i+dir;
+  if(!list||j<0||j>=list.length) return;
+  [list[i],list[j]]=[list[j],list[i]];
+  await saveCodes(codes);
+  renderCodeList();
+}
+async function toggleCodeActive(i){
+  const codes=getCodes();
+  const item=(codes[codeModalTab]||[])[i];
+  if(!item) return;
+  item.active = item.active===false ? true : false;
+  await saveCodes(codes);
+  renderCodeList();
 }
 async function addCodeItem(){
   const codeEl=document.getElementById('code-new-code'), labelEl=document.getElementById('code-new-label');
@@ -648,6 +684,9 @@ async function addCodeItem(){
 }
 async function delCodeItem(i){
   const codes=getCodes();
+  const item=(codes[codeModalTab]||[])[i];
+  if(!item) return;
+  if(!confirm(`[${item.code}] ${item.label} 코드를 삭제하시겠습니까?\n이미 사용 중인 예약이 있다면 표시가 깨질 수 있습니다.`)) return;
   codes[codeModalTab].splice(i,1);
   await saveCodes(codes);
   renderCodeList();
@@ -1040,8 +1079,9 @@ function setView(v){
 function renderFilters(){
   const codes=getCodes();
   const fill=(id,list,allLabel)=>{
+    const active=list.filter(c=>c.active!==false);
     document.getElementById(id).innerHTML=`<option value="">${allLabel}</option>`+
-      list.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
+      active.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
   };
   fill('f-division',codes.divisions,'전체 구분');
   fill('f-type',codes.types,'전체 유형');
@@ -1183,8 +1223,8 @@ function genCodePreview(datein,type){
 function blankReservation(){
   const codes=getCodes();
   return {id:'id_'+Date.now()+Math.random().toString(36).slice(2,7),code:'',
-    office:(codes.offices[0]||{}).code||'',division:(codes.divisions[0]||{}).code||'',
-    type:(codes.types[0]||{}).code||'',proc:(codes.procs[0]||{}).code||'',status:(codes.statuses[0]||{}).code||'',
+    office:_firstActiveCode(codes.offices),division:_firstActiveCode(codes.divisions),
+    type:_firstActiveCode(codes.types),proc:_firstActiveCode(codes.procs),status:_firstActiveCode(codes.statuses),
     datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',memo:'',
     createdAt:'',updatedAt:'',
     flights:[],hotels:[],golfs:[],guides:[],vehicles:[],shows:[],shopping:[],deposits:[],withdrawals:[]};
