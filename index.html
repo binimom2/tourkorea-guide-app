@@ -5355,8 +5355,11 @@ async function _getMonthRows() {
   const p1=String(y1).slice(2)+m1;
   const p2=String(y2).slice(2)+m2;
   const lo=p1<=p2?p1:p2, hi=p1<=p2?p2:p1;
+  // 정산완료(settled) 처리된 건만 정산서/쇼핑 파일에 반영 — 같은 정산코드로 여러 건이
+  // 남아있어도(제출본+수정본 등) 어드민이 최종 확정한 건만 집계되어 중복 반영을 막음.
+  // 제출현황 목록/가이드 로그인 열람에는 영향 없음 — 제출본은 그대로 남아있음.
   const rows=submissionsDB
-    .filter(s=>s.settleCode&&s.settleCode.slice(0,4)>=lo&&s.settleCode.slice(0,4)<=hi)
+    .filter(s=>s.settleCode&&s.settleCode.slice(0,4)>=lo&&s.settleCode.slice(0,4)<=hi&&s.settled)
     .sort((a,b)=>a.settleCode.localeCompare(b.settleCode));
   // 기간 라벨 (같은 년/월이면 단일 표기, 아니면 범위 표기)
   const loY=lo.slice(0,2), loM=lo.slice(2), hiY=hi.slice(0,2), hiM=hi.slice(2);
