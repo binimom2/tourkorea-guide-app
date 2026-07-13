@@ -93,7 +93,7 @@ table.rlist tr:hover td{background:#f7f9fd;}
 table.rlist tr{cursor:pointer;}
 .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
 .badge-proc-FINAL{background:#e2f7ec;color:#1a8a52;}
-.badge-proc-NEW,.badge-proc-PROCESS{background:#fdf3de;color:#a3720c;}
+.badge-proc-NEW,.badge-proc-H-AMEND,.badge-proc-G-AMEND,.badge-proc-E-AMEND{background:#fdf3de;color:#a3720c;}
 .badge-cancel{background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
 .empty-row td{text-align:center;color:#9aa1af;padding:40px;}
 
@@ -342,6 +342,14 @@ table.subtbl tr:last-child td{border-bottom:none;}
           <div class="phrase-picker" id="decludes-picker"></div>
           <textarea id="r-decludes"></textarea>
         </div>
+        <div class="f-row"><label>REFERENCES</label>
+          <div class="phrase-picker" id="references-picker"></div>
+          <textarea id="r-references"></textarea>
+        </div>
+        <div class="f-row"><label>CHECKS</label>
+          <div class="phrase-picker" id="checks-picker"></div>
+          <textarea id="r-checks"></textarea>
+        </div>
         <div class="f-row"><label>MEMO</label><textarea id="r-memo"></textarea></div>
       </div>
 
@@ -453,15 +461,18 @@ table.subtbl tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- 거래처/업체 자동완성용 datalist (JS로 내용 채움) -->
-<datalist id="dl-agents"></datalist>
+<!-- 거래처/업체 자동완성용 datalist (JS로 내용 채움, PROVIDER 코드 기준 + 항공편 스케줄) -->
 <datalist id="dl-flightSched"></datalist>
-<datalist id="dl-hotels"></datalist>
-<datalist id="dl-golfs"></datalist>
-<datalist id="dl-guides"></datalist>
-<datalist id="dl-vehicles"></datalist>
-<datalist id="dl-shows"></datalist>
-<datalist id="dl-shops"></datalist>
+<datalist id="dl-AIRLINES"></datalist>
+<datalist id="dl-HOTEL"></datalist>
+<datalist id="dl-CLUB"></datalist>
+<datalist id="dl-RESTAURANT"></datalist>
+<datalist id="dl-TICKET"></datalist>
+<datalist id="dl-MASSAGE"></datalist>
+<datalist id="dl-SHOW"></datalist>
+<datalist id="dl-SHOP"></datalist>
+<datalist id="dl-GUIDE"></datalist>
+<datalist id="dl-VEHICLES"></datalist>
 
 <div class="toast" id="toast"></div>
 
@@ -542,6 +553,7 @@ async function enterApp(){
     document.getElementById('btnPhrases').style.display='';
   }
   await loadAllFromSupabase();
+  if(currentUser.role==='admin') await ensureCodesMigrated();
   renderVendorDatalists();
   renderPhrasePickers();
   loadData();
@@ -588,16 +600,20 @@ async function delAccount(i){
 }
 
 /* ══════════════════════════ CODE MASTER DATA ══════════════════════════ */
+const CODES_SCHEMA_VERSION=2;
 const DEFAULT_CODES={
   offices:[{code:'TKB',label:'방콕'}],
-  divisions:[{code:'TK',label:'투어코리아'},{code:'MD',label:'모두투어'}],
-  types:[{code:'GRP',label:'그룹'},{code:'PACK',label:'패키지'},{code:'GOLF',label:'골프'},{code:'FIT',label:'개별'},{code:'ETC',label:'기타'}],
-  procs:[{code:'NEW',label:'뉴부킹'},{code:'PROCESS',label:'진행중'},{code:'FINAL',label:'확정'}],
-  statuses:[{code:'NORMAL',label:'정상'},{code:'CANCEL',label:'취소'}],
+  divisions:[{code:'MD',label:'모두투어'},{code:'TK',label:'투어코리아'}],
+  types:[{code:'GRP',label:'그룹'},{code:'GOLF',label:'골프'},{code:'PACK',label:'패키지'},{code:'FIT',label:'개별'},{code:'ETC',label:'기타'}],
+  procs:[{code:'NEW',label:'뉴부킹'},{code:'H-AMEND',label:'호텔'},{code:'G-AMEND',label:'골프'},{code:'E-AMEND',label:'기타'},{code:'FINAL',label:'파이널'}],
+  statuses:[{code:'NORMAL',label:'진행'},{code:'HOLD',label:'홀딩'},{code:'CANCEL',label:'취소'},{code:'DELETE',label:'삭제'}],
+  providers:[{code:'AIRLINES',label:'항공사'},{code:'HOTEL',label:'호텔'},{code:'CLUB',label:'골프장'},{code:'RESTAURANT',label:'레스토랑'},{code:'TICKET',label:'관광지'},{code:'MASSAGE',label:'맛사지'},{code:'SHOW',label:'공연'},{code:'SHOP',label:'쇼핑센터'},{code:'GUIDE',label:'가이드'},{code:'VEHICLES',label:'차량회사'}],
+  sections:[{code:'BAS',label:'BASIC'},{code:'FLT',label:'FLIGHT'},{code:'GID',label:'GUIDE'},{code:'HTL',label:'HOTEL'},{code:'VHC',label:'VEHICLES'},{code:'GOF',label:'GOLF'},{code:'TKT',label:'SHOW,RESTAURANT,MASSAGE,TICKET'},{code:'SOP',label:'SHOPPING, CENTER'}],
 };
 const CODE_TABS=[
   {key:'offices',label:'오피스'},{key:'divisions',label:'구분'},{key:'types',label:'유형'},
   {key:'procs',label:'진행'},{key:'statuses',label:'상태'},
+  {key:'providers',label:'공급처'},{key:'sections',label:'섹션'},
 ];
 function getCodes(){
   try{
@@ -607,6 +623,31 @@ function getCodes(){
   return JSON.parse(JSON.stringify(DEFAULT_CODES));
 }
 async function saveCodes(c){ await sbSave('trv_codes',c); }
+// 1회성 코드셋 마이그레이션: DIVISION/TYPE/PROC/STATUS 신규 스펙 적용 + PROVIDER/SECTION 추가.
+// trv_codes._v 로 버전을 관리해서 이미 적용됐으면 다시 실행하지 않음. offices는 손대지 않음.
+async function ensureCodesMigrated(){
+  const codes=(await sbLoad('trv_codes'))||{};
+  if((codes._v||1)>=CODES_SCHEMA_VERSION) return;
+  codes.divisions=JSON.parse(JSON.stringify(DEFAULT_CODES.divisions));
+  codes.types=JSON.parse(JSON.stringify(DEFAULT_CODES.types));
+  codes.procs=JSON.parse(JSON.stringify(DEFAULT_CODES.procs));
+  codes.statuses=JSON.parse(JSON.stringify(DEFAULT_CODES.statuses));
+  if(!codes.providers) codes.providers=JSON.parse(JSON.stringify(DEFAULT_CODES.providers));
+  if(!codes.sections) codes.sections=JSON.parse(JSON.stringify(DEFAULT_CODES.sections));
+  codes._v=CODES_SCHEMA_VERSION;
+  await saveCodes(codes);
+
+  // 거래처 데이터: 기존 벤더 목록을 새 PROVIDER 코드 키로 이전 (기존 키 데이터는 그대로 둠)
+  const VENDOR_KEY_MIGRATION={hotels:'HOTEL',golfs:'CLUB',guides:'GUIDE',vehicles:'VEHICLES',shows:'SHOW',shops:'SHOP'};
+  for(const oldKey in VENDOR_KEY_MIGRATION){
+    const newKey=VENDOR_KEY_MIGRATION[oldKey];
+    const oldList=await sbLoad('trv_vendor_'+oldKey);
+    if(oldList&&oldList.length){
+      const newList=await sbLoad('trv_vendor_'+newKey);
+      if(!newList||!newList.length) await sbSave('trv_vendor_'+newKey,oldList);
+    }
+  }
+}
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
   return item?`${item.code}[${item.label}]`:(code||'-');
@@ -748,32 +789,30 @@ async function delManager(ci,mi){
   renderCustomerList();
 }
 
-/* ══════════════════════════ 거래처/업체 마스터 (항공사/호텔/골프/가이드/차량/쇼/쇼핑샵) ══════════════════════════ */
-const VENDOR_KEYS=[
-  {key:'agents',label:'거래처'},
-  {key:'flightSched',label:'항공편(편수/시간)'},
-  {key:'hotels',label:'호텔'},
-  {key:'golfs',label:'골프장'},
-  {key:'guides',label:'가이드'},
-  {key:'vehicles',label:'차량업체'},
-  {key:'shows',label:'쇼/공연장'},
-  {key:'shops',label:'쇼핑샵'},
-];
+/* ══════════════════════════ 거래처/업체 마스터 (PROVIDER 코드 기반 + 항공편 스케줄) ══════════════════════════ */
+// 코드관리의 PROVIDER 코드(사용중인 것만)를 탭으로 사용. flightSched(항공편 편수/시간)는
+// 예약폼 FLIGHTS 자동완성에 별도로 쓰이는 항목이라 PROVIDER와 무관하게 계속 유지.
+function getVendorTabs(){
+  const providers=(getCodes().providers||[]).filter(c=>c.active!==false).map(c=>({key:c.code,label:c.label}));
+  return [...providers,{key:'flightSched',label:'항공편(편수/시간)'}];
+}
 function getVendors(key){ try{return JSON.parse(localStorage.getItem('trv_vendor_'+key)||'[]');}catch{return[];} }
 async function saveVendors(key,arr){ await sbSave('trv_vendor_'+key,arr); }
 function findVendor(key,name){ return getVendors(key).find(v=>v.name===name); }
 
 function renderVendorDatalists(){
-  VENDOR_KEYS.forEach(v=>{
+  getVendorTabs().forEach(v=>{
     const dl=document.getElementById(`dl-${v.key}`);
     if(dl) dl.innerHTML=getVendors(v.key).map(item=>`<option value="${escapeAttr(item.name)}">`).join('');
   });
 }
 
-let vendorModalTab='agents';
+let vendorModalTab='';
 function openVendorModal(){
+  const tabs=getVendorTabs();
+  if(!tabs.find(t=>t.key===vendorModalTab)) vendorModalTab=(tabs[0]||{}).key||'';
   document.getElementById('vendorModal').classList.add('open');
-  document.getElementById('vendorTabs').innerHTML=VENDOR_KEYS.map(v=>
+  document.getElementById('vendorTabs').innerHTML=tabs.map(v=>
     `<button class="${v.key===vendorModalTab?'active':''}" onclick="switchVendorTab('${v.key}')">${v.label}</button>`).join('');
   renderVendorList();
 }
@@ -783,7 +822,8 @@ function closeVendorModal(){
 }
 function switchVendorTab(key){
   vendorModalTab=key;
-  document.querySelectorAll('#vendorTabs button').forEach(b=>b.classList.toggle('active',b.textContent===VENDOR_KEYS.find(v=>v.key===key).label));
+  const tabs=getVendorTabs();
+  document.querySelectorAll('#vendorTabs button').forEach(b=>b.classList.toggle('active',b.textContent===(tabs.find(v=>v.key===key)||{}).label));
   renderVendorList();
 }
 function renderVendorList(){
@@ -814,7 +854,7 @@ async function delVendorItem(i){
 }
 
 /* ══════════════════════════ INCLUDES / DECLUDES 문구 코드 ══════════════════════════ */
-const PHRASE_TABS=[{key:'includes',label:'INCLUDES'},{key:'decludes',label:'DECLUDES'}];
+const PHRASE_TABS=[{key:'includes',label:'INCS'},{key:'decludes',label:'DECS'},{key:'references',label:'REFS'},{key:'checks',label:'CHKS'}];
 function getPhrases(key){ try{return JSON.parse(localStorage.getItem('trv_phrases_'+key)||'[]');}catch{return[];} }
 async function savePhrases(key,arr){ await sbSave('trv_phrases_'+key,arr); }
 function circledNum(n){
@@ -862,7 +902,8 @@ async function delPhraseItem(i){
   renderPhraseListModal();
 }
 function renderPhrasePickers(){
-  ['includes','decludes'].forEach(key=>{
+  PHRASE_TABS.forEach(t=>{
+    const key=t.key;
     const host=document.getElementById(`${key}-picker`);
     if(!host)return;
     const list=getPhrases(key);
@@ -870,7 +911,8 @@ function renderPhrasePickers(){
   });
 }
 function insertPhrase(key,text){
-  const ta=document.getElementById(key==='includes'?'r-includes':'r-decludes');
+  const ta=document.getElementById(`r-${key}`);
+  if(!ta)return;
   const existingLines=ta.value.split('\n').filter(l=>l.trim());
   const n=existingLines.length+1;
   const line=`${circledNum(n)} ${text}`;
@@ -894,7 +936,7 @@ const SUBSECTIONS=[
     return `${s('adt')+s('chd')}+${s('tc')}TC(${s('inf')}INF)`;
   }},
   {key:'hotels',label:'HOTELS',fields:[
-    {k:'hotel',label:'호텔명',type:'text',vendorKey:'hotels'},
+    {k:'hotel',label:'호텔명',type:'text',vendorKey:'HOTEL'},
     {k:'roomtype',label:'룸타입',type:'text'},
     {k:'chkin',label:'체크인',type:'date'},
     {k:'nights',label:'박수',type:'number'},
@@ -905,7 +947,7 @@ const SUBSECTIONS=[
   ]},
   {key:'golfs',label:'GOLF',fields:[
     {k:'date',label:'날짜',type:'date'},
-    {k:'club',label:'골프장',type:'text',vendorKey:'golfs'},
+    {k:'club',label:'골프장',type:'text',vendorKey:'CLUB'},
     {k:'hole',label:'홀수',type:'number'},
     {k:'pax',label:'인원',type:'number'},
     {k:'teeup',label:'티업시간',type:'text'},
@@ -913,20 +955,20 @@ const SUBSECTIONS=[
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'guides',label:'GUIDES',fields:[
-    {k:'name',label:'가이드명',type:'text',vendorKey:'guides',vendorPhoneField:'phone'},
+    {k:'name',label:'가이드명',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone'},
     {k:'phone',label:'연락처',type:'text'},
     {k:'lguide',label:'L-GUIDE(현지)',type:'text'},
     {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'vehicles',label:'VEHICLES',fields:[
-    {k:'company',label:'차량업체',type:'text',vendorKey:'vehicles'},
+    {k:'company',label:'차량업체',type:'text',vendorKey:'VEHICLES'},
     {k:'info',label:'차량/기사 정보',type:'text'},
     {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'shows',label:'공연/식당/마사지',fields:[
-    {k:'name',label:'명칭',type:'text',vendorKey:'shows'},
+    {k:'name',label:'명칭',type:'text',vendorKey:'SHOW'},
     {k:'date',label:'날짜',type:'date'},
     {k:'time',label:'시간',type:'text'},
     {k:'adt',label:'성인',type:'number'},{k:'chd',label:'아동',type:'number'},{k:'tc',label:'T/C',type:'number'},
@@ -934,7 +976,7 @@ const SUBSECTIONS=[
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'shopping',label:'쇼핑',fields:[
-    {k:'center',label:'쇼핑센터',type:'text',vendorKey:'shops'},
+    {k:'center',label:'쇼핑센터',type:'text',vendorKey:'SHOP'},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'deposits',label:'입금',ledger:true,fields:[
@@ -1225,7 +1267,7 @@ function blankReservation(){
   return {id:'id_'+Date.now()+Math.random().toString(36).slice(2,7),code:'',
     office:_firstActiveCode(codes.offices),division:_firstActiveCode(codes.divisions),
     type:_firstActiveCode(codes.types),proc:_firstActiveCode(codes.procs),status:_firstActiveCode(codes.statuses),
-    datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',memo:'',
+    datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',references:'',checks:'',memo:'',
     createdAt:'',updatedAt:'',
     flights:[],hotels:[],golfs:[],guides:[],vehicles:[],shows:[],shopping:[],deposits:[],withdrawals:[]};
 }
@@ -1285,6 +1327,8 @@ function openReservation(id,presetDate){
   document.getElementById('r-remark').value=workingRes.remark;
   document.getElementById('r-includes').value=workingRes.includes;
   document.getElementById('r-decludes').value=workingRes.decludes;
+  document.getElementById('r-references').value=workingRes.references||'';
+  document.getElementById('r-checks').value=workingRes.checks||'';
   document.getElementById('r-memo').value=workingRes.memo||'';
 
   renderSubsections();
@@ -1369,6 +1413,8 @@ async function saveReservation(){
   workingRes.remark=document.getElementById('r-remark').value.trim();
   workingRes.includes=document.getElementById('r-includes').value.trim();
   workingRes.decludes=document.getElementById('r-decludes').value.trim();
+  workingRes.references=document.getElementById('r-references').value.trim();
+  workingRes.checks=document.getElementById('r-checks').value.trim();
   workingRes.memo=document.getElementById('r-memo').value.trim();
 
   if(!workingRes.datein){showToast('⚠ 체크인 날짜를 입력해주세요');return;}
