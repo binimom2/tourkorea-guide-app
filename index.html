@@ -1778,6 +1778,7 @@
 const SETTINGS_KEY = 'guide_settings_v1';
 const SUBS_KEY     = 'guide_submissions_v1';
 const ACC_KEY      = 'guide_accounts_v1';   // [{id,pw,name,role}]
+const SESSION_KEY  = 'guideSettleApp_session';   // {id,name,role} — 새로고침 시 로그인 유지용
 const ADMIN_ID     = 'admin';
 const ADMIN_PW_DEFAULT = 'admin1234';
 const ELEVATED_ADMIN_IDS = ['lds1207'];   // 이 계정들은 로그인 시 admin과 동일한 권한으로 처리
@@ -1962,6 +1963,7 @@ function _clearViewBanner() {
 
 function _completeLogin() {
   _clearViewBanner();
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ id: currentUser.id, name: currentUser.name, role: currentRole }));
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appWrap').style.display='block';
   const badgeEl = document.getElementById('roleBadge');
@@ -2033,22 +2035,10 @@ async function checkAdminEdits() {
   await loadSubmissions();
   const username = currentUser && currentUser.username;
   if (!username) return;
-  // 이 가이드의 제출 중 adminEdited=true 인 것 찾기
+  // 이 가이드의 제출 중 adminEdited=true 인 것 찾기 (작업중인 초안은 건드리지 않음 — [내 제출현황]에서 직접 열람)
   const edited = submissionsDB.filter(s => s.username === username && s.adminEdited);
   if (!edited.length) return;
-  // 가장 최근 수정본
-  edited.sort((a,b)=> new Date(b.adminEditedAt)-new Date(a.adminEditedAt));
-  const s = edited[0];
-  const editedAt = (s.adminEditedAt||'').slice(0,16).replace('T',' ');
-  if (!confirm(`📋 관리자(어드민/매니저)가 [${s.settleCode}] 정산서를 수정했습니다.\n수정일시: ${editedAt}\n\n수정된 내용을 불러오시겠습니까?`)) return;
-  // 수정본을 현재 데이터로 적용
-  const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
-  localStorage.setItem(LS_KEY_USER(), JSON.stringify(tempData));
-  loadData(); renderAll(); rebuildTabBar(); switchTab('main');
-  // adminEdited 플래그 해제
-  s.adminEdited = false;
-  await saveSubmissions();
-  showToast('✅ 어드민 수정내용이 반영되었습니다.');
+  showToast(`📋 관리자가 수정한 제출본이 ${edited.length}건 있습니다. [내 제출현황]에서 확인하세요.`);
 }
 
 function LS_KEY_USER() { return currentUser ? 'guide_data_' + currentUser.username : LS_KEY; }
@@ -2072,6 +2062,7 @@ function resetData() {
 
 function doLogout() {
   _clearViewBanner();
+  localStorage.removeItem(SESSION_KEY);
   currentRole = null; currentUser = null;
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appWrap').style.display = 'none';
@@ -4102,6 +4093,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   window.addEventListener('beforeunload', saveData);
   // 탭 전환 / 최소화 시에도 저장
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveData(); });
+
+  // 새로고침해도 로그인 유지 (저장된 세션 복원)
+  try {
+    const sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if (sess && sess.id && sess.role) {
+      currentUser = { id: sess.id, username: sess.id, name: sess.name || sess.id, role: sess.role };
+      currentRole = sess.role;
+      _completeLogin();
+    }
+  } catch(e) {}
 });
 </script>
 <!-- ══ 직원관리 모달 (3탭) ══ -->
@@ -4780,7 +4781,7 @@ function renderSubmissions() {
           html += `<div class="sub-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <div>
-                <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.settled?' <span class="sub-badge settled">정산완료</span>':''}</div>
+                <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}</div>
                 <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
                 <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
               </div>
@@ -5148,6 +5149,7 @@ async function openSubData(id) {
   showToast('⏳ 불러오는 중...');
 
   s.status = 'seen';
+  if (currentRole === 'guide' && s.adminEdited) s.adminEdited = false;
   await saveSubmissions();
 
   // 공통: fullData를 내 localStorage 키에 임시 기록 → loadData()가 읽게 함
