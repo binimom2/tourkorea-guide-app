@@ -2034,12 +2034,20 @@ function _completeLogin() {
   });
 }
 
+// 계정의 내부 id(username)는 계정을 재생성하면 바뀔 수 있어 예전 제출건과 어긋날 수 있음(_buildLedgerData 참고).
+// 가이드 이름(guideName)은 계정 생성 시 중복 금지라 더 안정적 — username 일치 or 이름 일치면 본인 것으로 간주.
+function isMySubmission(s) {
+  if (!currentUser) return false;
+  const uname = currentUser.username || '';
+  const myName = (currentUser.name || '').trim();
+  return (uname && s.username === uname) || (myName && (s.guideName || '').trim() === myName);
+}
+
 async function checkAdminEdits() {
   await loadSubmissions();
-  const username = currentUser && currentUser.username;
-  if (!username) return;
+  if (!currentUser) return;
   // 이 가이드의 제출 중 adminEdited=true 인 것 찾기 (작업중인 초안은 건드리지 않음 — [내 제출현황]에서 직접 열람)
-  const edited = submissionsDB.filter(s => s.username === username && s.adminEdited);
+  const edited = submissionsDB.filter(s => isMySubmission(s) && s.adminEdited);
   if (!edited.length) return;
   showToast(`📋 관리자가 수정한 제출본이 ${edited.length}건 있습니다. [내 제출현황]에서 확인하세요.`);
 }
@@ -4682,7 +4690,8 @@ async function submitToAdmin() {
     })(),
   };
   // 같은 코드+유저 이미 있으면 업데이트
-  const existing = submissionsDB.findIndex(s=>s.settleCode===code && s.username===sub.username);
+  const myName = (guideName||'').trim();
+  const existing = submissionsDB.findIndex(s=>s.settleCode===code && (s.username===sub.username || (myName && (s.guideName||'').trim()===myName)));
   if (existing >= 0) {
     const prev = submissionsDB[existing];
     // 어드민이 수정저장한 경우 → 어드민 수정본(fullData)을 최종본으로 유지
@@ -4728,7 +4737,7 @@ function renderSubmissions() {
   // 매니저: 정산완료되지 않은 건만 열람 가능 / 가이드: 본인 제출건만 열람 가능
   let visibleDB = submissionsDB;
   if (currentRole === 'op') visibleDB = visibleDB.filter(s => !s.settled);
-  if (currentRole === 'guide') visibleDB = visibleDB.filter(s => s.username === (currentUser && currentUser.username));
+  if (currentRole === 'guide') visibleDB = visibleDB.filter(s => isMySubmission(s));
   if (currentRole === 'op' && !visibleDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">정산완료되지 않은 정산서가 없습니다.</p>'; return; }
   if (currentRole === 'guide' && !visibleDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">제출한 정산서가 없습니다.</p>'; return; }
 
@@ -5146,7 +5155,7 @@ async function openSubData(id) {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
-  if (currentRole === 'guide' && s.username !== (currentUser && currentUser.username)) { showToast('❌ 본인이 제출한 정산서만 열람할 수 있습니다.', true); return; }
+  if (currentRole === 'guide' && !isMySubmission(s)) { showToast('❌ 본인이 제출한 정산서만 열람할 수 있습니다.', true); return; }
   const readOnly = !!s.settled || currentRole === 'guide';
   if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.${readOnly ? '\n(읽기 전용 · 수정 불가)' : ''}`)) return;
   showToast('⏳ 불러오는 중...');
