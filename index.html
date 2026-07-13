@@ -5268,6 +5268,11 @@ async function saveSubEdits() {
   const paxEl=document.getElementById('paxTotalDisplay'); if(paxEl) s.paxTotal=parseInt(paxEl.textContent)||s.paxTotal;
   const shopCountEl=document.getElementById('shopCount'); if(shopCountEl) s.shopCount=parseInt(shopCountEl.value)||s.shopCount;
   const productEl=document.getElementById('productName'); if(productEl) s.productName=productEl.value||s.productName;
+  // 정산코드(예: 260709 → 260709-01)는 fullData(state.info) 안에는 반영되지만
+  // 목록/엑셀/정산수첩이 참조하는 최상위 s.settleCode는 그동안 갱신되지 않아
+  // 어드민이 정산코드(순번)를 고쳐도 반영이 안 됐음. 여기서 함께 갱신.
+  try { updateSettleCode(); } catch(e) {}
+  if (state.info && state.info.settleCode && state.info.settleCode !== '-') s.settleCode = state.info.settleCode;
 
   await saveSubmissions();
   window._viewOpenSnapshot = JSON.stringify(state);
