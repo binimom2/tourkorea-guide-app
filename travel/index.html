@@ -30,10 +30,17 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;}
 
 /* ── APP SHELL ── */
 #app{display:none;min-height:100vh;flex-direction:column;}
-header.topbar{background:#161f38;color:#fff;padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+header.topbar{background:#161f38;color:#fff;padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;}
 .brand{font-weight:900;font-size:16px;letter-spacing:0.3px;display:flex;align-items:center;gap:8px;}
 .brand .dot{width:9px;height:9px;border-radius:50%;background:#4fd1a5;}
+.hamburger-btn{display:none;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;order:-1;}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:#c4cbdb;}
+@media (max-width:900px){
+  .hamburger-btn{display:block;}
+  .topbar-right{display:none;width:100%;margin-left:0;order:99;flex-direction:column;align-items:stretch;gap:6px;padding-top:10px;}
+  .topbar-right.open{display:flex;}
+  .topbar-right .tbtn,.topbar-right .tbtn-primary{width:100%;text-align:center;}
+}
 .role-chip{background:#2a3760;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#8fb4ff;}
 .tbtn{padding:7px 13px;border-radius:7px;border:1px solid #3a4670;background:#1f2a4d;color:#dfe4f2;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;}
 .tbtn:hover{background:#2a3760;}
@@ -211,6 +218,7 @@ table.subtbl tr:last-child td{border-bottom:none;}
 
 <div id="app">
   <header class="topbar">
+    <button class="hamburger-btn" onclick="document.querySelector('.topbar-right').classList.toggle('open')">☰</button>
     <div class="brand"><span class="dot"></span>여행사 상세예약</div>
     <div class="topbar-right">
       <span id="whoami"></span>
@@ -436,11 +444,7 @@ table.subtbl tr:last-child td{border-bottom:none;}
     <div class="smodal-hd"><span>거래처/업체 관리</span><button onclick="closeVendorModal()">✕</button></div>
     <div class="mtabs" id="vendorTabs"></div>
     <div class="smodal-body">
-      <div class="code-addrow">
-        <input type="text" id="vendor-new-name" placeholder="업체/이름"/>
-        <input type="text" id="vendor-new-phone" placeholder="연락처 (선택)"/>
-        <button class="btn btn-save" onclick="addVendorItem()">추가</button>
-      </div>
+      <div class="code-addrow" id="vendorAddRow"></div>
       <div id="vendorListBody"></div>
     </div>
   </div>
@@ -461,8 +465,9 @@ table.subtbl tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- 거래처/업체 자동완성용 datalist (JS로 내용 채움, PROVIDER 코드 기준 + 항공편 스케줄) -->
-<datalist id="dl-flightSched"></datalist>
+<!-- 거래처/업체 자동완성용 datalist (JS로 내용 채움, PROVIDER 코드 기준 + 항공편 도착/출발) -->
+<datalist id="dl-flightArr"></datalist>
+<datalist id="dl-flightDep"></datalist>
 <datalist id="dl-AIRLINES"></datalist>
 <datalist id="dl-HOTEL"></datalist>
 <datalist id="dl-CLUB"></datalist>
@@ -794,8 +799,9 @@ async function delManager(ci,mi){
 // 예약폼 FLIGHTS 자동완성에 별도로 쓰이는 항목이라 PROVIDER와 무관하게 계속 유지.
 function getVendorTabs(){
   const providers=(getCodes().providers||[]).filter(c=>c.active!==false).map(c=>({key:c.code,label:c.label}));
-  return [...providers,{key:'flightSched',label:'항공편(편수/시간)'}];
+  return [...providers,{key:'flightArr',label:'항공편(도착)'},{key:'flightDep',label:'항공편(출발)'}];
 }
+function isFlightVendorTab(key){ return key==='flightArr'||key==='flightDep'; }
 function getVendors(key){ try{return JSON.parse(localStorage.getItem('trv_vendor_'+key)||'[]');}catch{return[];} }
 async function saveVendors(key,arr){ await sbSave('trv_vendor_'+key,arr); }
 function findVendor(key,name){ return getVendors(key).find(v=>v.name===name); }
@@ -803,17 +809,40 @@ function findVendor(key,name){ return getVendors(key).find(v=>v.name===name); }
 function renderVendorDatalists(){
   getVendorTabs().forEach(v=>{
     const dl=document.getElementById(`dl-${v.key}`);
-    if(dl) dl.innerHTML=getVendors(v.key).map(item=>`<option value="${escapeAttr(item.name)}">`).join('');
+    if(!dl) return;
+    if(isFlightVendorTab(v.key)){
+      dl.innerHTML=getVendors(v.key).filter(item=>item.active!==false)
+        .map(item=>`<option value="${escapeAttr(item.flightNo+' '+item.time)}">`).join('');
+    } else {
+      dl.innerHTML=getVendors(v.key).filter(item=>item.active!==false)
+        .map(item=>`<option value="${escapeAttr(item.name)}">`).join('');
+    }
   });
 }
 
 let vendorModalTab='';
+function renderVendorAddRow(){
+  const host=document.getElementById('vendorAddRow');
+  if(isFlightVendorTab(vendorModalTab)){
+    host.innerHTML=`
+      <input type="text" id="vendor-new-flightno" placeholder="항공편명 (예: KE651)"/>
+      <input type="text" id="vendor-new-time" placeholder="방콕공항 ${vendorModalTab==='flightArr'?'도착':'출발'}시간"/>
+      <button class="btn btn-save" onclick="addVendorItem()">추가</button>`;
+  } else {
+    host.innerHTML=`
+      <input type="text" id="vendor-new-code" placeholder="코드"/>
+      <input type="text" id="vendor-new-name" placeholder="업체/이름"/>
+      <input type="text" id="vendor-new-phone" placeholder="연락처 (선택)"/>
+      <button class="btn btn-save" onclick="addVendorItem()">추가</button>`;
+  }
+}
 function openVendorModal(){
   const tabs=getVendorTabs();
   if(!tabs.find(t=>t.key===vendorModalTab)) vendorModalTab=(tabs[0]||{}).key||'';
   document.getElementById('vendorModal').classList.add('open');
   document.getElementById('vendorTabs').innerHTML=tabs.map(v=>
     `<button class="${v.key===vendorModalTab?'active':''}" onclick="switchVendorTab('${v.key}')">${v.label}</button>`).join('');
+  renderVendorAddRow();
   renderVendorList();
 }
 function closeVendorModal(){
@@ -824,30 +853,71 @@ function switchVendorTab(key){
   vendorModalTab=key;
   const tabs=getVendorTabs();
   document.querySelectorAll('#vendorTabs button').forEach(b=>b.classList.toggle('active',b.textContent===(tabs.find(v=>v.key===key)||{}).label));
+  renderVendorAddRow();
   renderVendorList();
 }
 function renderVendorList(){
   const list=getVendors(vendorModalTab);
-  document.getElementById('vendorListBody').innerHTML=list.length?list.map((v,i)=>`
-    <div class="code-row">
-      <span class="tag">${escapeHtml(v.name)}</span><span class="lbl">${escapeHtml(v.phone||'')}</span>
-      <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
-    </div>`).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+  if(isFlightVendorTab(vendorModalTab)){
+    document.getElementById('vendorListBody').innerHTML=list.length?list.map((v,i)=>{
+      const active=v.active!==false;
+      return `
+      <div class="code-row${active?'':' inactive'}">
+        <span class="tag">${escapeHtml(v.flightNo)}</span><span class="lbl">${escapeHtml(v.time)}</span>
+        <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleVendorActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+        <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
+      </div>`;
+    }).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+    return;
+  }
+  document.getElementById('vendorListBody').innerHTML=list.length?list.map((v,i)=>{
+    const active=v.active!==false;
+    return `
+    <div class="code-row${active?'':' inactive'}">
+      <span class="tag">${escapeHtml(v.code||'')}</span><span class="lbl">${escapeHtml(v.name)}${v.phone?' · '+escapeHtml(v.phone):''}</span>
+      <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleVendorActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+      <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
+    </div>`;
+  }).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+}
+async function toggleVendorActive(i){
+  const list=getVendors(vendorModalTab);
+  const item=list[i];
+  if(!item) return;
+  item.active=item.active===false?true:false;
+  await saveVendors(vendorModalTab,list);
+  renderVendorList();
 }
 async function addVendorItem(){
-  const nameEl=document.getElementById('vendor-new-name'), phoneEl=document.getElementById('vendor-new-phone');
-  const name=nameEl.value.trim(), phone=phoneEl.value.trim();
-  if(!name){showToast('⚠ 이름/업체명을 입력해주세요');return;}
+  if(isFlightVendorTab(vendorModalTab)){
+    const noEl=document.getElementById('vendor-new-flightno'), timeEl=document.getElementById('vendor-new-time');
+    const flightNo=noEl.value.trim(), time=timeEl.value.trim();
+    if(!flightNo||!time){showToast('⚠ 항공편명과 시간을 모두 입력해주세요');return;}
+    const list=getVendors(vendorModalTab);
+    list.push({flightNo,time,active:true});
+    await saveVendors(vendorModalTab,list);
+    noEl.value='';timeEl.value='';
+    renderVendorList();
+    showToast('✅ 등록되었습니다');
+    return;
+  }
+  const codeEl=document.getElementById('vendor-new-code'), nameEl=document.getElementById('vendor-new-name'), phoneEl=document.getElementById('vendor-new-phone');
+  const code=codeEl.value.trim().toUpperCase(), name=nameEl.value.trim(), phone=phoneEl.value.trim();
+  if(!code||!name){showToast('⚠ 코드와 이름을 모두 입력해주세요');return;}
   const list=getVendors(vendorModalTab);
-  if(list.find(v=>v.name===name)){showToast('⚠ 이미 등록된 항목입니다');return;}
-  list.push({name,phone});
+  if(list.find(v=>v.code===code)){showToast('⚠ 이미 존재하는 코드입니다');return;}
+  list.push({code,name,phone,active:true});
   await saveVendors(vendorModalTab,list);
-  nameEl.value='';phoneEl.value='';
+  codeEl.value='';nameEl.value='';phoneEl.value='';
   renderVendorList();
   showToast('✅ 등록되었습니다');
 }
 async function delVendorItem(i){
   const list=getVendors(vendorModalTab);
+  const item=list[i];
+  if(!item) return;
+  const label=isFlightVendorTab(vendorModalTab)?`${item.flightNo} ${item.time}`:`[${item.code||''}] ${item.name}`;
+  if(!confirm(`${label} 항목을 삭제하시겠습니까?`)) return;
   list.splice(i,1);
   await saveVendors(vendorModalTab,list);
   renderVendorList();
@@ -922,8 +992,8 @@ function insertPhrase(key,text){
 /* ══════════════════════════ DATA ══════════════════════════ */
 const SUBSECTIONS=[
   {key:'flights',label:'FLIGHTS',fields:[
-    {k:'arrival',label:'도착편/시간',type:'text',vendorKey:'flightSched'},
-    {k:'departure',label:'출발편/시간',type:'text',vendorKey:'flightSched'},
+    {k:'arrival',label:'도착편/시간',type:'text',vendorKey:'flightArr'},
+    {k:'departure',label:'출발편/시간',type:'text',vendorKey:'flightDep'},
     {k:'term',label:'박수',type:'number'},
     {k:'adt',label:'성인',type:'number'},
     {k:'chd',label:'아동',type:'number'},
