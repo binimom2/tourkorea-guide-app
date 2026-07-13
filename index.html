@@ -1959,6 +1959,9 @@ function _clearViewBanner() {
   window._viewingSubId = null;
   window._viewBackupKey = undefined;
   window._viewBackupRaw = undefined;
+  window._viewReadOnly = false;
+  window._viewOpenSnapshot = null;
+  document.body.classList.remove('view-readonly');
 }
 
 function _completeLogin() {
@@ -5185,10 +5188,12 @@ async function openSubData(id) {
   // 열람 중인 제출 ID 저장
   window._viewingSubId = id;
   window._viewReadOnly = readOnly;
+  window._viewOpenSnapshot = readOnly ? null : JSON.stringify(state);
   document.body.classList.toggle('view-readonly', readOnly);
-  if (readOnly) {
-    ['btnSave','btnSubmit','btnNewReport'].forEach(bid => { const el=document.getElementById(bid); if(el) el.style.display='none'; });
-  }
+  // 열람 중에는 상단 💾저장/📤제출/📝새 보고서 버튼을 숨김 — 이 버튼들은 "내 작업중 데이터"용이라
+  // 제출건을 열람하는 동안 잘못 누르면 수정 내용이 저장되지 않고 사라져 보이는 원인이 됨.
+  // 수정은 반드시 아래 배너의 "💾 수정저장" 버튼으로만 하도록 강제.
+  ['btnSave','btnSubmit','btnNewReport'].forEach(bid => { const el=document.getElementById(bid); if(el) el.style.display='none'; });
 
   // 열람 배너 표시
   const banner = document.createElement('div');
@@ -5234,14 +5239,21 @@ async function saveSubEdits() {
   const productEl=document.getElementById('productName'); if(productEl) s.productName=productEl.value||s.productName;
 
   await saveSubmissions();
+  window._viewOpenSnapshot = JSON.stringify(state);
   showToast('💾 수정내용이 저장되었습니다. 가이드 로그인 시 반영됩니다.');
 }
 
 function restoreMyData() {
+  // 편집 중(읽기전용 아님) 열람 세션에서 저장하지 않은 변경사항이 있으면 확인
+  if (window._viewingSubId && !window._viewReadOnly && window._viewOpenSnapshot) {
+    const changed = JSON.stringify(state) !== window._viewOpenSnapshot;
+    if (changed && !confirm('저장하지 않은 수정 내용이 있습니다.\n저장하지 않고 닫으시겠습니까? (수정 내용이 사라집니다)')) return;
+  }
   const banner = document.getElementById('viewBanner');
   if (banner) banner.remove();
   window._viewingSubId = null;
   window._viewReadOnly = false;
+  window._viewOpenSnapshot = null;
   document.body.classList.remove('view-readonly');
   if (currentRole === 'admin') {
     // 어드민: 임시 localStorage 삭제 + 모든 state 초기화
