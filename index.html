@@ -2046,8 +2046,9 @@ function isMySubmission(s) {
 async function checkAdminEdits() {
   await loadSubmissions();
   if (!currentUser) return;
-  // 이 가이드의 제출 중 adminEdited=true 인 것 찾기 (작업중인 초안은 건드리지 않음 — [내 제출현황]에서 직접 열람)
-  const edited = submissionsDB.filter(s => isMySubmission(s) && s.adminEdited);
+  // 이 가이드의 제출 중 아직 확인하지 않은 수정본 찾기 (작업중인 초안은 건드리지 않음 — [내 제출현황]에서 직접 열람)
+  // 배지(✏ 수정본)는 s.adminEdited로 항상 표시되고, 로그인 알림은 s.adminEditSeen으로 한 번만 뜨도록 구분.
+  const edited = submissionsDB.filter(s => isMySubmission(s) && s.adminEdited && !s.adminEditSeen);
   if (!edited.length) return;
   showToast(`📋 관리자가 수정한 제출본이 ${edited.length}건 있습니다. [내 제출현황]에서 확인하세요.`);
 }
@@ -4702,6 +4703,7 @@ async function submitToAdmin() {
         fullData: prev.fullData,           // 어드민 최종 데이터 유지
         adminEdited: true,
         adminEditedAt: prev.adminEditedAt,
+        adminEditSeen: prev.adminEditSeen,
         status: prev.status === 'seen' ? 'seen' : prev.status,
       };
       await saveSubmissions();
@@ -5161,7 +5163,8 @@ async function openSubData(id) {
   showToast('⏳ 불러오는 중...');
 
   s.status = 'seen';
-  if (currentRole === 'guide' && s.adminEdited) s.adminEdited = false;
+  // "✏ 수정본" 배지는 계속 유지 — 로그인 알림(1회성)만 확인 처리
+  if (currentRole === 'guide' && s.adminEdited) s.adminEditSeen = true;
   await saveSubmissions();
 
   // 공통: fullData를 내 localStorage 키에 임시 기록 → loadData()가 읽게 함
@@ -5240,6 +5243,7 @@ async function saveSubEdits() {
   s.fullData.fields = lsFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
+  s.adminEditSeen = false; // 새 수정 발생 → 가이드 로그인 알림 다시 뜨도록
 
   // 정산서관리/누계정산서 엑셀에서 쓰는 요약 수치도 최신 화면값으로 갱신
   Object.assign(s, collectProfitFields());
