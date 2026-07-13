@@ -5243,6 +5243,17 @@ async function saveSubEdits() {
   // DOM의 모든 최신 값을 state에 동기화 (환율 포함)
   saveData();
 
+  // 정산서 요약 계산을 강제로 다시 실행 — 어드민이 정산서 탭을 들르지 않고
+  // 다른 탭(기가팁/옵션/일차 등)만 수정하고 바로 저장하면 st-guide-pay 등
+  // 요약 DOM 값이 갱신되지 않은 채로 남아, 엑셀에 쓰이는 collectProfitFields()가
+  // 옛 값을 읽어가는 문제가 있었음 (가이드 쪽 원본 데이터는 정상인데 엑셀만 옛 값).
+  try {
+    calcOptionTotal(); calcGigatipTotal();
+    calcIncentive(); calcIncentiveAdmin();
+    calcGuarantee(); calcGuaranteeAdmin();
+    calcSettle(); calcSettleAdmin();
+  } catch(e) {}
+
   // 동기화된 state + fields를 fullData로 저장
   const lsRaw = localStorage.getItem(LS_KEY_USER());
   const lsFields = lsRaw ? (JSON.parse(lsRaw).fields || {}) : {};
