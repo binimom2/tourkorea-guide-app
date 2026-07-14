@@ -1484,7 +1484,7 @@ const SUBSECTIONS=[
     {k:'chkin',label:'체크인',type:'date'},
     {k:'nights',label:'박수',type:'number'},
     {k:'sgl',label:'SGL',type:'number'},{k:'twn',label:'TWN',type:'number'},{k:'dbl',label:'DBL',type:'number'},{k:'trp',label:'TRP',type:'number'},{k:'gd',label:'G/D',type:'number'},
-    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'cfm',label:'확정여부',type:'select',options:['Pending','Confirmed','Cancelled']},
     {k:'paying',label:'지불조건',type:'text'},
     {k:'remark',label:'비고(컨펌번호 등)',type:'text'},
   ]},
@@ -1494,20 +1494,20 @@ const SUBSECTIONS=[
     {k:'hole',label:'홀수',type:'number'},
     {k:'pax',label:'인원',type:'number'},
     {k:'teeup',label:'티업시간',type:'text'},
-    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'cfm',label:'확정여부',type:'select',options:['Pending','Confirmed','Cancelled']},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'guides',label:'GUIDES',fields:[
     {k:'name',label:'가이드명',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone'},
     {k:'phone',label:'연락처',type:'text'},
     {k:'lguide',label:'L-GUIDE(현지)',type:'text'},
-    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'cfm',label:'확정여부',type:'select',options:['Pending','Confirmed','Cancelled']},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'vehicles',label:'VEHICLES',fields:[
     {k:'company',label:'차량업체',type:'text',vendorKey:'VEHICLES'},
     {k:'info',label:'차량/기사 정보',type:'text'},
-    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'cfm',label:'확정여부',type:'select',options:['Pending','Confirmed','Cancelled']},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'shows',label:'공연/식당/마사지',fields:[
@@ -1515,14 +1515,14 @@ const SUBSECTIONS=[
     {k:'date',label:'날짜',type:'date'},
     {k:'time',label:'시간',type:'text'},
     {k:'adt',label:'성인',type:'number'},{k:'chd',label:'아동',type:'number'},{k:'tc',label:'T/C',type:'number'},
-    {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
+    {k:'cfm',label:'확정여부',type:'select',options:['Pending','Confirmed','Cancelled']},
     {k:'remark',label:'비고',type:'text'},
   ]},
   {key:'deposits',label:'입금',ledger:true,fields:[
     {k:'date',label:'날짜',type:'date'},
     {k:'who',label:'거래처/고객',type:'text'},
     {k:'acc',label:'계정',type:'text'},
-    {k:'currency',label:'통화',type:'text'},
+    {k:'currency',label:'통화',type:'text',fixed:'THB'},
     {k:'amount',label:'금액',type:'number'},
     {k:'summary',label:'적요',type:'text'},
   ]},
@@ -1530,7 +1530,7 @@ const SUBSECTIONS=[
     {k:'date',label:'날짜',type:'date'},
     {k:'who',label:'거래처/고객',type:'text'},
     {k:'acc',label:'계정',type:'text'},
-    {k:'currency',label:'통화',type:'text'},
+    {k:'currency',label:'통화',type:'text',fixed:'THB'},
     {k:'amount',label:'금액',type:'number'},
     {k:'summary',label:'적요',type:'text'},
   ]},
@@ -1969,7 +1969,12 @@ function renderSubFieldInput(f,val){
     return `<select id="${id}"${onpick}><option value="">선택안함</option>${curOpt}${opts}</select>`;
   }
   if(f.type==='select'){
-    return `<select id="${id}">${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+    const hasMatch=f.options.includes(val);
+    const curOpt=(val&&!hasMatch)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
+    return `<select id="${id}">${curOpt}${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+  }
+  if(f.fixed){
+    return `<input type="text" id="${id}" value="${escapeAttr(val||f.fixed)}" readonly style="background:#f4f6fa;color:#6b7484;"/>`;
   }
   return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}"/>`;
 }
