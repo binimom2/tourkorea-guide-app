@@ -145,6 +145,8 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .subtbl-summary-row td{border-top:1px solid #eceef3;color:#3457d5;font-weight:700;background:#f8f9fc;}
 .row-actions{display:flex;gap:8px;}
 .row-actions a{font-size:11px;font-weight:700;cursor:pointer;}
+.act-baht{color:#9aa1af;}
+.act-baht.set{color:#0e9f6e;}
 .act-edit{color:#3457d5;}
 .act-del{color:#e0483f;}
 .ledger-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -950,17 +952,26 @@ const FLIGHT_CODE_SEED=[
   {airline:'7C',flightNo:'7C2243',direction:'CJU-BKK',dep:'22:00',arr:'1:40'},
   {airline:'7C',flightNo:'7C2244',direction:'BKK-CJU',dep:'2:45',arr:'9:50'},
 ];
+// 시:분 문자열을 항상 2자리로("1:5"→"01:05") 정규화. type=time과 호환되도록 함
+function padTime(t){
+  const m=String(t||'').match(/^(\d{1,2}):(\d{1,2})$/);
+  if(!m) return t;
+  return m[1].padStart(2,'0')+':'+m[2].padStart(2,'0');
+}
 async function ensureFlightsSeeded(){
   const list=(await sbLoad('trv_vendor_flights'))||[];
   let changed=false;
   FLIGHT_CODE_SEED.forEach(seed=>{
     const existing=list.find(f=>f.airline===seed.airline&&f.flightNo===seed.flightNo&&f.direction===seed.direction);
-    if(existing){
-      if(existing.dep!==seed.dep||existing.arr!==seed.arr){ existing.dep=seed.dep; existing.arr=seed.arr; changed=true; }
-      return;
-    }
-    list.push({airline:seed.airline,flightNo:seed.flightNo,direction:seed.direction,dep:seed.dep,arr:seed.arr,active:true});
+    if(existing) return; // 이미 있는 편명은 수동 수정값을 존중하고 시드로 덮어쓰지 않음
+    list.push({airline:seed.airline,flightNo:seed.flightNo,direction:seed.direction,dep:padTime(seed.dep),arr:padTime(seed.arr),active:true});
     changed=true;
+  });
+  // 기존 저장값(구버전 시드 포함) 중 한 자리 시각 표기를 2자리로 1회성 정규화
+  list.forEach(f=>{
+    const pd=padTime(f.dep),pa=padTime(f.arr);
+    if(pd!==f.dep){ f.dep=pd; changed=true; }
+    if(pa!==f.arr){ f.arr=pa; changed=true; }
   });
   if(changed) await saveVendors('flights',list);
 }
@@ -1229,8 +1240,8 @@ function renderVendorAddRow(){
       <select id="vendor-new-direction" style="flex:1 1 150px;">
         ${Object.entries(FLIGHT_DIRECTIONS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
       </select>
-      <input type="text" id="vendor-new-dep" placeholder="출발시간" style="flex:1 1 80px;"/>
-      <input type="text" id="vendor-new-arr" placeholder="도착시간" style="flex:1 1 80px;"/>
+      <input type="time" id="vendor-new-dep" placeholder="출발시간" style="flex:1 1 80px;"/>
+      <input type="time" id="vendor-new-arr" placeholder="도착시간" style="flex:1 1 80px;"/>
       <button class="btn btn-save" style="flex:1 1 100%;" onclick="addVendorItem()">추가</button>
     </div>`;
   } else if(vendorModalTab==='GUIDE'){
@@ -1266,8 +1277,8 @@ function renderVendorList(){
           <select id="vendor-edit-direction" style="flex:1 1 130px;">
             ${Object.entries(FLIGHT_DIRECTIONS).map(([k,v2])=>`<option value="${k}" ${v.direction===k?'selected':''}>${v2}</option>`).join('')}
           </select>
-          <input type="text" id="vendor-edit-dep" value="${escapeAttr(v.dep)}" style="flex:1 1 70px;"/>
-          <input type="text" id="vendor-edit-arr" value="${escapeAttr(v.arr)}" style="flex:1 1 70px;"/>
+          <input type="time" id="vendor-edit-dep" value="${escapeAttr(padTime(v.dep))}" style="flex:1 1 70px;"/>
+          <input type="time" id="vendor-edit-arr" value="${escapeAttr(padTime(v.arr))}" style="flex:1 1 70px;"/>
           <button class="btn btn-save" style="flex:0 0 auto;padding:5px 10px;font-size:11px;" onclick="saveVendorItemEdit(${i})">저장</button>
           <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelVendorEdit()">취소</a>
         </div>`;
@@ -1475,11 +1486,11 @@ const SUBSECTIONS=[
   {key:'flights',label:'FLIGHTS',fields:[
     {k:'arrival',label:'ARRIVAL',type:'text',vendorKey:'flightArr'},
     {k:'departure',label:'DEPARTURE',type:'text',vendorKey:'flightDep'},
-    {k:'term',label:'TERM',type:'number'},
-    {k:'adt',label:'ADT',type:'number'},
-    {k:'chd',label:'CHD',type:'number'},
-    {k:'inf',label:'INF',type:'number'},
-    {k:'tc',label:'TC',type:'number'},
+    {k:'term',label:'TERM',type:'number',narrow:true},
+    {k:'adt',label:'ADT',type:'number',narrow:true},
+    {k:'chd',label:'CHD',type:'number',narrow:true},
+    {k:'inf',label:'INF',type:'number',narrow:true},
+    {k:'tc',label:'TC',type:'number',narrow:true},
     {k:'remark',label:'REMARK',type:'text'},
   ],summaryFn:(rows)=>{
     if(!rows.length)return'';
@@ -1487,48 +1498,43 @@ const SUBSECTIONS=[
     return `${s('adt')+s('chd')}+${s('tc')}TC(${s('inf')}INF)`;
   }},
   {key:'hotels',label:'HOTELS',fields:[
-    {k:'hotel',label:'HOTEL',type:'text',vendorKey:'HOTEL'},
+    {k:'hotel',label:'HOTEL',type:'text',vendorKey:'HOTEL',wide:true},
     {k:'roomtype',label:'TYPE',type:'text'},
     {k:'chkin',label:'CHKIN',type:'date'},
-    {k:'nights',label:'N/S',type:'number'},
-    {k:'sgl',label:'SGL',type:'number'},{k:'twn',label:'TWN',type:'number'},{k:'dbl',label:'DBL',type:'number'},{k:'trp',label:'TRP',type:'number'},{k:'gd',label:'G/D',type:'number'},
+    {k:'nights',label:'N/S',type:'number',narrow:true},
+    {k:'sgl',label:'SGL',type:'number',narrow:true},{k:'twn',label:'TWN',type:'number',narrow:true},{k:'dbl',label:'DBL',type:'number',narrow:true},{k:'trp',label:'TRP',type:'number',narrow:true},{k:'gd',label:'G/D',type:'number',narrow:true},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
     {k:'paying',label:'PAYING',type:'text'},
-    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'golfs',label:'GOLF',fields:[
     {k:'date',label:'DATE',type:'date'},
-    {k:'club',label:'CLUB',type:'text',vendorKey:'CLUB'},
-    {k:'hole',label:'HOLE',type:'number'},
-    {k:'pax',label:'PAX',type:'number'},
-    {k:'teeup',label:'TEEUP TIME',type:'text'},
+    {k:'club',label:'CLUB',type:'text',vendorKey:'CLUB',wide:true},
+    {k:'hole',label:'HOLE',type:'number',narrow:true},
+    {k:'pax',label:'PAX',type:'number',narrow:true},
+    {k:'teeup',label:'TEEUP TIME',type:'time'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
-    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'guides',label:'GUIDES',fields:[
-    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone'},
+    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',wide:true},
     {k:'phone',label:'PHONE',type:'text'},
-    {k:'lguide',label:'L-GUIDE',type:'text'},
+    {k:'lguide',label:'L-GUIDE',type:'text',wide:true},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
-    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'vehicles',label:'VEHICLES',fields:[
     {k:'company',label:'V.COM',type:'text',vendorKey:'VEHICLES'},
     {k:'info',label:'V.NO',type:'text'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
-    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'shows',label:'SHOW/RESTAURANT/MASSAGE',fields:[
     {k:'name',label:'TICKET',type:'text',vendorKey:'SHOW'},
     {k:'date',label:'DATE',type:'date'},
     {k:'time',label:'TIME',type:'text'},
-    {k:'adt',label:'ADT',type:'number'},{k:'chd',label:'CHD',type:'number'},{k:'tc',label:'T/C',type:'number'},
+    {k:'adt',label:'ADT',type:'number',narrow:true},{k:'chd',label:'CHD',type:'number',narrow:true},{k:'tc',label:'T/C',type:'number',narrow:true},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
-    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'deposits',label:'DEPOSITS',ledger:true,fields:[
@@ -1933,7 +1939,7 @@ function subsecHtml(sec){
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
     ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
-      <td><div class="row-actions"><a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a></div></td>
+      <td><div class="row-actions">${PAYING_SYNC[sec.key]?`<a class="act-baht${row.payingAmt?' set':''}" onclick="promptVendorBaht('${sec.key}',${i})">${row.payingAmt?'฿'+Number(row.payingAmt).toLocaleString():'BAHT'}</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a></div></td>
     </tr>`).join('')}
     ${(!rows.length&&!isEditingHere)?`<tr class="subtbl-empty-row"><td colspan="${cols.length+1}">-</td></tr>`:''}
     </tbody>
@@ -1985,7 +1991,8 @@ function renderSubFieldInput(f,val){
     const hasVal=val&&list.some(v=>v.name===val);
     const curOpt=(val&&!hasVal)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
     const onpick=f.vendorPhoneField?` onchange="onVendorPick('${f.vendorKey}',this.value,'sf-${f.vendorPhoneField}')"`:'';
-    return `<select id="${id}"${onpick}><option value="">선택안함</option>${curOpt}${opts}</select>`;
+    const wideStyle=f.wide?' style="min-width:200px;"':'';
+    return `<select id="${id}"${onpick}${wideStyle}><option value="">선택안함</option>${curOpt}${opts}</select>`;
   }
   if(f.type==='select'){
     const hasMatch=f.options.includes(val);
@@ -1995,7 +2002,11 @@ function renderSubFieldInput(f,val){
   if(f.fixed){
     return `<input type="text" id="${id}" value="${escapeAttr(val||f.fixed)}" readonly style="background:#f4f6fa;color:#6b7484;"/>`;
   }
-  return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}"/>`;
+  if(f.narrow){
+    return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}" maxlength="3" style="min-width:0;width:48px;text-align:center;"/>`;
+  }
+  const wideStyle=f.wide?' style="min-width:200px;"':'';
+  return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}"${wideStyle}/>`;
 }
 // 항공사 선택 시 해당 항공사 편명만 남기고 도착/출발 select를 다시 채움
 function filterFlightOptions(baseId,airlineCode,dirType){
@@ -2023,12 +2034,24 @@ function saveSubRowInline(sectionKey,index){
   const row={};
   sec.fields.forEach(f=>{ const el=document.getElementById(`sf-${f.k}`); row[f.k]=el?el.value:''; });
   const arr=workingRes[sectionKey]=workingRes[sectionKey]||[];
-  if(PAYING_SYNC[sectionKey]){
-    row._id=(index!==-1&&arr[index]&&arr[index]._id)||(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-    syncVendorDeposit(sectionKey,row);
+  const prev=(index!==-1&&arr[index])?arr[index]:null;
+  if(prev){
+    if(prev._id) row._id=prev._id;
+    if(prev.payingAmt!==undefined) row.payingAmt=prev.payingAmt;
   }
+  if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
   subEditKey=null; subEditIndex=null;
+  renderSubsections();
+}
+// 행 끝 "BAHT" 클릭 시 금액을 입력받아 워킹레스에 저장하고 DEPOSITS에 동기화
+function promptVendorBaht(sectionKey,index){
+  const row=workingRes[sectionKey][index];
+  const input=prompt('BAHT 금액 입력 (비우면 삭제):',row.payingAmt||'');
+  if(input===null) return;
+  row.payingAmt=input.trim();
+  if(!row._id) row._id=(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  syncVendorDeposit(sectionKey,row);
   renderSubsections();
 }
 // 호텔/골프/가이드/차량/공연 등의 +Baht 금액을 DEPOSITS에 자동 반영/동기화(출금은 음수로 표기)
