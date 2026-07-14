@@ -550,6 +550,7 @@ async function enterApp(){
     await ensureGolfCodesSeeded();
     await ensureGuideCodesSeeded();
     await ensureVehicleCodesSeeded();
+    await ensureFlightsSeeded();
   }
   renderVendorDatalists();
   renderPhrasePickers();
@@ -657,9 +658,18 @@ const AIRLINES_SEED=[
 ];
 async function ensureVendorsSeeded(){
   const existing=await sbLoad('trv_vendor_AIRLINES');
-  if(existing&&existing.length) return;
-  const seeded=AIRLINES_SEED.map(a=>({code:a.code,name:a.label,phone:'',active:true}));
-  await sbSave('trv_vendor_AIRLINES',seeded);
+  if(!existing||!existing.length){
+    const seeded=AIRLINES_SEED.map(a=>({code:a.code,name:a.label,phone:'',active:true}));
+    await sbSave('trv_vendor_AIRLINES',seeded);
+    return;
+  }
+  // 이미 시딩된 뒤 추가로 필요해진 항공사(예: 타이 비엣젯 VZ) — 코드 없으면 추가
+  const EXTRA_AIRLINES=[{code:'VZ',name:'Thai Vietjet Air'}];
+  let changed=false;
+  EXTRA_AIRLINES.forEach(a=>{
+    if(!existing.some(v=>v.code===a.code)){ existing.push({code:a.code,name:a.name,phone:'',active:true}); changed=true; }
+  });
+  if(changed) await sbSave('trv_vendor_AIRLINES',existing);
 }
 
 // INCS/DECS/REFS/CHKS 기본 문구 1회성 시딩 — 이미 등록된 문구가 있으면 건드리지 않음
@@ -891,6 +901,65 @@ async function ensureVehicleCodesSeeded(){
   });
   if(changed) await saveVendors('VEHICLES',list);
 }
+
+// 항공편 스케줄 1회성 시딩. 요일/시즌 제한이 걸린 편, 시간 미기재 편, 방콕 미경유 편은 제외.
+// 동일 항공사+편명+방향이 이미 있으면 시간만 최신화(재실행 안전).
+const FLIGHT_CODE_SEED=[
+  {airline:'KE',flightNo:'KE651',direction:'ICN-BKK',dep:'18:05',arr:'21:45'},
+  {airline:'KE',flightNo:'KE652',direction:'BKK-ICN',dep:'0:30',arr:'8:05'},
+  {airline:'KE',flightNo:'KE657',direction:'ICN-BKK',dep:'9:30',arr:'13:15'},
+  {airline:'KE',flightNo:'KE658',direction:'BKK-ICN',dep:'21:35',arr:'5:05'},
+  {airline:'KE',flightNo:'KE659',direction:'ICN-BKK',dep:'19:45',arr:'23:40'},
+  {airline:'KE',flightNo:'KE660',direction:'BKK-ICN',dep:'9:35',arr:'17:25'},
+  {airline:'KE',flightNo:'KE653',direction:'ICN-BKK',dep:'19:05',arr:'23:20'},
+  {airline:'KE',flightNo:'KE654',direction:'BKK-ICN',dep:'1:00',arr:'8:30'},
+  {airline:'KE',flightNo:'KE655',direction:'ICN-BKK',dep:'21:15',arr:'1:05'},
+  {airline:'KE',flightNo:'KE656',direction:'BKK-ICN',dep:'2:35',arr:'10:15'},
+  {airline:'OZ',flightNo:'OZ741',direction:'ICN-BKK',dep:'19:30',arr:'23:10'},
+  {airline:'OZ',flightNo:'OZ742',direction:'BKK-ICN',dep:'1:10',arr:'9:00'},
+  {airline:'OZ',flightNo:'OZ743',direction:'ICN-BKK',dep:'20:20',arr:'0:20'},
+  {airline:'OZ',flightNo:'OZ744',direction:'BKK-ICN',dep:'21:15',arr:'5:15'},
+  {airline:'TG',flightNo:'TG653',direction:'ICN-BKK',dep:'17:30',arr:'21:20'},
+  {airline:'TG',flightNo:'TG652',direction:'BKK-ICN',dep:'8:00',arr:'15:25'},
+  {airline:'TG',flightNo:'TG657',direction:'ICN-BKK',dep:'10:20',arr:'14:10'},
+  {airline:'TG',flightNo:'TG656',direction:'BKK-ICN',dep:'23:30',arr:'6:55'},
+  {airline:'TG',flightNo:'TG659',direction:'ICN-BKK',dep:'9:35',arr:'13:30'},
+  {airline:'TG',flightNo:'TG658',direction:'BKK-ICN',dep:'23:10',arr:'6:25'},
+  {airline:'LJ',flightNo:'LJ001',direction:'ICN-BKK',dep:'17:05',arr:'20:45'},
+  {airline:'LJ',flightNo:'LJ002',direction:'BKK-ICN',dep:'21:45',arr:'5:05'},
+  {airline:'7C',flightNo:'7C2503',direction:'ICN-BKK',dep:'20:05',arr:'23:59'},
+  {airline:'7C',flightNo:'7C2504',direction:'BKK-ICN',dep:'1:00',arr:'8:40'},
+  {airline:'7C',flightNo:'7C2205',direction:'ICN-BKK',dep:'21:10',arr:'1:00'},
+  {airline:'7C',flightNo:'7C2206',direction:'BKK-ICN',dep:'2:00',arr:'9:50'},
+  {airline:'TW',flightNo:'TW101',direction:'ICN-BKK',dep:'20:25',arr:'0:25'},
+  {airline:'TW',flightNo:'TW102',direction:'BKK-ICN',dep:'1:55',arr:'9:30'},
+  {airline:'BX',flightNo:'BX747',direction:'ICN-BKK',dep:'17:15',arr:'21:20'},
+  {airline:'BX',flightNo:'BX748',direction:'BKK-ICN',dep:'1:40',arr:'9:30'},
+  {airline:'BX',flightNo:'BX727',direction:'ICN-BKK',dep:'16:50',arr:'21:20'},
+  {airline:'BX',flightNo:'BX728',direction:'BKK-ICN',dep:'22:20',arr:'6:05'},
+  {airline:'VZ',flightNo:'VZ851',direction:'ICN-BKK',dep:'11:55',arr:'15:45'},
+  {airline:'VZ',flightNo:'VZ850',direction:'BKK-ICN',dep:'1:45',arr:'9:30'},
+  {airline:'7C',flightNo:'7C2251',direction:'PUS-BKK',dep:'20:30',arr:'0:10'},
+  {airline:'7C',flightNo:'7C2252',direction:'BKK-PUS',dep:'1:10',arr:'8:30'},
+  {airline:'KE',flightNo:'KE2001',direction:'PUS-BKK',dep:'20:35',arr:'0:15'},
+  {airline:'KE',flightNo:'KE2002',direction:'BKK-PUS',dep:'1:35',arr:'9:00'},
+  {airline:'7C',flightNo:'7C2243',direction:'CJU-BKK',dep:'22:00',arr:'1:40'},
+  {airline:'7C',flightNo:'7C2244',direction:'BKK-CJU',dep:'2:45',arr:'9:50'},
+];
+async function ensureFlightsSeeded(){
+  const list=(await sbLoad('trv_vendor_flights'))||[];
+  let changed=false;
+  FLIGHT_CODE_SEED.forEach(seed=>{
+    const existing=list.find(f=>f.airline===seed.airline&&f.flightNo===seed.flightNo&&f.direction===seed.direction);
+    if(existing){
+      if(existing.dep!==seed.dep||existing.arr!==seed.arr){ existing.dep=seed.dep; existing.arr=seed.arr; changed=true; }
+      return;
+    }
+    list.push({airline:seed.airline,flightNo:seed.flightNo,direction:seed.direction,dep:seed.dep,arr:seed.arr,active:true});
+    changed=true;
+  });
+  if(changed) await saveVendors('flights',list);
+}
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
   return item?`${item.code}[${item.label}]`:(code||'-');
@@ -1118,7 +1187,13 @@ function getVendorTabs(){
   return [...VENDOR_CATEGORY_TABS,{key:'flights',label:'항공편 스케줄'}];
 }
 function isFlightVendorTab(key){ return key==='flights'; }
-const FLIGHT_DIRECTIONS={'ICN-BKK':'도착(ICN→BKK)','BKK-ICN':'출발(BKK→ICN)'};
+const FLIGHT_DIRECTIONS={
+  'ICN-BKK':'인천 도착(ICN→BKK)','BKK-ICN':'인천 출발(BKK→ICN)',
+  'PUS-BKK':'김해 도착(PUS→BKK)','BKK-PUS':'김해 출발(BKK→PUS)',
+  'TAE-BKK':'대구 도착(TAE→BKK)','BKK-TAE':'대구 출발(BKK→TAE)',
+  'CJJ-BKK':'청주 도착(CJJ→BKK)','BKK-CJJ':'청주 출발(BKK→CJJ)',
+  'CJU-BKK':'제주 도착(CJU→BKK)','BKK-CJU':'제주 출발(BKK→CJU)',
+};
 function getVendors(key){ try{return JSON.parse(localStorage.getItem('trv_vendor_'+key)||'[]');}catch{return[];} }
 async function saveVendors(key,arr){ await sbSave('trv_vendor_'+key,arr); }
 function findVendor(key,name){ return getVendors(key).find(v=>v.name===name); }
@@ -1134,8 +1209,8 @@ function renderVendorDatalists(){
   // 항공편: 방향별로 도착/출발 데이터리스트에 분리해서 채움 (예약폼 FLIGHTS 섹션에서 사용)
   const flights=getVendors('flights').filter(f=>f.active!==false);
   const dlArr=document.getElementById('dl-flightArr'), dlDep=document.getElementById('dl-flightDep');
-  if(dlArr) dlArr.innerHTML=flights.filter(f=>f.direction==='ICN-BKK').map(f=>`<option value="${escapeAttr(f.flightNo+' '+f.dep+'-'+f.arr)}">`).join('');
-  if(dlDep) dlDep.innerHTML=flights.filter(f=>f.direction==='BKK-ICN').map(f=>`<option value="${escapeAttr(f.flightNo+' '+f.dep+'-'+f.arr)}">`).join('');
+  if(dlArr) dlArr.innerHTML=flights.filter(f=>f.direction&&f.direction.endsWith('-BKK')).map(f=>`<option value="${escapeAttr(f.flightNo+' '+f.dep+'-'+f.arr)}">`).join('');
+  if(dlDep) dlDep.innerHTML=flights.filter(f=>f.direction&&f.direction.startsWith('BKK-')).map(f=>`<option value="${escapeAttr(f.flightNo+' '+f.dep+'-'+f.arr)}">`).join('');
 }
 
 let vendorModalTab='';
@@ -1148,8 +1223,7 @@ function renderVendorAddRow(){
       <select id="vendor-new-airline" style="flex:1 1 130px;">${airlineOpts}</select>
       <input type="text" id="vendor-new-flightno" placeholder="편명 (예: KE651)" style="flex:1 1 90px;"/>
       <select id="vendor-new-direction" style="flex:1 1 150px;">
-        <option value="ICN-BKK">${FLIGHT_DIRECTIONS['ICN-BKK']}</option>
-        <option value="BKK-ICN">${FLIGHT_DIRECTIONS['BKK-ICN']}</option>
+        ${Object.entries(FLIGHT_DIRECTIONS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
       </select>
       <input type="text" id="vendor-new-dep" placeholder="출발시간" style="flex:1 1 80px;"/>
       <input type="text" id="vendor-new-arr" placeholder="도착시간" style="flex:1 1 80px;"/>
@@ -1186,8 +1260,7 @@ function renderVendorList(){
           <select id="vendor-edit-airline" style="flex:1 1 110px;">${airlineOpts}</select>
           <input type="text" id="vendor-edit-flightno" value="${escapeAttr(v.flightNo)}" style="flex:1 1 80px;"/>
           <select id="vendor-edit-direction" style="flex:1 1 130px;">
-            <option value="ICN-BKK" ${v.direction==='ICN-BKK'?'selected':''}>${FLIGHT_DIRECTIONS['ICN-BKK']}</option>
-            <option value="BKK-ICN" ${v.direction==='BKK-ICN'?'selected':''}>${FLIGHT_DIRECTIONS['BKK-ICN']}</option>
+            ${Object.entries(FLIGHT_DIRECTIONS).map(([k,v2])=>`<option value="${k}" ${v.direction===k?'selected':''}>${v2}</option>`).join('')}
           </select>
           <input type="text" id="vendor-edit-dep" value="${escapeAttr(v.dep)}" style="flex:1 1 70px;"/>
           <input type="text" id="vendor-edit-arr" value="${escapeAttr(v.arr)}" style="flex:1 1 70px;"/>
