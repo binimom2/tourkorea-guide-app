@@ -347,18 +347,16 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         <div class="sec-divider">REMARKS</div>
         <div class="f-row"><label>REMARK</label><textarea id="r-remark"></textarea></div>
         <div class="f-row"><label>INCLUDES</label>
-          <div class="phrase-picker" id="includes-picker"></div>
           <textarea id="r-includes"></textarea>
         </div>
         <div class="f-row"><label>DECLUDES</label>
-          <div class="phrase-picker" id="decludes-picker"></div>
           <textarea id="r-decludes"></textarea>
         </div>
-        <div class="f-row"><label>REFERENCES</label>
+        <div class="f-row" style="display:none;"><label>REFERENCES</label>
           <div class="phrase-picker" id="references-picker"></div>
           <textarea id="r-references"></textarea>
         </div>
-        <div class="f-row"><label>CHECKS</label>
+        <div class="f-row" style="display:none;"><label>CHECKS</label>
           <div class="phrase-picker" id="checks-picker"></div>
           <textarea id="r-checks"></textarea>
         </div>
@@ -1861,8 +1859,8 @@ function openReservation(id,presetDate){
   document.getElementById('r-tc').value=workingRes.tc;
   document.getElementById('r-picket').value=workingRes.picket;
   document.getElementById('r-remark').value=workingRes.remark;
-  document.getElementById('r-includes').value=workingRes.includes;
-  document.getElementById('r-decludes').value=workingRes.decludes;
+  document.getElementById('r-includes').value=workingRes.includes||(getPhrases('includes')[0]||'');
+  document.getElementById('r-decludes').value=workingRes.decludes||(getPhrases('decludes')[0]||'');
   document.getElementById('r-references').value=workingRes.references||'';
   document.getElementById('r-checks').value=workingRes.checks||'';
   document.getElementById('r-memo').value=workingRes.memo||'';
