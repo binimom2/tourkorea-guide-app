@@ -136,6 +136,8 @@ table.subtbl{width:100%;border-collapse:collapse;font-size:11.5px;}
 table.subtbl th{padding:7px 10px;text-align:left;color:#8892a0;font-size:10.5px;background:#fbfbfd;border-bottom:1px solid #eef0f5;white-space:nowrap;}
 table.subtbl td{padding:7px 10px;border-bottom:1px solid #f3f4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
 table.subtbl tr:last-child td{border-bottom:none;}
+table.subtbl tr.subtbl-edit-row td{overflow:visible;background:#f7f9fd;max-width:none;}
+table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px;font-size:11px;font-family:inherit;border:1px solid #dfe3ea;border-radius:5px;box-sizing:border-box;}
 .subtbl-empty{padding:16px;text-align:center;color:#b0b6c2;font-size:11.5px;}
 .row-actions{display:flex;gap:8px;}
 .row-actions a{font-size:11px;font-weight:700;cursor:pointer;}
@@ -381,7 +383,7 @@ table.subtbl tr:last-child td{border-bottom:none;}
     <div class="smodal-body" id="soBody"></div>
     <div class="smodal-ft">
       <button class="btn btn-ghost" onclick="closeSubEditor()">취소</button>
-      <button class="btn btn-save" onclick="document.getElementById('sov').dataset.mode==='cost'?saveCostRow():saveSubRow()">저장</button>
+      <button class="btn btn-save" onclick="saveCostRow()">저장</button>
     </div>
   </div>
 </div>
@@ -1518,10 +1520,6 @@ const SUBSECTIONS=[
     {k:'cfm',label:'확정여부',type:'select',options:['대기','확정','취소']},
     {k:'remark',label:'비고',type:'text'},
   ]},
-  {key:'shopping',label:'쇼핑',fields:[
-    {k:'center',label:'쇼핑센터',type:'text',vendorKey:'SHOP'},
-    {k:'remark',label:'비고',type:'text'},
-  ]},
   {key:'deposits',label:'입금',ledger:true,fields:[
     {k:'date',label:'날짜',type:'date'},
     {k:'who',label:'거래처/고객',type:'text'},
@@ -1886,14 +1884,10 @@ function onDateChange(){
 
 function renderSubsections(){
   const host=document.getElementById('subsecHost');
-  if(modalMode==='create'){
-    host.innerHTML=`<div class="subsec-placeholder">먼저 기본정보를 입력해 예약을 생성하면<br/>항공·호텔·가이드·차량 등 세부 배정과 입출금 내역을 등록할 수 있습니다.</div>`;
-    return;
-  }
   const normal=SUBSECTIONS.filter(s=>!s.ledger);
   const ledger=SUBSECTIONS.filter(s=>s.ledger);
   host.innerHTML=`
-    <div class="sec-divider" id="assignSection">배정 내역 (FLIGHTS/HOTELS/GOLF/GUIDES/VEHICLES/SHOW/SHOPPING)</div>
+    <div class="sec-divider" id="assignSection">배정 내역 (FLIGHTS/HOTELS/GOLF/GUIDES/VEHICLES/SHOW)</div>
     ${normal.map(sec=>subsecHtml(sec)).join('')}
     <div class="sec-divider">입출금 정산</div>
     <div class="ledger-grid">${ledger.map(sec=>subsecHtml(sec)).join('')}</div>
@@ -1909,20 +1903,28 @@ function goToAssignments(){
   const el=document.getElementById('assignSection');
   if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
 }
+let subEditKey=null,subEditIndex=null; // 인라인 편집 중인 서브섹션(신규예약도 workingRes 메모리에 바로 반영)
 function subsecHtml(sec){
   const rows=workingRes[sec.key]||[];
   const cols=sec.fields;
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
+  const isEditingHere=subEditKey===sec.key;
+  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k])}</td>`).join('')}
+      <td><div class="row-actions"><a class="act-edit" onclick="saveSubRowInline('${sec.key}',${idx})">저장</a><a class="act-del" onclick="cancelSubRowInline()">취소</a></div></td>
+    </tr>`;
   return `
   <div class="subsec">
     <div class="subsec-hd">
       <h3>${sec.label}</h3><span class="cnt">(${rows.length})</span>
-      <button class="subsec-add" onclick="openSubEditor('${sec.key}',null)">＋ 추가</button>
+      <button class="subsec-add" onclick="editSubRow('${sec.key}',-1)">＋ 추가</button>
     </div>
-    ${rows.length?`<table class="subtbl"><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr></thead>
-    <tbody>${rows.map((row,i)=>`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
-      <td><div class="row-actions"><a class="act-edit" onclick="openSubEditor('${sec.key}',${i})">수정</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">삭제</a></div></td>
-    </tr>`).join('')}</tbody></table>`
+    ${(rows.length||isEditingHere)?`<table class="subtbl"><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr></thead>
+    <tbody>
+    ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
+    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
+      <td><div class="row-actions"><a class="act-edit" onclick="editSubRow('${sec.key}',${i})">수정</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">삭제</a></div></td>
+    </tr>`).join('')}
+    </tbody></table>`
     :`<div class="subtbl-empty">등록된 항목이 없습니다</div>`}
     ${summary?`<div style="padding:8px 14px;font-size:11px;color:#8892a0;border-top:1px solid #f3f4f8;">${escapeHtml(summary)}</div>`:''}
   </div>`;
@@ -1931,6 +1933,42 @@ function fmtVal(v,col){
   if(v===undefined||v===null||v==='') return '-';
   if(col.k==='amount') return Number(v).toLocaleString();
   return v;
+}
+// 서브섹션 인라인 편집용 입력요소 생성 (텍스트/숫자/날짜/select/코드연동 벤더 select)
+function renderSubFieldInput(f,val){
+  val=val??'';
+  const id=`sf-${f.k}`;
+  if(f.k==='arrival'||f.k==='departure'){
+    const dir=f.k==='arrival'?'ICN-BKK':'BKK-ICN'; // 표시용 필터 기준일 뿐, 실제 방향은 아래에서 endsWith/startsWith로 판정
+    const flights=getVendors('flights').filter(fl=>fl.active!==false&&fl.direction&&(f.k==='arrival'?fl.direction.endsWith('-BKK'):fl.direction.startsWith('BKK-')));
+    const opts=flights.map(fl=>{const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;return `<option value="${escapeAttr(v)}" ${v===val?'selected':''}>[${fl.airline}] ${fl.flightNo} ${fl.dep}→${fl.arr}</option>`;}).join('');
+    const hasVal=val&&flights.some(fl=>`${fl.flightNo} ${fl.dep}-${fl.arr}`===val);
+    const curOpt=(val&&!hasVal)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
+    return `<select id="${id}"><option value="">선택안함</option>${curOpt}${opts}</select>`;
+  }
+  if(f.vendorKey){
+    const list=getVendors(f.vendorKey).filter(v=>v.active!==false);
+    const opts=list.map(v=>`<option value="${escapeAttr(v.name)}" ${v.name===val?'selected':''}>[${v.code||''}] ${escapeHtml(v.name)}</option>`).join('');
+    const hasVal=val&&list.some(v=>v.name===val);
+    const curOpt=(val&&!hasVal)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
+    const onpick=f.vendorPhoneField?` onchange="onVendorPick('${f.vendorKey}',this.value,'sf-${f.vendorPhoneField}')"`:'';
+    return `<select id="${id}"${onpick}><option value="">선택안함</option>${curOpt}${opts}</select>`;
+  }
+  if(f.type==='select'){
+    return `<select id="${id}">${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+  }
+  return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}"/>`;
+}
+function editSubRow(sectionKey,index){ subEditKey=sectionKey; subEditIndex=index; renderSubsections(); }
+function cancelSubRowInline(){ subEditKey=null; subEditIndex=null; renderSubsections(); }
+function saveSubRowInline(sectionKey,index){
+  const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
+  const row={};
+  sec.fields.forEach(f=>{ const el=document.getElementById(`sf-${f.k}`); row[f.k]=el?el.value:''; });
+  const arr=workingRes[sectionKey]=workingRes[sectionKey]||[];
+  if(index===-1) arr.push(row); else arr[index]=row;
+  subEditKey=null; subEditIndex=null;
+  renderSubsections();
 }
 
 async function saveReservation(){
@@ -2023,44 +2061,13 @@ function showBalanceModal(){
 }
 function closeBalanceModal(){ document.getElementById('balanceModal').classList.remove('open'); }
 
-/* ══════════════════════════ SUB-ROW EDITOR ══════════════════════════ */
-let subEditCtx=null;
-function openSubEditor(sectionKey,index){
-  document.getElementById('sov').dataset.mode='res';
-  const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
-  subEditCtx={sectionKey,index};
-  document.getElementById('soTitle').textContent=`${sec.label} ${index===null?'추가':'수정'}`;
-  const row=index===null?{}:workingRes[sectionKey][index];
-  document.getElementById('soBody').innerHTML=sec.fields.map(f=>{
-    const val=row[f.k]??'';
-    if(f.type==='select'){
-      return `<div class="f-row"><label>${f.label}</label><select id="so-${f.k}">${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`;
-    }
-    if(f.vendorKey){
-      const onpick=f.vendorPhoneField?` onchange="onVendorPick('${f.vendorKey}',this.value,'so-${f.vendorPhoneField}')"`:'';
-      return `<div class="f-row"><label>${f.label} <span style="font-weight:400;color:#b0b6c2;">(등록된 목록에서 선택되거나 직접 입력)</span></label><input type="text" id="so-${f.k}" list="dl-${f.vendorKey}" value="${escapeAttr(val)}"${onpick}/></div>`;
-    }
-    return `<div class="f-row"><label>${f.label}</label><input type="${f.type}" id="so-${f.k}" value="${escapeAttr(val)}"/></div>`;
-  }).join('');
-  renderVendorDatalists();
-  document.getElementById('sov').classList.add('open');
-}
+/* ══════════════════════════ SUB-ROW EDITOR (원가서 전용, 예약 세부배정은 인라인 편집으로 대체됨) ══════════════════════════ */
 function onVendorPick(vendorKey,name,phoneFieldId){
   const v=findVendor(vendorKey,name);
   if(v&&v.phone) document.getElementById(phoneFieldId).value=v.phone;
 }
 function closeSubEditor(){
   document.getElementById('sov').classList.remove('open');
-  subEditCtx=null;
-}
-function saveSubRow(){
-  const sec=SUBSECTIONS.find(s=>s.key===subEditCtx.sectionKey);
-  const row={};
-  sec.fields.forEach(f=>{ row[f.k]=document.getElementById(`so-${f.k}`).value; });
-  const arr=workingRes[subEditCtx.sectionKey]=workingRes[subEditCtx.sectionKey]||[];
-  if(subEditCtx.index===null) arr.push(row); else arr[subEditCtx.index]=row;
-  closeSubEditor();
-  renderSubsections();
 }
 function delSubRow(sectionKey,index){
   workingRes[sectionKey].splice(index,1);
