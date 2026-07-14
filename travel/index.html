@@ -599,13 +599,13 @@ async function delAccount(i){
 }
 
 /* ══════════════════════════ CODE MASTER DATA ══════════════════════════ */
-const CODES_SCHEMA_VERSION=3;
+const CODES_SCHEMA_VERSION=4;
 const DEFAULT_CODES={
-  offices:[{code:'TKB',label:'Bangkok'}],
-  divisions:[{code:'MD',label:'ModeTour'},{code:'TK',label:'TourKorea'}],
-  types:[{code:'GRP',label:'Group'},{code:'GOLF',label:'Golf'},{code:'PACK',label:'Package'},{code:'FIT',label:'FIT'},{code:'ETC',label:'Etc'}],
-  procs:[{code:'NEW',label:'New Booking'},{code:'H-AMEND',label:'Hotel Amend'},{code:'G-AMEND',label:'Golf Amend'},{code:'E-AMEND',label:'Etc Amend'},{code:'FINAL',label:'Final'}],
-  statuses:[{code:'NORMAL',label:'Normal'},{code:'HOLD',label:'Hold'},{code:'CANCEL',label:'Cancel'},{code:'DELETE',label:'Delete'}],
+  offices:[{code:'TKB',label:'방콕'}],
+  divisions:[{code:'MD',label:'모두투어'},{code:'TK',label:'투어코리아'}],
+  types:[{code:'GRP',label:'그룹'},{code:'GOLF',label:'골프'},{code:'PACK',label:'패키지'},{code:'FIT',label:'개별'},{code:'ETC',label:'기타'}],
+  procs:[{code:'NEW',label:'뉴부킹'},{code:'H-AMEND',label:'호텔'},{code:'G-AMEND',label:'골프'},{code:'E-AMEND',label:'기타'},{code:'FINAL',label:'파이널'}],
+  statuses:[{code:'NORMAL',label:'진행'},{code:'HOLD',label:'홀딩'},{code:'CANCEL',label:'취소'},{code:'DELETE',label:'삭제'}],
 };
 // 코드1: 예약 기본정보(오피스/구분/유형/진행/상태)
 const CODE_TABS=[
