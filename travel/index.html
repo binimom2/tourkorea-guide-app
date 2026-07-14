@@ -326,23 +326,19 @@ table.subtbl tr:last-child td{border-bottom:none;}
           <div class="f-row"><label>CHECK-IN</label><input type="date" id="r-datein" onchange="onDateChange()"/></div>
           <div class="f-row"><label>CHECK-OUT</label><input type="date" id="r-dateout"/></div>
         </div>
-        <div class="f-row"><label>RESERVATION NAME</label><input type="text" id="r-name" placeholder="e.g. Busan 3N5D"/></div>
+        <div class="f-row2">
+          <div class="f-row"><label>CODE</label><input type="text" id="r-code" readonly style="background:#f4f6fa;color:#6b7484;"/></div>
+          <div class="f-row"><label>NAME</label><input type="text" id="r-name" placeholder="e.g. Busan 3N5D"/></div>
+        </div>
 
         <div class="sec-divider">CUSTOMER INFO</div>
         <div class="f-row2">
-          <div class="f-row"><label>CUSTOMER</label><select id="r-customer" onchange="onCustomerChange()"></select></div>
-          <div class="f-row"><label>MANAGER</label><select id="r-manager"></select></div>
+          <div class="f-row"><label>CUSTOMER</label><select id="r-customer"></select></div>
+          <div class="f-row"><label>MANAGER</label><input type="text" id="r-manager" placeholder="담당자명 자유입력"/></div>
         </div>
         <div class="f-row2">
           <div class="f-row"><label>AGENT</label><input type="text" id="r-agent" list="dl-agents"/></div>
           <div class="f-row"><label>TC</label><input type="text" id="r-tc"/></div>
-        </div>
-        <div class="f-row"><label>PAX (ADULT+CHILD+INFANT)</label>
-          <div class="f-row3">
-            <input type="number" id="r-adt" min="0" placeholder="ADULT"/>
-            <input type="number" id="r-chd" min="0" placeholder="CHILD"/>
-            <input type="number" id="r-inf" min="0" placeholder="INFANT"/>
-          </div>
         </div>
         <div class="f-row"><label>PICKET</label><textarea id="r-picket" placeholder="Airport pickup signboard text"></textarea></div>
 
@@ -1800,14 +1796,19 @@ function renderList(){
 /* ══════════════════════════ RESERVATION MODAL ══════════════════════════ */
 let editingId=null;
 let modalMode='create'; // 'create' | 'edit'
-function genCode(datein,type){
+// 가이드정산코드 형식: YYMMDD-순번(같은 체크인 날짜 내 입력 순서, 01부터)
+function genCode(datein){
   const d=(datein||'').replace(/-/g,'').slice(2)||'000000';
-  const seq=String(reservations.filter(r=>r.type===type).length+1).padStart(4,'0');
-  return `${d}-${type||'ETC'}-${seq}`;
+  const sameDate=reservations.filter(r=>(r.datein||'').replace(/-/g,'').slice(2)===d);
+  const seq=String(sameDate.length+1).padStart(2,'0');
+  return `${d}-${seq}`;
 }
-function genCodePreview(datein,type){
+function genCodePreview(datein){
   if(!datein) return '자동생성 (체크인 입력시 표시)';
-  return `${datein.replace(/-/g,'').slice(2)}-${type||'-'}`;
+  const d=datein.replace(/-/g,'').slice(2);
+  const sameDate=reservations.filter(r=>(r.datein||'').replace(/-/g,'').slice(2)===d&&r.id!==(workingRes&&workingRes.id));
+  const seq=String(sameDate.length+1).padStart(2,'0');
+  return `${d}-${seq}`;
 }
 function blankReservation(){
   const codes=getCodes();
@@ -1830,17 +1831,8 @@ function fillCustomerSelect(selectedCustomer,selectedManager){
   const sel=document.getElementById('r-customer');
   sel.innerHTML='<option value="">선택안함</option>'+customers.map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}${c.code?`[${escapeHtml(c.code)}]`:''}</option>`).join('');
   sel.value=selectedCustomer||'';
-  fillManagerSelect(selectedCustomer,selectedManager);
+  document.getElementById('r-manager').value=selectedManager||''; // MANAGER는 자유입력이라 선택 목록 없이 값만 채움
 }
-function fillManagerSelect(customerName,selectedManager){
-  const customers=getCustomers();
-  const cust=customers.find(c=>c.name===customerName);
-  const sel=document.getElementById('r-manager');
-  const managers=(cust&&cust.managers)||[];
-  sel.innerHTML='<option value="">선택안함</option>'+managers.map(m=>`<option value="${escapeAttr(m.name)}">${escapeHtml(m.name)}</option>`).join('');
-  sel.value=selectedManager||'';
-}
-function onCustomerChange(){ fillManagerSelect(document.getElementById('r-customer').value,''); }
 
 function openReservation(id,presetDate){
   editingId=id;
@@ -1858,7 +1850,9 @@ function openReservation(id,presetDate){
   fillCustomerSelect(workingRes.customer,workingRes.manager);
 
   document.getElementById('rmTitle').textContent=modalMode==='edit'?'예약 수정 (EditReservation)':'신규예약 (AddReservation)';
-  document.getElementById('rmCode').textContent=workingRes.code||genCodePreview(workingRes.datein,workingRes.type);
+  const _rmCode=workingRes.code||genCodePreview(workingRes.datein);
+  document.getElementById('rmCode').textContent=_rmCode;
+  document.getElementById('r-code').value=_rmCode;
   document.getElementById('btnDeleteRes').style.display=modalMode==='edit'?'':'none';
   document.getElementById('btnSaveRes').textContent=modalMode==='edit'?'저장':'생성';
 
@@ -1867,9 +1861,6 @@ function openReservation(id,presetDate){
   document.getElementById('r-name').value=workingRes.name;
   document.getElementById('r-agent').value=workingRes.agent;
   document.getElementById('r-tc').value=workingRes.tc;
-  document.getElementById('r-adt').value=workingRes.adt;
-  document.getElementById('r-chd').value=workingRes.chd;
-  document.getElementById('r-inf').value=workingRes.inf;
   document.getElementById('r-picket').value=workingRes.picket;
   document.getElementById('r-remark').value=workingRes.remark;
   document.getElementById('r-includes').value=workingRes.includes;
@@ -1887,7 +1878,9 @@ function closeReservation(){
 }
 function onDateChange(){
   if(modalMode==='create'){
-    document.getElementById('rmCode').textContent=genCodePreview(document.getElementById('r-datein').value,document.getElementById('r-type').value);
+    const preview=genCodePreview(document.getElementById('r-datein').value);
+    document.getElementById('rmCode').textContent=preview;
+    document.getElementById('r-code').value=preview;
   }
 }
 
@@ -1953,9 +1946,6 @@ async function saveReservation(){
   workingRes.manager=document.getElementById('r-manager').value;
   workingRes.agent=document.getElementById('r-agent').value.trim();
   workingRes.tc=document.getElementById('r-tc').value.trim();
-  workingRes.adt=document.getElementById('r-adt').value;
-  workingRes.chd=document.getElementById('r-chd').value;
-  workingRes.inf=document.getElementById('r-inf').value;
   workingRes.picket=document.getElementById('r-picket').value.trim();
   workingRes.remark=document.getElementById('r-remark').value.trim();
   workingRes.includes=document.getElementById('r-includes').value.trim();
@@ -1968,7 +1958,7 @@ async function saveReservation(){
   if(!workingRes.name){showToast('⚠ 예약명을 입력해주세요');return;}
 
   if(modalMode==='create'){
-    workingRes.code=genCode(workingRes.datein,workingRes.type);
+    workingRes.code=genCode(workingRes.datein);
     workingRes.createdAt=new Date().toISOString();
     workingRes.updatedAt=workingRes.createdAt;
     reservations.push(workingRes);
@@ -1977,6 +1967,7 @@ async function saveReservation(){
     modalMode='edit';
     document.getElementById('rmTitle').textContent='예약 수정 (EditReservation)';
     document.getElementById('rmCode').textContent=workingRes.code;
+    document.getElementById('r-code').value=workingRes.code;
     document.getElementById('btnDeleteRes').style.display='';
     document.getElementById('btnSaveRes').textContent='저장';
     renderSubsections();
