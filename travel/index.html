@@ -556,6 +556,7 @@ async function enterApp(){
     await ensureGuideCodesSeeded();
     await ensureVehicleCodesSeeded();
     await ensureFlightsSeeded();
+    await ensureCfmLabelsMigrated();
   }
   renderVendorDatalists();
   renderPhrasePickers();
@@ -974,6 +975,20 @@ async function ensureFlightsSeeded(){
     if(pa!==f.arr){ f.arr=pa; changed=true; }
   });
   if(changed) await saveVendors('flights',list);
+}
+// 예약 세부배정의 CFM 값 중 예전 한글 값(대기/확정/취소)을 영문으로 1회성 정규화
+const CFM_LABEL_MIGRATION={'대기':'Pending','확정':'Confirmed','취소':'Cancelled'};
+async function ensureCfmLabelsMigrated(){
+  const list=(await sbLoad('trv_reservations'))||[];
+  let changed=false;
+  ['hotels','golfs','guides','vehicles','shows'].forEach(secKey=>{
+    list.forEach(r=>{
+      (r[secKey]||[]).forEach(row=>{
+        if(row.cfm&&CFM_LABEL_MIGRATION[row.cfm]){ row.cfm=CFM_LABEL_MIGRATION[row.cfm]; changed=true; }
+      });
+    });
+  });
+  if(changed) await sbSave('trv_reservations',list);
 }
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
@@ -1926,7 +1941,7 @@ function subsecHtml(sec){
   const cols=sec.fields;
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
   const isEditingHere=subEditKey===sec.key;
-  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k])}</td>`).join('')}
+  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row" onfocusout="handleSubRowFocusOut(event,'${sec.key}',${idx})">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k])}</td>`).join('')}
       <td><div class="row-actions"><a class="act-edit" onclick="saveSubRowInline('${sec.key}',${idx})">Save</a><a class="act-del" onclick="cancelSubRowInline()">Cancel</a></div></td>
     </tr>`;
   return `
@@ -2021,6 +2036,24 @@ function filterFlightOptions(baseId,airlineCode,dirType){
 }
 function editSubRow(sectionKey,index){ subEditKey=sectionKey; subEditIndex=index; renderSubsections(); }
 function cancelSubRowInline(){ subEditKey=null; subEditIndex=null; renderSubsections(); }
+// 편집행 밖으로 포커스가 나가면(다른 칸/버튼 클릭 등) SAVE를 누르지 않아도 자동 저장
+function handleSubRowFocusOut(e,sectionKey,index){
+  const rowEl=e.currentTarget;
+  setTimeout(()=>{
+    if(subEditKey!==sectionKey||subEditIndex!==index) return; // 이미 Save/Cancel로 닫힘
+    if(rowEl&&rowEl.contains(document.activeElement)) return; // 같은 행 안에서 포커스만 이동한 경우
+    if(index===-1){
+      const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
+      const hasVal=sec.fields.some(f=>{
+        if(f.type==='select') return false; // CFM 등 항상 기본값이 있는 select는 "입력함"으로 치지 않음
+        const el=document.getElementById(`sf-${f.k}`);
+        return el&&el.value;
+      });
+      if(!hasVal){ cancelSubRowInline(); return; }
+    }
+    saveSubRowInline(sectionKey,index);
+  },0);
+}
 // +Baht 동기화 대상 서브섹션: ACC 라벨과 거래처명이 담긴 필드키
 const PAYING_SYNC={
   hotels:{acc:'호텔',nameField:'hotel',dateField:'chkin'},
