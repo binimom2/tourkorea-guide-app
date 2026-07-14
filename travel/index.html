@@ -197,7 +197,9 @@ table.subtbl tr:last-child td{border-bottom:none;}
 .phrase-chip{background:#eef2fe;color:#20304f;border:1px solid #d6e0fb;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;}
 .phrase-chip:hover{background:#dde6fd;}
 .phrase-row{display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;margin-bottom:6px;}
-.phrase-row span{font-size:12px;color:#4a5164;flex:1;}
+.phrase-row span{font-size:12px;color:#4a5164;flex:1;white-space:pre-line;}
+.phrase-row.edit-row{align-items:flex-start;flex-wrap:wrap;}
+.phrase-row.edit-row textarea{flex:1 1 100%;min-height:60px;font-size:12px;font-family:inherit;padding:6px 8px;border:1px solid #dfe3ea;border-radius:6px;}
 
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#161f38;color:#fff;padding:12px 22px;border-radius:9px;font-size:12.5px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,0.3);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -715,6 +717,7 @@ function renderMasterTabs(){
 }
 function switchMasterTab(group,key){
   masterGroup=group; masterKey=key;
+  codeEditIndex=null; vendorEditIndex=null; custEditIndex=null; phraseEditIndex=null;
   document.getElementById('codeSection').style.display=group==='code'?'':'none';
   document.getElementById('customerSection').style.display=group==='customer'?'':'none';
   document.getElementById('vendorSection').style.display=group==='vendor'?'':'none';
@@ -734,11 +737,21 @@ function closeCodeModal(){
   renderVendorDatalists();
   renderPhrasePickers();
 }
+let codeEditIndex=null;
 function renderCodeList(){
   const codes=getCodes();
   const list=codes[codeModalTab]||[];
   document.getElementById('codeListBody').innerHTML=list.length?list.map((c,i)=>{
     const active=c.active!==false;
+    if(i===codeEditIndex){
+      return `
+      <div class="code-row edit-row">
+        <input type="text" id="code-edit-code" value="${escapeAttr(c.code)}" style="flex:0 0 90px;"/>
+        <input type="text" id="code-edit-label" value="${escapeAttr(c.label)}"/>
+        <button class="btn btn-save" style="flex:0 0 auto;padding:5px 10px;font-size:11px;" onclick="saveCodeItemEdit(${i})">저장</button>
+        <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelCodeEdit()">취소</a>
+      </div>`;
+    }
     return `
     <div class="code-row${active?'':' inactive'}">
       <span class="code-order">
@@ -747,9 +760,27 @@ function renderCodeList(){
       </span>
       <span class="tag">${c.code}</span><span class="lbl">${escapeHtml(c.label)}</span>
       <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleCodeActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+      <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editCodeItem(${i})">✏ 수정</a>
       <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delCodeItem(${i})">삭제</a>
     </div>`;
   }).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+}
+function editCodeItem(i){ codeEditIndex=i; renderCodeList(); }
+function cancelCodeEdit(){ codeEditIndex=null; renderCodeList(); }
+async function saveCodeItemEdit(i){
+  const codes=getCodes();
+  const list=codes[codeModalTab];
+  const item=list[i];
+  if(!item) return;
+  const newCode=document.getElementById('code-edit-code').value.trim().toUpperCase();
+  const newLabel=document.getElementById('code-edit-label').value.trim();
+  if(!newCode||!newLabel){showToast('⚠ 코드와 라벨을 모두 입력해주세요');return;}
+  if(list.some((c,ci)=>ci!==i&&c.code===newCode)){showToast('⚠ 이미 존재하는 코드입니다');return;}
+  item.code=newCode; item.label=newLabel;
+  await saveCodes(codes);
+  codeEditIndex=null;
+  renderCodeList();
+  showToast('✅ 수정되었습니다');
 }
 async function moveCodeItem(i,dir){
   const codes=getCodes();
@@ -795,13 +826,22 @@ async function delCodeItem(i){
 function getCustomers(){ try{return JSON.parse(localStorage.getItem('trv_customers')||'[]');}catch{return[];} }
 async function saveCustomers(arr){ await sbSave('trv_customers',arr); }
 
+let custEditIndex=null;
 function renderCustomerList(){
   const customers=getCustomers();
   document.getElementById('custListBody').innerHTML=customers.length?customers.map((c,ci)=>`
     <div class="cust-card">
       <div class="cust-card-hd">
-        <b>${c.code?`[${escapeHtml(c.code)}] `:''}${escapeHtml(c.name)}</b>
-        <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delCustomer(${ci})">고객사 삭제</a>
+        ${ci===custEditIndex?`
+          <input type="text" id="cust-edit-code" value="${escapeAttr(c.code||'')}" placeholder="코드" style="flex:0 0 90px;"/>
+          <input type="text" id="cust-edit-name" value="${escapeAttr(c.name)}" placeholder="거래처명"/>
+          <button class="btn btn-save" style="flex:0 0 auto;padding:5px 10px;font-size:11px;" onclick="saveCustomerEdit(${ci})">저장</button>
+          <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelCustomerEdit()">취소</a>
+        `:`
+          <b>${c.code?`[${escapeHtml(c.code)}] `:''}${escapeHtml(c.name)}</b>
+          <a class="act-edit" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="editCustomer(${ci})">✏ 수정</a>
+          <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delCustomer(${ci})">고객사 삭제</a>
+        `}
       </div>
       <div>${(c.managers||[]).map((m,mi)=>`<span class="mgr-chip">${escapeHtml(m.name)}<a onclick="delManager(${ci},${mi})">✕</a></span>`).join('')||'<span style="color:#b0b6c2;font-size:11.5px;">등록된 담당자가 없습니다</span>'}</div>
       <div class="mgr-addrow">
@@ -809,6 +849,23 @@ function renderCustomerList(){
         <button class="btn btn-save" style="padding:6px 12px;font-size:11.5px;" onclick="addManager(${ci})">담당자 추가</button>
       </div>
     </div>`).join(''):'<div class="subtbl-empty">등록된 고객사가 없습니다</div>';
+}
+function editCustomer(ci){ custEditIndex=ci; renderCustomerList(); }
+function cancelCustomerEdit(){ custEditIndex=null; renderCustomerList(); }
+async function saveCustomerEdit(ci){
+  const customers=getCustomers();
+  const c=customers[ci];
+  if(!c) return;
+  const code=document.getElementById('cust-edit-code').value.trim().toUpperCase();
+  const name=document.getElementById('cust-edit-name').value.trim();
+  if(!name){showToast('⚠ 거래처명을 입력해주세요');return;}
+  if(code&&customers.some((x,xi)=>xi!==ci&&x.code===code)){showToast('⚠ 이미 존재하는 코드입니다');return;}
+  if(customers.some((x,xi)=>xi!==ci&&x.name===name)){showToast('⚠ 이미 존재하는 고객사입니다');return;}
+  c.code=code; c.name=name;
+  await saveCustomers(customers);
+  custEditIndex=null;
+  renderCustomerList();
+  showToast('✅ 수정되었습니다');
 }
 async function addCustomer(){
   const codeEl=document.getElementById('cust-new-code'), nameEl=document.getElementById('cust-new-name');
@@ -899,6 +956,7 @@ function renderVendorAddRow(){
       <button class="btn btn-save" onclick="addVendorItem()">추가</button>`;
   }
 }
+let vendorEditIndex=null;
 function renderVendorList(){
   const list=getVendors(vendorModalTab);
   if(isFlightVendorTab(vendorModalTab)){
@@ -906,11 +964,28 @@ function renderVendorList(){
     document.getElementById('vendorListBody').innerHTML=sorted.length?sorted.map(v=>{
       const i=list.indexOf(v);
       const active=v.active!==false;
+      if(i===vendorEditIndex){
+        const airlines=getVendors('AIRLINES').filter(a=>a.active!==false);
+        const airlineOpts=airlines.map(a=>`<option value="${a.code}" ${a.code===v.airline?'selected':''}>${a.code}[${escapeHtml(a.name)}]</option>`).join('');
+        return `<div class="code-row edit-row" style="flex-wrap:wrap;">
+          <select id="vendor-edit-airline" style="flex:1 1 110px;">${airlineOpts}</select>
+          <input type="text" id="vendor-edit-flightno" value="${escapeAttr(v.flightNo)}" style="flex:1 1 80px;"/>
+          <select id="vendor-edit-direction" style="flex:1 1 130px;">
+            <option value="ICN-BKK" ${v.direction==='ICN-BKK'?'selected':''}>${FLIGHT_DIRECTIONS['ICN-BKK']}</option>
+            <option value="BKK-ICN" ${v.direction==='BKK-ICN'?'selected':''}>${FLIGHT_DIRECTIONS['BKK-ICN']}</option>
+          </select>
+          <input type="text" id="vendor-edit-dep" value="${escapeAttr(v.dep)}" style="flex:1 1 70px;"/>
+          <input type="text" id="vendor-edit-arr" value="${escapeAttr(v.arr)}" style="flex:1 1 70px;"/>
+          <button class="btn btn-save" style="flex:0 0 auto;padding:5px 10px;font-size:11px;" onclick="saveVendorItemEdit(${i})">저장</button>
+          <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelVendorEdit()">취소</a>
+        </div>`;
+      }
       return `
       <div class="code-row${active?'':' inactive'}">
         <span class="tag">${escapeHtml(v.airline||'')}</span>
         <span class="lbl">${escapeHtml(v.flightNo)} · ${FLIGHT_DIRECTIONS[v.direction]||v.direction} · ${escapeHtml(v.dep)}→${escapeHtml(v.arr)}</span>
         <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleVendorActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+        <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editVendorItem(${i})">✏ 수정</a>
         <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
       </div>`;
     }).join(''):'<div class="subtbl-empty">등록된 항공편이 없습니다</div>';
@@ -918,13 +993,50 @@ function renderVendorList(){
   }
   document.getElementById('vendorListBody').innerHTML=list.length?list.map((v,i)=>{
     const active=v.active!==false;
+    if(i===vendorEditIndex){
+      return `<div class="code-row edit-row">
+        <input type="text" id="vendor-edit-code" value="${escapeAttr(v.code||'')}" style="flex:0 0 80px;"/>
+        <input type="text" id="vendor-edit-name" value="${escapeAttr(v.name)}"/>
+        <input type="text" id="vendor-edit-phone" value="${escapeAttr(v.phone||'')}" style="flex:0 0 110px;"/>
+        <button class="btn btn-save" style="flex:0 0 auto;padding:5px 10px;font-size:11px;" onclick="saveVendorItemEdit(${i})">저장</button>
+        <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelVendorEdit()">취소</a>
+      </div>`;
+    }
     return `
     <div class="code-row${active?'':' inactive'}">
       <span class="tag">${escapeHtml(v.code||'')}</span><span class="lbl">${escapeHtml(v.name)}${v.phone?' · '+escapeHtml(v.phone):''}</span>
       <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleVendorActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+      <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editVendorItem(${i})">✏ 수정</a>
       <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
     </div>`;
   }).join(''):'<div class="subtbl-empty">등록된 항목이 없습니다</div>';
+}
+function editVendorItem(i){ vendorEditIndex=i; renderVendorList(); }
+function cancelVendorEdit(){ vendorEditIndex=null; renderVendorList(); }
+async function saveVendorItemEdit(i){
+  const list=getVendors(vendorModalTab);
+  const item=list[i];
+  if(!item) return;
+  if(isFlightVendorTab(vendorModalTab)){
+    const airline=document.getElementById('vendor-edit-airline').value;
+    const flightNo=document.getElementById('vendor-edit-flightno').value.trim().toUpperCase();
+    const direction=document.getElementById('vendor-edit-direction').value;
+    const dep=document.getElementById('vendor-edit-dep').value.trim();
+    const arr=document.getElementById('vendor-edit-arr').value.trim();
+    if(!airline||!flightNo||!dep||!arr){showToast('⚠ 모든 값을 입력해주세요');return;}
+    item.airline=airline; item.flightNo=flightNo; item.direction=direction; item.dep=dep; item.arr=arr;
+  } else {
+    const code=document.getElementById('vendor-edit-code').value.trim().toUpperCase();
+    const name=document.getElementById('vendor-edit-name').value.trim();
+    const phone=document.getElementById('vendor-edit-phone').value.trim();
+    if(!code||!name){showToast('⚠ 코드와 이름을 모두 입력해주세요');return;}
+    if(list.some((x,xi)=>xi!==i&&x.code===code)){showToast('⚠ 이미 존재하는 코드입니다');return;}
+    item.code=code; item.name=name; item.phone=phone;
+  }
+  await saveVendors(vendorModalTab,list);
+  vendorEditIndex=null;
+  renderVendorList();
+  showToast('✅ 수정되었습니다');
 }
 async function toggleVendorActive(i){
   const list=getVendors(vendorModalTab);
@@ -983,11 +1095,34 @@ function circledNum(n){
 }
 
 let phraseModalTab='includes';
+let phraseEditIndex=null;
 function renderPhraseListModal(){
   const list=getPhrases(phraseModalTab);
-  document.getElementById('phraseListBody').innerHTML=list.length?list.map((p,i)=>`
-    <div class="phrase-row"><span>${escapeHtml(p)}</span><a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delPhraseItem(${i})">삭제</a></div>`).join('')
+  document.getElementById('phraseListBody').innerHTML=list.length?list.map((p,i)=>{
+    if(i===phraseEditIndex){
+      return `<div class="phrase-row edit-row">
+        <textarea id="phrase-edit-text">${escapeHtml(p)}</textarea>
+        <div style="display:flex;gap:8px;flex:1 1 100%;justify-content:flex-end;">
+          <button class="btn btn-save" style="padding:5px 10px;font-size:11px;" onclick="savePhraseEdit(${i})">저장</button>
+          <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelPhraseEdit()">취소</a>
+        </div>
+      </div>`;
+    }
+    return `<div class="phrase-row"><span>${escapeHtml(p)}</span><a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editPhraseItem(${i})">✏ 수정</a><a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delPhraseItem(${i})">삭제</a></div>`;
+  }).join('')
     :'<div class="subtbl-empty">등록된 문구가 없습니다</div>';
+}
+function editPhraseItem(i){ phraseEditIndex=i; renderPhraseListModal(); }
+function cancelPhraseEdit(){ phraseEditIndex=null; renderPhraseListModal(); }
+async function savePhraseEdit(i){
+  const list=getPhrases(phraseModalTab);
+  const text=document.getElementById('phrase-edit-text').value.trim();
+  if(!text){showToast('⚠ 문구를 입력해주세요');return;}
+  list[i]=text;
+  await savePhrases(phraseModalTab,list);
+  phraseEditIndex=null;
+  renderPhraseListModal();
+  showToast('✅ 수정되었습니다');
 }
 async function addPhraseItem(){
   const el=document.getElementById('phrase-new-text');
