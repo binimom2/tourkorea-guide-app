@@ -547,6 +547,7 @@ async function enterApp(){
     await ensurePhrasesSeeded();
     await ensureCustomerCodesSeeded();
     await ensureHotelCodesSeeded();
+    await ensureGolfCodesSeeded();
   }
   renderVendorDatalists();
   renderPhrasePickers();
@@ -783,6 +784,47 @@ async function ensureHotelCodesSeeded(){
     changed=true;
   });
   if(changed) await saveVendors('HOTEL',list);
+}
+
+// 골프장(CLUB) 코드 66개 1회성 시딩 — 이름 전체 대문자로 저장. 이미 같은 코드가 있으면 건드리지 않음(재실행 안전).
+const GOLF_CODE_SEED=[
+  {code:'GFBKK-01',name:'AMATA SPRING'},{code:'GFBKK-02',name:'ALPINE'},{code:'GFBKK-03',name:'NIKANTI'},
+  {code:'GFBKK-04',name:'NAVATANEE'},{code:'GFBKK-05',name:'THAI'},{code:'GFBKK-06',name:'SIAM BKK'},
+  {code:'GFBKK-07',name:'AYODHYA LINKS GOLF CLUB'},{code:'GFBKK-08',name:'BAN RAKAT CLUB'},{code:'GFBKK-09',name:'RACHAKRAM GOLF CLUB'},
+  {code:'GFBKK-10',name:'ROBINSWOOD GOLF CLUB'},{code:'GFBKK-11',name:'SUMMIT WINDMILL'},{code:'GFBKK-12',name:'GREEN VALLEY'},
+  {code:'GFBKK-13',name:'MUANG KEAW'},{code:'GFBKK-14',name:'THE ROYAL'},{code:'GFBKK-15',name:'THANA CITY'},
+  {code:'GFBKK-16',name:'RIVERDALE'},{code:'GFBKK-17',name:'LAKEWOOD'},{code:'GFBKK-18',name:'PANYA INDRA'},
+  {code:'GFBKK-19',name:'THE ROYAL GEMS(RANGSIT)'},{code:'GFBKK-20',name:'THE ROYAL GEMS(SALAYA)'},{code:'GFBKK-21',name:'THE VINTAGE'},
+  {code:'GFBKK-22',name:'ROYAL BANG PA-IN'},{code:'GFBKK-23',name:'WINDSOR PARK'},{code:'GFBKK-24',name:'THE LEGACY'},
+  {code:'GFBKK-25',name:'ROYAL LAKESIDE'},{code:'GFBKK-26',name:'FLORAVILLE'},{code:'GFBKK-27',name:'BANGKOK'},
+  {code:'GFBKK-28',name:'BANGPOO'},{code:'GFBKK-29',name:'SUWAN'},{code:'GFBKK-30',name:'LAM LUKKA'},
+  {code:'GFBKK-31',name:'LOTUS VALLEY'},{code:'GFBKK-32',name:'PINEHURST'},{code:'GFBKK-33',name:'SUBHAPRUEK'},
+  {code:'GFBKK-34',name:'BEST OCEAN'},{code:'GFBKK-35',name:'PHOENIX GOLD GOLF BANGKOK(SUVANNABHUMI)'},{code:'GFBKK-36',name:'CASCATA'},
+  {code:'GFBKK-37',name:'THANONT'},{code:'GFBKK-38',name:'THE PINE'},{code:'GFBKK-39',name:'TOUR(관광)'},
+  {code:'GFPTY-01',name:'SIAM OLD'},{code:'GFPTY-02',name:'SIAM ROLLING HILLS'},{code:'GFPTY-03',name:'SIAM PLANTATION'},
+  {code:'GFPTY-04',name:'SIAM WATERSIDE'},{code:'GFPTY-05',name:'CHEE CHAN'},{code:'GFPTY-06',name:'LAEM CHABANG'},
+  {code:'GFPTY-07',name:'PHOENIX'},{code:'GFPTY-08',name:'BURAPHA'},{code:'GFPTY-09',name:'PATTANA'},
+  {code:'GFPTY-10',name:'ST. ANDREWS 2000'},{code:'GFPTY-11',name:'RAYONG GREEN VALLEY'},{code:'GFPTY-12',name:'KHAO KHEOW'},
+  {code:'GFPTY-13',name:'PARICHAT'},{code:'GFPTY-14',name:'EASTERN STAR'},{code:'GFPTY-15',name:'PLEASANT VALLEY'},
+  {code:'GFPTY-16',name:'PATTAYA'},{code:'GFPTY-17',name:'SILKY OAK'},{code:'GFPTY-18',name:'MOUNTAIN SHADOW'},
+  {code:'GFPTY-19',name:'CRYSTAL BAY'},{code:'GFPTY-20',name:'GREENWOOD'},{code:'GFPTY-21',name:'PATTAVIA'},
+  {code:'GFPTY-22',name:'PLUTALUANG'},{code:'GFPTY-23',name:'TREASURE HILL'},
+  {code:'GFETC-01',name:'BLACK MOUNTAIN HUA HIN'},{code:'GFETC-02',name:'KIRIMAYA GOLF KHAOYAI'},
+  {code:'GFETC-03',name:'TOSCANA COUNTRY CLUB KHAOYAI'},{code:'GFETC-04',name:'RANCHO CHARNVEE COUNTRY CLUB KHAOYAI'},
+];
+async function ensureGolfCodesSeeded(){
+  const list=(await sbLoad('trv_vendor_CLUB'))||[];
+  let changed=false;
+  GOLF_CODE_SEED.forEach(seed=>{
+    const existing=list.find(v=>v.code===seed.code);
+    if(existing){
+      if(existing.name!==seed.name){ existing.name=seed.name; changed=true; } // 대소문자 등 표기 통일
+      return;
+    }
+    list.push({code:seed.code,name:seed.name,phone:'',active:true});
+    changed=true;
+  });
+  if(changed) await saveVendors('CLUB',list);
 }
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
