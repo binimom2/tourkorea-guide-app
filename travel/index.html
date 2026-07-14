@@ -1504,6 +1504,7 @@ const SUBSECTIONS=[
     {k:'pax',label:'PAX',type:'number'},
     {k:'teeup',label:'TEEUP TIME',type:'text'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
+    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'guides',label:'GUIDES',fields:[
@@ -1511,12 +1512,14 @@ const SUBSECTIONS=[
     {k:'phone',label:'PHONE',type:'text'},
     {k:'lguide',label:'L-GUIDE',type:'text'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
+    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'vehicles',label:'VEHICLES',fields:[
     {k:'company',label:'V.COM',type:'text',vendorKey:'VEHICLES'},
     {k:'info',label:'V.NO',type:'text'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
+    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'shows',label:'SHOW/RESTAURANT/MASSAGE',fields:[
@@ -1525,6 +1528,7 @@ const SUBSECTIONS=[
     {k:'time',label:'TIME',type:'text'},
     {k:'adt',label:'ADT',type:'number'},{k:'chd',label:'CHD',type:'number'},{k:'tc',label:'T/C',type:'number'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
+    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'deposits',label:'DEPOSITS',ledger:true,fields:[
@@ -2006,29 +2010,38 @@ function filterFlightOptions(baseId,airlineCode,dirType){
 }
 function editSubRow(sectionKey,index){ subEditKey=sectionKey; subEditIndex=index; renderSubsections(); }
 function cancelSubRowInline(){ subEditKey=null; subEditIndex=null; renderSubsections(); }
+// +Baht 동기화 대상 서브섹션: ACC 라벨과 거래처명이 담긴 필드키
+const PAYING_SYNC={
+  hotels:{acc:'호텔',nameField:'hotel',dateField:'chkin'},
+  golfs:{acc:'골프',nameField:'club',dateField:'date'},
+  guides:{acc:'가이드전도금',nameField:'name',dateField:''},
+  vehicles:{acc:'차량',nameField:'company',dateField:''},
+  shows:{acc:'공연',nameField:'name',dateField:'date'},
+};
 function saveSubRowInline(sectionKey,index){
   const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
   const row={};
   sec.fields.forEach(f=>{ const el=document.getElementById(`sf-${f.k}`); row[f.k]=el?el.value:''; });
   const arr=workingRes[sectionKey]=workingRes[sectionKey]||[];
-  if(sectionKey==='hotels'){
-    row._id=(index!==-1&&arr[index]&&arr[index]._id)||('h_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-    syncHotelWithdrawal(row);
+  if(PAYING_SYNC[sectionKey]){
+    row._id=(index!==-1&&arr[index]&&arr[index]._id)||(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    syncVendorDeposit(sectionKey,row);
   }
   if(index===-1) arr.push(row); else arr[index]=row;
   subEditKey=null; subEditIndex=null;
   renderSubsections();
 }
-// 호텔 PAYING의 +Baht 금액을 WITHDRAWALS(출금)에 자동 반영/동기화
-function syncHotelWithdrawal(hotelRow){
-  const amt=parseFloat(hotelRow.payingAmt)||0;
-  const wArr=workingRes.withdrawals=workingRes.withdrawals||[];
-  const idx=wArr.findIndex(w=>w.linkedHotelId===hotelRow._id);
+// 호텔/골프/가이드/차량/공연 등의 +Baht 금액을 DEPOSITS에 자동 반영/동기화(출금은 음수로 표기)
+function syncVendorDeposit(sectionKey,row){
+  const cfg=PAYING_SYNC[sectionKey];
+  const amt=parseFloat(row.payingAmt)||0;
+  const dArr=workingRes.deposits=workingRes.deposits||[];
+  const idx=dArr.findIndex(d=>d.linkedRowId===row._id);
   if(amt>0){
-    const wRow={date:hotelRow.chkin||'',who:hotelRow.hotel||'',acc:'호텔',currency:'THB',amount:amt,summary:'Hotel payment',linkedHotelId:hotelRow._id};
-    if(idx>=0) wArr[idx]=wRow; else wArr.push(wRow);
+    const dRow={date:(cfg.dateField&&row[cfg.dateField])||'',who:row[cfg.nameField]||'',acc:cfg.acc,currency:'THB',amount:-Math.abs(amt),summary:'',linkedRowId:row._id};
+    if(idx>=0) dArr[idx]=dRow; else dArr.push(dRow);
   }else if(idx>=0){
-    wArr.splice(idx,1);
+    dArr.splice(idx,1);
   }
 }
 
@@ -2133,9 +2146,9 @@ function closeSubEditor(){
 function delSubRow(sectionKey,index){
   const removed=workingRes[sectionKey][index];
   workingRes[sectionKey].splice(index,1);
-  if(sectionKey==='hotels'&&removed&&removed._id&&workingRes.withdrawals){
-    const wi=workingRes.withdrawals.findIndex(w=>w.linkedHotelId===removed._id);
-    if(wi>=0) workingRes.withdrawals.splice(wi,1);
+  if(PAYING_SYNC[sectionKey]&&removed&&removed._id&&workingRes.deposits){
+    const di=workingRes.deposits.findIndex(d=>d.linkedRowId===removed._id);
+    if(di>=0) workingRes.deposits.splice(di,1);
   }
   renderSubsections();
 }
