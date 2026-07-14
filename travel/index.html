@@ -104,17 +104,17 @@ table.rlist tr{cursor:pointer;}
 .badge-cancel{background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
 .empty-row td{text-align:center;color:#9aa1af;padding:40px;}
 
-/* ── MODAL (RESERVATION) — 전체화면 ── */
-.rov{position:fixed;inset:0;background:#f5f6f9;z-index:800;display:none;flex-direction:column;overflow:auto;}
+/* ── MODAL (RESERVATION) — 계단식 최대 사이즈 ── */
+.rov{position:fixed;inset:0;background:rgba(16,20,34,.5);z-index:800;display:none;align-items:center;justify-content:center;padding:16px;}
 .rov.open{display:flex;}
-.rmodal{background:#f5f6f9;width:100%;min-height:100%;display:flex;flex-direction:column;flex:1;}
-.rmodal-hd{background:#161f38;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:2;flex:0 0 auto;}
+.rmodal{background:#f5f6f9;width:100%;max-width:1680px;height:96vh;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;}
+.rmodal-hd{background:#161f38;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;flex:0 0 auto;}
 .rmodal-hd h2{font-size:16px;font-weight:800;}
 .rmodal-hd .code{font-size:11.5px;color:#8fb4ff;background:#1f2a4d;padding:3px 10px;border-radius:10px;}
 .rmodal-close{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;}
-.rmodal-body{display:grid;grid-template-columns:396px 1fr;gap:0;flex:1;align-items:start;}
-.rmodal-side{background:#fff;padding:20px;border-right:1px solid #e8eaf0;position:sticky;top:57px;align-self:start;max-height:calc(100vh - 57px);overflow-y:auto;}
-.rmodal-main{padding:20px 22px;min-width:0;}
+.rmodal-body{display:grid;grid-template-columns:396px 1fr;gap:0;flex:1;align-items:start;min-height:0;overflow:hidden;}
+.rmodal-side{background:#fff;padding:20px;border-right:1px solid #e8eaf0;align-self:stretch;height:100%;overflow-y:auto;}
+.rmodal-main{padding:20px 22px;min-width:0;height:100%;overflow-y:auto;}
 .f-row{margin-bottom:12px;}
 .f-row label{display:block;font-size:11px;font-weight:700;color:#8892a0;margin-bottom:5px;letter-spacing:.2px;}
 .f-row input,.f-row select,.f-row textarea{width:100%;padding:9px 10px;border:1.3px solid #e2e6ee;border-radius:7px;font-size:12.5px;background:#fafbfd;}
@@ -133,8 +133,9 @@ table.rlist tr{cursor:pointer;}
 .subsec-add{margin-left:auto;background:#3457d5;color:#fff;border:none;padding:5px 11px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;}
 .subsec-add:hover{background:#2a46b3;}
 table.subtbl{width:100%;border-collapse:collapse;font-size:11.5px;}
-table.subtbl th{padding:7px 10px;text-align:left;color:#8892a0;font-size:10.5px;background:#fbfbfd;border-bottom:1px solid #eef0f5;white-space:nowrap;}
-table.subtbl td{padding:7px 10px;border-bottom:1px solid #f3f4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+table.subtbl th{padding:7px 10px;text-align:left;color:#8892a0;font-size:10.5px;background:#fbfbfd;border-bottom:1px solid #eef0f5;border-right:1px solid #eef0f5;white-space:nowrap;}
+table.subtbl td{padding:7px 10px;border-bottom:1px solid #f3f4f8;border-right:1px solid #f3f4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+table.subtbl th:last-child,table.subtbl td:last-child{border-right:none;}
 table.subtbl tr:last-child td{border-bottom:none;}
 table.subtbl tr.subtbl-edit-row td{overflow:visible;background:#f7f9fd;max-width:none;}
 table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px;font-size:11px;font-family:inherit;border:1px solid #dfe3ea;border-radius:5px;box-sizing:border-box;}
@@ -208,8 +209,11 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @media (max-width:900px){
-  .rmodal-body{grid-template-columns:1fr;}
-  .rmodal-side{border-right:none;border-bottom:1px solid #e8eaf0;position:static;max-height:none;}
+  .rov{padding:0;}
+  .rmodal{max-width:100%;height:100vh;border-radius:0;}
+  .rmodal-body{grid-template-columns:1fr;overflow-y:auto;}
+  .rmodal-side{border-right:none;border-bottom:1px solid #e8eaf0;height:auto;overflow-y:visible;}
+  .rmodal-main{height:auto;overflow-y:visible;}
   .cal-cell{min-height:76px;}
   .stats{display:none;}
 }
@@ -1487,7 +1491,8 @@ const SUBSECTIONS=[
     {k:'nights',label:'N/S',type:'number'},
     {k:'sgl',label:'SGL',type:'number'},{k:'twn',label:'TWN',type:'number'},{k:'dbl',label:'DBL',type:'number'},{k:'trp',label:'TRP',type:'number'},{k:'gd',label:'G/D',type:'number'},
     {k:'cfm',label:'CFM',type:'select',options:['Pending','Confirmed','Cancelled']},
-    {k:'paying',label:'PAYING(THB)',type:'text'},
+    {k:'paying',label:'PAYING',type:'text'},
+    {k:'payingAmt',label:'+Baht',type:'number'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'golfs',label:'GOLF',fields:[
@@ -1999,9 +2004,25 @@ function saveSubRowInline(sectionKey,index){
   const row={};
   sec.fields.forEach(f=>{ const el=document.getElementById(`sf-${f.k}`); row[f.k]=el?el.value:''; });
   const arr=workingRes[sectionKey]=workingRes[sectionKey]||[];
+  if(sectionKey==='hotels'){
+    row._id=(index!==-1&&arr[index]&&arr[index]._id)||('h_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    syncHotelWithdrawal(row);
+  }
   if(index===-1) arr.push(row); else arr[index]=row;
   subEditKey=null; subEditIndex=null;
   renderSubsections();
+}
+// 호텔 PAYING의 +Baht 금액을 WITHDRAWALS(출금)에 자동 반영/동기화
+function syncHotelWithdrawal(hotelRow){
+  const amt=parseFloat(hotelRow.payingAmt)||0;
+  const wArr=workingRes.withdrawals=workingRes.withdrawals||[];
+  const idx=wArr.findIndex(w=>w.linkedHotelId===hotelRow._id);
+  if(amt>0){
+    const wRow={date:hotelRow.chkin||'',who:hotelRow.hotel||'',acc:'호텔',currency:'THB',amount:amt,summary:'Hotel payment',linkedHotelId:hotelRow._id};
+    if(idx>=0) wArr[idx]=wRow; else wArr.push(wRow);
+  }else if(idx>=0){
+    wArr.splice(idx,1);
+  }
 }
 
 async function saveReservation(){
@@ -2103,7 +2124,12 @@ function closeSubEditor(){
   document.getElementById('sov').classList.remove('open');
 }
 function delSubRow(sectionKey,index){
+  const removed=workingRes[sectionKey][index];
   workingRes[sectionKey].splice(index,1);
+  if(sectionKey==='hotels'&&removed&&removed._id&&workingRes.withdrawals){
+    const wi=workingRes.withdrawals.findIndex(w=>w.linkedHotelId===removed._id);
+    if(wi>=0) workingRes.withdrawals.splice(wi,1);
+  }
   renderSubsections();
 }
 
