@@ -549,6 +549,7 @@ async function enterApp(){
     await ensureHotelCodesSeeded();
     await ensureGolfCodesSeeded();
     await ensureGuideCodesSeeded();
+    await ensureVehicleCodesSeeded();
   }
   renderVendorDatalists();
   renderPhrasePickers();
@@ -868,6 +869,27 @@ async function ensureGuideCodesSeeded(){
     changed=true;
   });
   if(changed) await saveVendors('GUIDE',list);
+}
+
+// 차량(VEHICLES) 코드 8개 1회성 시딩. 이미 같은 코드가 있으면 이름만 표기 통일(재실행 안전).
+const VEHICLE_CODE_SEED=[
+  {code:'VH-01',name:'Ratcharot Bus'},{code:'VH-02',name:'Lotte Bus'},{code:'VH-03',name:'Dash Bus'},
+  {code:'VH-04',name:'Ran Bee Bee Bus'},{code:'VH-05',name:'Ratcharot Van'},{code:'VH-06',name:'Other Van'},
+  {code:'VH-07',name:'No Vehicle'},{code:'VH-08',name:'Other Bus'},
+];
+async function ensureVehicleCodesSeeded(){
+  const list=(await sbLoad('trv_vendor_VEHICLES'))||[];
+  let changed=false;
+  VEHICLE_CODE_SEED.forEach(seed=>{
+    const existing=list.find(v=>v.code===seed.code);
+    if(existing){
+      if(existing.name!==seed.name){ existing.name=seed.name; changed=true; }
+      return;
+    }
+    list.push({code:seed.code,name:seed.name,phone:'',active:true});
+    changed=true;
+  });
+  if(changed) await saveVendors('VEHICLES',list);
 }
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
