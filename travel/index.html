@@ -959,6 +959,12 @@ function padTime(t){
   if(!m) return t;
   return m[1].padStart(2,'0')+':'+m[2].padStart(2,'0');
 }
+// "편명 dep-arr" 형태 값의 시각을 2자리로 정규화(예전 저장값 매칭용)
+function padFlightKey(v){
+  const m=String(v||'').match(/^(\S+)\s+(\d{1,2}:\d{1,2})-(\d{1,2}:\d{1,2})$/);
+  if(!m) return v;
+  return `${m[1]} ${padTime(m[2])}-${padTime(m[3])}`;
+}
 async function ensureFlightsSeeded(){
   const list=(await sbLoad('trv_vendor_flights'))||[];
   let changed=false;
@@ -1976,7 +1982,7 @@ function fmtVal(v,col){
 function fmtFlightTime(v,dirType){
   const m=String(v).match(/^(\S+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
   if(!m) return v; // 직접입력값 등 형식이 다르면 그대로 표시
-  return `${m[1]} ${padTime(dirType==='arr'?m[3]:m[2])}`;
+  return `${m[1]}(${padTime(dirType==='arr'?m[3]:m[2])})`;
 }
 const FREE_FLIGHT_SENTINEL='__FREE__'; // 항공사 선택없음(편명 직접입력) 표시용 값
 // 서브섹션 인라인 편집용 입력요소 생성 (텍스트/숫자/날짜/select/코드연동 벤더 select)
@@ -1985,8 +1991,9 @@ function renderSubFieldInput(f,val){
   const id=`sf-${f.k}`;
   if(f.k==='arrival'||f.k==='departure'){
     const dirType=f.k==='arrival'?'arr':'dep';
+    const normVal=padFlightKey(val); // 예전 저장값의 한 자리 시각도 비교용으로 정규화
     const allFlights=getVendors('flights').filter(fl=>fl.active!==false&&fl.direction&&(dirType==='arr'?fl.direction.endsWith('-BKK'):fl.direction.startsWith('BKK-')));
-    const curFlight=allFlights.find(fl=>`${fl.flightNo} ${fl.dep}-${fl.arr}`===val);
+    const curFlight=allFlights.find(fl=>`${fl.flightNo} ${fl.dep}-${fl.arr}`===normVal);
     const curAirline=curFlight?curFlight.airline:'';
     const airlineCodes=[...new Set(allFlights.map(fl=>fl.airline))];
     const airlineList=getVendors('AIRLINES');
@@ -2001,7 +2008,7 @@ function renderSubFieldInput(f,val){
           const flightOpts=allFlights.filter(fl=>!curAirline||fl.airline===curAirline).map(fl=>{
             const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
             const t=dirType==='arr'?fl.arr:fl.dep;
-            return `<option value="${escapeAttr(v)}" ${v===val?'selected':''}>${fl.flightNo} ${t}</option>`;
+            return `<option value="${escapeAttr(v)}" ${v===normVal?'selected':''}>${fl.flightNo}(${t})</option>`;
           }).join('');
           return `<select id="${id}"><option value="">선택안함</option>${flightOpts}</select>`;
         })();
@@ -2049,7 +2056,7 @@ function filterFlightOptions(baseId,airlineCode,dirType){
   wrap.innerHTML=`<select id="${baseId}"><option value="">선택안함</option>${flights.map(fl=>{
     const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
     const t=dirType==='arr'?fl.arr:fl.dep;
-    return `<option value="${escapeAttr(v)}">${fl.flightNo} ${t}</option>`;
+    return `<option value="${escapeAttr(v)}">${fl.flightNo}(${t})</option>`;
   }).join('')}</select>`;
 }
 function editSubRow(sectionKey,index){ subEditKey=sectionKey; subEditIndex=index; renderSubsections(); }
