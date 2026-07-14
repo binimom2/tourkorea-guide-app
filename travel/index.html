@@ -706,7 +706,7 @@ function renderMasterTabs(){
   const groups=[
     {label:'코드1', items:CODE_TABS.map(t=>({group:'code',key:t.key,label:t.label}))},
     {label:'코드2', items:[{group:'customer',key:'',label:'고객사'},...getVendorTabs().map(t=>({group:'vendor',key:t.key,label:t.label}))]},
-    {label:'문구', items:PHRASE_TABS.map(t=>({group:'phrase',key:t.key,label:t.label}))},
+    {label:'코드3', items:PHRASE_TABS.map(t=>({group:'phrase',key:t.key,label:t.label}))},
   ];
   document.getElementById('masterTabs').innerHTML=groups.map(g=>`
     <div class="mtab-group">
