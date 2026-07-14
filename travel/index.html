@@ -599,13 +599,17 @@ const DEFAULT_CODES={
   types:[{code:'GRP',label:'그룹'},{code:'GOLF',label:'골프'},{code:'PACK',label:'패키지'},{code:'FIT',label:'개별'},{code:'ETC',label:'기타'}],
   procs:[{code:'NEW',label:'뉴부킹'},{code:'H-AMEND',label:'호텔'},{code:'G-AMEND',label:'골프'},{code:'E-AMEND',label:'기타'},{code:'FINAL',label:'파이널'}],
   statuses:[{code:'NORMAL',label:'진행'},{code:'HOLD',label:'홀딩'},{code:'CANCEL',label:'취소'},{code:'DELETE',label:'삭제'}],
-  providers:[{code:'AIRLINES',label:'항공사'},{code:'HOTEL',label:'호텔'},{code:'CLUB',label:'골프장'},{code:'RESTAURANT',label:'레스토랑'},{code:'TICKET',label:'관광지'},{code:'MASSAGE',label:'맛사지'},{code:'SHOW',label:'공연'},{code:'SHOP',label:'쇼핑센터'},{code:'GUIDE',label:'가이드'},{code:'VEHICLES',label:'차량회사'}],
-  sections:[{code:'BAS',label:'BASIC'},{code:'FLT',label:'FLIGHT'},{code:'GID',label:'GUIDE'},{code:'HTL',label:'HOTEL'},{code:'VHC',label:'VEHICLES'},{code:'GOF',label:'GOLF'},{code:'TKT',label:'SHOW,RESTAURANT,MASSAGE,TICKET'},{code:'SOP',label:'SHOPPING, CENTER'}],
 };
+// 코드1: 예약 기본정보(오피스/구분/유형/진행/상태)
 const CODE_TABS=[
   {key:'offices',label:'오피스'},{key:'divisions',label:'구분'},{key:'types',label:'유형'},
   {key:'procs',label:'진행'},{key:'statuses',label:'상태'},
-  {key:'providers',label:'공급처'},{key:'sections',label:'섹션'},
+];
+// 코드2: 고객사 + 개별 거래처 카테고리 (공급처 메타 코드 없이 고정 목록으로 관리)
+const VENDOR_CATEGORY_TABS=[
+  {key:'AIRLINES',label:'항공사'},{key:'HOTEL',label:'호텔'},{key:'CLUB',label:'골프장'},
+  {key:'GUIDE',label:'가이드'},{key:'RESTAURANT',label:'레스토랑'},{key:'TICKET',label:'관광지'},
+  {key:'MASSAGE',label:'맛사지'},{key:'SHOW',label:'공연'},{key:'VEHICLES',label:'차량회사'},
 ];
 function getCodes(){
   try{
@@ -624,13 +628,11 @@ async function ensureCodesMigrated(){
   codes.types=JSON.parse(JSON.stringify(DEFAULT_CODES.types));
   codes.procs=JSON.parse(JSON.stringify(DEFAULT_CODES.procs));
   codes.statuses=JSON.parse(JSON.stringify(DEFAULT_CODES.statuses));
-  if(!codes.providers) codes.providers=JSON.parse(JSON.stringify(DEFAULT_CODES.providers));
-  if(!codes.sections) codes.sections=JSON.parse(JSON.stringify(DEFAULT_CODES.sections));
   codes._v=CODES_SCHEMA_VERSION;
   await saveCodes(codes);
 
   // 거래처 데이터: 기존 벤더 목록을 새 PROVIDER 코드 키로 이전 (기존 키 데이터는 그대로 둠)
-  const VENDOR_KEY_MIGRATION={hotels:'HOTEL',golfs:'CLUB',guides:'GUIDE',vehicles:'VEHICLES',shows:'SHOW',shops:'SHOP'};
+  const VENDOR_KEY_MIGRATION={hotels:'HOTEL',golfs:'CLUB',guides:'GUIDE',vehicles:'VEHICLES',shows:'SHOW'};
   for(const oldKey in VENDOR_KEY_MIGRATION){
     const newKey=VENDOR_KEY_MIGRATION[oldKey];
     const oldList=await sbLoad('trv_vendor_'+oldKey);
@@ -702,9 +704,8 @@ let codeModalTab='offices';
 let masterGroup='code', masterKey='offices';
 function renderMasterTabs(){
   const groups=[
-    {label:'코드', items:CODE_TABS.map(t=>({group:'code',key:t.key,label:t.label}))},
-    {label:'고객사', items:[{group:'customer',key:'',label:'고객사'}]},
-    {label:'거래처/업체', items:getVendorTabs().map(t=>({group:'vendor',key:t.key,label:t.label}))},
+    {label:'코드1', items:CODE_TABS.map(t=>({group:'code',key:t.key,label:t.label}))},
+    {label:'코드2', items:[{group:'customer',key:'',label:'고객사'},...getVendorTabs().map(t=>({group:'vendor',key:t.key,label:t.label}))]},
     {label:'문구', items:PHRASE_TABS.map(t=>({group:'phrase',key:t.key,label:t.label}))},
   ];
   document.getElementById('masterTabs').innerHTML=groups.map(g=>`
@@ -907,8 +908,7 @@ async function delManager(ci,mi){
 // 코드관리의 PROVIDER 코드(사용중인 것만)를 탭으로 사용. 항공편은 AIRLINES 벤더 목록(항공사)을
 // 참조하는 별도의 "항공편 스케줄" 탭으로 관리 (편명/방향/출발·도착시간).
 function getVendorTabs(){
-  const providers=(getCodes().providers||[]).filter(c=>c.active!==false).map(c=>({key:c.code,label:c.label}));
-  return [...providers,{key:'flights',label:'항공편 스케줄'}];
+  return [...VENDOR_CATEGORY_TABS,{key:'flights',label:'항공편 스케줄'}];
 }
 function isFlightVendorTab(key){ return key==='flights'; }
 const FLIGHT_DIRECTIONS={'ICN-BKK':'도착(ICN→BKK)','BKK-ICN':'출발(BKK→ICN)'};
