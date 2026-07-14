@@ -546,6 +546,7 @@ async function enterApp(){
     await ensureVendorsSeeded();
     await ensurePhrasesSeeded();
     await ensureCustomerCodesSeeded();
+    await ensureHotelCodesSeeded();
   }
   renderVendorDatalists();
   renderPhrasePickers();
@@ -718,6 +719,70 @@ async function ensureCustomerCodesSeeded(){
     changed=true;
   });
   if(changed) await saveCustomers(customers);
+}
+
+// 호텔(HOTEL) 코드 142개 1회성 시딩 — 이름 전체 대문자로 저장. 이미 같은 코드가 있으면 건드리지 않음(재실행 안전).
+const HOTEL_CODE_SEED=[
+  {code:'HTBKK-01',name:'KANTARY HOUSE'},{code:'HTBKK-02',name:'A-ONE BANGKOK'},{code:'HTBKK-03',name:'GALLERIA 10'},
+  {code:'HTBKK-04',name:'GALLERIA 12'},{code:'HTBKK-05',name:'GRAPH(F.CHA-DA)'},{code:'HTBKK-06',name:'GOLDEN TULIP SOVEREIGN'},
+  {code:'HTBKK-07',name:'LANCASTER BANGKOK'},{code:'HTBKK-08',name:'MONTIEN RIVERSIDE'},{code:'HTBKK-09',name:'JASMINE CITY SUKHUMVIT 23'},
+  {code:'HTBKK-10',name:'RADISSON BLU PLAZA BANGKOK'},{code:'HTBKK-11',name:'GRAND FOURWINGS'},{code:'HTBKK-12',name:'SWISSOTEL'},
+  {code:'HTBKK-13',name:'HOLIDAY INN SUKHUMVIT 22'},{code:'HTBKK-14',name:'NOVOTEL SUKHUMVIT 20'},{code:'HTBKK-15',name:'RAMADA MENAM RIVERSIDE'},
+  {code:'HTBKK-16',name:'CENTARA GRAND LADPRAO'},{code:'HTBKK-17',name:'NOVOTEL SUVARNABHUMI'},{code:'HTBKK-18',name:'NOVOTEL SUKHUMVIT 4'},
+  {code:'HTBKK-19',name:'AMARANTH SUVARNABHUMI'},{code:'HTBKK-20',name:'AVANI+ RIVERSIDE BANGKOK HOTEL'},{code:'HTBKK-21',name:'CARLTON HOTEL BANGKOK SUKHUMVIT'},
+  {code:'HTBKK-22',name:'GRANDE CENTRE POINT TERMINAL 21 BANGKOK'},{code:'HTBKK-23',name:'SHANGRI-LA HOTEL BANGKOK'},{code:'HTBKK-24',name:'THE PENINSULA BANGKOK'},
+  {code:'HTBKK-25',name:'SIAM KEMPINSKI BANGKOK'},{code:'HTBKK-26',name:'SINDHORN KEMPINSKI BANGKOK'},{code:'HTBKK-27',name:'SHERATON GRANDE SUKHUMVIT'},
+  {code:'HTBKK-28',name:'MOVENPICK SUKHUMVIT 15'},{code:'HTBKK-29',name:'GRANDE CENTRE POINT SUKHUMVIT 55'},{code:'HTBKK-30',name:'LEBUA AT STATE TOWER'},
+  {code:'HTBKK-31',name:'GRAND MERCURE BANGKOK ATRIUM'},{code:'HTBKK-32',name:'HILTON BANGKOK GRANDE ASOKE'},{code:'HTBKK-33',name:'ROYAL ORCHID SHERATON HOTEL'},
+  {code:'HTBKK-34',name:'DIVALUX RESORT & SPA BANGKOK'},{code:'HTBKK-35',name:'S31 SUKHUMVIT HOTEL'},{code:'HTBKK-36',name:'MANHATTAN BANGKOK'},
+  {code:'HTBKK-37',name:'MANDARIN HOTEL BANGKOK'},{code:'HTBKK-38',name:'AWAY BANGKOK RIVERSIDE KENE'},{code:'HTBKK-39',name:'THE PARK NINE SUVARNABHUMI'},
+  {code:'HTBKK-40',name:'LE MERIDIEN SUVARNABHUMI'},{code:'HTBKK-41',name:'MILLENNIUM HILTON BANGKOK'},{code:'HTBKK-42',name:'EASTIN THANA CITY GOLF RESORT BANGKOK'},
+  {code:'HTBKK-43',name:'MARRIOTT MARQUIS QUEEN\'S PARK'},{code:'HTBKK-44',name:'CENTRE POINT HOTEL SUKHUMVIT 10'},{code:'HTBKK-45',name:'GRAND HOWARD BANGKOK'},
+  {code:'HTBKK-46',name:'HYATT REGENCY BANGKOK SUKHUMVIT'},{code:'HTBKK-47',name:'THE SUKOSOL BANGKOK'},{code:'HTBKK-48',name:'CHATRIUM RIVERSIDE BANGKOK'},
+  {code:'HTBKK-49',name:'ZAYN HOTEL BANGKOK'},{code:'HTBKK-50',name:'THAYA HOTEL BANGKOK'},{code:'HTBKK-51',name:'JC KEVIN SATHORN BANGKOK'},
+  {code:'HTBKK-52',name:'EASTIN THANA CITY GOLF RESORT BANGKOK'},{code:'HTBKK-53',name:'AMARI DON MUANG AIRPORT BANGKOK'},{code:'HTBKK-54',name:'REMBRANDT BANGKOK'},
+  {code:'HTBKK-55',name:'AVANI SUKHUMVIT BANGKOK'},
+  {code:'HTPTY-01',name:'J-PATTYA'},{code:'HTPTY-02',name:'J-INSPIRED PATTYA'},{code:'HTPTY-03',name:'J-RESIDENCE PATTYA'},
+  {code:'HTPTY-04',name:'LAKKHANA POOLSIDE'},{code:'HTPTY-05',name:'HOTEL VISTA'},{code:'HTPTY-06',name:'AIYARA GRAND'},
+  {code:'HTPTY-07',name:'JOMTIEN PALM BEACH'},{code:'HTPTY-08',name:'CENTRE POINT PRIME PATTAYA'},{code:'HTPTY-09',name:'ALTERA HOTEL (AT MIND)'},
+  {code:'HTPTY-10',name:'TSIX5-DLX'},{code:'HTPTY-11',name:'TSIX5 PHENOMENAL'},{code:'HTPTY-12',name:'A-ONE NEW WING'},
+  {code:'HTPTY-13',name:'A-ONE ROYAL CRUISE'},{code:'HTPTY-14',name:'LONG BEACH'},{code:'HTPTY-15',name:'WAY'},
+  {code:'HTPTY-16',name:'GRAND PALAZZO'},{code:'HTPTY-17',name:'RAVINDRA BEACH RESORT'},{code:'HTPTY-18',name:'DUSIT PATTAYA'},
+  {code:'HTPTY-19',name:'BRIGHTON GRAND'},{code:'HTPTY-20',name:'HERITAGE'},{code:'HTPTY-21',name:'THE ZIGN'},
+  {code:'HTPTY-22',name:'PULLMAN PATTAYA'},{code:'HTPTY-23',name:'OZO NORTH'},{code:'HTPTY-24',name:'MYTT BEACH HOTEL PATTAYA'},
+  {code:'HTPTY-25',name:'CENTARA GRAND MIRAGE PATTAYA'},{code:'HTPTY-26',name:'DISCOVERY BEACH HOTEL'},{code:'HTPTY-27',name:'SOMERSET PATTAYA'},
+  {code:'HTPTY-28',name:'SIAM BAYSHORE RESORT'},{code:'HTPTY-29',name:'HOLIDAY INN PATTAYA'},{code:'HTPTY-30',name:'GRANDE CENTRE POINT TERMINAL 21 PATTAYA'},
+  {code:'HTPTY-31',name:'GRANDE CENTRE POINT SPACE PATTAYA'},{code:'HTPTY-32',name:'CAPE DARA'},{code:'HTPTY-33',name:'HILTON PATTAYA'},
+  {code:'HTPTY-34',name:'ROYAL CLIFF BEACH HOTEL'},{code:'HTPTY-35',name:'INTERCONTINENTAL PATTAYA'},{code:'HTPTY-36',name:'AVANI PATTAYA RESORT'},
+  {code:'HTPTY-37',name:'GARDEN CLIFF RESORT'},{code:'HTPTY-38',name:'WONDERLAND POOL VILLA'},{code:'HTPTY-39',name:'DAVINCI POOL VILLA'},
+  {code:'HTPTY-40',name:'AMAZING POOL VILLA'},{code:'HTPTY-41',name:'TOP POOL VILLA'},{code:'HTPTY-42',name:'PALM SPRING POOL VILLA'},
+  {code:'HTPTY-43',name:'SEA SAND SUN RESORT'},{code:'HTPTY-44',name:'CENTRA BY CENTARA MARIS RESORT JOMTIEN'},{code:'HTPTY-45',name:'AMARI OCEAN PATTAYA'},
+  {code:'HTPTY-46',name:'SEA TWO POOL VILLA RESORT'},{code:'HTPTY-47',name:'HARD ROCK HOTEL PATTAYA'},{code:'HTPTY-48',name:'MANDARIN EASTVILLE PATTAYA'},
+  {code:'HTPTY-49',name:'ST. ANDREWS GOLFTEL'},{code:'HTPTY-50',name:'WINDSOR PARK GOLFTEL'},{code:'HTPTY-51',name:'LK EMERALD BEACH'},
+  {code:'HTPTY-52',name:'LK PRESIDENT'},{code:'HTPTY-53',name:'LK CELESTITE'},{code:'HTPTY-54',name:'EMPRESS PATTAYA HOTEL'},
+  {code:'HTPTY-55',name:'MOVENPICK SIAM PATTAYA'},{code:'HTPTY-56',name:'THE VILLE JOMTIEN POOL VILLA'},{code:'HTPTY-57',name:'AYA BOUTIQUE HOTEL PATTAYA'},
+  {code:'HTPTY-58',name:'VERANDA RESORT PATTAYA MGALLERY'},{code:'HTPTY-59',name:'ARTHITAYA GREEN NATURE HOTEL'},{code:'HTPTY-60',name:'M PATTAYA'},
+  {code:'HTPTY-61',name:'HEETON CONCEPT HOTEL PATTAYA'},{code:'HTPTY-62',name:'HEALTH LAND RESORT'},{code:'HTPTY-63',name:'SUNSHINE VISTA HOTEL'},
+  {code:'HTPTY-64',name:'CROSS PATTAYA OCEANPHERE'},{code:'HTPTY-65',name:'THE GEMS MINING POOL VILLAS PATTAYA'},{code:'HTPTY-66',name:'ONE PATIO HOTEL PATTAYA'},
+  {code:'HTPTY-67',name:'AKARA HOTEL PATTAYA'},{code:'HTPTY-68',name:'INFINITE POOL VILLA'},{code:'HTPTY-69',name:'CRYSTAL PALACE LUXURY HOTEL PATTAYA'},
+  {code:'HTPTY-70',name:'WYNDHAM JOMTIEN PATTAYA'},
+  {code:'HTKAN-01',name:'FELIX RIVER KWAI'},{code:'HTKAN-02',name:'DHEVA MANTRA'},
+  {code:'HTHUA-01',name:'HILTON HUAHIN'},{code:'HTHUA-02',name:'ANANTARA HUA HIN'},{code:'HTHUA-03',name:'GRAND PACIFIC SOVEREIGN HUA HIN'},
+  {code:'HTHUA-04',name:'HYATT REGENCY HUA HIN'},{code:'HTHUA-05',name:'BLACK MOUNTAIN HUA HIN'},{code:'HTHUA-06',name:'SHERATON HUA HIN RESORT & SPA'},
+  {code:'HTHUA-07',name:'AMARI HUA HIN'},
+  {code:'HTETC-00',name:'NONE'},{code:'HTETC-01',name:'ARAN THE VELO\'S HOTEL'},{code:'HTETC-02',name:'SIEM REAP HOTEL'},
+  {code:'HTETC-03',name:'DUSITD2 KHAO YAI'},{code:'HTETC-04',name:'EMMALINE HOTEL NAN'},{code:'HTETC-05',name:'KANTARY HOTEL AND SERVICED APARTMENTS, AYUTTHAYA'},
+  {code:'HTETC-06',name:'CLASSIC KAMEO HOTEL & AYUTTHAYA'},{code:'HTETC-07',name:'KRUNGSRI RIVER HOTEL AYUTTAYA'},
+];
+async function ensureHotelCodesSeeded(){
+  const list=(await sbLoad('trv_vendor_HOTEL'))||[];
+  let changed=false;
+  HOTEL_CODE_SEED.forEach(seed=>{
+    if(list.some(v=>v.code===seed.code)) return;
+    list.push({code:seed.code,name:seed.name,phone:'',active:true});
+    changed=true;
+  });
+  if(changed) await saveVendors('HOTEL',list);
 }
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
