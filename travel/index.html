@@ -146,6 +146,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .row-actions{display:flex;gap:8px;}
 .row-actions a{font-size:11px;font-weight:700;cursor:pointer;}
 .act-baht{color:#9aa1af;}
+.act-move{color:#8892a0;font-weight:900;}
 .act-edit{color:#3457d5;}
 .act-del{color:#e0483f;}
 .ledger-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -286,7 +287,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         <div class="cal-nav" onclick="calMove(1)">다음달 ▶</div>
       </div>
       <div class="cal-grid">
-        <div class="cal-dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+        <div class="cal-dow"><div>일(SUN)</div><div>월(MON)</div><div>화(TUE)</div><div>수(WED)</div><div>목(THU)</div><div>금(FRI)</div><div>토(SAT)</div></div>
         <div class="cal-body" id="calBody"></div>
       </div>
     </div>
@@ -334,7 +335,11 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         </div>
         <div class="f-row2">
           <div class="f-row"><label>CHECK-IN</label><input type="date" id="r-datein" onchange="onDateChange()"/></div>
-          <div class="f-row"><label>CHECK-OUT</label><input type="date" id="r-dateout"/></div>
+          <div class="f-row"><label>TERM</label><div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" id="r-term" min="0" onchange="onTermChange()" style="width:70px;flex:0 0 auto;"/>
+            <span style="font-size:11.5px;color:#8892a0;white-space:nowrap;">Night</span>
+            <input type="hidden" id="r-dateout"/>
+          </div></div>
         </div>
         <div class="f-row2">
           <div class="f-row"><label>CODE</label><input type="text" id="r-code" readonly style="background:#f4f6fa;color:#6b7484;"/></div>
@@ -1532,18 +1537,18 @@ const SUBSECTIONS=[
     {k:'club',label:'CLUB',type:'text',vendorKey:'CLUB',fw:200},
     {k:'hole',label:'HOLE',type:'number',fw:40},
     {k:'pax',label:'PAX',type:'number',fw:40},
-    {k:'teeup',label:'TEEUP TIME',type:'time'},
+    {k:'teeup',label:'TEEUP TIME',type:'text',fw:70},
     {k:'cfm',label:'CFM',type:'checkbox'},
-    {k:'remark',label:'REMARK',type:'text'},
+    {k:'remark',label:'REMARK',type:'text',fw:220},
   ]},
-  {key:'guides',label:'GUIDES',fields:[
+  {key:'guides',label:'GUIDES',reorderable:true,fields:[
     {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:200},
     {k:'phone',label:'PHONE',type:'text'},
     {k:'lguide',label:'L-GUIDE',type:'text',fw:200},
     {k:'cfm',label:'CFM',type:'checkbox'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
-  {key:'vehicles',label:'VEHICLES',fields:[
+  {key:'vehicles',label:'VEHICLES',reorderable:true,fields:[
     {k:'company',label:'V.COM',type:'text',vendorKey:'VEHICLES'},
     {k:'info',label:'V.NO',type:'text'},
     {k:'cfm',label:'CFM',type:'checkbox'},
@@ -1893,6 +1898,7 @@ function openReservation(id,presetDate){
 
   document.getElementById('r-datein').value=workingRes.datein;
   document.getElementById('r-dateout').value=workingRes.dateout;
+  document.getElementById('r-term').value=calcTerm(workingRes.datein,workingRes.dateout);
   document.getElementById('r-name').value=workingRes.name;
   document.getElementById('r-agent').value=workingRes.agent;
   document.getElementById('r-tc').value=workingRes.tc;
@@ -1917,6 +1923,26 @@ function onDateChange(){
     document.getElementById('rmCode').textContent=preview;
     document.getElementById('r-code').value=preview;
   }
+  onTermChange(); // 체크인 날짜가 바뀌어도 TERM(박수)은 유지한 채 체크아웃일만 재계산
+}
+// CHECK-IN + TERM(박수)로 체크아웃일 자동 계산
+function calcDateout(datein,term){
+  if(!datein||term===''||term===null||term===undefined||isNaN(term)) return '';
+  const d=new Date(datein+'T00:00:00');
+  d.setDate(d.getDate()+parseInt(term,10));
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+// 기존 저장된 체크인/체크아웃일로부터 TERM(박수) 역산(레거시 데이터 호환)
+function calcTerm(datein,dateout){
+  if(!datein||!dateout) return '';
+  const diff=Math.round((new Date(dateout+'T00:00:00')-new Date(datein+'T00:00:00'))/86400000);
+  return diff>=0?String(diff):'';
+}
+function onTermChange(){
+  const term=document.getElementById('r-term').value;
+  const datein=document.getElementById('r-datein').value;
+  document.getElementById('r-dateout').value=calcDateout(datein,term);
 }
 
 function renderSubsections(){
@@ -1959,7 +1985,7 @@ function subsecHtml(sec){
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
     ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
-      <td><div class="row-actions">${PAYING_SYNC[sec.key]?`<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})">BAHT</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a></div></td>
+      <td><div class="row-actions">${sec.reorderable?`<a class="act-move" onclick="moveSubRow('${sec.key}',${i},-1)"${i===0?' style="visibility:hidden;"':''}>▲</a><a class="act-move" onclick="moveSubRow('${sec.key}',${i},1)"${i===rows.length-1?' style="visibility:hidden;"':''}>▼</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a>${PAYING_SYNC[sec.key]?`<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})">฿</a>`:''}</div></td>
     </tr>`).join('')}
     ${(!rows.length&&!isEditingHere)?`<tr class="subtbl-empty-row"><td colspan="${cols.length+1}">-</td></tr>`:''}
     </tbody>
@@ -2251,6 +2277,14 @@ function delSubRow(sectionKey,index){
     const di=workingRes.deposits.findIndex(d=>d.linkedRowId===removed._id);
     if(di>=0) workingRes.deposits.splice(di,1);
   }
+  renderSubsections();
+}
+// GUIDES/VEHICLES 등 순서가 의미 있는 섹션의 행 순서 위/아래 이동
+function moveSubRow(sectionKey,index,dir){
+  const arr=workingRes[sectionKey];
+  const newIndex=index+dir;
+  if(!arr||newIndex<0||newIndex>=arr.length) return;
+  [arr[index],arr[newIndex]]=[arr[newIndex],arr[index]];
   renderSubsections();
 }
 
