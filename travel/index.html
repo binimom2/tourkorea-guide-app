@@ -1506,7 +1506,7 @@ const SUBSECTIONS=[
     {k:'chd',label:'CHD',type:'number',narrow:true},
     {k:'inf',label:'INF',type:'number',narrow:true},
     {k:'tc',label:'TC',type:'number',narrow:true},
-    {k:'remark',label:'REMARK',type:'text'},
+    {k:'remark',label:'REMARK',type:'text',wide:true},
   ],summaryFn:(rows)=>{
     if(!rows.length)return'';
     const s=(k)=>rows.reduce((a,r)=>a+(parseInt(r[k])||0),0);
@@ -1950,7 +1950,7 @@ function subsecHtml(sec){
       <h3>${sec.label}</h3><span class="cnt">(${rows.length})</span>
       <button class="subsec-add" onclick="editSubRow('${sec.key}',-1)">＋</button>
     </div>
-    <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
+    <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th${c.narrow?' style="width:48px;"':c.wide?' style="width:220px;"':''}>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
     ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
@@ -1969,8 +1969,16 @@ function subsecHtml(sec){
 function fmtVal(v,col){
   if(v===undefined||v===null||v==='') return '-';
   if(col.k==='amount') return Number(v).toLocaleString();
+  if(col.k==='arrival'||col.k==='departure') return fmtFlightTime(v,col.k==='arrival'?'arr':'dep');
   return v;
 }
+// "편명 dep-arr" 형태의 저장값에서 도착/출발 중 해당 방향의 시간만 표시
+function fmtFlightTime(v,dirType){
+  const m=String(v).match(/^(\S+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
+  if(!m) return v; // 직접입력값 등 형식이 다르면 그대로 표시
+  return `${m[1]} ${padTime(dirType==='arr'?m[3]:m[2])}`;
+}
+const FREE_FLIGHT_SENTINEL='__FREE__'; // 항공사 선택없음(편명 직접입력) 표시용 값
 // 서브섹션 인라인 편집용 입력요소 생성 (텍스트/숫자/날짜/select/코드연동 벤더 select)
 function renderSubFieldInput(f,val){
   val=val??'';
@@ -1986,18 +1994,24 @@ function renderSubFieldInput(f,val){
       const a=airlineList.find(x=>x.code===code);
       return `<option value="${code}" ${code===curAirline?'selected':''}>${code}${a?'['+escapeHtml(a.name)+']':''}</option>`;
     }).join('');
-    const flightOpts=allFlights.filter(fl=>!curAirline||fl.airline===curAirline).map(fl=>{
-      const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
-      const t=dirType==='arr'?fl.arr:fl.dep;
-      return `<option value="${escapeAttr(v)}" ${v===val?'selected':''}>${fl.flightNo} ${t}</option>`;
-    }).join('');
-    const hasVal=val&&allFlights.some(fl=>`${fl.flightNo} ${fl.dep}-${fl.arr}`===val);
-    const curOpt=(val&&!hasVal)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
+    const isFreeMode=val&&!curFlight; // 등록된 편명 목록에 없는 값(직접입력)
+    const flightFieldHtml=isFreeMode
+      ? `<input type="text" id="${id}" value="${escapeAttr(val)}" placeholder="편명/시간 직접입력"/>`
+      : (()=>{
+          const flightOpts=allFlights.filter(fl=>!curAirline||fl.airline===curAirline).map(fl=>{
+            const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
+            const t=dirType==='arr'?fl.arr:fl.dep;
+            return `<option value="${escapeAttr(v)}" ${v===val?'selected':''}>${fl.flightNo} ${t}</option>`;
+          }).join('');
+          return `<select id="${id}"><option value="">선택안함</option>${flightOpts}</select>`;
+        })();
     return `<div style="display:flex;flex-direction:column;gap:3px;min-width:120px;">
       <select id="${id}-airline" onchange="filterFlightOptions('${id}',this.value,'${dirType}')" style="font-size:10px;padding:3px 4px;">
-        <option value="">전체 항공사</option>${airlineOpts}
+        <option value="">전체 항공사</option>
+        <option value="${FREE_FLIGHT_SENTINEL}" ${isFreeMode?'selected':''}>선택없음(직접입력)</option>
+        ${airlineOpts}
       </select>
-      <select id="${id}"><option value="">선택안함</option>${curOpt}${flightOpts}</select>
+      <div id="${id}-wrap">${flightFieldHtml}</div>
     </div>`;
   }
   if(f.vendorKey){
@@ -2025,14 +2039,18 @@ function renderSubFieldInput(f,val){
 }
 // 항공사 선택 시 해당 항공사 편명만 남기고 도착/출발 select를 다시 채움
 function filterFlightOptions(baseId,airlineCode,dirType){
-  const sel=document.getElementById(baseId);
-  if(!sel) return;
+  const wrap=document.getElementById(baseId+'-wrap');
+  if(!wrap) return;
+  if(airlineCode===FREE_FLIGHT_SENTINEL){
+    wrap.innerHTML=`<input type="text" id="${baseId}" placeholder="편명/시간 직접입력"/>`;
+    return;
+  }
   const flights=getVendors('flights').filter(fl=>fl.active!==false&&fl.direction&&(dirType==='arr'?fl.direction.endsWith('-BKK'):fl.direction.startsWith('BKK-'))&&(!airlineCode||fl.airline===airlineCode));
-  sel.innerHTML='<option value="">선택안함</option>'+flights.map(fl=>{
+  wrap.innerHTML=`<select id="${baseId}"><option value="">선택안함</option>${flights.map(fl=>{
     const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
     const t=dirType==='arr'?fl.arr:fl.dep;
     return `<option value="${escapeAttr(v)}">${fl.flightNo} ${t}</option>`;
-  }).join('');
+  }).join('')}</select>`;
 }
 function editSubRow(sectionKey,index){ subEditKey=sectionKey; subEditIndex=index; renderSubsections(); }
 function cancelSubRowInline(){ subEditKey=null; subEditIndex=null; renderSubsections(); }
@@ -2074,8 +2092,25 @@ function saveSubRowInline(sectionKey,index){
   }
   if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
+  if(sectionKey==='flights') updateNamePrefixFromFlights();
   subEditKey=null; subEditIndex=null;
   renderSubsections();
+}
+// 도착(ARRIVAL) 항공편이 18:00 이전 도착이면 예약명 앞에 "낮)" 접두어를 자동으로 붙임/제거
+function updateNamePrefixFromFlights(){
+  const rows=workingRes.flights||[];
+  const hasEarlyArrival=rows.some(r=>{
+    const m=String(r.arrival||'').match(/^\S+\s+\d{1,2}:\d{2}-(\d{1,2}):\d{2}$/);
+    if(!m) return false;
+    return parseInt(m[1],10)<18;
+  });
+  const nameEl=document.getElementById('r-name');
+  let name=(nameEl?nameEl.value:workingRes.name)||'';
+  const hasPrefix=name.startsWith('낮)');
+  if(hasEarlyArrival&&!hasPrefix) name='낮)'+name;
+  else if(!hasEarlyArrival&&hasPrefix) name=name.slice(2);
+  workingRes.name=name;
+  if(nameEl) nameEl.value=name;
 }
 // 행 끝 "BAHT" 클릭 시 금액을 입력받아 워킹레스에 저장하고 DEPOSITS에 동기화
 function promptVendorBaht(sectionKey,index){
