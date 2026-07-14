@@ -595,13 +595,13 @@ async function delAccount(i){
 }
 
 /* ══════════════════════════ CODE MASTER DATA ══════════════════════════ */
-const CODES_SCHEMA_VERSION=2;
+const CODES_SCHEMA_VERSION=3;
 const DEFAULT_CODES={
-  offices:[{code:'TKB',label:'방콕'}],
-  divisions:[{code:'MD',label:'모두투어'},{code:'TK',label:'투어코리아'}],
-  types:[{code:'GRP',label:'그룹'},{code:'GOLF',label:'골프'},{code:'PACK',label:'패키지'},{code:'FIT',label:'개별'},{code:'ETC',label:'기타'}],
-  procs:[{code:'NEW',label:'뉴부킹'},{code:'H-AMEND',label:'호텔'},{code:'G-AMEND',label:'골프'},{code:'E-AMEND',label:'기타'},{code:'FINAL',label:'파이널'}],
-  statuses:[{code:'NORMAL',label:'진행'},{code:'HOLD',label:'홀딩'},{code:'CANCEL',label:'취소'},{code:'DELETE',label:'삭제'}],
+  offices:[{code:'TKB',label:'Bangkok'}],
+  divisions:[{code:'MD',label:'ModeTour'},{code:'TK',label:'TourKorea'}],
+  types:[{code:'GRP',label:'Group'},{code:'GOLF',label:'Golf'},{code:'PACK',label:'Package'},{code:'FIT',label:'FIT'},{code:'ETC',label:'Etc'}],
+  procs:[{code:'NEW',label:'New Booking'},{code:'H-AMEND',label:'Hotel Amend'},{code:'G-AMEND',label:'Golf Amend'},{code:'E-AMEND',label:'Etc Amend'},{code:'FINAL',label:'Final'}],
+  statuses:[{code:'NORMAL',label:'Normal'},{code:'HOLD',label:'Hold'},{code:'CANCEL',label:'Cancel'},{code:'DELETE',label:'Delete'}],
 };
 // 코드1: 예약 기본정보(오피스/구분/유형/진행/상태)
 const CODE_TABS=[
@@ -622,11 +622,12 @@ function getCodes(){
   return JSON.parse(JSON.stringify(DEFAULT_CODES));
 }
 async function saveCodes(c){ await sbSave('trv_codes',c); }
-// 1회성 코드셋 마이그레이션: DIVISION/TYPE/PROC/STATUS 신규 스펙 적용 + PROVIDER/SECTION 추가.
-// trv_codes._v 로 버전을 관리해서 이미 적용됐으면 다시 실행하지 않음. offices는 손대지 않음.
+// 1회성 코드셋 마이그레이션: DIVISION/TYPE/PROC/STATUS/OFFICE 신규 스펙 적용 + PROVIDER/SECTION 추가.
+// trv_codes._v 로 버전을 관리해서 이미 적용됐으면 다시 실행하지 않음.
 async function ensureCodesMigrated(){
   const codes=(await sbLoad('trv_codes'))||{};
   if((codes._v||1)>=CODES_SCHEMA_VERSION) return;
+  codes.offices=JSON.parse(JSON.stringify(DEFAULT_CODES.offices));
   codes.divisions=JSON.parse(JSON.stringify(DEFAULT_CODES.divisions));
   codes.types=JSON.parse(JSON.stringify(DEFAULT_CODES.types));
   codes.procs=JSON.parse(JSON.stringify(DEFAULT_CODES.procs));
