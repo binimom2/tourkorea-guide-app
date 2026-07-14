@@ -545,6 +545,7 @@ async function enterApp(){
     await ensureCodesMigrated();
     await ensureVendorsSeeded();
     await ensurePhrasesSeeded();
+    await ensureCustomerCodesSeeded();
   }
   renderVendorDatalists();
   renderPhrasePickers();
@@ -683,6 +684,40 @@ async function ensurePhrasesSeeded(){
     if(existing&&existing.length) continue;
     await sbSave('trv_phrases_'+key,PHRASE_SEED[key]);
   }
+}
+
+// 고객사(에이전트) 코드 51개 1회성 시딩. 같은 이름의 기존 고객사(코드 없음)가 있으면
+// 코드만 채워넣고, 없으면 새로 추가. 이미 코드가 채워진 항목은 다시 건드리지 않음(재실행 안전).
+const CUSTOMER_CODE_SEED=[
+  {code:'LD-01',name:'모두투어'},{code:'LD-02',name:'라온투어'},{code:'LD-03',name:'예스투어'},
+  {code:'LD-04',name:'아이투어'},{code:'LD-05',name:'아이디투어'},{code:'LD-06',name:'연합패키지'},
+  {code:'LD-07',name:'와이투어앤골프'},{code:'LD-08',name:'월드트래블러'},{code:'LD-09',name:'인도차이나클럽'},
+  {code:'LD-10',name:'투어네트워크'},{code:'LD-11',name:'투어원'},{code:'LD-12',name:'프라임투어'},
+  {code:'LD-13',name:'항성투어'},{code:'LD-14',name:'행복한여행'},{code:'LD-15',name:'골프앤스카이'},
+  {code:'LD-16',name:'메가투어'},{code:'LD-17',name:'더투어'},{code:'LD-18',name:'랜드파트너'},
+  {code:'LD-19',name:'여행출발'},{code:'LD-20',name:'비지투어'},{code:'LD-21',name:'베스트아시아'},
+  {code:'LD-22',name:'투어캠프(춘추)'},{code:'LD-23',name:'신흥투어'},{code:'LD-24',name:'명품여행'},
+  {code:'LD-25',name:'자이언트투어'},{code:'LD-26',name:'임팩트투어'},{code:'LD-27',name:'랜드킹'},
+  {code:'LD-28',name:'티트래블'},{code:'LD-29',name:'골프투어메카'},{code:'LD-30',name:'트렌스아시아'},
+  {code:'LD-31',name:'BIE항공'},{code:'LD-32',name:'해피투어'},{code:'LD-33',name:'투어온'},
+  {code:'LD-34',name:'홍성트래블'},{code:'LD-35',name:'한트래블(전주)'},{code:'LD-36',name:'인터파크'},
+  {code:'LD-37',name:'투어라운지'},{code:'LD-38',name:'광주랜드포유'},{code:'LD-39',name:'기타'},
+  {code:'LD-40',name:'원에어'},{code:'LD-41',name:'투어코코넛'},{code:'LD-42',name:'NF투어'},
+  {code:'LD-43',name:'아이앤지투어'},{code:'LD-44',name:'단단투어'},{code:'LD-45',name:'DYG'},
+  {code:'LD-46',name:'애니원'},{code:'LD-47',name:'기타'},{code:'LD-48',name:'우리투어'},
+  {code:'LD-49',name:'위브투어'},{code:'LD-50',name:'남해관광'},{code:'LD-51',name:'소양여행사'},
+];
+async function ensureCustomerCodesSeeded(){
+  const customers=(await sbLoad('trv_customers'))||[];
+  let changed=false;
+  CUSTOMER_CODE_SEED.forEach(seed=>{
+    if(customers.some(c=>c.code===seed.code)) return; // 이미 시딩됨
+    const nameless=customers.find(c=>c.name===seed.name&&!c.code);
+    if(nameless){ nameless.code=seed.code; changed=true; return; }
+    customers.push({id:'cu_seed_'+seed.code,code:seed.code,name:seed.name,managers:[]});
+    changed=true;
+  });
+  if(changed) await saveCustomers(customers);
 }
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
