@@ -1988,7 +1988,14 @@ function renderCalendar(){
 }
 function summaryLine(r){
   const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
-  return `[${r.type||'-'}] ${r.name||'(제목없음)'} · ${pax?pax+'명 · ':''}${r.manager||''}`;
+  // 가이드명: "한글이름 직급 (ENGLISH)" 형식에서 괄호 앞 한글 부분만 추출
+  const guideNames=(r.guides||[]).map(g=>(g.name||'').split('(')[0].trim()).filter(Boolean).join(', ');
+  const parts=[];
+  if(r.customer) parts.push(r.customer);
+  parts.push(`[${r.type||'-'}] ${r.name||'(제목없음)'}`);
+  if(pax) parts.push(pax+'명');
+  if(guideNames) parts.push(guideNames);
+  return parts.join(' · ');
 }
 function statusBadge(r){
   const cls=r.status==='CANCEL'?'badge-cancel':`badge-proc-${r.proc}`;
