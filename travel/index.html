@@ -585,6 +585,7 @@ async function enterApp(){
     await ensureGolfCodesSeeded();
     await ensureGuideCodesSeeded();
     await ensureVehicleCodesSeeded();
+    await ensureServiceCodesSeeded();
     await ensureFlightsSeeded();
     await ensureCfmLabelsMigrated();
   }
@@ -952,6 +953,42 @@ async function ensureVehicleCodesSeeded(){
     changed=true;
   });
   if(changed) await saveVendors('VEHICLES',list);
+}
+
+// SHOW/RESTAURANT/MASSAGE/TICKET(공연/레스토랑/맛사지/관광지) 코드 1회성 시딩. 이미 같은 코드가 있으면 이름만 표기 통일(재실행 안전).
+const RESTAURANT_CODE_SEED=[
+  {code:'RT-01',name:'Chaophraya Princess'},{code:'RT-02',name:'Wonderful Pearl'},{code:'RT-03',name:'Royal Princess Cruise'},
+  {code:'RT-04',name:'Menam Ramada Dinner'},{code:'RT-05',name:'White Orchid River Cruise'},{code:'RT-06',name:'Koh Lanta Restaurant'},
+  {code:'RT-07',name:'MK-SUKI BKK'},{code:'RT-08',name:'Other Restaurant'},{code:'RT-09',name:'Sea-Food Buffet'},
+  {code:'RT-10',name:'Surf & Turf Restaurant'},{code:'RT-11',name:'The Oxygen Pattaya'},{code:'RT-12',name:'The Sky Gallery Pattaya'},
+  {code:'RT-13',name:'MK-SUKI PTY'},
+];
+const MASSAGE_CODE_SEED=[
+  {code:'MS-01',name:'Health Land'},{code:'MS-02',name:'Rama3 Massage'},{code:'MS-03',name:"Let's Relax"},
+  {code:'MS-04',name:'Amazing Spa Massage'},{code:'MS-05',name:'Achilles Spa'},{code:'MS-06',name:'Other Massage'},
+];
+const SHOW_CODE_SEED=[
+  {code:'SW-01',name:'Calypso Show'},{code:'SW-02',name:'Alcazar Show'},
+];
+const TICKET_CODE_SEED=[
+  {code:'TK-01',name:'Mahanakhon Sky Work'},{code:'TK-02',name:'Ancient City'},{code:'TK-03',name:'Erawan Museum'},
+  {code:'TK-04',name:'Ancient City & Erawan'},{code:'TK-05',name:'Yodsiam Cruise'},{code:'TK-06',name:'Nong Nooch'},
+  {code:'TK-07',name:'Floating Market'},{code:'TK-08',name:'The Sanctuary Of Truth'},{code:'TK-09',name:'Yacht'},
+  {code:'TK-10',name:'Other TKT'},
+];
+async function ensureServiceCodesSeeded(){
+  const MAP={RESTAURANT:RESTAURANT_CODE_SEED,MASSAGE:MASSAGE_CODE_SEED,SHOW:SHOW_CODE_SEED,TICKET:TICKET_CODE_SEED};
+  for(const key in MAP){
+    const list=(await sbLoad('trv_vendor_'+key))||[];
+    let changed=false;
+    MAP[key].forEach(seed=>{
+      const existing=list.find(v=>v.code===seed.code);
+      if(existing){ if(existing.name!==seed.name){ existing.name=seed.name; changed=true; } return; }
+      list.push({code:seed.code,name:seed.name,phone:'',active:true});
+      changed=true;
+    });
+    if(changed) await saveVendors(key,list);
+  }
 }
 
 // 항공편 스케줄 1회성 시딩. 요일/시즌 제한이 걸린 편, 시간 미기재 편, 방콕 미경유 편은 제외.
@@ -1596,7 +1633,7 @@ const SUBSECTIONS=[
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'shows',label:'SHOW/RESTAURANT/MASSAGE',fields:[
-    {k:'name',label:'TICKET',type:'text',vendorKey:'SHOW'},
+    {k:'name',label:'TICKET',type:'text',vendorKeys:['RESTAURANT','MASSAGE','SHOW','TICKET']},
     {k:'date',label:'DATE',type:'date',fw:108},
     {k:'time',label:'TIME',type:'text'},
     {k:'adt',label:'ADT',type:'number',fw:44},{k:'chd',label:'CHD',type:'number',fw:44},{k:'tc',label:'T/C',type:'number',fw:44},
@@ -2100,14 +2137,24 @@ function renderSubFieldInput(f,val){
       <div id="${id}-wrap">${flightFieldHtml}</div>
     </div>`;
   }
-  if(f.vendorKey){
-    const list=getVendors(f.vendorKey).filter(v=>v.active!==false);
-    const opts=list.map(v=>`<option value="${escapeAttr(v.name)}" ${v.name===val?'selected':''}>${escapeHtml(v.name)}</option>`).join('');
-    const hasVal=val&&list.some(v=>v.name===val);
+  if(f.vendorKey||f.vendorKeys){
+    const keys=f.vendorKeys||[f.vendorKey];
+    let optsHtml='';const allNames=[];
+    keys.forEach(key=>{
+      const list=getVendors(key).filter(v=>v.active!==false);
+      if(!list.length) return;
+      const inner=list.map(v=>`<option value="${escapeAttr(v.name)}" ${v.name===val?'selected':''}>${escapeHtml(v.name)}</option>`).join('');
+      list.forEach(v=>allNames.push(v.name));
+      if(keys.length>1){
+        const lbl=(VENDOR_CATEGORY_TABS.find(t=>t.key===key)||{}).label||key;
+        optsHtml+=`<optgroup label="${escapeHtml(lbl)}">${inner}</optgroup>`;
+      } else { optsHtml+=inner; }
+    });
+    const hasVal=val&&allNames.some(n=>n===val);
     const curOpt=(val&&!hasVal)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
     const onpick=f.vendorPhoneField?` onchange="onVendorPick('${f.vendorKey}',this.value,'sf-${f.vendorPhoneField}')"`:'';
     const fwStyle=f.fw?` style="width:${f.fw}px;min-width:${f.fw}px;"`:'';
-    return `<select id="${id}"${onpick}${fwStyle}><option value="">선택안함</option>${curOpt}${opts}</select>`;
+    return `<select id="${id}"${onpick}${fwStyle}><option value="">선택안함</option>${curOpt}${optsHtml}</select>`;
   }
   if(f.type==='checkbox'){
     return `<input type="checkbox" id="${id}" ${val==='OK'?'checked':''} style="width:16px;height:16px;"/>`;
