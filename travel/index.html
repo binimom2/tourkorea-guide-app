@@ -675,8 +675,8 @@ async function enterApp(){
   document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
   // 관리버튼(계정/코드)은 admin·manager만. 오퍼레이터는 숨김. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
   const canManage=(currentUser.role==='admin'||currentUser.role==='manager');
-  document.getElementById('btnAccounts').style.display=canManage?'':'none';
-  document.getElementById('btnCodes').style.display=canManage?'':'none';
+  document.getElementById('btnAccounts').style.display=canManage?'':'none'; // 계정관리: admin·매니저만
+  document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
   if(currentUser.role==='admin'){
     await ensureCodesMigrated();
