@@ -2174,13 +2174,12 @@ function renderSubsections(){
     ${normal.map(sec=>subsecHtml(sec)).join('')}
     <div class="sec-divider">DEPOSITS/WITHDRAWALS</div>
     <div class="ledger-grid">${ledger.map(sec=>subsecHtml(sec)).join('')}</div>
-    <div style="display:flex;align-items:center;gap:16px;margin-top:6px;">
-      <div style="font-size:10.5px;color:#9aa1af;">createdAt: ${formatDT(workingRes.createdAt)}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}</div>
-      <div style="flex:1;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px;">
       <button class="btn btn-ghost" onclick="openDirections()">🖨 프린트</button>
     </div>
     <div class="sec-divider" style="margin-top:14px;">MEMO2</div>
     <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" placeholder="오피 간 정보교환용 메모 — 수배지시서 인쇄에는 노출되지 않습니다" style="width:100%;min-height:70px;font-size:12px;font-family:inherit;padding:8px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
+    <div style="font-size:10.5px;color:#9aa1af;margin-top:10px;">createdAt: ${formatDT(workingRes.createdAt)}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}</div>
   `;
 }
 function goToAssignments(){
