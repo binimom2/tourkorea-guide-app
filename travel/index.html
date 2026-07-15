@@ -427,7 +427,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
           <div class="phrase-picker" id="checks-picker"></div>
           <textarea id="r-checks"></textarea>
         </div>
-        <div class="f-row"><label>MEMO1</label><textarea id="r-memo" placeholder="링크 1개 첨부용"></textarea></div>
+        <div class="f-row"><label>MEMO1</label><textarea id="r-memo"></textarea></div>
       </div>
 
       <div class="rmodal-main" id="subsecHost"></div>
@@ -2178,7 +2178,7 @@ function renderSubsections(){
       <button class="btn btn-ghost" onclick="openDirections()">🖨 프린트</button>
     </div>
     <div class="sec-divider" style="margin-top:14px;">MEMO2</div>
-    <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" placeholder="오피 간 정보교환용 메모 — 수배지시서 인쇄에는 노출되지 않습니다" style="width:100%;min-height:70px;font-size:12px;font-family:inherit;padding:8px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
+    <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" style="width:100%;min-height:70px;font-size:12px;font-family:inherit;padding:8px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
     <div style="font-size:10.5px;color:#9aa1af;margin-top:10px;">createdAt: ${formatDT(workingRes.createdAt)}${workingRes.createdBy?' · '+escapeHtml(workingRes.createdBy):''}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}${workingRes.updatedBy?' · '+escapeHtml(workingRes.updatedBy):''}</div>
   `;
 }
