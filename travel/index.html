@@ -222,6 +222,36 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .mgr-chip a{color:#e0483f;cursor:pointer;font-weight:800;}
 .mgr-addrow{display:flex;gap:6px;margin-top:8px;}
 .mgr-addrow input{flex:1;padding:6px 8px;font-size:11.5px;border:1px solid #e2e6ee;border-radius:6px;}
+/* ── DIRECTIONS(수배지시서) 문서 뷰 ── */
+.dov{position:fixed;inset:0;background:rgba(16,20,34,.55);z-index:850;display:none;align-items:flex-start;justify-content:center;padding:18px;overflow:auto;}
+.dov.open{display:flex;}
+.dmodal{background:#fff;width:100%;max-width:1000px;border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.4);margin:auto;overflow:hidden;}
+.dmodal-hd{display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:2px solid #161f38;position:sticky;top:0;background:#fff;}
+.dmodal-hd h2{font-size:18px;font-weight:900;color:#161f38;letter-spacing:.3px;}
+.dir-code{margin-left:auto;font-size:16px;font-weight:800;color:#161f38;}
+.dir-print{background:#eef4ff;border:1px solid #cddffb;color:#1f4a85;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+.dir-close{background:#eef1f6;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:15px;color:#444;}
+.dir-body{padding:16px 20px 24px;color:#222;}
+.dir-info{width:100%;border-collapse:collapse;margin-bottom:16px;}
+.dir-info th{background:#f4f6fa;border:1px solid #dfe3ea;padding:5px 8px;font-size:10.5px;color:#6b7484;text-align:center;letter-spacing:.4px;}
+.dir-info td{border:1px solid #dfe3ea;padding:7px 8px;text-align:center;font-size:12px;font-weight:600;}
+.dir-sec{margin-bottom:13px;}
+.dir-sec-hd{font-size:11px;font-weight:800;color:#161f38;letter-spacing:.5px;margin-bottom:4px;border-bottom:1px solid #c9cfda;padding-bottom:3px;}
+.dir-tbl{width:100%;border-collapse:collapse;table-layout:auto;}
+.dir-tbl th{background:#f7f8fb;border:1px solid #e4e7ee;padding:4px 6px;font-size:10px;color:#6b7484;text-align:left;white-space:nowrap;letter-spacing:.3px;}
+.dir-tbl td{border:1px solid #eef0f4;padding:4px 6px;font-size:11px;vertical-align:top;}
+.dir-tbl .dir-empty{color:#b0b6c2;text-align:center;}
+.dir-tbl .dir-sum td{background:#fbfcfe;font-weight:700;text-align:right;color:#3457d5;}
+.dir-text{margin-bottom:11px;}
+.dir-text .dir-text-body{font-size:11px;color:#333;line-height:1.5;}
+@media print{
+  body>*{visibility:hidden;}
+  #dirModal,#dirModal *{visibility:visible;}
+  #dirModal{position:absolute;inset:0;background:#fff;padding:0;display:block;overflow:visible;}
+  .dmodal{box-shadow:none;max-width:100%;border-radius:0;margin:0;}
+  .dmodal-hd{border-bottom:2px solid #000;}
+  .dir-print,.dir-close{display:none !important;}
+}
 .subsec-placeholder{padding:70px 20px;text-align:center;color:#9aa1af;font-size:13px;background:#fff;border:1px dashed #dfe3ea;border-radius:10px;}
 .phrase-picker{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
 .phrase-chip{background:#eef2fe;color:#20304f;border:1px solid #d6e0fb;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;}
@@ -426,6 +456,19 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
   <div class="smodal" style="max-width:420px;">
     <div class="smodal-hd"><span>💰 Balance</span><button onclick="closeBalanceModal()">✕</button></div>
     <div class="smodal-body" id="balanceBody"></div>
+  </div>
+</div>
+
+<!-- ── DIRECTIONS(수배지시서) MODAL ── -->
+<div class="dov" id="dirModal" onclick="if(event.target===this)closeDirections()">
+  <div class="dmodal">
+    <div class="dmodal-hd">
+      <h2 id="dirTitle">TK Directions</h2>
+      <span class="dir-code" id="dirCode">-</span>
+      <button class="dir-print" onclick="window.print()">🖨 인쇄</button>
+      <button class="dir-close" onclick="closeDirections()">✕</button>
+    </div>
+    <div class="dir-body" id="dirBody"></div>
   </div>
 </div>
 
@@ -2047,7 +2090,7 @@ function renderSubsections(){
     <div style="display:flex;align-items:center;gap:16px;margin-top:6px;">
       <div style="font-size:10.5px;color:#9aa1af;">createdAt: ${formatDT(workingRes.createdAt)}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}</div>
       <div style="flex:1;"></div>
-      <button class="btn btn-ghost" onclick="goToAssignments()">🧭 Directions</button>
+      <button class="btn btn-ghost" onclick="openDirections()">🧭 Directions</button>
       <button class="btn btn-ghost" onclick="showBalanceModal()">💰 Balance</button>
     </div>
   `;
@@ -2055,6 +2098,47 @@ function renderSubsections(){
 function goToAssignments(){
   const el=document.getElementById('assignSection');
   if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+/* ── DIRECTIONS(수배지시서) 문서 뷰 ── */
+function openDirections(){ if(!workingRes) return; renderDirections(); document.getElementById('dirModal').classList.add('open'); }
+function closeDirections(){ document.getElementById('dirModal').classList.remove('open'); }
+// 섹션 표 렌더: cfmOnly면 CFM=OK 행만, hideKeys 열 숨김. 항공은 도착시간 순 정렬.
+function dirSectionTable(sec,opts){
+  opts=opts||{};
+  let rows=(workingRes[sec.key]||[]).slice();
+  if(sec.key==='flights') rows.sort((a,b)=>flightArrKey(a.arrival)-flightArrKey(b.arrival));
+  if(opts.cfmOnly) rows=rows.filter(r=>r.cfm==='OK');
+  const cols=sec.fields.filter(f=>!(opts.hideKeys||[]).includes(f.k));
+  const head=cols.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('');
+  const body=rows.length
+    ? rows.map(row=>`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}" class="dir-empty">-</td></tr>`;
+  let foot='';
+  if(sec.summaryFn){ const s=sec.summaryFn(rows); if(s) foot=`<tr class="dir-sum"><td colspan="${cols.length}">${sec.key==='flights'?'총 인원 ':''}${escapeHtml(s)}</td></tr>`; }
+  return `<table class="dir-tbl"><thead><tr>${head}</tr></thead><tbody>${body}${foot}</tbody></table>`;
+}
+function renderDirections(){
+  const r=workingRes;
+  document.getElementById('dirCode').textContent=r.code||'-';
+  const dates=(r.datein||'')+' ~ '+(r.dateout||'');
+  const infoTbl=`<table class="dir-info"><thead><tr><th>DATES</th><th>NAME</th><th>AGENT</th><th>TC</th><th>PICKET</th></tr></thead>`
+    +`<tbody><tr><td>${escapeHtml(dates)}</td><td>${escapeHtml(r.name||'')}</td><td>${escapeHtml(r.agent||r.customer||'')}</td><td>${escapeHtml(r.tc||'')}</td><td>${escapeHtml(r.picket||'')}</td></tr></tbody></table>`;
+  const SEC=(k)=>SUBSECTIONS.find(s=>s.key===k);
+  const CFM_ONLY={hotels:1,golfs:1,guides:1,vehicles:1,shows:1}; // OK 찍힌 행만 노출
+  let secHtml='';
+  ['flights','hotels','golfs','guides','vehicles','shows'].forEach(key=>{
+    const sec=SEC(key);
+    const opts={cfmOnly:!!CFM_ONLY[key], hideKeys: key==='hotels'?['paying']:[]}; // 호텔 PAYING 숨김
+    secHtml+=`<div class="dir-sec"><div class="dir-sec-hd">${escapeHtml(sec.label)}</div>${dirSectionTable(sec,opts)}</div>`;
+  });
+  // SHOPPING (스키마 없음: name/remark로 표시)
+  const shop=r.shopping||[];
+  const shopBody=shop.length?shop.map(x=>`<tr><td>${escapeHtml(x.name||x.center||'')}</td><td>${escapeHtml(x.remark||'')}</td></tr>`).join(''):`<tr><td colspan="2" class="dir-empty">-</td></tr>`;
+  secHtml+=`<div class="dir-sec"><div class="dir-sec-hd">SHOPPING (${shop.length})</div><table class="dir-tbl"><thead><tr><th>SHOPPING CENTER</th><th>REMARK</th></tr></thead><tbody>${shopBody}</tbody></table></div>`;
+  // 텍스트 섹션 (딤파짓/출금 금액은 제외)
+  const textSec=(label,val)=>`<div class="dir-text"><div class="dir-sec-hd">${label}</div><div class="dir-text-body">${(val&&val.trim())?escapeHtml(val).replace(/\n/g,'<br/>'):'-'}</div></div>`;
+  const textHtml=textSec('REMARK',r.remark)+textSec('INCLUDES',r.includes)+textSec('DECLUDES',r.decludes)+textSec('REFERENCES',r.references)+textSec('CHECKLIST',r.checks);
+  document.getElementById('dirBody').innerHTML=infoTbl+secHtml+textHtml;
 }
 let subEditKey=null,subEditIndex=null; // 인라인 편집 중인 서브섹션(신규예약도 workingRes 메모리에 바로 반영)
 function subsecHtml(sec){
