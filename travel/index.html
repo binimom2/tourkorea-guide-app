@@ -1549,19 +1549,25 @@ function renderVendorAddRow(){
 }
 let vendorEditIndex=null;
 let flightAirlineFilter=''; // 항공편 스케줄 탭의 항공사 구분 필터('' = 전체)
+// 필터에서 항공사를 고르면 아래 '항공편 추가' 폼의 항공사도 같은 것으로 맞춤(그 항공사 아래 바로 추가하도록)
+function syncFlightAddAirline(){
+  const sel=document.getElementById('vendor-new-airline');
+  if(sel&&flightAirlineFilter){ sel.value=flightAirlineFilter; }
+}
 function renderVendorList(){
   const list=getVendors(vendorModalTab);
   if(isFlightVendorTab(vendorModalTab)){
     // 항공사 구분 필터 바 (항공편이 많아 항공사별로 걸러 보기)
-    const airlineCodes=[...new Set(list.map(v=>v.airline).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    if(flightAirlineFilter&&!airlineCodes.includes(flightAirlineFilter)) flightAirlineFilter=''; // 없는 항공사면 전체로
     const airlineMaster=getVendors('AIRLINES');
     const nameOf=c=>{const a=airlineMaster.find(x=>x.code===c);return a?a.name:'';};
+    // 필터 목록 = 활성 항공사 전체 + 항공편이 있는 코드 → 항공편 0편인 항공사(예: YP)도 골라서 그 아래 추가 가능
+    const airlineCodes=[...new Set([...airlineMaster.filter(a=>a.active!==false).map(a=>a.code),...list.map(v=>v.airline)])].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+    if(flightAirlineFilter&&!airlineCodes.includes(flightAirlineFilter)) flightAirlineFilter=''; // 없는 항공사면 전체로
     const filterOpts=`<option value="">전체 항공사 (${list.length}편)</option>`+
       airlineCodes.map(c=>`<option value="${escapeAttr(c)}" ${c===flightAirlineFilter?'selected':''}>${escapeHtml(c)}${nameOf(c)?'['+escapeHtml(nameOf(c))+']':''} (${list.filter(v=>v.airline===c).length}편)</option>`).join('');
     const filterBar=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <span style="font-size:12px;font-weight:700;color:#6b7484;">✈ 항공사 구분</span>
-      <select onchange="flightAirlineFilter=this.value;vendorEditIndex=null;renderVendorList();" style="flex:0 0 auto;padding:6px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#1f4a85;font-weight:700;">${filterOpts}</select>
+      <select onchange="flightAirlineFilter=this.value;vendorEditIndex=null;renderVendorList();syncFlightAddAirline();" style="flex:0 0 auto;padding:6px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#1f4a85;font-weight:700;">${filterOpts}</select>
     </div>`;
     // 정렬: 항공사 → 방향(도착 X→BKK 먼저, 출발 BKK→X 나중) → 편명
     const dirRank=v=>String(v.direction||'').endsWith('-BKK')?0:1; // 도착=0, 출발=1
