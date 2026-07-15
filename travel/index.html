@@ -105,13 +105,13 @@ table.rlist tr{cursor:pointer;}
 .empty-row td{text-align:center;color:#9aa1af;padding:40px;}
 
 /* ── MODAL (RESERVATION) — 계단식 최대 사이즈 ── */
-.rov{position:fixed;inset:0;background:rgba(16,20,34,.5);z-index:800;display:none;align-items:center;justify-content:center;padding:16px;}
+.rov{position:fixed;inset:0;background:rgba(16,20,34,.5);z-index:800;display:none;align-items:center;justify-content:center;padding:8px;}
 .rov.open{display:flex;}
-.rmodal{background:#f5f6f9;width:100%;max-width:1680px;height:96vh;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;}
-.rmodal-hd{background:#161f38;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;flex:0 0 auto;}
-.rmodal-hd h2{font-size:16px;font-weight:800;}
-.rmodal-hd .code{font-size:11.5px;color:#8fb4ff;background:#1f2a4d;padding:3px 10px;border-radius:10px;}
-.rmodal-close{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;}
+.rmodal{background:#f5f6f9;width:100%;max-width:1680px;height:98vh;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;}
+.rmodal-hd{background:#e2f4e9;color:#1c6b3f;padding:8px 20px;display:flex;align-items:center;gap:12px;flex:0 0 auto;border-bottom:1px solid #cfe9d8;}
+.rmodal-hd h2{font-size:15px;font-weight:800;}
+.rmodal-hd .code{font-size:11.5px;color:#1c6b3f;background:#cdebd8;padding:3px 10px;border-radius:10px;}
+.rmodal-close{margin-left:auto;background:rgba(28,107,63,0.14);border:none;color:#1c6b3f;width:26px;height:26px;border-radius:50%;font-size:14px;cursor:pointer;}
 .rmodal-body{display:grid;grid-template-columns:396px 1fr;gap:0;flex:1;align-items:start;min-height:0;overflow:hidden;}
 .rmodal-side{background:#fff;padding:20px;border-right:1px solid #e8eaf0;align-self:stretch;height:100%;overflow-y:auto;}
 .rmodal-main{padding:20px 22px;min-width:0;height:100%;overflow-y:auto;}
@@ -124,6 +124,12 @@ table.rlist tr{cursor:pointer;}
 .f-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
 .sec-divider{font-size:11px;font-weight:800;color:#3457d5;letter-spacing:.5px;margin:20px 0 10px;text-transform:uppercase;}
 .sec-divider:first-child{margin-top:0;}
+/* 좌측 패널(BASIC/CUSTOMER/REMARKS) 줄간격 축소 — 한눈에 보기 */
+.rmodal-side{padding:14px 18px;}
+.rmodal-side .f-row{margin-bottom:8px;}
+.rmodal-side .f-row label{margin-bottom:3px;}
+.rmodal-side .f-row2,.rmodal-side .f-row3{gap:8px;}
+.rmodal-side .sec-divider{margin:13px 0 7px;}
 
 /* sub-sections */
 .subsec{background:#fff;border:1px solid #e8eaf0;border-radius:10px;margin-bottom:10px;overflow:hidden;}
