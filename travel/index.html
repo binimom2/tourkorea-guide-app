@@ -1283,7 +1283,7 @@ function renderMasterTabs(){
 }
 function switchMasterTab(group,key){
   masterGroup=group; masterKey=key;
-  codeEditIndex=null; vendorEditIndex=null; custEditIndex=null; phraseEditIndex=null;
+  codeEditIndex=null; vendorEditIndex=null; custEditIndex=null; phraseEditIndex=null; flightAirlineFilter='';
   document.getElementById('codeSection').style.display=group==='code'?'':'none';
   document.getElementById('customerSection').style.display=group==='customer'?'':'none';
   document.getElementById('vendorSection').style.display=group==='vendor'?'':'none';
@@ -1548,13 +1548,26 @@ function renderVendorAddRow(){
   }
 }
 let vendorEditIndex=null;
+let flightAirlineFilter=''; // 항공편 스케줄 탭의 항공사 구분 필터('' = 전체)
 function renderVendorList(){
   const list=getVendors(vendorModalTab);
   if(isFlightVendorTab(vendorModalTab)){
+    // 항공사 구분 필터 바 (항공편이 많아 항공사별로 걸러 보기)
+    const airlineCodes=[...new Set(list.map(v=>v.airline).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    if(flightAirlineFilter&&!airlineCodes.includes(flightAirlineFilter)) flightAirlineFilter=''; // 없는 항공사면 전체로
+    const airlineMaster=getVendors('AIRLINES');
+    const nameOf=c=>{const a=airlineMaster.find(x=>x.code===c);return a?a.name:'';};
+    const filterOpts=`<option value="">전체 항공사 (${list.length}편)</option>`+
+      airlineCodes.map(c=>`<option value="${escapeAttr(c)}" ${c===flightAirlineFilter?'selected':''}>${escapeHtml(c)}${nameOf(c)?'['+escapeHtml(nameOf(c))+']':''} (${list.filter(v=>v.airline===c).length}편)</option>`).join('');
+    const filterBar=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <span style="font-size:12px;font-weight:700;color:#6b7484;">✈ 항공사 구분</span>
+      <select onchange="flightAirlineFilter=this.value;vendorEditIndex=null;renderVendorList();" style="flex:0 0 auto;padding:6px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#1f4a85;font-weight:700;">${filterOpts}</select>
+    </div>`;
     // 정렬: 항공사 → 방향(도착 X→BKK 먼저, 출발 BKK→X 나중) → 편명
     const dirRank=v=>String(v.direction||'').endsWith('-BKK')?0:1; // 도착=0, 출발=1
-    const sorted=[...list].sort((a,b)=>(a.airline||'').localeCompare(b.airline||'')||dirRank(a)-dirRank(b)||(a.flightNo||'').localeCompare(b.flightNo||''));
-    document.getElementById('vendorListBody').innerHTML=sorted.length?sorted.map(v=>{
+    let sorted=[...list].sort((a,b)=>(a.airline||'').localeCompare(b.airline||'')||dirRank(a)-dirRank(b)||(a.flightNo||'').localeCompare(b.flightNo||''));
+    if(flightAirlineFilter) sorted=sorted.filter(v=>v.airline===flightAirlineFilter);
+    const rowsHtml=sorted.length?sorted.map(v=>{
       const i=list.indexOf(v);
       const active=v.active!==false;
       if(i===vendorEditIndex){
@@ -1580,7 +1593,8 @@ function renderVendorList(){
         <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editVendorItem(${i})">✏ 수정</a>
         <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
       </div>`;
-    }).join(''):'<div class="subtbl-empty">등록된 항공편이 없습니다</div>';
+    }).join(''):`<div class="subtbl-empty">${list.length?'해당 항공사의 항공편이 없습니다':'등록된 항공편이 없습니다'}</div>`;
+    document.getElementById('vendorListBody').innerHTML=(list.length?filterBar:'')+rowsHtml;
     return;
   }
   const isGuide=vendorModalTab==='GUIDE';
