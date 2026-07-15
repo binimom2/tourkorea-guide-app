@@ -2008,7 +2008,9 @@ function summaryLine(r){
   const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
   const cust=(r.customer||'').slice(0,2);   // 거래처 한글 2글자
   const typ=(r.type||'').slice(0,2);        // 유형코드 영문 2글자
-  const nm=(r.name||'').slice(0,8);         // 상품명 최대 8글자
+  const rawNm=(r.name||'');
+  const pfx=rawNm.startsWith('낮)')?'낮)':'';   // '낮)' 자동 접두어는 글자수 제한에서 제외
+  const nm=pfx+rawNm.slice(pfx.length).slice(0,8); // 상품명(접두어 제외) 최대 8글자
   const g0=(r.guides||[])[0];               // 첫 가이드 1명만
   const guide=g0?(g0.name||'').split('(')[0].trim():''; // 괄호 앞 한글만
   const parts=[];
