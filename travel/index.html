@@ -501,14 +501,18 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 
 <!-- ── 예약 복사(시리즈) MODAL ── -->
 <div class="sov" id="copyModal" onclick="if(event.target===this)closeCopyModal()">
-  <div class="smodal" style="max-width:400px;">
+  <div class="smodal" style="max-width:420px;">
     <div class="smodal-hd"><span>📋 예약 복사 (시리즈)</span><button onclick="closeCopyModal()">✕</button></div>
     <div class="smodal-body">
-      <div style="color:#1f4a85;font-size:12px;font-weight:600;line-height:1.55;white-space:pre-line;margin-bottom:14px;">원본은 그대로 두고, 내용을 복제해 새 날짜 + 새 코드로 생성합니다.
-(캔슬 표기 없이 복사만 — 시리즈 팀용)</div>
+      <div style="color:#1f4a85;font-size:12px;font-weight:600;line-height:1.55;white-space:pre-line;margin-bottom:14px;">원본은 그대로 두고, 선택한 날짜마다 새 코드로 내용을 복제합니다.
+(여러 날짜 추가 가능 — 시리즈 팀용)</div>
       <div style="font-size:12px;color:#6b7484;margin-bottom:5px;">원본: <b id="copy-orig">-</b></div>
-      <div style="font-size:12px;color:#6b7484;margin-bottom:5px;">복사할 체크인 날짜</div>
-      <input type="date" lang="en" id="copy-date" style="width:100%;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+      <div style="font-size:12px;color:#6b7484;margin-bottom:5px;">복사할 체크인 날짜 (＋추가로 여러 개)</div>
+      <div style="display:flex;gap:6px;">
+        <input type="date" lang="en" id="copy-date" style="flex:1;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:14px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')addCopyDate()"/>
+        <button class="btn btn-save" style="white-space:nowrap;padding:0 14px;" onclick="addCopyDate()">＋ 추가</button>
+      </div>
+      <div id="copy-date-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;"></div>
       <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
         <button class="btn btn-ghost" onclick="closeCopyModal()">취소</button>
         <button class="btn btn-save" onclick="confirmCopyReservation()">복사</button>
@@ -2680,39 +2684,62 @@ async function confirmDateAmend(){
   openReservation(clone.id); // 이관된 새 예약을 바로 열기
   showToast(`✅ 날짜변경 이관 완료 (${clone.code}) — 원본 ${amendOrigCode}은 취소로 유지`);
 }
-// 예약 복사(시리즈): 원본은 그대로 두고 내용을 복제해 새 날짜+새 코드로 생성 (캔슬 표기 없음)
-let copyOrigDate='', copyOrigCode='';
+// 예약 복사(시리즈): 원본은 그대로 두고 여러 날짜마다 새 코드로 내용을 복제 (캔슬 표기 없음)
+let copyOrigDate='', copyOrigCode='', copyDates=[];
 function copyReservation(){
   if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다'); return; }
   syncFormToRes();
   copyOrigDate=workingRes.datein; copyOrigCode=workingRes.code;
   if(!copyOrigDate){ showToast('⚠ 체크인 날짜가 없습니다'); return; }
+  copyDates=[];
   document.getElementById('copy-orig').textContent=`${copyOrigDate} (${copyOrigCode})`;
   document.getElementById('copy-date').value=copyOrigDate;
+  renderCopyDateList();
   document.getElementById('copyModal').classList.add('open');
 }
 function closeCopyModal(){ document.getElementById('copyModal').classList.remove('open'); }
+function addCopyDate(){
+  const inp=document.getElementById('copy-date');
+  const d=(inp.value||'').trim();
+  if(!d){ showToast('⚠ 날짜를 선택해주세요'); return; }
+  if(!copyDates.includes(d)) copyDates.push(d);
+  copyDates.sort();
+  renderCopyDateList();
+}
+function removeCopyDate(i){ copyDates.splice(i,1); renderCopyDateList(); }
+function renderCopyDateList(){
+  const el=document.getElementById('copy-date-list');
+  el.innerHTML=copyDates.length
+    ? copyDates.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eef3fb;color:#1f4a85;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:600;">${d}<a onclick="removeCopyDate(${i})" style="cursor:pointer;color:#e0483f;font-weight:800;">✕</a></span>`).join('')
+    : '<span style="color:#b0b6c2;font-size:11.5px;">추가된 날짜가 없습니다 (＋추가 또는 입력창의 날짜로 복사)</span>';
+}
 async function confirmCopyReservation(){
-  const nd=(document.getElementById('copy-date').value||'').trim();
-  if(!nd){ showToast('⚠ 복사할 체크인 날짜를 선택해주세요'); return; }
-  // 원본은 변경하지 않음(그대로 유지). 내용만 복제해 새 예약 생성.
+  const cur=(document.getElementById('copy-date').value||'').trim();
+  const dates=[...copyDates];
+  if(cur && !dates.includes(cur)) dates.push(cur); // 입력창에 남은 날짜도 포함
+  if(!dates.length){ showToast('⚠ 복사할 날짜를 1개 이상 선택해주세요'); return; }
+  dates.sort();
+  // 원본은 변경하지 않음(그대로 유지). 각 날짜마다 새 예약 생성.
   const nights=Math.max(0,Math.round((new Date((workingRes.dateout||copyOrigDate)+'T00:00:00')-new Date(copyOrigDate+'T00:00:00'))/86400000));
-  const clone=JSON.parse(JSON.stringify(workingRes));
-  clone.id='id_'+Date.now()+Math.random().toString(36).slice(2,7);
-  clone.status='NORMAL';
-  clone.datein=nd;
-  clone.dateout=calcDateout(nd,nights);
-  clone.code=genCode(nd);
-  clone.createdAt=new Date().toISOString();
-  clone.updatedAt=clone.createdAt;
-  clone.createdBy=currentUser?currentUser.id:'';
-  clone.updatedBy=clone.createdBy;
-  reservations.push(clone);
+  const codes=[];
+  dates.forEach(nd=>{
+    const clone=JSON.parse(JSON.stringify(workingRes));
+    clone.id='id_'+Date.now()+Math.random().toString(36).slice(2,9);
+    clone.status='NORMAL';
+    clone.datein=nd;
+    clone.dateout=calcDateout(nd,nights);
+    clone.code=genCode(nd);
+    clone.createdAt=new Date().toISOString();
+    clone.updatedAt=clone.createdAt;
+    clone.createdBy=currentUser?currentUser.id:'';
+    clone.updatedBy=clone.createdBy;
+    reservations.push(clone);
+    codes.push(clone.code);
+  });
   await saveData();
   closeCopyModal();
   renderFilters();renderAll();
-  openReservation(clone.id); // 복사된 새 예약을 바로 열기
-  showToast(`✅ 복사 완료 (${clone.code}) — 원본 ${copyOrigCode}은 그대로 유지`);
+  showToast(`✅ ${dates.length}건 복사 완료 (${codes.join(', ')}) — 원본 ${copyOrigCode} 유지`);
 }
 
 /* ══════════════════════════ BALANCE ══════════════════════════ */
