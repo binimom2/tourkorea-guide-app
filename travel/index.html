@@ -671,24 +671,23 @@ async function enterApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
-  // 관리버튼(계정/코드)은 admin·manager만. 오퍼레이터는 숨김. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
-  const canManage=(currentUser.role==='admin'||currentUser.role==='manager');
-  document.getElementById('btnAccounts').style.display=canManage?'':'none'; // 계정관리: admin·매니저만
+  // 계정관리는 admin 전용. 그 외 기능(코드관리·예약입력 등)은 매니저·오퍼레이터 모두 admin과 동일. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
+  document.getElementById('btnAccounts').style.display=(currentUser.role==='admin')?'':'none'; // 계정관리: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
-  if(currentUser.role==='admin'){
-    await ensureCodesMigrated();
-    await ensureVendorsSeeded();
-    await ensurePhrasesSeeded();
-    await ensureCustomerCodesSeeded();
-    await ensureHotelCodesSeeded();
-    await ensureGolfCodesSeeded();
-    await ensureGuideCodesSeeded();
-    await ensureVehicleCodesSeeded();
-    await ensureServiceCodesSeeded();
-    await ensureFlightsSeeded();
-    await ensureCfmLabelsMigrated();
-  }
+  // 기준 데이터 시딩/마이그레이션은 역할과 무관하게 전원 실행(모두 idempotent·버전가드).
+  // 오퍼레이터/매니저가 먼저 접속해도 코드·거래처·벤더·문구가 채워지도록(입력창 값 비어있음 방지).
+  await ensureCodesMigrated();
+  await ensureVendorsSeeded();
+  await ensurePhrasesSeeded();
+  await ensureCustomerCodesSeeded();
+  await ensureHotelCodesSeeded();
+  await ensureGolfCodesSeeded();
+  await ensureGuideCodesSeeded();
+  await ensureVehicleCodesSeeded();
+  await ensureServiceCodesSeeded();
+  await ensureFlightsSeeded();
+  await ensureCfmLabelsMigrated();
   renderVendorDatalists();
   renderPhrasePickers();
   loadData();
