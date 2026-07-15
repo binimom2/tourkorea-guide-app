@@ -1481,7 +1481,11 @@ async function delManager(ci,mi){
 // 코드관리의 PROVIDER 코드(사용중인 것만)를 탭으로 사용. 항공편은 AIRLINES 벤더 목록(항공사)을
 // 참조하는 별도의 "항공편 스케줄" 탭으로 관리 (편명/방향/출발·도착시간).
 function getVendorTabs(){
-  return [...VENDOR_CATEGORY_TABS,{key:'flights',label:'항공편 스케줄'}];
+  // 항공편 스케줄 탭을 항공사(AIRLINES) 바로 뒤에 배치
+  const flights={key:'flights',label:'항공편 스케줄'};
+  const out=[];
+  VENDOR_CATEGORY_TABS.forEach(t=>{ out.push(t); if(t.key==='AIRLINES') out.push(flights); });
+  return out;
 }
 function isFlightVendorTab(key){ return key==='flights'; }
 // 방콕 기준 표기: X→BKK = 방콕 도착, BKK→X = 방콕 출발. 한국 지명은 오해 소지가 있어 제거(노선코드로 구분).
