@@ -1566,7 +1566,7 @@ const SUBSECTIONS=[
   {key:'hotels',label:'HOTELS',fields:[
     {k:'hotel',label:'HOTEL',type:'text',vendorKey:'HOTEL',fw:140},
     {k:'roomtype',label:'TYPE',type:'text',fw:80},
-    {k:'chkin',label:'CHKIN',type:'date'},
+    {k:'chkin',label:'CHECK-IN',type:'date',fw:108},
     {k:'nights',label:'N/S',type:'number',fw:40},
     {k:'sgl',label:'SGL',type:'number',fw:40},{k:'twn',label:'TWN',type:'number',fw:40},{k:'dbl',label:'DBL',type:'number',fw:40},{k:'trp',label:'TRP',type:'number',fw:40},{k:'gd',label:'G/D',type:'number',fw:40},
     {k:'cfm',label:'CFM',type:'checkbox'},
@@ -1574,11 +1574,11 @@ const SUBSECTIONS=[
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'golfs',label:'GOLF',fields:[
-    {k:'date',label:'DATE',type:'date'},
+    {k:'date',label:'DATE',type:'date',fw:108},
     {k:'club',label:'CLUB',type:'text',vendorKey:'CLUB',fw:200},
     {k:'hole',label:'HOLE',type:'number',fw:40},
     {k:'pax',label:'PAX',type:'number',fw:40},
-    {k:'teeup',label:'TEEUP TIME',type:'text',fw:70},
+    {k:'teeup',label:'TEE TIME',type:'text',fw:70},
     {k:'cfm',label:'CFM',type:'checkbox'},
     {k:'remark',label:'REMARK',type:'text',fw:220},
   ]},
@@ -1597,14 +1597,14 @@ const SUBSECTIONS=[
   ]},
   {key:'shows',label:'SHOW/RESTAURANT/MASSAGE',fields:[
     {k:'name',label:'TICKET',type:'text',vendorKey:'SHOW'},
-    {k:'date',label:'DATE',type:'date'},
+    {k:'date',label:'DATE',type:'date',fw:108},
     {k:'time',label:'TIME',type:'text'},
     {k:'adt',label:'ADT',type:'number',fw:44},{k:'chd',label:'CHD',type:'number',fw:44},{k:'tc',label:'T/C',type:'number',fw:44},
     {k:'cfm',label:'CFM',type:'checkbox'},
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'deposits',label:'DEPOSITS',ledger:true,fields:[
-    {k:'date',label:'DATE',type:'date'},
+    {k:'date',label:'DATE',type:'date',fw:108},
     {k:'who',label:'CUSTOMER',type:'text'},
     {k:'acc',label:'ACC',type:'text'},
     {k:'currency',label:'CURRENCY',type:'text',fixed:'THB'},
@@ -1612,7 +1612,7 @@ const SUBSECTIONS=[
     {k:'summary',label:'SUMMARY',type:'text'},
   ]},
   {key:'withdrawals',label:'WITHDRAWALS',ledger:true,fields:[
-    {k:'date',label:'DATE',type:'date'},
+    {k:'date',label:'DATE',type:'date',fw:108},
     {k:'who',label:'CUSTOMER',type:'text'},
     {k:'acc',label:'ACC',type:'text'},
     {k:'currency',label:'CURRENCY',type:'text',fixed:'THB'},
