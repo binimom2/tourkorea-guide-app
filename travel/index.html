@@ -672,6 +672,7 @@ async function enterApp(){
   renderPhrasePickers();
   loadData();
   renderFilters();
+  setDefaultMonthRange();
   renderAll();
 }
 function doLogout(){
@@ -1956,22 +1957,38 @@ function renderAll(){
   renderStats();
   if(currentView==='cal') renderCalendar(); else renderList();
 }
+// 현재 날짜 범위 내 '진행(NORMAL)' 팀의 인원(성인+아동)을 구분/유형별로 집계
 function renderStats(){
+  const from=document.getElementById('f-from').value;
+  const to=document.getElementById('f-to').value;
+  const TYPE_ORDER=(getCodes().types||[]).map(t=>t.code);
   const byDiv={};
   reservations.forEach(r=>{
+    if(r.status!=='NORMAL') return;      // 진행하는 팀만
+    if(from&&r.dateout<from) return;      // 날짜 범위(기본 이번달)
+    if(to&&r.datein>to) return;
     const d=r.division||'미분류';
-    byDiv[d]=byDiv[d]||{};
     const t=r.type||'ETC';
-    byDiv[d][t]=(byDiv[d][t]||0)+1;
+    const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
+    byDiv[d]=byDiv[d]||{};
+    byDiv[d][t]=(byDiv[d][t]||0)+pax;
   });
   const bar=document.getElementById('statsBar');
   const groups=Object.entries(byDiv);
-  if(!groups.length){bar.innerHTML='<span class="chip">등록된 예약이 없습니다</span>';return;}
+  if(!groups.length){bar.innerHTML='<span class="chip">해당 기간 진행 팀이 없습니다</span>';return;}
   bar.innerHTML=groups.map(([d,types])=>{
     const total=Object.values(types).reduce((a,b)=>a+b,0);
-    const parts=Object.entries(types).map(([t,c])=>`${t}(${c})`).join(' ');
-    return `<div class="grp"><span class="grp-name">${codeLabel('divisions',d)}(${total})</span><span class="chip">${parts}</span></div>`;
+    const parts=TYPE_ORDER.map(t=>`${t}(${types[t]||0})`).join(' ');
+    return `<div class="grp"><span class="grp-name">${escapeHtml(d)}(${total})</span><span class="chip">${parts}</span></div>`;
   }).join('');
+}
+// 날짜 필터 기본값: 이번달 1일~말일 (이미 값이 있으면 유지)
+function setDefaultMonthRange(){
+  const f=document.getElementById('f-from'), t=document.getElementById('f-to');
+  if(f.value||t.value) return;
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth(), p=n=>String(n).padStart(2,'0');
+  f.value=`${y}-${p(m+1)}-01`;
+  t.value=`${y}-${p(m+1)}-${p(new Date(y,m+1,0).getDate())}`;
 }
 
 /* ══════════════════════════ CALENDAR ══════════════════════════ */
