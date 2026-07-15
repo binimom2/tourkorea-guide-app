@@ -193,6 +193,18 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .code-active-toggle.off{color:#8890a0;background:#f0f1f4;}
 .code-addrow{display:flex;gap:8px;margin-bottom:14px;}
 .code-addrow input{flex:1;}
+/* ── 코드관리 모달: 연한 그린 테마 + 확대 + 목록 다단 (한눈에 보기) ── */
+#codeModal .smodal-hd{background:#e2f4e9;color:#1c6b3f;}
+#codeModal .smodal-hd button{background:rgba(28,107,63,0.16);color:#1c6b3f;}
+#codeModal .mtabs-grouped{background:#eef8f1;max-height:210px;}
+#codeModal .mtab-group-label{color:#4a8f68;}
+#codeModal .mtab-group-row button{background:#fff;border:1px solid #bfe3cc;color:#3a7a55;}
+#codeModal .mtab-group-row button.active{background:#3fae6a;border-color:#3fae6a;color:#fff;}
+#codeModal .smodal-body{max-height:80vh;}
+#codeModal #codeListBody,#codeModal #vendorListBody{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:6px;align-items:start;}
+#codeModal #codeListBody .code-row,#codeModal #vendorListBody .code-row{margin-bottom:0;}
+#codeModal #codeListBody .code-row.edit-row,#codeModal #vendorListBody .code-row.edit-row{grid-column:1/-1;}
+#codeModal .code-row .tag{color:#1c6b3f;background:#d7f0e0;}
 .cust-card{border:1px solid #e8eaf0;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
 .cust-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .cust-card-hd b{font-size:13px;color:#161f38;}
@@ -432,7 +444,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 
 <!-- ── CODE MODAL (통합: 코드/고객사/거래처·업체/문구) ── -->
 <div class="sov" id="codeModal" onclick="if(event.target===this)closeCodeModal()">
-  <div class="smodal" style="max-width:640px;">
+  <div class="smodal" style="max-width:960px;">
     <div class="smodal-hd"><span>코드 관리</span><button onclick="closeCodeModal()">✕</button></div>
     <div class="mtabs-grouped" id="masterTabs"></div>
     <div class="smodal-body">
