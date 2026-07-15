@@ -1873,36 +1873,36 @@ const COST_CATEGORIES=[
     {k:'name',label:'골프장명',type:'text'},
     {k:'nameKr',label:'한글이름',type:'text'},
     {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31'},
-    {k:'gf18wd',label:'18홀그린피(주중)',type:'number'},
-    {k:'gf18we',label:'18홀그린피(주말)',type:'number'},
-    {k:'caddy',label:'캐디피',type:'number'},
-    {k:'cart',label:'전동카',type:'number'},
-    {k:'sum18wd',label:'주중18홀 합',compute:r=>costNum(r.gf18wd)+costNum(r.caddy)+costNum(r.cart)},
-    {k:'sum18we',label:'주말18홀 합',compute:r=>costNum(r.gf18we)+costNum(r.caddy)+costNum(r.cart)},
-    {k:'gf9wd',label:'추가9홀그린피(주중)',type:'number'},
-    {k:'gf9we',label:'추가9홀그린피(주말)',type:'number'},
-    {k:'caddy9',label:'추가9홀캐디피',type:'number'},
-    {k:'cart9',label:'추가9홀전동카',type:'number'},
-    {k:'sum27wd',label:'주중27홀 합',compute:r=>costNum(r.gf18wd)+costNum(r.gf9wd)+costNum(r.caddy)+costNum(r.caddy9)+costNum(r.cart)+costNum(r.cart9)},
-    {k:'sum27we',label:'주말27홀 합',compute:r=>costNum(r.gf18we)+costNum(r.gf9we)+costNum(r.caddy)+costNum(r.caddy9)+costNum(r.cart)+costNum(r.cart9)},
+    {k:'gf18wd',label:'18홀그린피(주중)',type:'text',money:true},
+    {k:'gf18we',label:'18홀그린피(주말)',type:'text',money:true},
+    {k:'caddy',label:'캐디피',type:'text',money:true},
+    {k:'cart',label:'전동카',type:'text',money:true},
+    {k:'sum18wd',label:'주중18홀 합',compute:r=>costSum(r.gf18wd,r.caddy,r.cart)},
+    {k:'sum18we',label:'주말18홀 합',compute:r=>costSum(r.gf18we,r.caddy,r.cart)},
+    {k:'gf9wd',label:'추가9홀그린피(주중)',type:'text',money:true},
+    {k:'gf9we',label:'추가9홀그린피(주말)',type:'text',money:true},
+    {k:'caddy9',label:'추가9홀캐디피',type:'text',money:true},
+    {k:'cart9',label:'추가9홀전동카',type:'text',money:true},
+    {k:'sum27wd',label:'주중27홀 합',compute:r=>costSum(r.gf18wd,r.gf9wd,r.caddy,r.caddy9,r.cart,r.cart9)},
+    {k:'sum27we',label:'주말27홀 합',compute:r=>costSum(r.gf18we,r.gf9we,r.caddy,r.caddy9,r.cart,r.cart9)},
     {k:'remark',label:'비고',type:'textarea'},
   ]},
   {key:'hotel',label:'호텔',fields:[
     {k:'name',label:'호텔명',type:'text'},
     {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31'},
     {k:'rt1',label:'룸타입①',type:'text'},
-    {k:'amt1',label:'금액①',type:'number'},
+    {k:'amt1',label:'금액①',type:'text',money:true},
     {k:'rt2',label:'룸타입②',type:'text'},
-    {k:'amt2',label:'금액②',type:'number'},
+    {k:'amt2',label:'금액②',type:'text',money:true},
     {k:'rt3',label:'룸타입③',type:'text'},
-    {k:'amt3',label:'금액③',type:'number'},
-    {k:'extbed',label:'EXT BED',type:'number'},
+    {k:'amt3',label:'금액③',type:'text',money:true},
+    {k:'extbed',label:'EXT BED',type:'text',money:true},
     {k:'remark',label:'비고',type:'textarea'},
   ]},
   {key:'attraction',label:'관광지 입장료',fields:[
     {k:'name',label:'관광지명',type:'text'},
     {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31'},
-    {k:'amount',label:'금액',type:'number'},
+    {k:'amount',label:'금액',type:'text',money:true},
     {k:'remark',label:'비고',type:'textarea'},
   ]},
 ];
@@ -1924,6 +1924,10 @@ function switchCostTab(key){
 }
 // 숫자 파싱(콤마/문자 제거). 자동 합계 계산용.
 function costNum(v){ const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+// 값이 '불가'(숫자 없는 표기, 예: X)인지 판정
+function costIsX(v){ const s=String(v==null?'':v).trim(); return s!=='' && !/\d/.test(s); }
+// 합계: 구성값 중 하나라도 '불가(X)'면 'X', 전부 비었으면 0, 그 외엔 숫자 합
+function costSum(){ const vals=[...arguments]; if(vals.some(costIsX)) return 'X'; if(vals.every(v=>String(v==null?'':v).trim()==='')) return 0; return vals.reduce((a,v)=>a+costNum(v),0); }
 function renderCostTable(){
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
   const cols=cat.fields;
@@ -1940,12 +1944,13 @@ function renderCostTable(){
 }
 // 셀 표시값: compute 컬럼은 자동 계산, 나머지는 입력값 포맷
 function fmtCostCell(row,col){
-  if(col.compute){ const v=col.compute(row)||0; return v?Number(v).toLocaleString():'-'; }
+  if(col.compute){ const v=col.compute(row); if(typeof v==='string') return v||'-'; return v?Number(v).toLocaleString():'-'; }
   return fmtCostVal(row[col.k],col);
 }
 function fmtCostVal(v,col){
   if(v===undefined||v===null||v==='') return '-';
   if(col.type==='number') return Number(v).toLocaleString();
+  if(col.money){ const s=String(v).trim(); if(/^[\d,]+(\.\d+)?$/.test(s)) return Number(s.replace(/,/g,'')).toLocaleString(); return s; } // 숫자면 콤마, 아니면(X 등) 그대로
   return v;
 }
 let costEditIndex=null;
@@ -1976,7 +1981,7 @@ function updateCostComputedPreview(){
   if(!computed.length||!host) return;
   const cur={};
   cat.fields.filter(f=>!f.compute).forEach(f=>{ const el=document.getElementById('so-'+f.k); if(el) cur[f.k]=el.value; });
-  host.innerHTML=computed.map(c=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:#4a5570;">${c.label}</span><b style="color:#1f4a85;">${(c.compute(cur)||0).toLocaleString()}</b></div>`).join('');
+  host.innerHTML=computed.map(c=>{const v=c.compute(cur);const disp=(typeof v==='string')?(v||'-'):(v?v.toLocaleString():'-');return `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:#4a5570;">${c.label}</span><b style="color:#1f4a85;">${disp}</b></div>`;}).join('');
 }
 async function saveCostRow(){
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
