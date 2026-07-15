@@ -1840,6 +1840,7 @@ const COST_CATEGORIES=[
   {key:'golf',label:'골프장',fields:[
     {k:'name',label:'골프장명',type:'text'},
     {k:'region',label:'지역',type:'text'},
+    {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31 / 1~3월'},
     {k:'hole',label:'홀',type:'text'},
     {k:'wd',label:'주중(WD)',type:'number'},
     {k:'we',label:'주말(WE)',type:'number'},
@@ -1851,6 +1852,7 @@ const COST_CATEGORIES=[
   {key:'hotel',label:'호텔',fields:[
     {k:'name',label:'호텔명',type:'text'},
     {k:'region',label:'지역',type:'text'},
+    {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31 / 1~3월'},
     {k:'roomtype',label:'룸타입',type:'text'},
     {k:'sgl',label:'싱글(SGL)',type:'number'},
     {k:'twn',label:'트윈(TWN)',type:'number'},
@@ -1860,6 +1862,7 @@ const COST_CATEGORIES=[
   {key:'attraction',label:'관광지 입장료',fields:[
     {k:'name',label:'관광지명',type:'text'},
     {k:'region',label:'지역',type:'text'},
+    {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31 / 1~3월'},
     {k:'adult',label:'성인',type:'number'},
     {k:'child',label:'아동',type:'number'},
     {k:'remark',label:'비고',type:'textarea'},
@@ -1889,7 +1892,7 @@ function renderCostTable(){
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
   let rows=getCostRows(costTab);
   if(region) rows=rows.filter(r=>(r.region||'').toLowerCase().includes(region));
-  if(q) rows=rows.filter(r=>[(r.name||''),(r.remark||'')].join(' ').toLowerCase().includes(q));
+  if(q) rows=rows.filter(r=>[(r.name||''),(r.period||''),(r.remark||'')].join(' ').toLowerCase().includes(q));
   const body=document.getElementById('costTableBody');
   if(!rows.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${cols.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   body.innerHTML=rows.map((row,i)=>`<tr>${cols.map(c=>`<td>${escapeHtml(fmtCostVal(row[c.k],c))}</td>`).join('')}
@@ -1909,8 +1912,9 @@ function openCostRowEditor(index){
   document.getElementById('soTitle').textContent=`${cat.label} ${index===null?'추가':'수정'}`;
   document.getElementById('soBody').innerHTML=cat.fields.map(f=>{
     const val=row[f.k]??'';
-    if(f.type==='textarea') return `<div class="f-row"><label>${f.label}</label><textarea id="so-${f.k}">${escapeHtml(val)}</textarea></div>`;
-    return `<div class="f-row"><label>${f.label}</label><input type="${f.type}" id="so-${f.k}" value="${escapeAttr(val)}"/></div>`;
+    const ph=f.ph?` placeholder="${escapeAttr(f.ph)}"`:'';
+    if(f.type==='textarea') return `<div class="f-row"><label>${f.label}</label><textarea id="so-${f.k}"${ph}>${escapeHtml(val)}</textarea></div>`;
+    return `<div class="f-row"><label>${f.label}</label><input type="${f.type}" id="so-${f.k}" value="${escapeAttr(val)}"${ph}/></div>`;
   }).join('');
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').classList.add('open');
