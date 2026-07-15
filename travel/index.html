@@ -1958,7 +1958,7 @@ function setView(v){
   document.getElementById('costView').style.display=v==='cost'?'':'none';
   document.getElementById('resFilters').style.display=v==='cost'?'none':'';
   document.getElementById('costFilters').style.display=v==='cost'?'':'none';
-  if(v==='cost'){ renderCostView(); } else { renderAll(); }
+  if(v==='cost'){ renderCostView(); } else { if(v==='cal') syncCalToFilter(); renderAll(); }
 }
 function renderFilters(){
   const codes=getCodes();
@@ -1972,8 +1972,19 @@ function renderFilters(){
   fill('f-proc',codes.procs,'전체 진행');
   fill('f-status',codes.statuses,'전체 상태');
   ['f-from','f-to','f-division','f-type','f-proc','f-status'].forEach(id=>{
-    document.getElementById(id).onchange=renderAll;
+    document.getElementById(id).onchange=onFilterChange;
   });
+}
+// 날짜필터의 시작일(f-from)에 맞춰 캘린더 표시 월을 이동 — 목록엔 뜨는데 달력엔 안 보이는 문제 방지
+function syncCalToFilter(){
+  const from=document.getElementById('f-from').value;
+  if(!from) return;
+  const d=new Date(from+'T00:00:00');
+  if(!isNaN(d.getTime())){ calY=d.getFullYear(); calM=d.getMonth(); }
+}
+function onFilterChange(){
+  syncCalToFilter(); // 필터 기간을 바꾸면 달력도 그 달로 따라가게
+  renderAll();
 }
 function getFiltered(){
   const from=document.getElementById('f-from').value;
