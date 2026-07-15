@@ -1545,7 +1545,9 @@ let vendorEditIndex=null;
 function renderVendorList(){
   const list=getVendors(vendorModalTab);
   if(isFlightVendorTab(vendorModalTab)){
-    const sorted=[...list].sort((a,b)=>(a.airline||'').localeCompare(b.airline||'')||(a.flightNo||'').localeCompare(b.flightNo||''));
+    // 정렬: 항공사 → 방향(도착 X→BKK 먼저, 출발 BKK→X 나중) → 편명
+    const dirRank=v=>String(v.direction||'').endsWith('-BKK')?0:1; // 도착=0, 출발=1
+    const sorted=[...list].sort((a,b)=>(a.airline||'').localeCompare(b.airline||'')||dirRank(a)-dirRank(b)||(a.flightNo||'').localeCompare(b.flightNo||''));
     document.getElementById('vendorListBody').innerHTML=sorted.length?sorted.map(v=>{
       const i=list.indexOf(v);
       const active=v.active!==false;
