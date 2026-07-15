@@ -2010,6 +2010,7 @@ function goToAssignments(){
 let subEditKey=null,subEditIndex=null; // 인라인 편집 중인 서브섹션(신규예약도 workingRes 메모리에 바로 반영)
 function subsecHtml(sec){
   const rows=workingRes[sec.key]||[];
+  if(sec.key==='flights') rows.sort((a,b)=>flightArrKey(a.arrival)-flightArrKey(b.arrival)); // 도착시간 순 정렬(자정 넘김 +1일)
   const cols=sec.fields;
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
   const isEditingHere=subEditKey===sec.key;
@@ -2049,6 +2050,18 @@ function fmtFlightTime(v,dirType){
   const m=String(v).match(/^(\S+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
   if(!m) return v; // 직접입력값 등 형식이 다르면 그대로 표시
   return `${m[1]}(${padTime(dirType==='arr'?m[3]:m[2])})`;
+}
+// FLIGHTS 도착시간 기준 정렬 키. 도착시각이 이 시각 미만(=자정 넘어간 새벽 도착)이면 다음날로 취급해 +1일(맨 뒤).
+const FLIGHT_NEXTDAY_CUTOFF_HOUR=6;
+function flightArrKey(v){
+  const s=String(v||'');
+  let hh,mm;
+  const m=s.match(/^(\S+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/); // "편명 dep-arr" 저장형식 → 도착(arr) 사용
+  if(m){ [hh,mm]=m[3].split(':').map(Number); }
+  else { const t=s.match(/(\d{1,2}):(\d{2})/); if(!t) return Number.MAX_SAFE_INTEGER; hh=+t[1]; mm=+t[2]; }
+  let total=hh*60+mm;
+  if(hh<FLIGHT_NEXTDAY_CUTOFF_HOUR) total+=1440; // 자정 넘긴 새벽 도착 = +1일
+  return total;
 }
 const FREE_FLIGHT_SENTINEL='__FREE__'; // 항공사 선택없음(편명 직접입력) 표시용 값
 // 서브섹션 인라인 편집용 입력요소 생성 (텍스트/숫자/날짜/select/코드연동 벤더 select)
