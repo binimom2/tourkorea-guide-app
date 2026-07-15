@@ -1988,7 +1988,7 @@ function renderStats(){
     if(to&&r.datein>to) return;
     const d=r.division||'미분류';
     const t=r.type||'ETC';
-    const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
+    const pax=resPax(r);
     byDiv[d]=byDiv[d]||{};
     byDiv[d][t]=(byDiv[d][t]||0)+pax;
   });
@@ -2046,8 +2046,14 @@ function renderCalendar(){
   for(let i=0;i<trail;i++) html+=`<div class="cal-cell out"></div>`;
   document.getElementById('calBody').innerHTML=html;
 }
+// 팀 인원(성인+아동): FLIGHTS 각 행의 adt+chd 합산(예약 최상위 값이 비어있는 경우가 많아 항공행에서 계산)
+function resPax(r){
+  const fl=r.flights||[];
+  if(fl.length) return fl.reduce((s,f)=>s+(parseInt(f.adt)||0)+(parseInt(f.chd)||0),0);
+  return (parseInt(r.adt)||0)+(parseInt(r.chd)||0);
+}
 function summaryLine(r){
-  const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
+  const pax=resPax(r);
   const cust=(r.customer||'').slice(0,2);   // 거래처 한글 2글자
   const typ=(r.type||'').slice(0,2);        // 유형코드 영문 2글자
   const rawNm=(r.name||'');
@@ -2080,7 +2086,7 @@ function renderList(){
   const body=document.getElementById('listBody');
   if(!list.length){ body.innerHTML='<tr class="empty-row"><td colspan="10">조건에 맞는 예약이 없습니다</td></tr>'; return; }
   body.innerHTML=list.map(r=>{
-    const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0)+(parseInt(r.inf)||0);
+    const pax=resPax(r);
     const stCls=r.status==='HOLD'?'row-hold':(r.status==='CANCEL'?'row-cancel':'');
     return `<tr class="${stCls}" onclick="openReservation('${r.id}')">
       <td>${r.code||'-'}</td>
