@@ -211,9 +211,13 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 #codeModal #codeListBody .code-row,#codeModal #vendorListBody .code-row{margin-bottom:0;}
 #codeModal #codeListBody .code-row.edit-row,#codeModal #vendorListBody .code-row.edit-row{grid-column:1/-1;}
 #codeModal .code-row .tag{color:#1c6b3f;background:#d7f0e0;}
-.cust-card{border:1px solid #e8eaf0;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
-.cust-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cust-card{border:1px solid #e8eaf0;border-radius:10px;padding:9px 12px;margin-bottom:7px;}
+.cust-card.inactive{opacity:0.55;}
+.cust-card-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0;}
 .cust-card-hd b{font-size:13px;color:#161f38;}
+.mgr-inline-input{flex:0 1 200px;min-width:120px;padding:5px 8px;font-size:11.5px;border:1px solid #e2e6ee;border-radius:6px;}
+.mgr-inline-btn{flex:0 0 auto;padding:5px 10px;font-size:11px;}
+.mgr-chips{margin-top:7px;}
 .mgr-chip{display:inline-flex;align-items:center;gap:6px;background:#eef2fe;color:#20304f;padding:3px 9px;border-radius:12px;font-size:11px;margin:3px 4px 0 0;}
 .mgr-chip a{color:#e0483f;cursor:pointer;font-weight:800;}
 .mgr-addrow{display:flex;gap:6px;margin-top:8px;}
@@ -276,7 +280,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <select id="f-type"><option value="">전체 유형</option></select>
     <select id="f-proc"><option value="">전체 진행</option></select>
     <select id="f-status"><option value="">전체 상태</option></select>
-    <input type="text" class="search" id="f-search" placeholder="예약자/고객사/담당자/CODE 검색" oninput="renderAll()"/>
+    <input type="text" class="search" id="f-search" placeholder="예약자/거래처/담당자/CODE 검색" oninput="renderAll()"/>
     <div class="viewToggle">
       <button id="vtCal" class="active" onclick="setView('cal')">📅 캘린더</button>
       <button id="vtList" onclick="setView('list')">📋 목록</button>
@@ -314,7 +318,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         <table class="rlist">
           <thead><tr>
             <th>CODE</th><th>구분</th><th>유형</th><th>상태</th><th>체크인</th><th>체크아웃</th>
-            <th>예약명</th><th>고객사</th><th>담당자</th><th>인원</th>
+            <th>예약명</th><th>거래처</th><th>담당자</th><th>인원</th>
           </tr></thead>
           <tbody id="listBody"></tbody>
         </table>
@@ -466,7 +470,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         <div class="code-addrow">
           <input type="text" id="cust-new-code" placeholder="코드 (예: LD-01)" style="flex:0 0 110px;"/>
           <input type="text" id="cust-new-name" placeholder="거래처명 (예: 위브투어)"/>
-          <button class="btn btn-save" onclick="addCustomer()">고객사 추가</button>
+          <button class="btn btn-save" onclick="addCustomer()">거래처 추가</button>
         </div>
         <div id="custListBody"></div>
       </div>
@@ -1099,7 +1103,7 @@ let masterGroup='code', masterKey='offices';
 function renderMasterTabs(){
   const groups=[
     {label:'코드1', items:CODE_TABS.map(t=>({group:'code',key:t.key,label:t.label}))},
-    {label:'코드2', items:[{group:'customer',key:'',label:'고객사'},...getVendorTabs().map(t=>({group:'vendor',key:t.key,label:t.label}))]},
+    {label:'코드2', items:[{group:'customer',key:'',label:'거래처'},...getVendorTabs().map(t=>({group:'vendor',key:t.key,label:t.label}))]},
     {label:'코드3', items:PHRASE_TABS.map(t=>({group:'phrase',key:t.key,label:t.label}))},
   ];
   document.getElementById('masterTabs').innerHTML=groups.map(g=>`
@@ -1224,8 +1228,10 @@ async function saveCustomers(arr){ await sbSave('trv_customers',arr); }
 let custEditIndex=null;
 function renderCustomerList(){
   const customers=getCustomers();
-  document.getElementById('custListBody').innerHTML=customers.length?customers.map((c,ci)=>`
-    <div class="cust-card">
+  document.getElementById('custListBody').innerHTML=customers.length?customers.map((c,ci)=>{
+    const active=c.active!==false;
+    return `
+    <div class="cust-card${active?'':' inactive'}">
       <div class="cust-card-hd">
         ${ci===custEditIndex?`
           <input type="text" id="cust-edit-code" value="${escapeAttr(c.code||'')}" placeholder="코드" style="flex:0 0 90px;"/>
@@ -1234,16 +1240,15 @@ function renderCustomerList(){
           <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelCustomerEdit()">취소</a>
         `:`
           <b>${c.code?`[${escapeHtml(c.code)}] `:''}${escapeHtml(c.name)}</b>
-          <a class="act-edit" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="editCustomer(${ci})">✏ 수정</a>
-          <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delCustomer(${ci})">고객사 삭제</a>
+          <input type="text" id="mgr-new-${ci}" class="mgr-inline-input" placeholder="담당자명" onkeydown="if(event.key==='Enter')addManager(${ci})"/>
+          <button class="btn btn-save mgr-inline-btn" onclick="addManager(${ci})">담당자+</button>
+          <a class="code-active-toggle ${active?'on':'off'}" style="margin-left:auto;" onclick="toggleCustomerActive(${ci})">${active?'🟢 사용':'⚪ 미사용'}</a>
+          <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editCustomer(${ci})">✏ 수정</a>
+          <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delCustomer(${ci})">거래처 삭제</a>
         `}
       </div>
-      <div>${(c.managers||[]).map((m,mi)=>`<span class="mgr-chip">${escapeHtml(m.name)}<a onclick="delManager(${ci},${mi})">✕</a></span>`).join('')||'<span style="color:#b0b6c2;font-size:11.5px;">등록된 담당자가 없습니다</span>'}</div>
-      <div class="mgr-addrow">
-        <input type="text" id="mgr-new-${ci}" placeholder="담당자명 (예: 박광민 매니저)"/>
-        <button class="btn btn-save" style="padding:6px 12px;font-size:11.5px;" onclick="addManager(${ci})">담당자 추가</button>
-      </div>
-    </div>`).join(''):'<div class="subtbl-empty">등록된 고객사가 없습니다</div>';
+      ${(c.managers&&c.managers.length)?`<div class="mgr-chips">${c.managers.map((m,mi)=>`<span class="mgr-chip">${escapeHtml(m.name)}<a onclick="delManager(${ci},${mi})">✕</a></span>`).join('')}</div>`:''}
+    </div>`;}).join(''):'<div class="subtbl-empty">등록된 거래처가 없습니다</div>';
 }
 function editCustomer(ci){ custEditIndex=ci; renderCustomerList(); }
 function cancelCustomerEdit(){ custEditIndex=null; renderCustomerList(); }
@@ -1255,7 +1260,7 @@ async function saveCustomerEdit(ci){
   const name=document.getElementById('cust-edit-name').value.trim();
   if(!name){showToast('⚠ 거래처명을 입력해주세요');return;}
   if(code&&customers.some((x,xi)=>xi!==ci&&x.code===code)){showToast('⚠ 이미 존재하는 코드입니다');return;}
-  if(customers.some((x,xi)=>xi!==ci&&x.name===name)){showToast('⚠ 이미 존재하는 고객사입니다');return;}
+  if(customers.some((x,xi)=>xi!==ci&&x.name===name)){showToast('⚠ 이미 존재하는 거래처입니다');return;}
   c.code=code; c.name=name;
   await saveCustomers(customers);
   custEditIndex=null;
@@ -1267,17 +1272,24 @@ async function addCustomer(){
   const code=codeEl.value.trim().toUpperCase(), name=nameEl.value.trim();
   if(!name){showToast('⚠ 거래처명을 입력해주세요');return;}
   const customers=getCustomers();
-  if(customers.find(c=>c.name===name)){showToast('⚠ 이미 존재하는 고객사입니다');return;}
+  if(customers.find(c=>c.name===name)){showToast('⚠ 이미 존재하는 거래처입니다');return;}
   if(code&&customers.find(c=>c.code===code)){showToast('⚠ 이미 존재하는 코드입니다');return;}
-  customers.push({id:'cu_'+Date.now(),code,name,managers:[]});
+  customers.push({id:'cu_'+Date.now(),code,name,active:true,managers:[]});
   await saveCustomers(customers);
   codeEl.value='';nameEl.value='';
   renderCustomerList();
-  showToast('✅ 고객사가 추가되었습니다');
+  showToast('✅ 거래처가 추가되었습니다');
 }
 async function delCustomer(ci){
   const customers=getCustomers();
   customers.splice(ci,1);
+  await saveCustomers(customers);
+  renderCustomerList();
+}
+async function toggleCustomerActive(ci){
+  const customers=getCustomers();
+  if(!customers[ci])return;
+  customers[ci].active=(customers[ci].active===false)?true:false;
   await saveCustomers(customers);
   renderCustomerList();
 }
@@ -1947,7 +1959,7 @@ let workingRes=null;
 function fillCustomerSelect(selectedCustomer,selectedManager){
   const customers=getCustomers();
   const sel=document.getElementById('r-customer');
-  sel.innerHTML='<option value="">선택안함</option>'+customers.map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  sel.innerHTML='<option value="">선택안함</option>'+customers.filter(c=>c.active!==false||c.name===selectedCustomer).map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}</option>`).join('');
   sel.value=selectedCustomer||'';
   document.getElementById('r-manager').value=selectedManager||''; // MANAGER는 자유입력이라 선택 목록 없이 값만 채움
 }
