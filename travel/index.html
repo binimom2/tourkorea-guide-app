@@ -2006,13 +2006,17 @@ function renderCalendar(){
 }
 function summaryLine(r){
   const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0);
-  // 가이드명: "한글이름 직급 (ENGLISH)" 형식에서 괄호 앞 한글 부분만 추출
-  const guideNames=(r.guides||[]).map(g=>(g.name||'').split('(')[0].trim()).filter(Boolean).join(', ');
+  const cust=(r.customer||'').slice(0,2);   // 거래처 한글 2글자
+  const typ=(r.type||'').slice(0,2);        // 유형코드 영문 2글자
+  const nm=(r.name||'').slice(0,4);         // 상품명 최대 4글자
+  const g0=(r.guides||[])[0];               // 첫 가이드 1명만
+  const guide=g0?(g0.name||'').split('(')[0].trim():''; // 괄호 앞 한글만
   const parts=[];
-  if(r.customer) parts.push(r.customer);
-  parts.push(`[${r.type||'-'}] ${r.name||'(제목없음)'}`);
+  if(cust) parts.push(cust);
+  const tn=`${typ} ${nm}`.trim();
+  if(tn) parts.push(tn);
   if(pax) parts.push(pax+'명');
-  if(guideNames) parts.push(guideNames);
+  if(guide) parts.push(guide);
   return parts.join(' · ');
 }
 function statusBadge(r){
