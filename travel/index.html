@@ -465,7 +465,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <div class="dmodal-hd">
       <h2 id="dirTitle">행사지시서</h2>
       <span class="dir-code" id="dirCode">-</span>
-      <button class="dir-print" onclick="window.print()">🖨 인쇄</button>
+      <button class="dir-print" onclick="printDirections()">🖨 인쇄</button>
       <button class="dir-close" onclick="closeDirections()">✕</button>
     </div>
     <div class="dir-body" id="dirBody"></div>
@@ -2090,8 +2090,7 @@ function renderSubsections(){
     <div style="display:flex;align-items:center;gap:16px;margin-top:6px;">
       <div style="font-size:10.5px;color:#9aa1af;">createdAt: ${formatDT(workingRes.createdAt)}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}</div>
       <div style="flex:1;"></div>
-      <button class="btn btn-ghost" onclick="openDirections()">🧭 Directions</button>
-      <button class="btn btn-ghost" onclick="showBalanceModal()">💰 Balance</button>
+      <button class="btn btn-ghost" onclick="openDirections()">🖨 프린트</button>
     </div>
   `;
 }
@@ -2102,6 +2101,15 @@ function goToAssignments(){
 /* ── DIRECTIONS(수배지시서) 문서 뷰 ── */
 function openDirections(){ if(!workingRes) return; renderDirections(); document.getElementById('dirModal').classList.add('open'); }
 function closeDirections(){ document.getElementById('dirModal').classList.remove('open'); }
+// 인쇄/PDF 저장 시 파일명을 팀 코드(예약코드)로 지정. document.title이 PDF 기본 파일명이 됨.
+function printDirections(){
+  const prevTitle=document.title;
+  const code=(document.getElementById('dirCode').textContent||'').trim();
+  if(code&&code!=='-') document.title=code;
+  const restore=()=>{ document.title=prevTitle; window.removeEventListener('afterprint',restore); };
+  window.addEventListener('afterprint',restore);
+  window.print();
+}
 // 섹션 표 렌더: cfmOnly면 CFM=OK 행만, hideKeys 열 숨김. 항공은 도착시간 순 정렬.
 function dirSectionTable(sec,opts){
   opts=opts||{};
