@@ -185,6 +185,9 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .mtabs{display:flex;gap:4px;padding:0 20px;background:#161f38;}
 .mtabs button{padding:10px 14px;border:none;background:transparent;color:#9aa6c4;font-size:12px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;}
 .mtabs button.active{color:#fff;border-color:#4fd1a5;}
+/* 원가서 탭은 흰 배경(filterbar) 위에 있으므로 글자색을 어둡게(흰 글자 안보임 방지) */
+#costTabs button{color:#6b7484;}
+#costTabs button.active{color:#161f38;border-color:#4fd1a5;}
 .mtabs-grouped{background:#161f38;padding:10px 20px;max-height:180px;overflow-y:auto;}
 .mtab-group{margin-bottom:8px;}
 .mtab-group:last-child{margin-bottom:0;}
