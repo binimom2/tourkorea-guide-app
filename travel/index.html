@@ -246,6 +246,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .dir-tbl .dir-sum td{background:#fbfcfe;font-weight:700;text-align:right;color:#3457d5;}
 .dir-text{margin-bottom:5px;}
 .dir-text .dir-text-body{font-size:10.5px;color:#333;line-height:1.25;}
+.dir-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
 @media print{
   @page{margin:9mm 5mm;}
   body>*{visibility:hidden;}
@@ -2239,7 +2240,9 @@ function renderDirections(){
   const decText=_has(r.decludes)?r.decludes:(getPhrases('decludes')[0]||'');
   const refsText=_has(r.references)?r.references:getPhrases('references').join('\n');
   const chksText=_has(r.checks)?r.checks:getPhrases('checks').join('\n');
-  const textHtml=textSec('REMARK',r.remark)+textSec('INCLUDES',incText)+textSec('DECLUDES',decText)+textSec('REFERENCES',refsText)+textSec('CHECKLIST',chksText);
+  const textHtml=textSec('REMARK',r.remark)
+    +`<div class="dir-2col">${textSec('INCLUDES',incText)}${textSec('DECLUDES',decText)}</div>`
+    +textSec('REFERENCES',refsText)+textSec('CHECKLIST',chksText);
   document.getElementById('dirBody').innerHTML=infoTbl+secHtml+textHtml;
 }
 let subEditKey=null,subEditIndex=null; // 인라인 편집 중인 서브섹션(신규예약도 workingRes 메모리에 바로 반영)
