@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.3, maximum-scale=5.0, user-scalable=yes"/>
-<title>여행사 상세예약 관리</title>
+<title>TourKorea Reservations</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap');
@@ -30,20 +30,20 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;}
 
 /* ── APP SHELL ── */
 #app{display:none;min-height:100vh;flex-direction:column;}
-header.topbar{background:#161f38;color:#fff;padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;}
+header.topbar{background:linear-gradient(135deg,#eaf3ff,#cfe4fb);color:#1c2b4a;padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;border-bottom:1px solid #b8d4f0;}
 .brand{font-weight:900;font-size:16px;letter-spacing:0.3px;display:flex;align-items:center;gap:8px;}
 .brand .dot{width:9px;height:9px;border-radius:50%;background:#4fd1a5;}
-.hamburger-btn{display:none;background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;order:-1;}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:#c4cbdb;}
+.hamburger-btn{display:none;background:transparent;border:none;color:#1c2b4a;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;order:-1;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:#3f577d;}
 @media (max-width:900px){
   .hamburger-btn{display:block;}
   .topbar-right{display:none;width:100%;margin-left:0;order:99;flex-direction:column;align-items:stretch;gap:6px;padding-top:10px;}
   .topbar-right.open{display:flex;}
   .topbar-right .tbtn,.topbar-right .tbtn-primary{width:100%;text-align:center;}
 }
-.role-chip{background:#2a3760;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#8fb4ff;}
-.tbtn{padding:7px 13px;border-radius:7px;border:1px solid #3a4670;background:#1f2a4d;color:#dfe4f2;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;}
-.tbtn:hover{background:#2a3760;}
+.role-chip{background:#d6e6fb;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#1f4a85;}
+.tbtn{padding:7px 13px;border-radius:7px;border:1px solid #a9c8ee;background:#fff;color:#1c2b4a;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;}
+.tbtn:hover{background:#e8f2ff;}
 .tbtn-primary{background:#3457d5;border-color:#3457d5;color:#fff;}
 .tbtn-primary:hover{background:#2a46b3;}
 
@@ -227,7 +227,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 
 <div id="loginScreen">
   <div class="login-box">
-    <h1>여행사 상세예약</h1>
+    <h1>TourKorea Reservations</h1>
     <p>Travel Reservation Management</p>
     <div class="login-field"><input type="text" id="login-id" placeholder="아이디" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()"/></div>
     <div class="login-field"><input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -239,7 +239,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 <div id="app">
   <header class="topbar">
     <button class="hamburger-btn" onclick="document.querySelector('.topbar-right').classList.toggle('open')">☰</button>
-    <div class="brand"><span class="dot"></span>여행사 상세예약</div>
+    <div class="brand"><span class="dot"></span>TourKorea Reservations</div>
     <div class="topbar-right">
       <span id="whoami"></span>
       <button class="tbtn" id="btnCodes" onclick="openCodeModal()" style="display:none;">🏷 코드관리</button>
