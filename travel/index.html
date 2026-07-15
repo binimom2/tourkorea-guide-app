@@ -2062,11 +2062,19 @@ function setDefaultMonthRange(){
 
 /* ══════════════════════════ CALENDAR ══════════════════════════ */
 let calY,calM;
+// 달력이 보는 월을 날짜필터에도 반영 — 달력을 넘기면 그 달 예약이 항상 보이도록(필터가 가려 빈 달력 되는 함정 방지)
+function setFilterToCalMonth(){
+  const p=n=>String(n).padStart(2,'0');
+  const f=document.getElementById('f-from'), t=document.getElementById('f-to');
+  if(f) f.value=`${calY}-${p(calM+1)}-01`;
+  if(t) t.value=`${calY}-${p(calM+1)}-${p(new Date(calY,calM+1,0).getDate())}`;
+}
 function calMove(delta){
   calM+=delta;
   if(calM<0){calM=11;calY--;}
   if(calM>11){calM=0;calY++;}
-  renderCalendar();
+  setFilterToCalMonth();
+  renderAll(); // 통계바도 같이 갱신
 }
 function renderCalendar(){
   if(calY==null){const t=new Date();calY=t.getFullYear();calM=t.getMonth();}
