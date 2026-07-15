@@ -2174,12 +2174,12 @@ function renderSubsections(){
     ${normal.map(sec=>subsecHtml(sec)).join('')}
     <div class="sec-divider">DEPOSITS/WITHDRAWALS</div>
     <div class="ledger-grid">${ledger.map(sec=>subsecHtml(sec)).join('')}</div>
-    <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+    <div class="sec-divider" style="margin:8px 0 4px;">MEMO2</div>
+    <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" style="width:100%;min-height:58px;font-size:12px;font-family:inherit;padding:7px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:6px;">
+      <div style="font-size:10.5px;color:#9aa1af;line-height:1.3;">createdAt: ${formatDT(workingRes.createdAt)}${workingRes.createdBy?' · '+escapeHtml(workingRes.createdBy):''}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}${workingRes.updatedBy?' · '+escapeHtml(workingRes.updatedBy):''}</div>
       <button class="btn btn-ghost" onclick="openDirections()">🖨 프린트</button>
     </div>
-    <div class="sec-divider" style="margin-top:14px;">MEMO2</div>
-    <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" style="width:100%;min-height:70px;font-size:12px;font-family:inherit;padding:8px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
-    <div style="font-size:10.5px;color:#9aa1af;margin-top:10px;">createdAt: ${formatDT(workingRes.createdAt)}${workingRes.createdBy?' · '+escapeHtml(workingRes.createdBy):''}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}${workingRes.updatedBy?' · '+escapeHtml(workingRes.updatedBy):''}</div>
   `;
 }
 function goToAssignments(){
