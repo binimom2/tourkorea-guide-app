@@ -474,6 +474,24 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
   </div>
 </div>
 
+<!-- ── 날짜변경 이관 MODAL ── -->
+<div class="sov" id="amendModal" onclick="if(event.target===this)closeAmendModal()">
+  <div class="smodal" style="max-width:400px;">
+    <div class="smodal-hd"><span>📅 날짜변경 이관</span><button onclick="closeAmendModal()">✕</button></div>
+    <div class="smodal-body">
+      <div style="color:#e0483f;font-size:12px;font-weight:600;line-height:1.55;white-space:pre-line;margin-bottom:14px;">기존 코드는 캔슬로 남아있고 새로 코드가 생성되어 어멘드됩니다.
+내용은 그대로 복사되며 호텔, 골프 날짜 등은 변경하셔야 합니다.</div>
+      <div style="font-size:12px;color:#6b7484;margin-bottom:5px;">원본: <b id="amend-orig">-</b></div>
+      <div style="font-size:12px;color:#6b7484;margin-bottom:5px;">변경할 체크인 날짜</div>
+      <input type="date" lang="en" id="amend-date" style="width:100%;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:14px;box-sizing:border-box;"/>
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="closeAmendModal()">취소</button>
+        <button class="btn btn-save" onclick="confirmDateAmend()">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── ACCOUNT MODAL ── -->
 <div class="sov" id="accModal" onclick="if(event.target===this)closeAccountModal()">
   <div class="smodal" style="max-width:560px;">
@@ -2543,23 +2561,28 @@ async function deleteReservation(){
   showToast('🗑 예약이 삭제되었습니다');
 }
 // 날짜변경 어멘드: 원본은 그 자리에 원 코드로 '취소' 유지, 내용을 복제해 새 날짜+새 코드로 이관
-async function dateChangeAmend(){
+let amendOrigDate='', amendOrigCode='';
+function dateChangeAmend(){
   if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다'); return; }
   syncFormToRes(); // 현재 폼 내용 반영
-  const origDate=workingRes.datein, origCode=workingRes.code;
-  if(!origDate){ showToast('⚠ 체크인 날짜가 없습니다'); return; }
-  const nd=(prompt(`변경된 체크인 날짜 (YYYY-MM-DD)\n원본 ${origDate} → ?`, origDate)||'').trim();
-  if(!nd) return;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){ showToast('⚠ 날짜 형식은 YYYY-MM-DD 입니다'); return; }
-  if(nd===origDate){ showToast('⚠ 기존과 동일한 날짜입니다'); return; }
-  if(!confirm(`[날짜변경 이관]\n\n· 원본(${origDate}, ${origCode})은 그 자리에 "취소"로 남습니다.\n· 내용을 복제해 새 날짜(${nd})에 새 코드로 이관합니다.\n\n진행할까요?`)) return;
+  amendOrigDate=workingRes.datein; amendOrigCode=workingRes.code;
+  if(!amendOrigDate){ showToast('⚠ 체크인 날짜가 없습니다'); return; }
+  document.getElementById('amend-orig').textContent=`${amendOrigDate} (${amendOrigCode})`;
+  document.getElementById('amend-date').value=amendOrigDate;
+  document.getElementById('amendModal').classList.add('open');
+}
+function closeAmendModal(){ document.getElementById('amendModal').classList.remove('open'); }
+async function confirmDateAmend(){
+  const nd=(document.getElementById('amend-date').value||'').trim();
+  if(!nd){ showToast('⚠ 변경할 체크인 날짜를 선택해주세요'); return; }
+  if(nd===amendOrigDate){ showToast('⚠ 기존과 동일한 날짜입니다'); return; }
   // 1) 원본을 취소 상태로 저장
   workingRes.status='CANCEL';
   workingRes.updatedAt=new Date().toISOString();
   const idx=reservations.findIndex(r=>r.id===editingId);
   if(idx>=0) reservations[idx]=workingRes; else reservations.push(workingRes);
   // 2) 복제본 생성 — 새 날짜/코드/진행상태, 박수(기간) 유지
-  const nights=Math.max(0,Math.round((new Date((workingRes.dateout||origDate)+'T00:00:00')-new Date(origDate+'T00:00:00'))/86400000));
+  const nights=Math.max(0,Math.round((new Date((workingRes.dateout||amendOrigDate)+'T00:00:00')-new Date(amendOrigDate+'T00:00:00'))/86400000));
   const clone=JSON.parse(JSON.stringify(workingRes));
   clone.id='id_'+Date.now()+Math.random().toString(36).slice(2,7);
   clone.status='NORMAL';
@@ -2570,9 +2593,10 @@ async function dateChangeAmend(){
   clone.updatedAt=clone.createdAt;
   reservations.push(clone);
   await saveData();
+  closeAmendModal();
   renderFilters();renderAll();
   openReservation(clone.id); // 이관된 새 예약을 바로 열기
-  showToast(`✅ 날짜변경 이관 완료 (${clone.code}) — 원본 ${origCode}은 취소로 유지`);
+  showToast(`✅ 날짜변경 이관 완료 (${clone.code}) — 원본 ${amendOrigCode}은 취소로 유지`);
 }
 
 /* ══════════════════════════ BALANCE ══════════════════════════ */
