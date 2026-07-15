@@ -48,9 +48,9 @@ header.topbar{background:linear-gradient(135deg,#eaf3ff,#cfe4fb);color:#1c2b4a;p
 .tbtn-primary:hover{background:#2a46b3;}
 
 /* ── STATS ── */
-.stats{background:#fff;border-bottom:1px solid #e3e7ee;padding:10px 22px;display:flex;gap:22px;flex-wrap:wrap;font-size:12px;}
+.stats{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;align-items:center;line-height:1.2;}
 .stats b{color:#161f38;}
-.stats .grp{display:flex;gap:10px;align-items:center;padding-right:18px;border-right:1px solid #edf0f5;}
+.stats .grp{display:flex;gap:8px;align-items:center;padding-right:10px;border-right:1px solid #b8d4f0;}
 .stats .grp:last-child{border-right:none;}
 .stats .grp-name{font-weight:800;color:#3457d5;}
 .stats .chip{color:#6b7484;}
@@ -300,6 +300,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
   <header class="topbar">
     <button class="hamburger-btn" onclick="document.querySelector('.topbar-right').classList.toggle('open')">☰</button>
     <div class="brand"><span class="dot"></span>TourKorea Reservations</div>
+    <div class="stats" id="statsBar"></div>
     <div class="topbar-right">
       <span id="whoami"></span>
       <button class="tbtn" id="btnCodes" onclick="openCodeModal()" style="display:none;">🏷 코드관리</button>
@@ -308,8 +309,6 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <button class="tbtn" onclick="doLogout()">Logout</button>
     </div>
   </header>
-
-  <div class="stats" id="statsBar"></div>
 
   <div class="filterbar" id="resFilters">
     <input type="date" lang="en" id="f-from"/>
