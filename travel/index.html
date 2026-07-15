@@ -673,6 +673,7 @@ async function doLogin(){
 async function enterApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='flex';
+  try{ localStorage.setItem('trv_session',JSON.stringify(currentUser)); }catch(e){} // 새로고침해도 로그인 유지
   document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
   // 계정관리는 admin 전용. 그 외 기능(코드관리·예약입력 등)은 매니저·오퍼레이터 모두 admin과 동일. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
   document.getElementById('btnAccounts').style.display=(currentUser.role==='admin')?'':'none'; // 계정관리: admin만
@@ -701,6 +702,7 @@ async function enterApp(){
 function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?'))return;
   currentUser=null;
+  try{ localStorage.removeItem('trv_session'); }catch(e){} // 세션 해제(다음 로드부터 로그인 필요)
   document.getElementById('app').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('login-id').value='';
@@ -2881,6 +2883,13 @@ function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
+// 세션 유지: 새로고침해도 저장된 로그인 세션이 있으면 로그인 화면을 건너뛰고 복원(로그아웃 시에만 해제됨)
+(function restoreSession(){
+  try{
+    const s=JSON.parse(localStorage.getItem('trv_session')||'null');
+    if(s&&s.id&&s.role){ currentUser=s; enterApp(); }
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
