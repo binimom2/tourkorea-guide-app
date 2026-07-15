@@ -2076,7 +2076,7 @@ function blankReservation(){
     office:_firstActiveCode(codes.offices),division:_firstActiveCode(codes.divisions),
     type:_firstActiveCode(codes.types),proc:_firstActiveCode(codes.procs),status:_firstActiveCode(codes.statuses),
     datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',references:'',checks:'',memo:'',memo2:'',
-    createdAt:'',updatedAt:'',
+    createdAt:'',updatedAt:'',createdBy:'',updatedBy:'',
     flights:[],hotels:[],golfs:[],guides:[],vehicles:[],shows:[],shopping:[],deposits:[],withdrawals:[]};
 }
 function formatDT(iso){
@@ -2179,7 +2179,7 @@ function renderSubsections(){
     </div>
     <div class="sec-divider" style="margin-top:14px;">MEMO2</div>
     <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" placeholder="오피 간 정보교환용 메모 — 수배지시서 인쇄에는 노출되지 않습니다" style="width:100%;min-height:70px;font-size:12px;font-family:inherit;padding:8px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
-    <div style="font-size:10.5px;color:#9aa1af;margin-top:10px;">createdAt: ${formatDT(workingRes.createdAt)}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}</div>
+    <div style="font-size:10.5px;color:#9aa1af;margin-top:10px;">createdAt: ${formatDT(workingRes.createdAt)}${workingRes.createdBy?' · '+escapeHtml(workingRes.createdBy):''}<br/>updatedAt: ${formatDT(workingRes.updatedAt)}${workingRes.updatedBy?' · '+escapeHtml(workingRes.updatedBy):''}</div>
   `;
 }
 function goToAssignments(){
@@ -2533,6 +2533,8 @@ async function saveReservation(){
     workingRes.code=genCode(workingRes.datein);
     workingRes.createdAt=new Date().toISOString();
     workingRes.updatedAt=workingRes.createdAt;
+    workingRes.createdBy=currentUser?currentUser.id:'';
+    workingRes.updatedBy=workingRes.createdBy;
     reservations.push(workingRes);
     await saveData();
     editingId=workingRes.id;
@@ -2547,6 +2549,7 @@ async function saveReservation(){
     showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요.');
   } else {
     workingRes.updatedAt=new Date().toISOString();
+    workingRes.updatedBy=currentUser?currentUser.id:'';
     const idx=reservations.findIndex(r=>r.id===editingId);
     reservations[idx]=workingRes;
     await saveData();
@@ -2582,6 +2585,7 @@ async function confirmDateAmend(){
   // 1) 원본을 취소 상태로 저장
   workingRes.status='CANCEL';
   workingRes.updatedAt=new Date().toISOString();
+  workingRes.updatedBy=currentUser?currentUser.id:'';
   const idx=reservations.findIndex(r=>r.id===editingId);
   if(idx>=0) reservations[idx]=workingRes; else reservations.push(workingRes);
   // 2) 복제본 생성 — 새 날짜/코드/진행상태, 박수(기간) 유지
@@ -2594,6 +2598,8 @@ async function confirmDateAmend(){
   clone.code=genCode(nd);
   clone.createdAt=new Date().toISOString();
   clone.updatedAt=clone.createdAt;
+  clone.createdBy=currentUser?currentUser.id:'';
+  clone.updatedBy=clone.createdBy;
   reservations.push(clone);
   await saveData();
   closeAmendModal();
