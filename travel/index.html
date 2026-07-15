@@ -305,9 +305,9 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
   <div class="stats" id="statsBar"></div>
 
   <div class="filterbar" id="resFilters">
-    <input type="date" id="f-from"/>
+    <input type="date" lang="en" id="f-from"/>
     <span style="color:#b0b6c2;">~</span>
-    <input type="date" id="f-to"/>
+    <input type="date" lang="en" id="f-to"/>
     <select id="f-division"><option value="">전체 구분</option></select>
     <select id="f-type"><option value="">전체 유형</option></select>
     <select id="f-proc"><option value="">전체 진행</option></select>
@@ -388,7 +388,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
           <div class="f-row"><label>STATUS</label><select id="r-status"></select></div>
         </div>
         <div class="f-row2">
-          <div class="f-row"><label>CHECK-IN</label><input type="date" id="r-datein" onchange="onDateChange()"/></div>
+          <div class="f-row"><label>CHECK-IN</label><input type="date" lang="en" id="r-datein" onchange="onDateChange()"/></div>
           <div class="f-row"><label>TERM</label><div style="display:flex;align-items:center;gap:6px;">
             <input type="number" id="r-term" min="0" onchange="onTermChange()" style="width:70px;flex:0 0 auto;"/>
             <span style="font-size:11.5px;color:#8892a0;white-space:nowrap;">Night</span>
@@ -427,7 +427,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
           <div class="phrase-picker" id="checks-picker"></div>
           <textarea id="r-checks"></textarea>
         </div>
-        <div class="f-row"><label>MEMO</label><textarea id="r-memo"></textarea></div>
+        <div class="f-row"><label>메모1</label><textarea id="r-memo" placeholder="링크 1개 첨부용"></textarea></div>
       </div>
 
       <div class="rmodal-main" id="subsecHost"></div>
@@ -2046,7 +2046,7 @@ function blankReservation(){
   return {id:'id_'+Date.now()+Math.random().toString(36).slice(2,7),code:'',
     office:_firstActiveCode(codes.offices),division:_firstActiveCode(codes.divisions),
     type:_firstActiveCode(codes.types),proc:_firstActiveCode(codes.procs),status:_firstActiveCode(codes.statuses),
-    datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',references:'',checks:'',memo:'',
+    datein:'',dateout:'',name:'',customer:'',manager:'',agent:'',tc:'',adt:'',chd:'',inf:'',picket:'',remark:'',includes:'',decludes:'',references:'',checks:'',memo:'',memo2:'',
     createdAt:'',updatedAt:'',
     flights:[],hotels:[],golfs:[],guides:[],vehicles:[],shows:[],shopping:[],deposits:[],withdrawals:[]};
 }
@@ -2060,7 +2060,7 @@ let workingRes=null;
 function fillCustomerSelect(selectedCustomer,selectedManager){
   const customers=getCustomers();
   const sel=document.getElementById('r-customer');
-  sel.innerHTML='<option value="">선택안함</option>'+customers.filter(c=>c.active!==false||c.name===selectedCustomer).map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  sel.innerHTML='<option value="">NONE</option>'+customers.filter(c=>c.active!==false||c.name===selectedCustomer).map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}</option>`).join('');
   sel.value=selectedCustomer||'';
   document.getElementById('r-manager').value=selectedManager||''; // MANAGER는 자유입력이라 선택 목록 없이 값만 채움
 }
@@ -2150,6 +2150,8 @@ function renderSubsections(){
       <div style="flex:1;"></div>
       <button class="btn btn-ghost" onclick="openDirections()">🖨 프린트</button>
     </div>
+    <div class="sec-divider" style="margin-top:14px;">메모2 (내부용 · 프린트 제외)</div>
+    <textarea id="r-memo2" oninput="if(workingRes)workingRes.memo2=this.value" placeholder="오피 간 정보교환용 메모 — 수배지시서 인쇄에는 노출되지 않습니다" style="width:100%;min-height:70px;font-size:12px;font-family:inherit;padding:8px 10px;border:1px solid #e2e6ee;border-radius:8px;box-sizing:border-box;">${escapeHtml(workingRes.memo2||'')}</textarea>
   `;
 }
 function goToAssignments(){
@@ -2284,7 +2286,7 @@ function renderSubFieldInput(f,val){
             const t=dirType==='arr'?fl.arr:fl.dep;
             return `<option value="${escapeAttr(v)}" ${v===normVal?'selected':''}>${fl.flightNo}(${t})</option>`;
           }).join('');
-          return `<select id="${id}"><option value="">선택안함</option>${flightOpts}</select>`;
+          return `<select id="${id}"><option value="">NONE</option>${flightOpts}</select>`;
         })();
     return `<div style="display:flex;flex-direction:column;gap:3px;min-width:120px;">
       <select id="${id}-airline" onchange="filterFlightOptions('${id}',this.value,'${dirType}')" style="font-size:10px;padding:3px 4px;">
@@ -2309,10 +2311,18 @@ function renderSubFieldInput(f,val){
       } else { optsHtml+=inner; }
     });
     const hasVal=val&&allNames.some(n=>n===val);
-    const curOpt=(val&&!hasVal)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
-    const onpick=f.vendorPhoneField?` onchange="onVendorPick('${f.vendorKey}',this.value,'sf-${f.vendorPhoneField}')"`:'';
-    const fwStyle=f.fw?` style="width:${f.fw}px;min-width:${f.fw}px;"`:'';
-    return `<select id="${id}"${onpick}${fwStyle}><option value="">선택안함</option>${curOpt}${optsHtml}</select>`;
+    const fwStyle=f.fw?` style="width:${f.fw}px;min-width:${f.fw}px;box-sizing:border-box;"`:'';
+    const wrapId=id+'-vwrap';
+    const keysJson=JSON.stringify(keys);
+    const phone=f.vendorPhoneField||'';
+    // 목록에 없는 값(직접입력) → 텍스트 입력 모드로 렌더
+    if(val&&!hasVal){
+      return `<span id="${wrapId}" style="display:inline-flex;gap:3px;align-items:center;">`
+        +`<input type="text" id="${id}" value="${escapeAttr(val)}" placeholder="직접입력"${fwStyle}/>`
+        +`<button type="button" title="목록 선택" onclick='vendorToSelect("${id}","${wrapId}",${keysJson},"${phone}")' style="padding:2px 6px;font-size:11px;cursor:pointer;">≡</button></span>`;
+    }
+    return `<span id="${wrapId}" style="display:inline-flex;gap:3px;align-items:center;">`
+      +`<select id="${id}"${fwStyle} onchange='vendorSelChange(this,"${id}","${wrapId}",${keysJson},"${phone}")'><option value="">NONE</option>${optsHtml}</select></span>`;
   }
   if(f.type==='checkbox'){
     return `<input type="checkbox" id="${id}" ${val==='OK'?'checked':''} style="width:16px;height:16px;"/>`;
@@ -2325,10 +2335,36 @@ function renderSubFieldInput(f,val){
   if(f.fixed){
     return `<input type="text" id="${id}" value="${escapeAttr(val||f.fixed)}" readonly style="background:#f4f6fa;color:#6b7484;"/>`;
   }
+  const langAttr=f.type==='date'?' lang="en"':'';
   if(f.fw){
-    return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}" style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`;
+    return `<input type="${f.type}"${langAttr} id="${id}" value="${escapeAttr(val)}" style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`;
   }
-  return `<input type="${f.type}" id="${id}" value="${escapeAttr(val)}"/>`;
+  return `<input type="${f.type}"${langAttr} id="${id}" value="${escapeAttr(val)}"/>`;
+}
+// vendor select: NONE 선택 시 텍스트 직접입력으로 전환, ≡ 버튼으로 목록 복귀
+function vendorSelChange(sel,id,wrapId,keys,phone){
+  if(sel.value===''){ vendorToText(id,wrapId,keys,phone); return; }
+  if(phone){ onVendorPick((keys&&keys[keys.length-1])||'',sel.value,'sf-'+phone); }
+}
+function vendorToText(id,wrapId,keys,phone){
+  const wrap=document.getElementById(wrapId); if(!wrap) return;
+  const cur=(document.getElementById(id)||{}).value||'';
+  wrap.innerHTML=`<input type="text" id="${id}" value="${escapeAttr(cur)}" placeholder="직접입력"/>`
+    +`<button type="button" title="목록 선택" onclick='vendorToSelect("${id}","${wrapId}",${JSON.stringify(keys)},"${phone}")' style="padding:2px 6px;font-size:11px;cursor:pointer;">≡</button>`;
+  const inp=document.getElementById(id); if(inp) inp.focus();
+}
+function vendorToSelect(id,wrapId,keys,phone){
+  const wrap=document.getElementById(wrapId); if(!wrap) return;
+  const cur=(document.getElementById(id)||{}).value||'';
+  let optsHtml='';
+  keys.forEach(key=>{
+    const list=getVendors(key).filter(v=>v.active!==false);
+    if(!list.length) return;
+    const inner=list.map(v=>`<option value="${escapeAttr(v.name)}" ${v.name===cur?'selected':''}>${escapeHtml(v.name)}</option>`).join('');
+    if(keys.length>1){ const lbl=(VENDOR_CATEGORY_TABS.find(t=>t.key===key)||{}).label||key; optsHtml+=`<optgroup label="${escapeHtml(lbl)}">${inner}</optgroup>`; }
+    else optsHtml+=inner;
+  });
+  wrap.innerHTML=`<select id="${id}" onchange='vendorSelChange(this,"${id}","${wrapId}",${JSON.stringify(keys)},"${phone}")'><option value="">NONE</option>${optsHtml}</select>`;
 }
 // 항공사 선택 시 해당 항공사 편명만 남기고 도착/출발 select를 다시 채움
 function filterFlightOptions(baseId,airlineCode,dirType){
@@ -2339,7 +2375,7 @@ function filterFlightOptions(baseId,airlineCode,dirType){
     return;
   }
   const flights=getVendors('flights').filter(fl=>fl.active!==false&&fl.direction&&(dirType==='arr'?fl.direction.endsWith('-BKK'):fl.direction.startsWith('BKK-'))&&(!airlineCode||fl.airline===airlineCode));
-  wrap.innerHTML=`<select id="${baseId}"><option value="">선택안함</option>${flights.map(fl=>{
+  wrap.innerHTML=`<select id="${baseId}"><option value="">NONE</option>${flights.map(fl=>{
     const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
     const t=dirType==='arr'?fl.arr:fl.dep;
     return `<option value="${escapeAttr(v)}">${fl.flightNo}(${t})</option>`;
@@ -2451,6 +2487,7 @@ function syncFormToRes(){
   workingRes.references=document.getElementById('r-references').value.trim();
   workingRes.checks=document.getElementById('r-checks').value.trim();
   workingRes.memo=document.getElementById('r-memo').value.trim();
+  const _m2=document.getElementById('r-memo2'); if(_m2) workingRes.memo2=_m2.value.trim();
 }
 async function saveReservation(){
   syncFormToRes();
