@@ -474,12 +474,12 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 
 <!-- ── ACCOUNT MODAL ── -->
 <div class="sov" id="accModal" onclick="if(event.target===this)closeAccountModal()">
-  <div class="smodal" style="max-width:420px;">
+  <div class="smodal" style="max-width:560px;">
     <div class="smodal-hd"><span>계정 관리</span><button onclick="closeAccountModal()">✕</button></div>
     <div class="smodal-body">
       <div class="f-row2">
         <input type="text" id="acc-id" placeholder="아이디"/>
-        <input type="password" id="acc-pw" placeholder="비밀번호"/>
+        <input type="password" id="acc-pw" placeholder="비밀번호(8자)" value="12345678"/>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px;align-items:stretch;">
         <select id="acc-role" style="flex:1;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;">
@@ -604,6 +604,12 @@ async function doLogin(){
     }
     const found=getAccounts().find(a=>a.id.toLowerCase()===id.toLowerCase()&&a.pw===pw);
     if(found){
+      if(found.approved===false){
+        err.textContent='사용이 허가되지 않은 계정입니다. 관리자에게 문의하세요.';
+        err.style.display='block';
+        document.getElementById('login-pw').value='';
+        return;
+      }
       currentUser={id:found.id,role:found.role||'staff'};
       await enterApp();return;
     }
@@ -618,10 +624,10 @@ async function enterApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
-  if(currentUser.role==='admin'){
-    document.getElementById('btnAccounts').style.display='';
-    document.getElementById('btnCodes').style.display='';
-  }
+  // 관리버튼(계정/코드)은 admin·manager만. 오퍼레이터는 숨김. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
+  const canManage=(currentUser.role==='admin'||currentUser.role==='manager');
+  document.getElementById('btnAccounts').style.display=canManage?'':'none';
+  document.getElementById('btnCodes').style.display=canManage?'':'none';
   await loadAllFromSupabase();
   if(currentUser.role==='admin'){
     await ensureCodesMigrated();
@@ -654,33 +660,46 @@ function doLogout(){
 /* ── 계정관리 ── */
 function openAccountModal(){document.getElementById('accModal').classList.add('open');renderAccList();}
 function closeAccountModal(){document.getElementById('accModal').classList.remove('open');}
+let accEditIndex=null;
 function renderAccList(){
   const ul=document.getElementById('accList');
   ul.innerHTML=getAccounts().map((a,i)=>{
     const role=(a.role==='admin'||a.role==='manager')?a.role:'operator';
+    const approved=a.approved!==false;
+    if(i===accEditIndex){
+      return `<li style="display:flex;align-items:center;gap:6px;background:#eef3fb;padding:8px 10px;border-radius:8px;flex-wrap:wrap;">
+        <input id="acc-edit-id" value="${escapeAttr(a.id)}" style="flex:1 1 130px;padding:5px 8px;border:1px solid #cdd6e4;border-radius:6px;font-size:12px;"/>
+        <button class="btn btn-save" style="padding:4px 10px;font-size:11px;" onclick="saveAccEdit(${i})">저장</button>
+        <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="cancelAccEdit()">취소</a>
+      </li>`;
+    }
     return `
-    <li style="display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;">
-      <span style="font-weight:700;font-size:12px;min-width:70px;">${a.id}</span>
+    <li style="display:flex;align-items:center;gap:6px;background:#f8f9fc;padding:8px 10px;border-radius:8px;flex-wrap:wrap;${approved?'':'opacity:.55;'}">
+      <span style="font-weight:700;font-size:12px;min-width:64px;">${escapeHtml(a.id)}</span>
       <select onchange="changeAccRole(${i},this.value)" style="font-size:11px;font-weight:700;padding:4px 6px;border:1px solid #cdd6e4;border-radius:6px;font-family:inherit;background:#fff;color:#1f4a85;">
         <option value="operator" ${role==='operator'?'selected':''}>OPERATOR</option>
         <option value="manager" ${role==='manager'?'selected':''}>MANAGER</option>
         <option value="admin" ${role==='admin'?'selected':''}>ADMIN</option>
       </select>
-      <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delAccount(${i})">삭제</a>
+      <a class="code-active-toggle ${approved?'on':'off'}" style="margin-left:auto;" onclick="toggleAccApproved(${i})">${approved?'🟢 허가':'⚪ 미허가'}</a>
+      <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editAccount(${i})">✏ 수정</a>
+      <a class="act-edit" style="cursor:pointer;font-size:11px;color:#1a8a52;" onclick="changeAccPw(${i})">🔑 비번</a>
+      <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delAccount(${i})">삭제</a>
     </li>`;}).join('')||'<div class="subtbl-empty">등록된 직원 계정이 없습니다</div>';
 }
 async function addAccount(){
   const id=document.getElementById('acc-id').value.trim();
   const pw=document.getElementById('acc-pw').value.trim();
   const err=document.getElementById('acc-err');
-  if(!id||!pw){err.textContent='아이디/비밀번호를 입력해주세요.';return;}
+  if(!id){err.textContent='아이디를 입력해주세요.';return;}
+  if(pw.length<8){err.textContent='비밀번호는 8자 이상이어야 합니다.';return;}
   const accounts=getAccounts();
-  if(accounts.find(a=>a.id===id)){err.textContent='이미 존재하는 아이디입니다.';return;}
+  if(accounts.find(a=>a.id.toLowerCase()===id.toLowerCase())){err.textContent='이미 존재하는 아이디입니다.';return;}
   const role=document.getElementById('acc-role').value||'operator';
-  accounts.push({id,pw,role});
+  accounts.push({id,pw,role,approved:true});
   await saveAccounts(accounts);
   err.textContent='';
-  document.getElementById('acc-id').value='';document.getElementById('acc-pw').value='';
+  document.getElementById('acc-id').value='';document.getElementById('acc-pw').value='12345678';
   renderAccList();
   showToast('✅ 계정이 추가되었습니다');
 }
@@ -694,6 +713,38 @@ async function changeAccRole(i,role){
   await saveAccounts(accounts);
   renderAccList();
   showToast('✅ 구분이 변경되었습니다');
+}
+function editAccount(i){ accEditIndex=i; renderAccList(); }
+function cancelAccEdit(){ accEditIndex=null; renderAccList(); }
+async function saveAccEdit(i){
+  const accounts=getAccounts();
+  if(!accounts[i])return;
+  const newId=document.getElementById('acc-edit-id').value.trim();
+  if(!newId){showToast('⚠ 아이디를 입력해주세요');return;}
+  if(accounts.some((x,xi)=>xi!==i&&x.id.toLowerCase()===newId.toLowerCase())){showToast('⚠ 이미 존재하는 아이디입니다');return;}
+  accounts[i].id=newId;
+  await saveAccounts(accounts);
+  accEditIndex=null; renderAccList();
+  showToast('✅ 수정되었습니다');
+}
+async function toggleAccApproved(i){
+  const accounts=getAccounts();
+  if(!accounts[i])return;
+  accounts[i].approved=(accounts[i].approved===false)?true:false;
+  await saveAccounts(accounts);
+  renderAccList();
+  showToast(accounts[i].approved?'✅ 허가되었습니다':'⛔ 허가가 취소되었습니다 (로그인 불가)');
+}
+async function changeAccPw(i){
+  const accounts=getAccounts();
+  if(!accounts[i])return;
+  const np=prompt(`[${accounts[i].id}] 새 비밀번호 (8자 이상)`,'12345678');
+  if(np===null)return;
+  if(np.trim().length<8){showToast('⚠ 비밀번호는 8자 이상이어야 합니다');return;}
+  accounts[i].pw=np.trim();
+  await saveAccounts(accounts);
+  renderAccList();
+  showToast('✅ 비밀번호가 변경되었습니다');
 }
 
 /* ══════════════════════════ CODE MASTER DATA ══════════════════════════ */
