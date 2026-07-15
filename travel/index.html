@@ -379,6 +379,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <div class="rmodal-hd">
       <h2 id="rmTitle">신규예약</h2>
       <span class="code" id="rmCode">-</span>
+      <span id="rmViewers" style="font-size:11.5px;margin-left:8px;"></span>
       <button class="rmodal-close" onclick="closeReservation()">✕</button>
     </div>
     <div class="rmodal-body">
@@ -2205,10 +2206,44 @@ function openReservation(id,presetDate){
 
   renderSubsections();
   document.getElementById('rov').classList.add('open');
+  document.getElementById('rmViewers').innerHTML='';
+  if(modalMode==='edit'&&workingRes.code) startPresence(workingRes.code); else stopPresence();
 }
 function closeReservation(){
+  stopPresence();
   document.getElementById('rov').classList.remove('open');
   workingRes=null;editingId=null;
+}
+/* ── 동시 열람(presence): 같은 예약을 여러 명이 열면 서로의 아이디를 빨간색으로 표시 ── */
+let presenceTimer=null, presenceKey='', presenceCode='';
+async function startPresence(code){
+  await stopPresence();
+  if(!code||!currentUser) return;
+  presenceCode=code;
+  presenceKey=`trv_presence_${code}|${currentUser.id}`;
+  await presenceBeat();
+  presenceTimer=setInterval(presenceBeat,8000);
+}
+async function stopPresence(){
+  if(presenceTimer){ clearInterval(presenceTimer); presenceTimer=null; }
+  const k=presenceKey; presenceKey=''; presenceCode='';
+  const el=document.getElementById('rmViewers'); if(el) el.innerHTML='';
+  if(k){ try{ await sb.from('guide_data').delete().eq('data_key',k); }catch(e){} }
+}
+async function presenceBeat(){
+  if(!presenceKey||!presenceCode||!currentUser) return;
+  try{ await sb.from('guide_data').upsert({data_key:presenceKey,data:{id:currentUser.id,at:Date.now()},updated_at:new Date().toISOString()}); }catch(e){}
+  await refreshViewers();
+}
+async function refreshViewers(){
+  if(!presenceCode) return;
+  let rows=[];
+  try{ const{data}=await sb.from('guide_data').select('data_key,data').like('data_key',`trv_presence_${presenceCode}|%`); rows=data||[]; }catch(e){ return; }
+  const now=Date.now();
+  const others=[...new Set(rows.map(r=>r.data).filter(d=>d&&d.id&&d.at&&d.id!==currentUser.id&&(now-d.at)<20000).map(d=>d.id))];
+  const el=document.getElementById('rmViewers');
+  if(el) el.innerHTML = others.length ? `👀 동시 열람: ${others.map(id=>`<span style="color:#e0483f;font-weight:800;">${escapeHtml(id)}</span>`).join(', ')}` : '';
+  rows.forEach(r=>{ if(r.data&&r.data.at&&(now-r.data.at)>600000){ try{ sb.from('guide_data').delete().eq('data_key',r.data_key); }catch(e){} } });
 }
 function onDateChange(){
   if(modalMode==='create'){
