@@ -85,10 +85,12 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-daynum{font-size:11.5px;font-weight:700;color:#495066;margin-bottom:4px;}
 .cal-cell:nth-child(7n+1) .cal-daynum{color:#e0483f;}
 .cal-cell:nth-child(7n) .cal-daynum{color:#3457d5;}
-.cal-item{font-size:10.5px;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:3px solid #d99a1c;background:#fdf3de;color:#20304f;}
+.cal-item{font-size:10.5px;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:3px solid #d0d5df;background:#f6f7f9;color:#20304f;}
 .cal-item:hover{filter:brightness(0.97);}
-.cal-item.proc-FINAL{border-color:#1a8a52;background:#e2f7ec;}
-.cal-item.is-cancel{border-color:#9aa1af;background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
+.cal-item.status-hold{border-color:#f59f2b;background:#ffe8cc;color:#8a5410;}
+.cal-item.status-cancel{border-color:#9aa1af;background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
+.rlist tr.row-hold td{background:#fff4e6;}
+.rlist tr.row-cancel td{color:#9aa1af;text-decoration:line-through;}
 .cal-more{font-size:10px;color:#8892a0;padding:1px 5px;cursor:pointer;}
 
 /* ── LIST TABLE ── */
@@ -431,7 +433,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <div class="rmodal-main" id="subsecHost"></div>
     </div>
     <div class="rmodal-ft">
-      <button class="btn btn-danger" id="btnDeleteRes" onclick="deleteReservation()" style="display:none;">예약 삭제</button>
+      <button class="btn btn-ghost" id="btnDateAmend" onclick="dateChangeAmend()" style="display:none;">📅 날짜변경 이관</button>
       <div style="flex:1;"></div>
       <button class="btn btn-ghost" onclick="closeReservation()">닫기</button>
       <button class="btn btn-save" id="btnSaveRes" onclick="saveReservation()">저장</button>
@@ -663,7 +665,10 @@ function closeAccountModal(){document.getElementById('accModal').classList.remov
 let accEditIndex=null;
 function renderAccList(){
   const ul=document.getElementById('accList');
-  ul.innerHTML=getAccounts().map((a,i)=>{
+  const RANK={admin:0,manager:1,operator:2};
+  const rk=r=>RANK[r]===undefined?2:RANK[r]; // 상급자 상단
+  const ordered=getAccounts().map((a,i)=>({a,i})).sort((x,y)=>rk(x.a.role)-rk(y.a.role));
+  ul.innerHTML=ordered.map(({a,i})=>{
     const role=(a.role==='admin'||a.role==='manager')?a.role:'operator';
     const approved=a.approved!==false;
     if(i===accEditIndex){
@@ -1914,7 +1919,8 @@ function getFiltered(){
     if(div&&r.division!==div) return false;
     if(typ&&r.type!==typ) return false;
     if(proc&&r.proc!==proc) return false;
-    if(st&&r.status!==st) return false;
+    if(st){ if(r.status!==st) return false; }
+    else if(r.status==='DELETE') return false; // 삭제 상태는 기본 숨김(상태필터로 '삭제' 선택 시만 표시)
     if(q){
       const hay=[r.code,r.name,r.customer,r.manager].join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
@@ -1971,7 +1977,7 @@ function renderCalendar(){
     const more=items.length-shown.length;
     html+=`<div class="cal-cell" onclick="openReservation(null,'${dateStr}')">
       <div class="cal-daynum">${d}</div>
-      ${shown.map(r=>`<div class="cal-item proc-${r.proc}${r.status==='CANCEL'?' is-cancel':''}" onclick="event.stopPropagation();openReservation('${r.id}')">${escapeHtml(summaryLine(r))}</div>`).join('')}
+      ${shown.map(r=>`<div class="cal-item status-${(r.status||'NORMAL').toLowerCase()}" onclick="event.stopPropagation();openReservation('${r.id}')">${escapeHtml(summaryLine(r))}</div>`).join('')}
       ${more>0?`<div class="cal-more" onclick="event.stopPropagation();openDayList('${dateStr}')">+${more}건 더보기</div>`:''}
     </div>`;
   }
@@ -2002,7 +2008,8 @@ function renderList(){
   if(!list.length){ body.innerHTML='<tr class="empty-row"><td colspan="10">조건에 맞는 예약이 없습니다</td></tr>'; return; }
   body.innerHTML=list.map(r=>{
     const pax=(parseInt(r.adt)||0)+(parseInt(r.chd)||0)+(parseInt(r.inf)||0);
-    return `<tr onclick="openReservation('${r.id}')">
+    const stCls=r.status==='HOLD'?'row-hold':(r.status==='CANCEL'?'row-cancel':'');
+    return `<tr class="${stCls}" onclick="openReservation('${r.id}')">
       <td>${r.code||'-'}</td>
       <td>${codeLabel('divisions',r.division)}</td>
       <td>${codeLabel('types',r.type)}</td>
@@ -2077,7 +2084,7 @@ function openReservation(id,presetDate){
   const _rmCode=workingRes.code||genCodePreview(workingRes.datein);
   document.getElementById('rmCode').textContent=_rmCode;
   document.getElementById('r-code').value=_rmCode;
-  document.getElementById('btnDeleteRes').style.display=modalMode==='edit'?'':'none';
+  document.getElementById('btnDateAmend').style.display=modalMode==='edit'?'':'none';
   document.getElementById('btnSaveRes').textContent=modalMode==='edit'?'저장':'생성';
 
   document.getElementById('r-datein').value=workingRes.datein;
@@ -2424,7 +2431,7 @@ function syncVendorDeposit(sectionKey,row){
   }
 }
 
-async function saveReservation(){
+function syncFormToRes(){
   workingRes.office=document.getElementById('r-office').value;
   workingRes.division=document.getElementById('r-division').value;
   workingRes.type=document.getElementById('r-type').value;
@@ -2444,6 +2451,9 @@ async function saveReservation(){
   workingRes.references=document.getElementById('r-references').value.trim();
   workingRes.checks=document.getElementById('r-checks').value.trim();
   workingRes.memo=document.getElementById('r-memo').value.trim();
+}
+async function saveReservation(){
+  syncFormToRes();
 
   if(!workingRes.datein){showToast('⚠ 체크인 날짜를 입력해주세요');return;}
   if(!workingRes.name){showToast('⚠ 예약명을 입력해주세요');return;}
@@ -2459,7 +2469,7 @@ async function saveReservation(){
     document.getElementById('rmTitle').textContent='예약 수정 (EditReservation)';
     document.getElementById('rmCode').textContent=workingRes.code;
     document.getElementById('r-code').value=workingRes.code;
-    document.getElementById('btnDeleteRes').style.display='';
+    document.getElementById('btnDateAmend').style.display='';
     document.getElementById('btnSaveRes').textContent='저장';
     renderSubsections();
     renderFilters();renderAll();
@@ -2481,6 +2491,38 @@ async function deleteReservation(){
   closeReservation();
   renderFilters();renderAll();
   showToast('🗑 예약이 삭제되었습니다');
+}
+// 날짜변경 어멘드: 원본은 그 자리에 원 코드로 '취소' 유지, 내용을 복제해 새 날짜+새 코드로 이관
+async function dateChangeAmend(){
+  if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다'); return; }
+  syncFormToRes(); // 현재 폼 내용 반영
+  const origDate=workingRes.datein, origCode=workingRes.code;
+  if(!origDate){ showToast('⚠ 체크인 날짜가 없습니다'); return; }
+  const nd=(prompt(`변경된 체크인 날짜 (YYYY-MM-DD)\n원본 ${origDate} → ?`, origDate)||'').trim();
+  if(!nd) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){ showToast('⚠ 날짜 형식은 YYYY-MM-DD 입니다'); return; }
+  if(nd===origDate){ showToast('⚠ 기존과 동일한 날짜입니다'); return; }
+  if(!confirm(`[날짜변경 이관]\n\n· 원본(${origDate}, ${origCode})은 그 자리에 "취소"로 남습니다.\n· 내용을 복제해 새 날짜(${nd})에 새 코드로 이관합니다.\n\n진행할까요?`)) return;
+  // 1) 원본을 취소 상태로 저장
+  workingRes.status='CANCEL';
+  workingRes.updatedAt=new Date().toISOString();
+  const idx=reservations.findIndex(r=>r.id===editingId);
+  if(idx>=0) reservations[idx]=workingRes; else reservations.push(workingRes);
+  // 2) 복제본 생성 — 새 날짜/코드/진행상태, 박수(기간) 유지
+  const nights=Math.max(0,Math.round((new Date((workingRes.dateout||origDate)+'T00:00:00')-new Date(origDate+'T00:00:00'))/86400000));
+  const clone=JSON.parse(JSON.stringify(workingRes));
+  clone.id='id_'+Date.now()+Math.random().toString(36).slice(2,7);
+  clone.status='NORMAL';
+  clone.datein=nd;
+  clone.dateout=calcDateout(nd,nights);
+  clone.code=genCode(nd);
+  clone.createdAt=new Date().toISOString();
+  clone.updatedAt=clone.createdAt;
+  reservations.push(clone);
+  await saveData();
+  renderFilters();renderAll();
+  openReservation(clone.id); // 이관된 새 예약을 바로 열기
+  showToast(`✅ 날짜변경 이관 완료 (${clone.code}) — 원본 ${origCode}은 취소로 유지`);
 }
 
 /* ══════════════════════════ BALANCE ══════════════════════════ */
