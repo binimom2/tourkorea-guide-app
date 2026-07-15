@@ -416,7 +416,14 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         <input type="text" id="acc-id" placeholder="아이디"/>
         <input type="password" id="acc-pw" placeholder="비밀번호"/>
       </div>
-      <button class="btn btn-save" style="width:100%;margin-top:8px;" onclick="addAccount()">계정 추가</button>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:stretch;">
+        <select id="acc-role" style="flex:1;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;">
+          <option value="operator">OPERATOR (오퍼레이터)</option>
+          <option value="manager">MANAGER (매니저)</option>
+          <option value="admin">ADMIN (어드민)</option>
+        </select>
+        <button class="btn btn-save" style="white-space:nowrap;padding:0 18px;" onclick="addAccount()">계정 추가</button>
+      </div>
       <div id="acc-err" style="color:#e0483f;font-size:11.5px;margin-top:6px;"></div>
       <ul id="accList" style="list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:8px;"></ul>
     </div>
@@ -513,6 +520,7 @@ function getAccounts(){try{return JSON.parse(localStorage.getItem('trv_accounts'
 async function saveAccounts(arr){ await sbSave('trv_accounts',arr); }
 
 let currentUser=null;
+function roleLabel(r){return r==='admin'?'ADMIN':r==='manager'?'MANAGER':'OPERATOR';}
 
 async function doLogin(){
   const id=document.getElementById('login-id').value.trim();
@@ -544,7 +552,7 @@ async function doLogin(){
 async function enterApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('whoami').textContent=`${currentUser.id} (${currentUser.role==='admin'?'관리자':'직원'})`;
+  document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
   if(currentUser.role==='admin'){
     document.getElementById('btnAccounts').style.display='';
     document.getElementById('btnCodes').style.display='';
@@ -582,12 +590,18 @@ function openAccountModal(){document.getElementById('accModal').classList.add('o
 function closeAccountModal(){document.getElementById('accModal').classList.remove('open');}
 function renderAccList(){
   const ul=document.getElementById('accList');
-  ul.innerHTML=getAccounts().map((a,i)=>`
+  ul.innerHTML=getAccounts().map((a,i)=>{
+    const role=(a.role==='admin'||a.role==='manager')?a.role:'operator';
+    return `
     <li style="display:flex;align-items:center;gap:8px;background:#f8f9fc;padding:8px 10px;border-radius:8px;">
-      <span style="font-weight:700;font-size:12px;">${a.id}</span>
-      <span style="font-size:10.5px;color:#8892a0;">${a.role||'staff'}</span>
+      <span style="font-weight:700;font-size:12px;min-width:70px;">${a.id}</span>
+      <select onchange="changeAccRole(${i},this.value)" style="font-size:11px;font-weight:700;padding:4px 6px;border:1px solid #cdd6e4;border-radius:6px;font-family:inherit;background:#fff;color:#1f4a85;">
+        <option value="operator" ${role==='operator'?'selected':''}>OPERATOR</option>
+        <option value="manager" ${role==='manager'?'selected':''}>MANAGER</option>
+        <option value="admin" ${role==='admin'?'selected':''}>ADMIN</option>
+      </select>
       <a class="act-del" style="margin-left:auto;cursor:pointer;font-size:11px;" onclick="delAccount(${i})">삭제</a>
-    </li>`).join('')||'<div class="subtbl-empty">등록된 직원 계정이 없습니다</div>';
+    </li>`;}).join('')||'<div class="subtbl-empty">등록된 직원 계정이 없습니다</div>';
 }
 async function addAccount(){
   const id=document.getElementById('acc-id').value.trim();
@@ -596,7 +610,8 @@ async function addAccount(){
   if(!id||!pw){err.textContent='아이디/비밀번호를 입력해주세요.';return;}
   const accounts=getAccounts();
   if(accounts.find(a=>a.id===id)){err.textContent='이미 존재하는 아이디입니다.';return;}
-  accounts.push({id,pw,role:'staff'});
+  const role=document.getElementById('acc-role').value||'operator';
+  accounts.push({id,pw,role});
   await saveAccounts(accounts);
   err.textContent='';
   document.getElementById('acc-id').value='';document.getElementById('acc-pw').value='';
@@ -605,6 +620,14 @@ async function addAccount(){
 }
 async function delAccount(i){
   const accounts=getAccounts();accounts.splice(i,1);await saveAccounts(accounts);renderAccList();
+}
+async function changeAccRole(i,role){
+  const accounts=getAccounts();
+  if(!accounts[i])return;
+  accounts[i].role=role;
+  await saveAccounts(accounts);
+  renderAccList();
+  showToast('✅ 구분이 변경되었습니다');
 }
 
 /* ══════════════════════════ CODE MASTER DATA ══════════════════════════ */
