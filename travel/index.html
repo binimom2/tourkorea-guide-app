@@ -1987,6 +1987,17 @@ function onFilterChange(){
   syncCalToFilter(); // 필터 기간을 바꾸면 달력도 그 달로 따라가게
   renderAll();
 }
+// 예약 저장/생성 직후, 그 예약의 체크인 월로 달력을 이동시켜 바로 보이게 함.
+// 현재 날짜필터가 그 날짜를 배제하면 필터도 넓혀줌(축소 없이 확장만).
+function focusCalOnDate(datein,dateout){
+  if(!datein) return;
+  const d=new Date(datein+'T00:00:00');
+  if(isNaN(d.getTime())) return;
+  calY=d.getFullYear(); calM=d.getMonth();
+  const f=document.getElementById('f-from'), t=document.getElementById('f-to');
+  if(f&&f.value&&f.value>datein) f.value=datein;              // 시작일보다 이르면 필터 시작을 당김
+  if(t&&t.value&&t.value<(dateout||datein)) t.value=(dateout||datein); // 종료일보다 늦으면 필터 끝을 미룸
+}
 function getFiltered(){
   const from=document.getElementById('f-from').value;
   const to=document.getElementById('f-to').value;
@@ -2673,7 +2684,7 @@ async function saveReservation(){
     document.getElementById('btnCopyRes').style.display='';
     document.getElementById('btnSaveRes').textContent='Save';
     renderSubsections();
-    renderFilters();renderAll();
+    renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
     showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요.');
   } else {
     workingRes.updatedAt=new Date().toISOString();
@@ -2682,7 +2693,7 @@ async function saveReservation(){
     reservations[idx]=workingRes;
     await saveData();
     renderSubsections();
-    renderFilters();renderAll();
+    renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
     showToast('✅ 저장되었습니다');
   }
 }
