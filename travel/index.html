@@ -1482,12 +1482,13 @@ function getVendorTabs(){
   return [...VENDOR_CATEGORY_TABS,{key:'flights',label:'항공편 스케줄'}];
 }
 function isFlightVendorTab(key){ return key==='flights'; }
+// 방콕 기준 표기: X→BKK = 방콕 도착, BKK→X = 방콕 출발. 한국 지명은 오해 소지가 있어 제거(노선코드로 구분).
 const FLIGHT_DIRECTIONS={
-  'ICN-BKK':'인천 도착(ICN→BKK)','BKK-ICN':'인천 출발(BKK→ICN)',
-  'PUS-BKK':'김해 도착(PUS→BKK)','BKK-PUS':'김해 출발(BKK→PUS)',
-  'TAE-BKK':'대구 도착(TAE→BKK)','BKK-TAE':'대구 출발(BKK→TAE)',
-  'CJJ-BKK':'청주 도착(CJJ→BKK)','BKK-CJJ':'청주 출발(BKK→CJJ)',
-  'CJU-BKK':'제주 도착(CJU→BKK)','BKK-CJU':'제주 출발(BKK→CJU)',
+  'ICN-BKK':'도착(ICN→BKK)','BKK-ICN':'출발(BKK→ICN)',
+  'PUS-BKK':'도착(PUS→BKK)','BKK-PUS':'출발(BKK→PUS)',
+  'TAE-BKK':'도착(TAE→BKK)','BKK-TAE':'출발(BKK→TAE)',
+  'CJJ-BKK':'도착(CJJ→BKK)','BKK-CJJ':'출발(BKK→CJJ)',
+  'CJU-BKK':'도착(CJU→BKK)','BKK-CJU':'출발(BKK→CJU)',
 };
 function getVendors(key){ try{return JSON.parse(localStorage.getItem('trv_vendor_'+key)||'[]');}catch{return[];} }
 async function saveVendors(key,arr){ await sbSave('trv_vendor_'+key,arr); }
