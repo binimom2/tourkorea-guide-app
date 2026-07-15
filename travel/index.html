@@ -435,8 +435,8 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <div class="rmodal-ft">
       <button class="btn btn-ghost" id="btnDateAmend" onclick="dateChangeAmend()" style="display:none;">📅 날짜변경 이관</button>
       <div style="flex:1;"></div>
-      <button class="btn btn-ghost" onclick="closeReservation()">닫기</button>
-      <button class="btn btn-save" id="btnSaveRes" onclick="saveReservation()">저장</button>
+      <button class="btn btn-ghost" onclick="closeReservation()">Close</button>
+      <button class="btn btn-save" id="btnSaveRes" onclick="saveReservation()">Save</button>
     </div>
   </div>
 </div>
@@ -2114,7 +2114,7 @@ function openReservation(id,presetDate){
   document.getElementById('rmCode').textContent=_rmCode;
   document.getElementById('r-code').value=_rmCode;
   document.getElementById('btnDateAmend').style.display=modalMode==='edit'?'':'none';
-  document.getElementById('btnSaveRes').textContent=modalMode==='edit'?'저장':'생성';
+  document.getElementById('btnSaveRes').textContent=modalMode==='edit'?'Save':'Create';
 
   document.getElementById('r-datein').value=workingRes.datein;
   document.getElementById('r-dateout').value=workingRes.dateout;
@@ -2541,7 +2541,7 @@ async function saveReservation(){
     document.getElementById('rmCode').textContent=workingRes.code;
     document.getElementById('r-code').value=workingRes.code;
     document.getElementById('btnDateAmend').style.display='';
-    document.getElementById('btnSaveRes').textContent='저장';
+    document.getElementById('btnSaveRes').textContent='Save';
     renderSubsections();
     renderFilters();renderAll();
     showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요.');
