@@ -100,9 +100,9 @@ table.rlist th{background:#f4f6fa;padding:10px 12px;text-align:left;font-size:11
 table.rlist td{padding:10px 12px;border-bottom:1px solid #f0f2f6;}
 table.rlist tr:hover td{background:#f7f9fd;}
 table.rlist tr{cursor:pointer;}
-/* 원가서 자동 합계 컬럼 강조(연한 파랑) */
-.rlist th.cost-sum-col{background:#e3edfb;color:#1f4a85;}
-.rlist td.cost-sum-col{background:#eef4ff;font-weight:700;color:#1f4a85;}
+/* 원가서 자동 합계 컬럼 강조(연한 노랑 — 목업 기준) */
+.rlist th.cost-sum-col{background:#fff3b0;color:#7a6a00;}
+.rlist td.cost-sum-col{background:#fffceb;font-weight:700;color:#7a6a00;}
 .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
 .badge-proc-FINAL{background:#e2f7ec;color:#1a8a52;}
 .badge-proc-NEW,.badge-proc-H-AMEND,.badge-proc-G-AMEND,.badge-proc-E-AMEND{background:#fdf3de;color:#a3720c;}
@@ -1872,7 +1872,9 @@ const COST_CATEGORIES=[
   {key:'golf',label:'골프장',fields:[
     {k:'name',label:'골프장명',type:'text'},
     {k:'nameKr',label:'한글이름',type:'text'},
-    {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31'},
+    {k:'season',label:'시즌',type:'select',options:['비수기','성수기'],w:'third'},
+    {k:'dateFrom',label:'시작일',type:'date',w:'third'},
+    {k:'dateTo',label:'종료일',type:'date',w:'third'},
     {k:'gf18wd',label:'18홀그린피(주중)',type:'text',money:true},
     {k:'gf18we',label:'18홀그린피(주말)',type:'text',money:true},
     {k:'caddy',label:'캐디피',type:'text',money:true},
@@ -1889,7 +1891,9 @@ const COST_CATEGORIES=[
   ]},
   {key:'hotel',label:'호텔',fields:[
     {k:'name',label:'호텔명',type:'text'},
-    {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31'},
+    {k:'season',label:'시즌',type:'select',options:['비수기','성수기'],w:'third'},
+    {k:'dateFrom',label:'시작일',type:'date',w:'third'},
+    {k:'dateTo',label:'종료일',type:'date',w:'third'},
     {k:'rt1',label:'룸타입①',type:'text'},
     {k:'amt1',label:'금액①',type:'text',money:true},
     {k:'rt2',label:'룸타입②',type:'text'},
@@ -1901,7 +1905,9 @@ const COST_CATEGORIES=[
   ]},
   {key:'attraction',label:'관광지 입장료',fields:[
     {k:'name',label:'관광지명',type:'text'},
-    {k:'period',label:'기간/시즌',type:'text',ph:'예: 성수기 / 2026-01-01~03-31'},
+    {k:'season',label:'시즌',type:'select',options:['비수기','성수기'],w:'third'},
+    {k:'dateFrom',label:'시작일',type:'date',w:'third'},
+    {k:'dateTo',label:'종료일',type:'date',w:'third'},
     {k:'amount',label:'금액',type:'text',money:true},
     {k:'remark',label:'비고',type:'textarea'},
   ]},
@@ -1936,7 +1942,7 @@ function renderCostTable(){
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
   let rows=getCostRows(costTab);
   if(region) rows=rows.filter(r=>(r.region||'').toLowerCase().includes(region));
-  if(q) rows=rows.filter(r=>[(r.name||''),(r.period||''),(r.remark||'')].join(' ').toLowerCase().includes(q));
+  if(q) rows=rows.filter(r=>[(r.name||''),(r.nameKr||''),(r.season||''),(r.dateFrom||''),(r.dateTo||''),(r.remark||'')].join(' ').toLowerCase().includes(q));
   const body=document.getElementById('costTableBody');
   if(!rows.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${cols.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   body.innerHTML=rows.map((row,i)=>`<tr>${cols.map(c=>`<td${c.compute?' class="cost-sum-col"':''}>${escapeHtml(fmtCostCell(row,c))}</td>`).join('')}
@@ -1960,15 +1966,21 @@ function openCostRowEditor(index){
   const rows=getCostRows(costTab);
   const row=index===null?{}:rows[index];
   document.getElementById('soTitle').textContent=`${cat.label} ${index===null?'추가':'수정'}`;
+  // 칸(그리드) 폭: full=한 줄 전체, third=1/3, half(기본)=1/2
+  const basisOf=w=> w==='full'?'1 1 100%': w==='third'?'1 1 calc(33.33% - 7px)':'1 1 calc(50% - 5px)';
   const inputs=cat.fields.filter(f=>!f.compute).map(f=>{
     const val=row[f.k]??'';
     const ph=f.ph?` placeholder="${escapeAttr(f.ph)}"`:'';
-    if(f.type==='textarea') return `<div class="f-row"><label>${f.label}</label><textarea id="so-${f.k}"${ph}>${escapeHtml(val)}</textarea></div>`;
-    return `<div class="f-row"><label>${f.label}</label><input type="${f.type}" id="so-${f.k}" value="${escapeAttr(val)}"${ph} oninput="updateCostComputedPreview()"/></div>`;
+    const basis=basisOf(f.type==='textarea'?'full':(f.w||'half'));
+    let inner;
+    if(f.type==='textarea') inner=`<textarea id="so-${f.k}"${ph}>${escapeHtml(val)}</textarea>`;
+    else if(f.type==='select') inner=`<select id="so-${f.k}" onchange="updateCostComputedPreview()"><option value=""></option>${(f.options||[]).map(o=>`<option value="${escapeAttr(o)}"${String(val)===String(o)?' selected':''}>${escapeHtml(o)}</option>`).join('')}</select>`;
+    else inner=`<input type="${f.type}"${f.type==='date'?' lang="en"':''} id="so-${f.k}" value="${escapeAttr(val)}"${ph} oninput="updateCostComputedPreview()"/>`;
+    return `<div class="f-row" style="flex:${basis};margin-bottom:0;min-width:0;"><label>${f.label}</label>${inner}</div>`;
   }).join('');
   const computed=cat.fields.filter(f=>f.compute);
-  const preview=computed.length?`<div class="f-row" style="flex-direction:column;align-items:stretch;gap:4px;"><label>자동 합계 (자동 계산)</label><div id="costComputedPreview" style="background:#eef4ff;border:1px solid #d4e0f5;border-radius:8px;padding:8px 12px;font-size:13px;"></div></div>`:'';
-  document.getElementById('soBody').innerHTML=inputs+preview;
+  const preview=computed.length?`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;gap:4px;margin-bottom:0;"><label>자동 합계 (자동 계산)</label><div id="costComputedPreview" style="background:#fff9c4;border:1px solid #e6dd7a;border-radius:8px;padding:8px 12px;font-size:13px;"></div></div>`:'';
+  document.getElementById('soBody').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">${inputs}${preview}</div>`;
   if(computed.length) updateCostComputedPreview();
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').classList.add('open');
