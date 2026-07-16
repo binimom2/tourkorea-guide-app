@@ -2000,6 +2000,7 @@ function costFieldValue(f){
   return el?el.value:'';
 }
 function renderCostTable(){
+  if(costTab==='golf'){ renderGolfTable(); return; }   // 골프장은 전용 표(골프장명 병합 + 시즌 여러개)
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
   const cols=cat.fields.filter(f=>!f.noTable);   // 표에 보일 칸만
   document.getElementById('costTableHead').innerHTML=cols.map(c=>`<th${(c.compute&&!c.plain)?' class="cost-sum-col"':''}>${c.label}</th>`).join('')+'<th></th>';
@@ -2027,6 +2028,7 @@ function fmtCostVal(v,col){
 }
 let costEditIndex=null;
 function openCostRowEditor(index){
+  if(costTab==='golf'){ openGolfEditor(index); return; }   // 골프장 전용 편집기
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
   costEditIndex=index;
   const rows=getCostRows(costTab);
@@ -2082,6 +2084,218 @@ function openCostRowDetail(index){
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').classList.add('open');
 }
+/* ══════════════ 골프장: 골프장 1개 안에 시즌 요금 여러 개 ══════════════
+   데이터: [{name,nameKr,region,remark,seasons:[{season,dateFrom,dateTo,gf18wd,gf18we,caddy,cart,gf9wd,gf9we,caddy9,cart9}]}]
+   ※ 시즌 이름은 자유입력 가능 → '추가요금'(예: 송크란 할증)도 시즌 블록으로 넣으면 됨 */
+const GOLF_MONEY=[
+  {k:'gf18wd',label:'18홀그린피(주중)'},{k:'gf18we',label:'18홀그린피(주말)'},{k:'caddy',label:'캐디피'},{k:'cart',label:'전동카'},
+  {k:'gf9wd',label:'9홀그린피(주중)'},{k:'gf9we',label:'9홀그린피(주말)'},{k:'caddy9',label:'캐디피'},{k:'cart9',label:'전동카'},
+];
+function golfSum18wd(s){return costSum(s.gf18wd,s.caddy,s.cart);}
+function golfSum18we(s){return costSum(s.gf18we,s.caddy,s.cart);}
+function golfSum27wd(s){return hasNine(s.gf9wd)?costSum(s.gf18wd,s.gf9wd,s.caddy,s.caddy9,s.cart,s.cart9):'x';}
+function golfSum27we(s){return hasNine(s.gf9we)?costSum(s.gf18we,s.gf9we,s.caddy,s.caddy9,s.cart,s.cart9):'x';}
+function fmtMoney(v){ const s=String(v==null?'':v).trim(); if(s==='') return '-'; if(/^[\d,]+(\.\d+)?$/.test(s)) return Number(s.replace(/,/g,'')).toLocaleString(); return s; }
+function fmtSum(v){ if(typeof v==='string') return v||'-'; return v?Number(v).toLocaleString():'-'; }
+
+// 구버전(한 줄=한 시즌) → 신버전(골프장 안에 시즌들). 골프장명 기준으로 묶음. 이미 신버전이면 그대로.
+function migrateGolf(rows){
+  if(!Array.isArray(rows)) return [];
+  if(rows.length && rows.every(r=>r&&Array.isArray(r.seasons))) return rows;
+  const byKey={}, out=[];
+  rows.forEach(r=>{
+    if(!r) return;
+    if(Array.isArray(r.seasons)){ out.push(r); return; }
+    const key=((r.name||'')+'|'+(r.nameKr||'')).trim().toLowerCase();
+    let c=byKey[key];
+    if(!c){ c={name:r.name||'',nameKr:r.nameKr||'',region:r.region||'',remark:r.remark||'',seasons:[]}; byKey[key]=c; out.push(c); }
+    if(!c.region && r.region) c.region=r.region;
+    if(!c.remark && r.remark) c.remark=r.remark;
+    c.seasons.push({season:r.season||'',dateFrom:r.dateFrom||'',dateTo:r.dateTo||'',
+      gf18wd:r.gf18wd||'',gf18we:r.gf18we||'',caddy:r.caddy||'',cart:r.cart||'',
+      gf9wd:r.gf9wd||'',gf9we:r.gf9we||'',caddy9:r.caddy9||'',cart9:r.cart9||''});
+  });
+  return out;
+}
+function getGolfCourses(){ return migrateGolf(getCostRows('golf')); }
+async function saveGolfCourses(arr){ await saveCostRows('golf',arr); }
+
+/* ── 표: 골프장명은 하나로 병합(rowspan), 시즌만 아래로 쌓임 ── */
+function renderGolfTable(){
+  const SUMS=['주중18홀 합','주말18홀 합','주중27홀 합','주말27홀 합'];
+  const COLS=['골프장명(한글)','골프장명(영문)','지역','시즌','기간','18홀그린피(주중)','18홀그린피(주말)','캐디피','전동카'].concat(SUMS).concat(['비고']);
+  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th${SUMS.indexOf(l)>=0?' class="cost-sum-col"':''}>${escapeHtml(l)}</th>`).join('')+'<th></th>';
+  const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
+  const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
+  let list=getGolfCourses().map((c,idx)=>({c,idx}));
+  if(region) list=list.filter(x=>(x.c.region||'').toLowerCase().includes(region));
+  if(q) list=list.filter(x=>{
+    const st=(x.c.seasons||[]).map(s=>`${s.season||''} ${s.dateFrom||''} ${s.dateTo||''}`).join(' ');
+    return [(x.c.name||''),(x.c.nameKr||''),(x.c.region||''),(x.c.remark||''),st].join(' ').toLowerCase().includes(q);
+  });
+  const body=document.getElementById('costTableBody');
+  if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
+  let html='';
+  list.forEach(({c,idx})=>{
+    const ss=(c.seasons&&c.seasons.length)?c.seasons:[{}];
+    const n=ss.length;
+    ss.forEach((s,si)=>{
+      html+='<tr>';
+      if(si===0){
+        html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||'-')}</b></td>`
+             +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.name||'-')}</td>`
+             +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
+      }
+      html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
+           +`<td>${escapeHtml(fmtMoney(s.gf18wd))}</td><td>${escapeHtml(fmtMoney(s.gf18we))}</td>`
+           +`<td>${escapeHtml(fmtMoney(s.caddy))}</td><td>${escapeHtml(fmtMoney(s.cart))}</td>`
+           +`<td class="cost-sum-col">${escapeHtml(fmtSum(golfSum18wd(s)))}</td>`
+           +`<td class="cost-sum-col">${escapeHtml(fmtSum(golfSum18we(s)))}</td>`
+           +`<td class="cost-sum-col">${escapeHtml(fmtSum(golfSum27wd(s)))}</td>`
+           +`<td class="cost-sum-col">${escapeHtml(fmtSum(golfSum27we(s)))}</td>`;
+      if(si===0){
+        html+=`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.remark||'-')}</td>`
+             +`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div></td>`;
+      }
+      html+='</tr>';
+    });
+  });
+  body.innerHTML=html;
+}
+
+/* ── 편집기: 골프장 정보 + 시즌 요금 여러 개(추가/삭제) ── */
+let golfEditIndex=null, _golfDraft=null;
+function golfSelText(i,k){
+  const sel=document.getElementById(`g-${i}-${k}`);
+  if(!sel) return '';
+  if(sel.value==='__custom__'){ const t=document.getElementById(`g-${i}-${k}-txt`); return t?t.value.trim():''; }
+  return sel.value;
+}
+function onGolfSelTextChange(i,k){
+  const sel=document.getElementById(`g-${i}-${k}`), txt=document.getElementById(`g-${i}-${k}-txt`);
+  if(!sel||!txt) return;
+  const custom = sel.value==='__custom__';
+  txt.style.display = custom?'':'none';
+  if(custom) txt.focus();
+}
+function golfSelTextHtml(i,k,val,opts,ph){
+  const isCustom=String(val||'')!=='' && opts.indexOf(String(val))<0;
+  return `<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">`
+    +`<select id="g-${i}-${k}" onchange="onGolfSelTextChange(${i},'${k}')"><option value=""></option>`
+    +opts.map(o=>`<option value="${escapeAttr(o)}"${String(val)===String(o)?' selected':''}>${escapeHtml(o)}</option>`).join('')
+    +`<option value="__custom__"${isCustom?' selected':''}>선택없음(직접입력)</option></select>`
+    +`<input type="text" id="g-${i}-${k}-txt" value="${isCustom?escapeAttr(val):''}" placeholder="${escapeAttr(ph)}" style="display:${isCustom?'':'none'};"/>`
+    +`</div>`;
+}
+function syncGolfDraftFromDom(){
+  if(!_golfDraft) return;
+  const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  _golfDraft.name=gv('g-name'); _golfDraft.nameKr=gv('g-nameKr');
+  _golfDraft.region=gv('g-region'); _golfDraft.remark=gv('g-remark');
+  _golfDraft.seasons=_golfDraft.seasons.map((s,i)=>{
+    const o={season:golfSelText(i,'season'),dateFrom:golfSelText(i,'dateFrom'),dateTo:golfSelText(i,'dateTo')};
+    GOLF_MONEY.forEach(f=>{ const el=document.getElementById(`g-${i}-${f.k}`); o[f.k]=el?el.value:(s[f.k]||''); });
+    return o;
+  });
+}
+function addGolfSeason(){ syncGolfDraftFromDom(); _golfDraft.seasons.push({}); renderGolfEditorBody(); }
+function delGolfSeason(i){
+  syncGolfDraftFromDom();
+  if(_golfDraft.seasons.length<=1) _golfDraft.seasons=[{}];
+  else _golfDraft.seasons.splice(i,1);
+  renderGolfEditorBody();
+}
+function updateGolfSums(i){
+  const host=document.getElementById(`g-${i}-sums`); if(!host) return;
+  const s={};
+  GOLF_MONEY.forEach(f=>{ const el=document.getElementById(`g-${i}-${f.k}`); s[f.k]=el?el.value:''; });
+  const rows=[['주중18홀 합',golfSum18wd(s)],['주말18홀 합',golfSum18we(s)],['주중27홀 합',golfSum27wd(s)],['주말27홀 합',golfSum27we(s)]];
+  host.innerHTML=rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:#4a5570;">${r[0]}</span><b style="color:#1f4a85;">${fmtSum(r[1])}</b></div>`).join('');
+}
+function golfSeasonBlockHtml(s,i){
+  const money=GOLF_MONEY.map(f=>`<div class="f-row" style="flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;"><label>${f.label}</label><input type="text" id="g-${i}-${f.k}" value="${escapeAttr(s[f.k]||'')}" oninput="updateGolfSums(${i})"/></div>`).join('');
+  return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:12px;color:#6b7484;font-weight:700;">시즌 ${i+1}</span>
+      <a class="act-del" style="cursor:pointer;font-size:12px;" onclick="delGolfSeason(${i})">삭제</a>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시즌</label>${golfSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시작일</label>${golfSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${golfSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
+      ${money}
+      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;gap:4px;margin-bottom:0;"><label>자동 합계 (자동 계산)</label><div id="g-${i}-sums" style="background:#fff9c4;border:1px solid #e6dd7a;border-radius:8px;padding:8px 12px;font-size:13px;"></div></div>
+    </div>
+  </div>`;
+}
+function renderGolfEditorBody(){
+  const c=_golfDraft;
+  const head=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
+    <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명(영문)</label><input type="text" id="g-name" value="${escapeAttr(c.name||'')}"/></div>
+    <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명(한글)</label><input type="text" id="g-nameKr" value="${escapeAttr(c.nameKr||'')}"/></div>
+    <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>지역</label><input type="text" id="g-region" value="${escapeAttr(c.region||'')}" placeholder="예: 방콕, 파타야"/></div>
+    <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label><textarea id="g-remark">${escapeHtml(c.remark||'')}</textarea></div>
+  </div>
+  <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
+    <b style="font-size:13px;color:#1f2a44;">시즌 요금 (${c.seasons.length}개)</b>
+    <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addGolfSeason()">＋ 시즌 추가</button>
+  </div>`;
+  document.getElementById('soBody').innerHTML=head+`<div id="golfSeasons">${c.seasons.map((s,i)=>golfSeasonBlockHtml(s,i)).join('')}</div>`;
+  c.seasons.forEach((s,i)=>updateGolfSums(i));
+}
+function openGolfEditor(index){
+  golfEditIndex=index;
+  const list=getGolfCourses();
+  const src=(index===null)?{name:'',nameKr:'',region:'',remark:'',seasons:[{}]}:list[index];
+  _golfDraft=JSON.parse(JSON.stringify(src||{}));
+  if(!Array.isArray(_golfDraft.seasons)||!_golfDraft.seasons.length) _golfDraft.seasons=[{}];
+  document.getElementById('soTitle').textContent=`골프장 ${index===null?'추가':'수정'}`;
+  const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='';
+  renderGolfEditorBody();
+  document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').classList.add('open');
+}
+async function saveGolfCourse(){
+  syncGolfDraftFromDom();
+  const c=_golfDraft;
+  if(!String(c.name||'').trim() && !String(c.nameKr||'').trim()){ showToast('골프장명을 입력해 주세요'); return; }
+  const list=getGolfCourses();
+  if(golfEditIndex===null) list.push(c); else list[golfEditIndex]=c;
+  await saveGolfCourses(list);
+  closeSubEditor();
+  renderCostTable();
+  showToast('✅ 저장되었습니다');
+}
+async function delGolfCourse(i){
+  const c=getGolfCourses()[i];
+  if(!confirm(`'${(c&&(c.nameKr||c.name))||''}' 골프장을 삭제할까요?\n시즌 요금이 전부 함께 삭제됩니다.`)) return;
+  const list=getGolfCourses();
+  list.splice(i,1);
+  await saveGolfCourses(list);
+  renderCostTable();
+  showToast('🗑 삭제되었습니다');
+}
+function openGolfDetail(i){
+  const c=getGolfCourses()[i]; if(!c) return;
+  document.getElementById('soTitle').textContent=`${c.nameKr||c.name||'골프장'} — 상세보기`;
+  const line=(l,v,bg)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;${bg||''}"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${escapeHtml(String(v))}</b></div>`;
+  const info=[['골프장명(영문)',c.name||'-'],['골프장명(한글)',c.nameKr||'-'],['지역',c.region||'-'],['비고',c.remark||'-']].map(x=>line(x[0],x[1])).join('');
+  const ss=(c.seasons||[]).map((s,i)=>{
+    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)]]
+      .concat(GOLF_MONEY.map(f=>[f.label,fmtMoney(s[f.k])]));
+    const sums=[['주중18홀 합',fmtSum(golfSum18wd(s))],['주말18홀 합',fmtSum(golfSum18we(s))],['주중27홀 합',fmtSum(golfSum27wd(s))],['주말27홀 합',fmtSum(golfSum27we(s))]];
+    return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
+      <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">시즌 ${i+1}</div>
+      ${rows.map(x=>line(x[0],x[1])).join('')}${sums.map(x=>line(x[0],x[1],'background:#fff9c4;')).join('')}
+    </div>`;
+  }).join('');
+  document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
+    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 시즌 요금이 없습니다</div>');
+  const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
+  document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').classList.add('open');
+}
+
 // 편집 중 입력값으로 자동 합계 미리보기 갱신
 function updateCostComputedPreview(){
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
@@ -2093,6 +2307,7 @@ function updateCostComputedPreview(){
   host.innerHTML=computed.map(c=>{const v=c.compute(cur);const disp=(typeof v==='string')?(v||'-'):(v?v.toLocaleString():'-');return `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:#4a5570;">${c.label}</span><b style="color:#1f4a85;">${disp}</b></div>`;}).join('');
 }
 async function saveCostRow(){
+  if(costTab==='golf'){ return saveGolfCourse(); }   // 골프장 전용 저장
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
   const row={};
   cat.fields.filter(f=>!f.compute && !f.noForm).forEach(f=>{ row[f.k]=costFieldValue(f); });
@@ -2104,6 +2319,7 @@ async function saveCostRow(){
   showToast('✅ 저장되었습니다');
 }
 async function delCostRow(i){
+  if(costTab==='golf'){ return delGolfCourse(i); }   // 골프장 전용 삭제
   if(!confirm('이 항목을 삭제할까요?'))return;
   const rows=getCostRows(costTab);
   rows.splice(i,1);
