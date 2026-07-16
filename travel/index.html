@@ -89,7 +89,7 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-item:hover{filter:brightness(0.97);}
 /* 달력 진행상태 색: 뉴부킹=빨강, 어멘드 3종=파랑 — 단 아래 홀드/취소 상태가 있으면 그쪽 색이 우선 */
 .cal-item.proc-NEW{color:#e0483f;font-weight:700;}
-.cal-item.proc-H-AMEND,.cal-item.proc-G-AMEND,.cal-item.proc-E-AMEND{color:#1a5cbf;font-weight:700;}
+.cal-item.proc-H-AMEND,.cal-item.proc-G-AMEND,.cal-item.proc-E-AMEND{color:#1e88e5;font-weight:700;}
 .cal-item.status-hold{border-color:#f59f2b;background:#ffe8cc;color:#8a5410;}
 .cal-item.status-cancel{border-color:#9aa1af;background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
 .rlist tr.row-hold td{background:#fff4e6;}
@@ -620,7 +620,7 @@ function ovDown(e,el){ _ovDownOnBg = (e.target===el); }
 function procColor(v){
   const s=String(v||'');
   if(s==='NEW') return '#e0483f';             // 빨강
-  if(s.indexOf('AMEND')>=0) return '#1a5cbf'; // 파랑
+  if(s.indexOf('AMEND')>=0) return '#1e88e5'; // 파랑
   if(s==='FINAL') return '#111827';           // 검정
   return '#1f2a44';
 }
