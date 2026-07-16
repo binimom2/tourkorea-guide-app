@@ -115,6 +115,8 @@ table.rlist tr{cursor:pointer;}
 /* 가로선: 기본색(#f0f2f6)이 너무 연해 배색/성수기 초록 위에서 안 보임 → 조금 진하게 */
 #costTable td{border-bottom:1px solid #dfe4ec;}
 #costTable .num{text-align:center;}
+/* 가운데정렬 칸(기간·금액 등)은 좌우 여백을 줄여 폭을 좁게 */
+#costTable th.num,#costTable td.num{padding-left:6px;padding-right:6px;}
 #costTable .remark-col{white-space:pre-wrap;min-width:180px;}
 /* 원가서 골프장: 골프장별 번갈아 배색(구분용) + 성수기 줄 연한 초록. 합계칸(노랑)은 그대로 유지 */
 .rlist tr.golf-grp-1 td:not(.cost-sum-col){background:#f4f7fc;}
@@ -349,6 +351,12 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 
   <div class="filterbar" id="costFilters" style="display:none;">
     <div class="mtabs" id="costTabs" style="background:transparent;padding:0;"></div>
+    <select id="cf-category" style="width:120px;display:none;" onchange="renderCostTable()">
+      <option value="">전체 구분</option>
+      <option value="관광지">관광지</option>
+      <option value="식당">식당</option>
+      <option value="맛사지&스파">맛사지&스파</option>
+    </select>
     <input type="text" id="cf-region" placeholder="지역 (예: 방콕)" style="width:120px;" oninput="renderCostTable()"/>
     <select id="cf-season" style="width:110px;" onchange="renderCostTable()">
       <option value="">전체 시즌</option>
@@ -1967,8 +1975,15 @@ let costTab='golf';
 function renderCostView(){
   document.getElementById('costTabs').innerHTML=COST_CATEGORIES.map(c=>
     `<button class="${c.key===costTab?'active':''}" onclick="switchCostTab('${c.key}')">${c.label}</button>`).join('');
+  updateCostFilterVisibility();
   renderCostTable();
   showCostUpdated();
+}
+// 탭별로 쓰는 필터만 보이게 — 구분=관광 전용, 시즌=골프/호텔 전용
+function updateCostFilterVisibility(){
+  const cat=document.getElementById('cf-category'), sea=document.getElementById('cf-season');
+  if(cat) cat.style.display = (costTab==='attraction') ? '' : 'none';
+  if(sea) sea.style.display = (costTab==='attraction') ? 'none' : '';
 }
 function switchCostTab(key){
   costTab=key;
@@ -1976,6 +1991,8 @@ function switchCostTab(key){
   document.getElementById('cf-region').value='';
   document.getElementById('cf-search').value='';
   const _sf=document.getElementById('cf-season'); if(_sf) _sf.value='';
+  const _cf=document.getElementById('cf-category'); if(_cf) _cf.value='';
+  updateCostFilterVisibility();
   renderCostTable();
   showCostUpdated();
 }
@@ -2791,11 +2808,14 @@ async function saveAttrs(arr){ await saveCostRows('attraction',arr); }
 
 function renderAttrTable(){
   const COLS=['구분','관광지명','지역','기간','성인요금','어린이요금','비고'];
-  const MONEY=['성인요금','어린이요금'];
-  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${MONEY.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
+  const CEN=['지역','기간','성인요금','어린이요금'];
+  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
+  const catEl=document.getElementById('cf-category');
+  const cat=(catEl&&catEl.value||'').trim();
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
   let list=getAttrs().map((a,idx)=>({a,idx}));
+  if(cat) list=list.filter(x=>String(x.a.category||'')===cat);
   if(region) list=list.filter(x=>(x.a.region||'').toLowerCase().includes(region));
   // 검색칸은 '이름'만 대상 (지역은 왼쪽 지역칸이 담당)
   if(q) list=list.filter(x=>costMatchQuery(String(x.a.name||''), q));
@@ -2811,9 +2831,9 @@ function renderAttrTable(){
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(a.category||'-')}</td>`
              +`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(a.name||'-')}</b></td>`
-             +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(a.region||'-')}</td>`;
+             +`<td rowspan="${n}" class="num" style="vertical-align:middle;">${escapeHtml(a.region||'-')}</td>`;
       }
-      html+=`<td>${escapeHtml(s.period||'-')}</td>`
+      html+=`<td class="num">${escapeHtml(s.period||'-')}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.adult))}</td><td class="num">${escapeHtml(fmtMoney(s.child))}</td>`
            +`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
       if(si===0){
