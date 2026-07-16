@@ -1,0 +1,9 @@
+# 민감 파일 - 절대 공개 저장소에 커밋 금지
+backups/
+create_auth_users.ps1
+backup_guide.sh
+secret.txt
+계정생성_실행.bat
+*.secret
+.env
+.env.*

@@ -1896,59 +1896,54 @@ async function testSupabase() {
     err.textContent = '❌ 연결 실패: ' + e.message;
   }
 }
+// 로그인 이름 → 이메일 (login_directory: 로그인 전에도 읽는 공개 매핑, 새 가이드 자동 반영)
+async function resolveLoginEmail(typed) {
+  try {
+    const { data: row } = await sb.from('guide_data').select('data').eq('data_key','login_directory').single();
+    if (row && row.data) {
+      const dir = row.data;
+      const key = (typed||'').toLowerCase();
+      if (dir[key]) return dir[key];
+    }
+  } catch(e) {}
+  return null;
+}
+
 async function doLogin() {
   const id = (document.getElementById('loginId').value||'').trim();
   const pw = (document.getElementById('loginPw').value||'').trim();
   const err = document.getElementById('loginError');
   const btn = document.querySelector('.login-btn');
   err.style.display = 'none';
+  if (!id || !pw) { err.textContent='아이디와 비밀번호를 입력하세요.'; err.style.display='block'; return; }
   if (btn) { btn.textContent = '로그인 중...'; btn.disabled = true; }
 
   try {
-    if (id === ADMIN_ID && pw === getAdminPw()) {
-      currentUser = { id, username: id, name:'관리자', role:'admin' };
-      currentRole = 'admin';
-      _completeLogin(); return;
-    }
-
-    // Supabase 직접 조회 (localStorage 우회)
-    let accounts = [];
-    try {
-      const { data: row } = await sb.from('guide_data').select('data').eq('data_key', ACC_KEY).single();
-      if (row && Array.isArray(row.data)) accounts = row.data;
-    } catch(e) {}
-    // Supabase 실패 시 localStorage 폴백
-    if (accounts.length === 0) accounts = getAccounts();
-
-    // 가이드는 이름으로, 나머지는 아이디로 로그인 (아이디 대소문자 무시)
-    const found = accounts.find(a =>
-      (a.role === 'guide' ? (a.name === id) : (a.id.toLowerCase() === id.toLowerCase())) && a.pw === pw
-    );
-
-    if (found) {
-      localStorage.setItem(ACC_KEY, JSON.stringify(accounts));
-      // lds1207: admin과 동일한 권한 부여 (요청에 의해 admin으로 완전 alias 처리)
-      const grantedRole = ELEVATED_ADMIN_IDS.includes(found.id.toLowerCase()) ? 'admin' : found.role;
-      currentUser = { id: found.id, username: found.id, name: found.name||found.id, role: grantedRole };
-      currentRole = grantedRole;
-      _completeLogin(); return;
-    }
-
-    {
-      const nonGuide = accounts.filter(a=>a.role!=='guide');
-      const matched = nonGuide.find(a=>a.id.toLowerCase()===id.toLowerCase());
-      if (accounts.length === 0) {
-        err.textContent = `[v2] 계정없음 - Supabase오류`;
-      } else if (!matched) {
-        const ids = nonGuide.map(a=>a.id).join(',');
-        err.textContent = `[v2] ID불일치: 입력="${id}" 목록=[${ids}]`;
-      } else {
-        err.textContent = `[v2] PW불일치: 입력="${pw}" 저장="${matched.pw}"`;
+    // Supabase 정식 인증 (Auth)
+    const email = await resolveLoginEmail(id);
+    let signedIn = false;
+    if (email) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+      if (!error && data && data.session) {
+        const meta = (data.user && data.user.user_metadata) || {};
+        const accId = meta.acc_id || meta.login_name || id;
+        let role = meta.role || 'guide';
+        if (ELEVATED_ADMIN_IDS.includes((accId||'').toLowerCase())) role = 'admin';
+        const name = meta.name || (role==='admin' ? '관리자' : accId);
+        currentUser = { id: accId, username: accId, name: name, role: role };
+        currentRole = role;
+        signedIn = true;
       }
     }
+    if (signedIn) { _completeLogin(); return; }
+
+    err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
     err.style.display = 'block';
     document.getElementById('loginPw').value = '';
     document.getElementById('loginPw').focus();
+  } catch(e) {
+    err.textContent = '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도하세요.';
+    err.style.display = 'block';
   } finally {
     if (btn) { btn.textContent = '로그인'; btn.disabled = false; }
   }
@@ -2072,15 +2067,12 @@ function resetData() {
   calcPaxTotal(); syncRate2FromBase(); updateSettleCode(); switchTab('main');
 }
 
-function doLogout() {
+async function doLogout() {
   _clearViewBanner();
+  try { await sb.auth.signOut(); } catch(e) {}
   localStorage.removeItem(SESSION_KEY);
   currentRole = null; currentUser = null;
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('appWrap').style.display = 'none';
-  document.getElementById('loginId').value = '';
-  document.getElementById('loginPw').value = '';
-  document.getElementById('loginError').style.display = 'none';
+  location.reload();
 }
 
 function canEditMain() { return currentRole === 'admin' || currentRole === 'organizer' || currentRole === 'op'; }
@@ -3712,7 +3704,7 @@ const LS_KEY = 'guideSettleApp_v1';
 // ── Supabase 연결 ──────────────────────────────────────────
 const SUPABASE_URL = 'https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'gs-auth', persistSession: true, autoRefreshToken: true } });
 
 async function syncToSupabase(key, data) {
   try {
@@ -4106,15 +4098,24 @@ document.addEventListener('DOMContentLoaded',()=>{
   // 탭 전환 / 최소화 시에도 저장
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveData(); });
 
-  // 새로고침해도 로그인 유지 (저장된 세션 복원)
-  try {
-    const sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-    if (sess && sess.id && sess.role) {
-      currentUser = { id: sess.id, username: sess.id, name: sess.name || sess.id, role: sess.role };
-      currentRole = sess.role;
-      _completeLogin();
-    }
-  } catch(e) {}
+  // 새로고침해도 로그인 유지 — Supabase Auth 세션이 살아있을 때만 복원
+  (async () => {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && session.user) {
+        const meta = session.user.user_metadata || {};
+        const accId = meta.acc_id || meta.login_name || 'admin';
+        let role = meta.role || 'guide';
+        if (ELEVATED_ADMIN_IDS.includes((accId||'').toLowerCase())) role = 'admin';
+        const name = meta.name || (role==='admin' ? '관리자' : accId);
+        currentUser = { id: accId, username: accId, name: name, role: role };
+        currentRole = role;
+        _completeLogin();
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+      }
+    } catch(e) {}
+  })();
 });
 </script>
 <!-- ══ 직원관리 모달 (3탭) ══ -->
