@@ -2107,7 +2107,10 @@ function fmtSum(v){ if(typeof v==='string') return v||'-'; return v?Number(v).to
 /* ── 비고 글자색: [r]빨강[/r] / [b]파랑[/b] 표시를 색으로 렌더 ──
    저장은 순수 텍스트(마커)로만 하고, 화면에 그릴 때만 색으로 바꿔서 안전함 */
 function renderRemark(txt){
-  let h=escapeHtml(String(txt==null?'':txt));   // 먼저 이스케이프 → 그 다음 마커만 색으로
+  let t=String(txt==null?'':txt);
+  // '▣' 항목은 각각 새 줄로 정리 — 한 줄로 붙여넣어도 보기 좋게 (Enter로 넣은 줄바꿈도 그대로 유지됨)
+  if(t.indexOf('▣')>=0) t=t.replace(/\s*▣\s*/g,'\n▣ ').replace(/^\s+/,'');
+  let h=escapeHtml(t);                          // 먼저 이스케이프 → 그 다음 마커만 색으로
   h=h.replace(/\[r\]([\s\S]*?)\[\/r\]/g,'<span style="color:#e0483f;font-weight:700;">$1</span>');
   h=h.replace(/\[b\]([\s\S]*?)\[\/b\]/g,'<span style="color:#1e88e5;font-weight:700;">$1</span>');
   return h;
