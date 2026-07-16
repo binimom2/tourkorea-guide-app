@@ -2104,6 +2104,12 @@ function golfSum27wd(s){return hasNine(s.gf9wd)?costSum(s.gf18wd,s.gf9wd,s.caddy
 function golfSum27we(s){return hasNine(s.gf9we)?costSum(s.gf18we,s.gf9we,s.caddy,s.caddy9,s.cart,s.cart9):'x';}
 function fmtMoney(v){ const s=String(v==null?'':v).trim(); if(s==='') return '-'; if(/^[\d,]+(\.\d+)?$/.test(s)) return Number(s.replace(/,/g,'')).toLocaleString(); return s; }
 function fmtSum(v){ if(typeof v==='string') return v||'-'; return v?Number(v).toLocaleString():'-'; }
+// 이름 중복 검사 — 중첩 구조라 같은 이름이 두 개면 안 됨(수정 중인 자기 자신은 제외)
+function costDupName(list,name,selfIndex,keyFn){
+  const n=String(name||'').trim().toLowerCase();
+  if(!n) return false;
+  return list.some((x,i)=> i!==selfIndex && String(keyFn(x)||'').trim().toLowerCase()===n );
+}
 
 // 구버전(한 줄=한 시즌) → 신버전(골프장 안에 시즌들). 골프장명 기준으로 묶음. 이미 신버전이면 그대로.
 function migrateGolf(rows){
@@ -2269,6 +2275,10 @@ async function saveGolfCourse(){
   const c=_golfDraft;
   if(!String(c.name||'').trim() && !String(c.nameKr||'').trim()){ showToast('골프장명을 입력해 주세요'); return; }
   const list=getGolfCourses();
+  if(costDupName(list, c.nameKr||c.name, golfEditIndex, x=>x.nameKr||x.name)){
+    alert(`⚠️ '${(c.nameKr||c.name)}' 은(는) 이미 등록된 골프장입니다.\n\n같은 골프장을 두 번 만들지 마시고,\n기존 골프장의 [수정]을 눌러 시즌을 추가해 주세요.`);
+    return;
+  }
   if(golfEditIndex===null) list.push(c); else list[golfEditIndex]=c;
   await saveGolfCourses(list);
   closeSubEditor();
@@ -2462,6 +2472,10 @@ async function saveHotel(){
   const h=_hotelDraft;
   if(!String(h.name||'').trim()){ showToast('호텔명을 입력해 주세요'); return; }
   const list=getHotels();
+  if(costDupName(list, h.name, hotelEditIndex, x=>x.name)){
+    alert(`⚠️ '${h.name}' 은(는) 이미 등록된 호텔입니다.\n\n같은 호텔을 두 번 만들지 마시고,\n기존 호텔의 [수정]을 눌러 기간을 추가해 주세요.`);
+    return;
+  }
   if(hotelEditIndex===null) list.push(h); else list[hotelEditIndex]=h;
   await saveHotels(list);
   closeSubEditor();
@@ -2648,6 +2662,10 @@ async function saveAttr(){
   const a=_attrDraft;
   if(!String(a.name||'').trim()){ showToast('항목명을 입력해 주세요'); return; }
   const list=getAttrs();
+  if(costDupName(list, a.name, attrEditIndex, x=>x.name)){
+    alert(`⚠️ '${a.name}' 은(는) 이미 등록된 항목입니다.\n\n같은 항목을 두 번 만들지 마시고,\n기존 항목의 [수정]을 눌러 기간을 추가해 주세요.`);
+    return;
+  }
   if(attrEditIndex===null) list.push(a); else list[attrEditIndex]=a;
   await saveAttrs(list);
   closeSubEditor();
