@@ -2733,11 +2733,24 @@ function migrateAttr(rows){
   });
   return out;
 }
-function getAttrs(){ return migrateAttr(getCostRows('attraction')); }
+/* 예전 구조(시즌+시작일/종료일) → 자유입력 '기간' 한 칸으로 합쳐서 보여줌 (원본은 안 건드림) */
+function normAttrSeasons(list){
+  return list.map(a=>Object.assign({},a,{seasons:(a.seasons||[]).map(s=>{
+    const o=Object.assign({},s);
+    if(o.period===undefined){
+      const p=costPeriod(s), parts=[];
+      if(o.season) parts.push(o.season);
+      if(p && p!=='-') parts.push(p);
+      o.period=parts.join(' ');
+    }
+    return o;
+  })}));
+}
+function getAttrs(){ return normAttrSeasons(migrateAttr(getCostRows('attraction'))); }
 async function saveAttrs(arr){ await saveCostRows('attraction',arr); }
 
 function renderAttrTable(){
-  const COLS=['구분','관광지명','지역','시즌','기간','성인요금','어린이요금','비고'];
+  const COLS=['구분','관광지명','지역','기간','성인요금','어린이요금','비고'];
   const MONEY=['성인요금','어린이요금'];
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${MONEY.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
@@ -2746,7 +2759,7 @@ function renderAttrTable(){
   if(region) list=list.filter(x=>(x.a.region||'').toLowerCase().includes(region));
   // 검색칸은 '이름'만 대상 (지역은 왼쪽 지역칸이 담당)
   if(q) list=list.filter(x=>costMatchQuery(String(x.a.name||''), q));
-  list=applySeasonFilter(list,'a');
+  // 관광·식당외는 시즌 개념이 없으므로 시즌 필터는 적용하지 않음
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
@@ -2754,14 +2767,13 @@ function renderAttrTable(){
     const ss=(a.seasons&&a.seasons.length)?a.seasons:[{}];
     const n=ss.length, grp=gi%2;
     ss.forEach((s,si)=>{
-      const peak=/성수기/.test(String(s.season||''));
-      html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
+      html+=`<tr class="golf-grp-${grp}">`;
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(a.category||'-')}</td>`
              +`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(a.name||'-')}</b></td>`
              +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(a.region||'-')}</td>`;
       }
-      html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
+      html+=`<td>${escapeHtml(s.period||'-')}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.adult))}</td><td class="num">${escapeHtml(fmtMoney(s.child))}</td>`
            +`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
       if(si===0){
@@ -2775,35 +2787,13 @@ function renderAttrTable(){
 
 /* ── 관광지 편집기 ── */
 let attrEditIndex=null, _attrDraft=null;
-function attrSelText(i,k){
-  const sel=document.getElementById(`a-${i}-${k}`);
-  if(!sel) return '';
-  if(sel.value==='__custom__'){ const t=document.getElementById(`a-${i}-${k}-txt`); return t?t.value.trim():''; }
-  return sel.value;
-}
-function onAttrSelTextChange(i,k){
-  const sel=document.getElementById(`a-${i}-${k}`), txt=document.getElementById(`a-${i}-${k}-txt`);
-  if(!sel||!txt) return;
-  const custom=sel.value==='__custom__';
-  txt.style.display=custom?'':'none';
-  if(custom) txt.focus();
-}
-function attrSelTextHtml(i,k,val,opts,ph){
-  const isCustom=String(val||'')!=='' && opts.indexOf(String(val))<0;
-  return `<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">`
-    +`<select id="a-${i}-${k}" onchange="onAttrSelTextChange(${i},'${k}')"><option value=""></option>`
-    +opts.map(o=>`<option value="${escapeAttr(o)}"${String(val)===String(o)?' selected':''}>${escapeHtml(o)}</option>`).join('')
-    +`<option value="__custom__"${isCustom?' selected':''}>선택없음(직접입력)</option></select>`
-    +`<input type="text" id="a-${i}-${k}-txt" value="${isCustom?escapeAttr(val):''}" placeholder="${escapeAttr(ph)}" style="display:${isCustom?'':'none'};"/>`
-    +`</div>`;
-}
 function syncAttrDraftFromDom(){
   if(!_attrDraft) return;
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
   _attrDraft.category=gv('a-category'); _attrDraft.name=gv('a-name'); _attrDraft.region=gv('a-region');
   _attrDraft.seasons=_attrDraft.seasons.map((s,i)=>{
-    const o={season:attrSelText(i,'season'),dateFrom:attrSelText(i,'dateFrom'),dateTo:attrSelText(i,'dateTo')};
-    ['adult','child'].forEach(k=>{ const el=document.getElementById(`a-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
+    const o={};   // 시즌/날짜선택 없이 '기간'은 자유 입력
+    ['period','adult','child'].forEach(k=>{ const el=document.getElementById(`a-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
     const rm=document.getElementById(`a-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');
     return o;
   });
@@ -2822,11 +2812,9 @@ function attrSeasonBlockHtml(s,i){
       <a class="act-del" style="cursor:pointer;font-size:12px;" onclick="delAttrSeason(${i})">삭제</a>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시즌</label>${attrSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시작일</label>${attrSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${attrSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
-      <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>성인요금</label><input type="text" id="a-${i}-adult" value="${escapeAttr(s.adult||'')}"/></div>
-      <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>어린이요금</label><input type="text" id="a-${i}-child" value="${escapeAttr(s.child||'')}"/></div>
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>기간</label><input type="text" id="a-${i}-period" value="${escapeAttr(s.period||'')}" placeholder="예: 연중, 4~10월"/></div>
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>성인요금</label><input type="text" id="a-${i}-adult" value="${escapeAttr(s.adult||'')}" placeholder="예: 500 또는 성인 500/학생 300"/></div>
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>어린이요금</label><input type="text" id="a-${i}-child" value="${escapeAttr(s.child||'')}"/></div>
       <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('a-'+i+'-remark')}<textarea id="a-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
     </div>
   </div>`;
@@ -2890,7 +2878,7 @@ function openAttrDetail(i){
   const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['구분',a.category||'-'],['항목명',a.name||'-'],['지역',a.region||'-']].map(x=>line(x[0],x[1])).join('');
   const ss=(a.seasons||[]).map((s,i)=>{
-    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],['성인요금',fmtMoney(s.adult)],['어린이요금',fmtMoney(s.child)]];
+    const rows=[['기간',s.period||'-'],['성인요금',fmtMoney(s.adult)],['어린이요금',fmtMoney(s.child)]];
     return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
       <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">기간 ${i+1}</div>
       ${rows.map(x=>line(x[0],x[1])).join('')}${line('비고', s.remark?renderRemark(s.remark):'-', true)}
