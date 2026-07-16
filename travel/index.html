@@ -2198,7 +2198,9 @@ function golfSelTextHtml(i,k,val,opts,ph){
 function syncGolfDraftFromDom(){
   if(!_golfDraft) return;
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
-  _golfDraft.name=gv('g-name'); _golfDraft.nameKr=gv('g-nameKr');
+  // 영문명 입력칸은 없앴으므로(한글만 사용) 기존 영문명 값은 그대로 보존 — 없다고 지우면 안 됨
+  const nEl=document.getElementById('g-name'); if(nEl) _golfDraft.name=nEl.value;
+  _golfDraft.nameKr=gv('g-nameKr');
   _golfDraft.region=gv('g-region'); _golfDraft.remark=gv('g-remark');
   _golfDraft.seasons=_golfDraft.seasons.map((s,i)=>{
     const o={season:golfSelText(i,'season'),dateFrom:golfSelText(i,'dateFrom'),dateTo:golfSelText(i,'dateTo')};
@@ -2239,8 +2241,7 @@ function golfSeasonBlockHtml(s,i){
 function renderGolfEditorBody(){
   const c=_golfDraft;
   const head=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
-    <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명(영문)</label><input type="text" id="g-name" value="${escapeAttr(c.name||'')}"/></div>
-    <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명(한글)</label><input type="text" id="g-nameKr" value="${escapeAttr(c.nameKr||'')}"/></div>
+    <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명</label><input type="text" id="g-nameKr" value="${escapeAttr(c.nameKr||c.name||'')}"/></div>
     <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>지역</label><input type="text" id="g-region" value="${escapeAttr(c.region||'')}" placeholder="예: 방콕, 파타야"/></div>
     <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label><textarea id="g-remark">${escapeHtml(c.remark||'')}</textarea></div>
   </div>
