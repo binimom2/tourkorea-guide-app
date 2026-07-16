@@ -378,7 +378,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── RESERVATION MODAL ── -->
-<div class="rov" id="rov" onclick="if(event.target===this)closeReservation()">
+<div class="rov" id="rov" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeReservation()">
   <div class="rmodal">
     <div class="rmodal-hd">
       <h2 id="rmTitle">신규예약</h2>
@@ -454,7 +454,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── SUB-ROW EDITOR ── -->
-<div class="sov" id="sov" onclick="if(event.target===this)closeSubEditor()">
+<div class="sov" id="sov" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeSubEditor()">
   <div class="smodal">
     <div class="smodal-hd"><span id="soTitle">항목 추가</span><button onclick="closeSubEditor()">✕</button></div>
     <div class="smodal-body" id="soBody"></div>
@@ -466,7 +466,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── BALANCE MODAL ── -->
-<div class="sov" id="balanceModal" onclick="if(event.target===this)closeBalanceModal()">
+<div class="sov" id="balanceModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeBalanceModal()">
   <div class="smodal" style="max-width:420px;">
     <div class="smodal-hd"><span>💰 Balance</span><button onclick="closeBalanceModal()">✕</button></div>
     <div class="smodal-body" id="balanceBody"></div>
@@ -474,7 +474,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── DIRECTIONS(수배지시서) MODAL ── -->
-<div class="dov" id="dirModal" onclick="if(event.target===this)closeDirections()">
+<div class="dov" id="dirModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeDirections()">
   <div class="dmodal">
     <div class="dmodal-hd">
       <h2 id="dirTitle">행사지시서</h2>
@@ -487,7 +487,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── 날짜변경 이관 MODAL ── -->
-<div class="sov" id="amendModal" onclick="if(event.target===this)closeAmendModal()">
+<div class="sov" id="amendModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeAmendModal()">
   <div class="smodal" style="max-width:400px;">
     <div class="smodal-hd"><span>📅 날짜변경 이관</span><button onclick="closeAmendModal()">✕</button></div>
     <div class="smodal-body">
@@ -505,7 +505,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── 예약 복사(시리즈) MODAL ── -->
-<div class="sov" id="copyModal" onclick="if(event.target===this)closeCopyModal()">
+<div class="sov" id="copyModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeCopyModal()">
   <div class="smodal" style="max-width:420px;">
     <div class="smodal-hd"><span>📋 예약 복사</span><button onclick="closeCopyModal()">✕</button></div>
     <div class="smodal-body">
@@ -526,7 +526,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── ACCOUNT MODAL ── -->
-<div class="sov" id="accModal" onclick="if(event.target===this)closeAccountModal()">
+<div class="sov" id="accModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeAccountModal()">
   <div class="smodal" style="max-width:560px;">
     <div class="smodal-hd"><span>계정 관리</span><button onclick="closeAccountModal()">✕</button></div>
     <div class="smodal-body">
@@ -549,7 +549,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 </div>
 
 <!-- ── CODE MODAL (통합: 코드/고객사/거래처·업체/문구) ── -->
-<div class="sov" id="codeModal" onclick="if(event.target===this)closeCodeModal()">
+<div class="sov" id="codeModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeCodeModal()">
   <div class="smodal" style="max-width:960px;">
     <div class="smodal-hd"><span>코드 관리</span><button onclick="closeCodeModal()">✕</button></div>
     <div class="mtabs-grouped" id="masterTabs"></div>
@@ -606,6 +606,12 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'trv-auth',persistSession:true,autoRefreshToken:true}});
+
+/* 모달 배경클릭 닫기 안전장치:
+   입력칸에서 드래그하다 마우스를 배경에서 떼면 '배경 클릭'으로 인식돼 창이 닫히던 문제 방지.
+   → 누른 곳(mousedown)과 뗀 곳(click)이 '둘 다 배경'일 때만 닫는다. */
+let _ovDownOnBg=false;
+function ovDown(e,el){ _ovDownOnBg = (e.target===el); }
 
 async function sbSave(key,data){
   localStorage.setItem(key,JSON.stringify(data));
