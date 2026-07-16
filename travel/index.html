@@ -460,7 +460,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <div class="smodal-body" id="soBody"></div>
     <div class="smodal-ft">
       <button class="btn btn-ghost" onclick="closeSubEditor()">취소</button>
-      <button class="btn btn-save" onclick="saveCostRow()">저장</button>
+      <button class="btn btn-save" id="soSaveBtn" onclick="saveCostRow()">저장</button>
     </div>
   </div>
 </div>
@@ -1869,23 +1869,27 @@ const SUBSECTIONS=[
 /* ══════════════════════════ 원가서 (호텔/골프장/관광지 요금표) ══════════════════════════ */
 const COST_CATEGORIES=[
   {key:'golf',label:'골프장',fields:[
-    {k:'name',label:'골프장명',type:'text'},
-    {k:'nameKr',label:'한글이름',type:'text'},
-    {k:'season',label:'시즌',type:'select',options:['비수기','성수기'],w:'third'},
-    {k:'dateFrom',label:'시작일',type:'date',w:'third'},
-    {k:'dateTo',label:'종료일',type:'date',w:'third'},
-    {k:'gf18wd',label:'18홀그린피(주중)',type:'text',money:true},
-    {k:'gf18we',label:'18홀그린피(주말)',type:'text',money:true},
-    {k:'caddy',label:'캐디피',type:'text',money:true},
-    {k:'cart',label:'전동카',type:'text',money:true},
+    {k:'name',label:'골프장명(영문)',type:'text'},
+    {k:'nameKr',label:'골프장명(한글)',type:'text'},
+    // 표 전용: 시작일~종료일을 한 칸으로 (입력창엔 안 나옴)
+    {k:'period',label:'기간',plain:true,noForm:true,compute:r=>costPeriod(r)},
+    {k:'region',label:'지역',type:'text',w:'half',noTable:true,ph:'예: 방콕, 파타야'},
+    {k:'season',label:'시즌',type:'select',options:['비수기','성수기'],w:'half',noTable:true},
+    {k:'dateFrom',label:'시작일',type:'selectText',w:'half',noTable:true,options:()=>seasonDateOptions('from')},
+    {k:'dateTo',label:'종료일',type:'selectText',w:'half',noTable:true,options:()=>seasonDateOptions('to')},
+    {k:'gf18wd',label:'18홀그린피(주중)',type:'text',money:true,w:'quarter'},
+    {k:'gf18we',label:'18홀그린피(주말)',type:'text',money:true,w:'quarter'},
+    {k:'caddy',label:'캐디피',type:'text',money:true,w:'quarter'},
+    {k:'cart',label:'전동카',type:'text',money:true,w:'quarter'},
+    {k:'gf9wd',label:'9홀그린피(주중)',type:'text',money:true,w:'quarter',noTable:true},
+    {k:'gf9we',label:'9홀그린피(주말)',type:'text',money:true,w:'quarter',noTable:true},
+    {k:'caddy9',label:'캐디피',type:'text',money:true,w:'quarter',noTable:true},
+    {k:'cart9',label:'전동카',type:'text',money:true,w:'quarter',noTable:true},
     {k:'sum18wd',label:'주중18홀 합',compute:r=>costSum(r.gf18wd,r.caddy,r.cart)},
     {k:'sum18we',label:'주말18홀 합',compute:r=>costSum(r.gf18we,r.caddy,r.cart)},
-    {k:'gf9wd',label:'추가9홀그린피(주중)',type:'text',money:true},
-    {k:'gf9we',label:'추가9홀그린피(주말)',type:'text',money:true},
-    {k:'caddy9',label:'추가9홀캐디피',type:'text',money:true},
-    {k:'cart9',label:'추가9홀전동카',type:'text',money:true},
-    {k:'sum27wd',label:'주중27홀 합',compute:r=>costSum(r.gf18wd,r.gf9wd,r.caddy,r.caddy9,r.cart,r.cart9)},
-    {k:'sum27we',label:'주말27홀 합',compute:r=>costSum(r.gf18we,r.gf9we,r.caddy,r.caddy9,r.cart,r.cart9)},
+    // 9홀그린피가 비어있으면 27홀 합은 'x'
+    {k:'sum27wd',label:'주중27홀 합',compute:r=>hasNine(r.gf9wd)?costSum(r.gf18wd,r.gf9wd,r.caddy,r.caddy9,r.cart,r.cart9):'x'},
+    {k:'sum27we',label:'주말27홀 합',compute:r=>hasNine(r.gf9we)?costSum(r.gf18we,r.gf9we,r.caddy,r.caddy9,r.cart,r.cart9):'x'},
     {k:'remark',label:'비고',type:'textarea'},
   ]},
   {key:'hotel',label:'호텔',fields:[
@@ -1933,19 +1937,56 @@ function costNum(v){ const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/
 function costIsX(v){ const s=String(v==null?'':v).trim(); return s!=='' && !/\d/.test(s); }
 // 합계: 구성값 중 하나라도 '불가(X)'면 'X', 전부 비었으면 0, 그 외엔 숫자 합
 function costSum(){ const vals=[...arguments]; if(vals.some(costIsX)) return 'X'; if(vals.every(v=>String(v==null?'':v).trim()==='')) return 0; return vals.reduce((a,v)=>a+costNum(v),0); }
+
+/* ── 시즌 날짜 선택지: 작업 연도 기준 자동 생성 (해가 바뀌면 연도만 +1 되어 자동 갱신) ── */
+function seasonBaseYear(){ return new Date().getFullYear(); }
+function seasonDateOptions(kind){
+  const Y=seasonBaseYear();
+  return kind==='from'
+    ? [`${Y}-04-01`,`${Y}-10-01`,`${Y}-11-01`,`${Y+1}-04-01`]
+    : [`${Y}-09-30`,`${Y}-10-31`,`${Y+1}-03-31`,`${Y+1}-04-30`];
+}
+// 표의 '기간' 칸: 시작일 ~ 종료일
+function costPeriod(r){
+  const a=String(r.dateFrom||'').trim(), b=String(r.dateTo||'').trim();
+  if(!a&&!b) return '-';
+  return `${a||'?'} ~ ${b||'?'}`;
+}
+// 9홀그린피 입력 여부 (없으면 27홀 합을 x로)
+function hasNine(v){ return String(v==null?'':v).trim()!==''; }
+// '선택없음(직접입력)' 고르면 텍스트칸 표시
+function onSelectTextChange(k){
+  const sel=document.getElementById('so-'+k), txt=document.getElementById('so-'+k+'-txt');
+  if(!sel||!txt) return;
+  const custom = sel.value==='__custom__';
+  txt.style.display = custom ? '' : 'none';
+  if(custom) txt.focus();
+  updateCostComputedPreview();
+}
+// 입력창의 현재 값 (selectText 처리 포함)
+function costFieldValue(f){
+  if(f.type==='selectText'){
+    const sel=document.getElementById('so-'+f.k); if(!sel) return '';
+    if(sel.value==='__custom__'){ const t=document.getElementById('so-'+f.k+'-txt'); return t?t.value.trim():''; }
+    return sel.value;
+  }
+  const el=document.getElementById('so-'+f.k);
+  return el?el.value:'';
+}
 function renderCostTable(){
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
-  const cols=cat.fields;
-  document.getElementById('costTableHead').innerHTML=cols.map(c=>`<th${c.compute?' class="cost-sum-col"':''}>${c.label}</th>`).join('')+'<th></th>';
+  const cols=cat.fields.filter(f=>!f.noTable);   // 표에 보일 칸만
+  document.getElementById('costTableHead').innerHTML=cols.map(c=>`<th${(c.compute&&!c.plain)?' class="cost-sum-col"':''}>${c.label}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
-  let rows=getCostRows(costTab);
-  if(region) rows=rows.filter(r=>(r.region||'').toLowerCase().includes(region));
-  if(q) rows=rows.filter(r=>[(r.name||''),(r.nameKr||''),(r.season||''),(r.dateFrom||''),(r.dateTo||''),(r.remark||'')].join(' ').toLowerCase().includes(q));
+  // 원본 순번(idx)을 함께 들고 다녀야 필터 중에도 수정/삭제가 올바른 행에 적용됨
+  let rows=getCostRows(costTab).map((r,idx)=>({r,idx}));
+  if(region) rows=rows.filter(x=>(x.r.region||'').toLowerCase().includes(region));
+  if(q) rows=rows.filter(x=>[(x.r.name||''),(x.r.nameKr||''),(x.r.region||''),(x.r.season||''),(x.r.dateFrom||''),(x.r.dateTo||''),(x.r.remark||'')].join(' ').toLowerCase().includes(q));
   const body=document.getElementById('costTableBody');
   if(!rows.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${cols.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
-  body.innerHTML=rows.map((row,i)=>`<tr>${cols.map(c=>`<td${c.compute?' class="cost-sum-col"':''}>${escapeHtml(fmtCostCell(row,c))}</td>`).join('')}
-    <td><div class="row-actions"><a class="act-edit" onclick="openCostRowEditor(${i})">수정</a><a class="act-del" onclick="delCostRow(${i})">삭제</a></div></td></tr>`).join('');
+  body.innerHTML=rows.map(({r,idx})=>`<tr>${cols.map(c=>`<td${(c.compute&&!c.plain)?' class="cost-sum-col"':''}>${escapeHtml(fmtCostCell(r,c))}</td>`).join('')}
+    <td><div class="row-actions"><a class="act-edit" onclick="openCostRowEditor(${idx})">수정</a><a class="act-edit" onclick="openCostRowDetail(${idx})">상세보기</a><a class="act-del" onclick="delCostRow(${idx})">삭제</a></div></td></tr>`).join('');
 }
 // 셀 표시값: compute 컬럼은 자동 계산, 나머지는 입력값 포맷
 function fmtCostCell(row,col){
@@ -1965,39 +2006,70 @@ function openCostRowEditor(index){
   const rows=getCostRows(costTab);
   const row=index===null?{}:rows[index];
   document.getElementById('soTitle').textContent=`${cat.label} ${index===null?'추가':'수정'}`;
-  // 칸(그리드) 폭: full=한 줄 전체, third=1/3, half(기본)=1/2
-  const basisOf=w=> w==='full'?'1 1 100%': w==='third'?'1 1 calc(33.33% - 7px)':'1 1 calc(50% - 5px)';
-  const inputs=cat.fields.filter(f=>!f.compute).map(f=>{
+  const _sv=document.getElementById('soSaveBtn'); if(_sv) _sv.style.display='';   // 저장 버튼 보이기(상세보기에서 숨겼을 수 있음)
+  // 칸(그리드) 폭: full=한 줄 전체, third=1/3, quarter=1/4, half(기본)=1/2
+  const basisOf=w=> w==='full'?'1 1 100%': w==='third'?'1 1 calc(33.33% - 7px)': w==='quarter'?'1 1 calc(25% - 8px)':'1 1 calc(50% - 5px)';
+  const inputs=cat.fields.filter(f=>!f.compute && !f.noForm).map(f=>{
     const val=row[f.k]??'';
     const ph=f.ph?` placeholder="${escapeAttr(f.ph)}"`:'';
     const basis=basisOf(f.type==='textarea'?'full':(f.w||'half'));
     let inner;
     if(f.type==='textarea') inner=`<textarea id="so-${f.k}"${ph}>${escapeHtml(val)}</textarea>`;
     else if(f.type==='select') inner=`<select id="so-${f.k}" onchange="updateCostComputedPreview()"><option value=""></option>${(f.options||[]).map(o=>`<option value="${escapeAttr(o)}"${String(val)===String(o)?' selected':''}>${escapeHtml(o)}</option>`).join('')}</select>`;
+    else if(f.type==='selectText'){
+      // 선택목록 + '선택없음(직접입력)' → 고르면 아래 텍스트칸 열림
+      const opts=(typeof f.options==='function')?f.options():(f.options||[]);
+      const isCustom=String(val)!=='' && !opts.includes(String(val));
+      const eg=(f.k==='dateFrom')?'2026-04-01':'2026-09-30';
+      inner=`<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">`
+        +`<select id="so-${f.k}" onchange="onSelectTextChange('${f.k}')"><option value=""></option>`
+        +opts.map(o=>`<option value="${escapeAttr(o)}"${String(val)===String(o)?' selected':''}>${escapeHtml(o)}</option>`).join('')
+        +`<option value="__custom__"${isCustom?' selected':''}>선택없음(직접입력)</option></select>`
+        +`<input type="text" id="so-${f.k}-txt" value="${isCustom?escapeAttr(val):''}" placeholder="직접 입력 (예: ${eg})" style="display:${isCustom?'':'none'};" oninput="updateCostComputedPreview()"/>`
+        +`</div>`;
+    }
     else inner=`<input type="${f.type}"${f.type==='date'?' lang="en"':''} id="so-${f.k}" value="${escapeAttr(val)}"${ph} oninput="updateCostComputedPreview()"/>`;
     return `<div class="f-row" style="flex:${basis};margin-bottom:0;min-width:0;"><label>${f.label}</label>${inner}</div>`;
   }).join('');
-  const computed=cat.fields.filter(f=>f.compute);
+  const computed=cat.fields.filter(f=>f.compute && !f.plain);
   const preview=computed.length?`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;gap:4px;margin-bottom:0;"><label>자동 합계 (자동 계산)</label><div id="costComputedPreview" style="background:#fff9c4;border:1px solid #e6dd7a;border-radius:8px;padding:8px 12px;font-size:13px;"></div></div>`:'';
   document.getElementById('soBody').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">${inputs}${preview}</div>`;
   if(computed.length) updateCostComputedPreview();
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').classList.add('open');
 }
+// 상세보기 — 모든 항목(표에 없는 칸 포함)을 읽기 전용으로 표시
+function openCostRowDetail(index){
+  const cat=COST_CATEGORIES.find(c=>c.key===costTab);
+  const row=getCostRows(costTab)[index];
+  if(!row) return;
+  document.getElementById('soTitle').textContent=`${row.nameKr||row.name||cat.label} — 상세보기`;
+  const items=cat.fields.map(f=>{
+    const disp=fmtCostCell(row,f);
+    const isSum=f.compute&&!f.plain;
+    return `<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;${isSum?'background:#fff9c4;':''}">`
+      +`<span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(f.label)}</span>`
+      +`<b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${escapeHtml(String(disp))}</b></div>`;
+  }).join('');
+  document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${items}</div>`;
+  const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';   // 읽기 전용
+  document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').classList.add('open');
+}
 // 편집 중 입력값으로 자동 합계 미리보기 갱신
 function updateCostComputedPreview(){
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
-  const computed=cat.fields.filter(f=>f.compute);
+  const computed=cat.fields.filter(f=>f.compute && !f.plain);
   const host=document.getElementById('costComputedPreview');
   if(!computed.length||!host) return;
   const cur={};
-  cat.fields.filter(f=>!f.compute).forEach(f=>{ const el=document.getElementById('so-'+f.k); if(el) cur[f.k]=el.value; });
+  cat.fields.filter(f=>!f.compute && !f.noForm).forEach(f=>{ cur[f.k]=costFieldValue(f); });
   host.innerHTML=computed.map(c=>{const v=c.compute(cur);const disp=(typeof v==='string')?(v||'-'):(v?v.toLocaleString():'-');return `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:#4a5570;">${c.label}</span><b style="color:#1f4a85;">${disp}</b></div>`;}).join('');
 }
 async function saveCostRow(){
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
   const row={};
-  cat.fields.filter(f=>!f.compute).forEach(f=>{ const el=document.getElementById(`so-${f.k}`); if(el) row[f.k]=el.value; });
+  cat.fields.filter(f=>!f.compute && !f.noForm).forEach(f=>{ row[f.k]=costFieldValue(f); });
   const rows=getCostRows(costTab);
   if(costEditIndex===null) rows.push(row); else rows[costEditIndex]=row;
   await saveCostRows(costTab,rows);
