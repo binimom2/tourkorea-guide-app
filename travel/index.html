@@ -1994,11 +1994,15 @@ function seasonDateOptions(kind){
     ? [`${Y}-04-01`,`${Y}-10-01`,`${Y}-11-01`,`${Y+1}-04-01`]
     : [`${Y}-09-30`,`${Y}-10-31`,`${Y+1}-03-31`,`${Y+1}-04-30`];
 }
-// 표의 '기간' 칸: 시작일 ~ 종료일
+// 표의 '기간' 칸: 시작일~종료일 (칸 폭을 줄이려고 26/04/01 처럼 짧게 표기. 직접 입력한 값은 그대로)
+function costShortDate(d){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d||'').trim());
+  return m ? `${m[1].slice(2)}/${m[2]}/${m[3]}` : String(d||'');
+}
 function costPeriod(r){
   const a=String(r.dateFrom||'').trim(), b=String(r.dateTo||'').trim();
   if(!a&&!b) return '-';
-  return `${a||'?'} ~ ${b||'?'}`;
+  return `${a?costShortDate(a):'?'}~${b?costShortDate(b):'?'}`;
 }
 // 9홀그린피 입력 여부 (없으면 27홀 합을 x로)
 function hasNine(v){ return String(v==null?'':v).trim()!==''; }
@@ -2221,9 +2225,10 @@ function renderGolfTable(){
   const SUMS=['주중18홀 합','주말18홀 합','주중27홀 합','주말27홀 합'];
   const MONEY=['18홀(주중)','18홀(주말)','캐디피','전동카'];   // 헤더를 짧게 → 칸 폭 축소
   const COLS=['골프장명','지역','시즌','기간'].concat(MONEY).concat(SUMS).concat(['비고']);
+  const CEN=['지역','시즌','기간'].concat(MONEY).concat(SUMS);   // 가운데 정렬 칸
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>{
-    const isSum=SUMS.indexOf(l)>=0, isNum=isSum||MONEY.indexOf(l)>=0||l==='기간';
-    return `<th class="${isSum?'cost-sum-col ':''}${isNum?'num':''}">${escapeHtml(l)}</th>`;
+    const isSum=SUMS.indexOf(l)>=0;
+    return `<th class="${isSum?'cost-sum-col ':''}${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`;
   }).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
@@ -2244,9 +2249,9 @@ function renderGolfTable(){
       html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||c.name||'-')}</b></td>`
-             +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
+             +`<td rowspan="${n}" class="num" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
       }
-      html+=`<td>${escapeHtml(s.season||'-')}</td><td class="num">${escapeHtml(costPeriod(s))}</td>`
+      html+=`<td class="num">${escapeHtml(s.season||'-')}</td><td class="num">${escapeHtml(costPeriod(s))}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.gf18wd))}</td><td class="num">${escapeHtml(fmtMoney(s.gf18we))}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.caddy))}</td><td class="num">${escapeHtml(fmtMoney(s.cart))}</td>`
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum18wd(s)))}</td>`
@@ -2478,7 +2483,7 @@ async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 
 function renderHotelTable(){
   const COLS=['호텔명','지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
-  const CEN=['룸타입 구분','트윈/싱글','엑스트라','조이너스'];
+  const CEN=['지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스'];
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
@@ -2503,11 +2508,11 @@ function renderHotelTable(){
         html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
         if(rowNo===0){   // 호텔명·지역: 이 호텔 전체 높이만큼 병합
           html+=`<td rowspan="${total}" style="vertical-align:middle;"><b>${escapeHtml(h.name||'-')}</b></td>`
-               +`<td rowspan="${total}" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
+               +`<td rowspan="${total}" class="num" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
         }
         if(ri===0){      // 시즌·기간: 그 기간의 룸타입 수만큼 병합
-          html+=`<td rowspan="${rooms.length}" style="vertical-align:middle;">${escapeHtml(s.season||'-')}</td>`
-               +`<td rowspan="${rooms.length}" style="vertical-align:middle;">${escapeHtml(costPeriod(s))}</td>`;
+          html+=`<td rowspan="${rooms.length}" class="num" style="vertical-align:middle;">${escapeHtml(s.season||'-')}</td>`
+               +`<td rowspan="${rooms.length}" class="num" style="vertical-align:middle;">${escapeHtml(costPeriod(s))}</td>`;
         }
         html+=`<td class="num">${escapeHtml(rm.roomType||'-')}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.rate))}</td>`
