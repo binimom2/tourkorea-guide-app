@@ -395,7 +395,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
         </div>
         <div class="f-row3">
           <div class="f-row"><label>TYPE</label><select id="r-type" onchange="onDateChange()"></select></div>
-          <div class="f-row"><label>PROC</label><select id="r-proc"></select></div>
+          <div class="f-row"><label>PROC</label><select id="r-proc" onchange="applyProcColor()"></select></div>
           <div class="f-row"><label>STATUS</label><select id="r-status"></select></div>
         </div>
         <div class="f-row2">
@@ -612,6 +612,23 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'trv-
    → 누른 곳(mousedown)과 뗀 곳(click)이 '둘 다 배경'일 때만 닫는다. */
 let _ovDownOnBg=false;
 function ovDown(e,el){ _ovDownOnBg = (e.target===el); }
+
+/* PROC(진행) 색상 — NEW=빨강, 어멘드(H/G/E-AMEND)=파랑, FINAL=검정 */
+function procColor(v){
+  const s=String(v||'');
+  if(s==='NEW') return '#e0483f';             // 빨강
+  if(s.indexOf('AMEND')>=0) return '#1a5cbf'; // 파랑
+  if(s==='FINAL') return '#111827';           // 검정
+  return '#1f2a44';
+}
+// 베이직 인포의 PROC 칸 색칠 (닫힌 상태 + 드롭다운 목록 모두)
+function applyProcColor(){
+  const el=document.getElementById('r-proc');
+  if(!el) return;
+  Array.from(el.options).forEach(o=>{ o.style.color=procColor(o.value); o.style.fontWeight='700'; });
+  el.style.color=procColor(el.value);
+  el.style.fontWeight='700';
+}
 
 async function sbSave(key,data){
   localStorage.setItem(key,JSON.stringify(data));
@@ -2366,6 +2383,7 @@ function openReservation(id,presetDate){
   fillSelectFromCodes('r-division','divisions',workingRes.division);
   fillSelectFromCodes('r-type','types',workingRes.type);
   fillSelectFromCodes('r-proc','procs',workingRes.proc);
+  applyProcColor();   // NEW=빨강 / 어멘드=파랑 / 파이널=검정
   fillSelectFromCodes('r-status','statuses',workingRes.status);
   fillCustomerSelect(workingRes.customer,workingRes.manager);
 
