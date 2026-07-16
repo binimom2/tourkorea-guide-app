@@ -2305,19 +2305,52 @@ async function delGolfCourse(i){
 function openGolfDetail(i){
   const c=getGolfCourses()[i]; if(!c) return;
   document.getElementById('soTitle').textContent=`${c.nameKr||c.name||'골프장'} — 상세보기`;
-  const line=(l,v,bg)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;${bg||''}"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${escapeHtml(String(v))}</b></div>`;
-  const info=[['골프장명(영문)',c.name||'-'],['골프장명(한글)',c.nameKr||'-'],['지역',c.region||'-'],['비고',c.remark||'-']].map(x=>line(x[0],x[1])).join('');
-  const ss=(c.seasons||[]).map((s,i)=>{
-    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)]]
-      .concat(GOLF_MONEY.map(f=>[f.label,fmtMoney(s[f.k])]));
-    const sums=[['주중18홀 합',fmtSum(golfSum18wd(s))],['주말18홀 합',fmtSum(golfSum18we(s))],['주중27홀 합',fmtSum(golfSum27wd(s))],['주말27홀 합',fmtSum(golfSum27we(s))]];
-    return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
-      <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">시즌 ${i+1}</div>
-      ${rows.map(x=>line(x[0],x[1])).join('')}${sums.map(x=>line(x[0],x[1],'background:#fff9c4;')).join('')}
+
+  // 헤더: 이름 + 지역칩 + (영문명) + 비고
+  const hdr=`<div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;padding:0 2px 8px;">
+      <b style="font-size:18px;color:#1f2a44;">${escapeHtml(c.nameKr||c.name||'-')}</b>
+      ${c.region?`<span style="font-size:11.5px;color:#3c5a86;background:#e8effa;border-radius:999px;padding:2px 10px;">${escapeHtml(c.region)}</span>`:''}
+      ${(c.name&&c.nameKr)?`<span style="font-size:11px;color:#9aa1af;">${escapeHtml(c.name)}</span>`:''}
+    </div>
+    ${c.remark?`<div style="font-size:12.5px;color:#4a5570;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;padding:8px 10px;white-space:pre-wrap;">${escapeHtml(c.remark)}</div>`:''}`;
+
+  const TH='padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:right;';
+  const TD='padding:7px 8px;text-align:right;font-size:13px;color:#1f2a44;font-variant-numeric:tabular-nums;';
+
+  const blocks=(c.seasons||[]).map(s=>{
+    const peak=/성수기/.test(String(s.season||''));
+    // 18홀/9홀을 가로 2줄로 묶어서 표시
+    const rate=`<table style="width:100%;border-collapse:collapse;">
+      <tr><th style="${TH}text-align:left;width:52px;"></th>
+        <th style="${TH}">그린피(주중)</th><th style="${TH}">그린피(주말)</th><th style="${TH}">캐디피</th><th style="${TH}">전동카</th></tr>
+      <tr><td style="padding:7px 8px;font-size:12px;font-weight:700;color:#3c5a86;border-bottom:1px solid #f2f4f8;">18홀</td>
+        <td style="${TD}border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(s.gf18wd))}</td>
+        <td style="${TD}border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(s.gf18we))}</td>
+        <td style="${TD}border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(s.caddy))}</td>
+        <td style="${TD}border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(s.cart))}</td></tr>
+      <tr><td style="padding:7px 8px;font-size:12px;font-weight:700;color:#3c5a86;">9홀</td>
+        <td style="${TD}">${escapeHtml(fmtMoney(s.gf9wd))}</td>
+        <td style="${TD}">${escapeHtml(fmtMoney(s.gf9we))}</td>
+        <td style="${TD}">${escapeHtml(fmtMoney(s.caddy9))}</td>
+        <td style="${TD}">${escapeHtml(fmtMoney(s.cart9))}</td></tr>
+    </table>`;
+    const box=(l,v)=>`<div style="flex:1 1 calc(25% - 6px);background:#fff9c4;border:1px solid #ece28a;border-radius:8px;padding:6px 8px;text-align:center;min-width:76px;">
+        <div style="font-size:10.5px;color:#8a7800;">${escapeHtml(l)}</div>
+        <b style="font-size:13.5px;color:#5c5000;font-variant-numeric:tabular-nums;">${escapeHtml(String(v))}</b></div>`;
+    const sums=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;">
+        ${box('주중18홀',fmtSum(golfSum18wd(s)))}${box('주말18홀',fmtSum(golfSum18we(s)))}
+        ${box('주중27홀',fmtSum(golfSum27wd(s)))}${box('주말27홀',fmtSum(golfSum27we(s)))}</div>`;
+    return `<div style="border:1px solid #e5e9f0;border-radius:12px;overflow:hidden;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${peak?'#e6f6ea':'#eef2f9'};border-bottom:1px solid #e5e9f0;">
+        <span style="font-size:11.5px;font-weight:700;color:${peak?'#1a6b3a':'#3c5a86'};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
+        <span style="font-size:12px;color:#4a5570;">${escapeHtml(costPeriod(s))}</span>
+      </div>
+      <div style="padding:10px;">${rate}${sums}</div>
     </div>`;
   }).join('');
-  document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
-    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 시즌 요금이 없습니다</div>');
+
+  document.getElementById('soBody').innerHTML=hdr
+    +(blocks||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 시즌 요금이 없습니다</div>');
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').classList.add('open');
