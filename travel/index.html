@@ -106,6 +106,9 @@ table.rlist tr{cursor:pointer;}
 /* 원가서 자동 합계 컬럼 강조(연한 노랑 — 목업 기준) */
 .rlist th.cost-sum-col{background:#fff3b0;color:#7a6a00;}
 .rlist td.cost-sum-col{background:#fffceb;font-weight:700;color:#7a6a00;}
+/* 원가서: 상단 제목줄 고정 — 상자 안에서 스크롤되게 높이를 줘야 sticky가 작동함 */
+#costView .list-wrap{max-height:calc(100vh - 190px);overflow:auto;}
+#costTable thead th{position:sticky;top:0;z-index:3;}
 /* 원가서 표: 칸 사이 연한 세로 점선 + 금액칸 가운데 정렬 */
 #costTable th,#costTable td{border-right:1px dotted #dde3ec;}
 #costTable th:last-child,#costTable td:last-child{border-right:none;}
