@@ -2434,10 +2434,9 @@ function openGolfDetail(i){
   document.getElementById('sov').classList.add('open');
 }
 
-/* ══════════════ 호텔: 호텔 ─ 기간(시즌) ─ 룸타입(시티뷰/씨뷰) ─ 트윈/싱글/엑스트라/조이너스 ══════════════
-   데이터: [{name,region,seasons:[{season,dateFrom,dateTo,roomType,twin,single,extbed,joiners,remark}]}]
-   ※ 같은 기간에 시티뷰·씨뷰가 있으면 '기간'을 2개 만들어 룸타입만 다르게 넣으면 됨 */
-const HOTEL_MONEY=[{k:'twin',label:'트윈'},{k:'single',label:'싱글'},{k:'extbed',label:'엑스트라베드'},{k:'joiners',label:'조이너스'}];
+/* ══════════════ 호텔 3단 구조 ══════════════
+   호텔 ─ 지역 ─ 기간(시즌) ─ 룸타입구분(여러개) ─ 트윈/싱글 · 엑스트라 · 조이너스 · 비고
+   데이터: [{name,region,seasons:[{season,dateFrom,dateTo,rooms:[{roomType,rate,extbed,joiners,remark}]}]}] */
 
 // 구버전(한 줄=한 기간, rt1/amt1…) → 신버전(호텔 안에 기간들)
 function migrateHotel(rows){
@@ -2455,13 +2454,20 @@ function migrateHotel(rows){
   });
   return out;
 }
-// 예전 구조(roomType/amount, roomType2/amount2)로 저장된 값을 트윈/싱글로 자동 대응 (원본은 안 건드림)
+/* 예전 구조(시즌에 룸타입/요금이 바로 붙어있던 형태) → rooms 배열로 자동 변환.
+   원본은 건드리지 않고 읽을 때만 맞춰줌 (저장하면 새 구조로 굳어짐) */
 function normHotelSeasons(list){
   return list.map(h=>Object.assign({},h,{seasons:(h.seasons||[]).map(s=>{
     const o=Object.assign({},s);
-    if(o.twin===undefined && o.amount!==undefined) o.twin=o.amount;
-    if(o.single===undefined && o.amount2!==undefined) o.single=o.amount2;
-    if(!o.roomType && o.roomType2) o.roomType=o.roomType2;
+    if(!Array.isArray(o.rooms)){
+      const rate = (o.rate!==undefined&&o.rate!=='') ? o.rate : (o.twin||o.single||o.amount||'');
+      const has = (o.roomType||o.roomType2||rate||o.extbed||o.joiners||o.remark);
+      const rooms=[];
+      if(has) rooms.push({roomType:o.roomType||'',rate:rate,extbed:o.extbed||'',joiners:o.joiners||'',remark:o.remark||''});
+      // 예전 '룸타입②'가 있으면 두 번째 룸타입으로 살려둠
+      if(o.roomType2||o.amount2) rooms.push({roomType:o.roomType2||'',rate:o.amount2||'',extbed:o.extbed||'',joiners:o.joiners||'',remark:''});
+      o.rooms = rooms.length?rooms:[{}];
+    }
     return o;
   })}));
 }
@@ -2469,8 +2475,8 @@ function getHotels(){ return normHotelSeasons(migrateHotel(getCostRows('hotel'))
 async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 
 function renderHotelTable(){
-  const COLS=['호텔명','지역','시즌','기간','룸타입','트윈','싱글','엑스트라','조이너스','비고'];
-  const CEN=['룸타입','트윈','싱글','엑스트라','조이너스'];
+  const COLS=['호텔명','지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
+  const CEN=['룸타입 구분','트윈/싱글','엑스트라','조이너스'];
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
@@ -2484,25 +2490,34 @@ function renderHotelTable(){
   let html='';
   list.forEach(({h,idx},gi)=>{
     const ss=(h.seasons&&h.seasons.length)?h.seasons:[{}];
-    const n=ss.length, grp=gi%2;
+    const roomsOf=ss.map(s=>(s.rooms&&s.rooms.length)?s.rooms:[{}]);
+    const total=roomsOf.reduce((a,r)=>a+r.length,0);   // 호텔명/지역/관리 병합 높이
+    const grp=gi%2;
+    let rowNo=0;
     ss.forEach((s,si)=>{
+      const rooms=roomsOf[si];
       const peak=/성수기/.test(String(s.season||''));
-      html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
-      if(si===0){
-        html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(h.name||'-')}</b></td>`
-             +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
-      }
-      html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
-           +`<td class="num">${escapeHtml(s.roomType||'-')}</td>`
-           +`<td class="num">${escapeHtml(fmtMoney(s.twin))}</td>`
-           +`<td class="num">${escapeHtml(fmtMoney(s.single))}</td>`
-           +`<td class="num">${escapeHtml(fmtMoney(s.extbed))}</td>`
-           +`<td class="num">${escapeHtml(fmtMoney(s.joiners))}</td>`
-           +`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
-      if(si===0){
-        html+=`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div></td>`;
-      }
-      html+='</tr>';
+      rooms.forEach((rm,ri)=>{
+        html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
+        if(rowNo===0){   // 호텔명·지역: 이 호텔 전체 높이만큼 병합
+          html+=`<td rowspan="${total}" style="vertical-align:middle;"><b>${escapeHtml(h.name||'-')}</b></td>`
+               +`<td rowspan="${total}" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
+        }
+        if(ri===0){      // 시즌·기간: 그 기간의 룸타입 수만큼 병합
+          html+=`<td rowspan="${rooms.length}" style="vertical-align:middle;">${escapeHtml(s.season||'-')}</td>`
+               +`<td rowspan="${rooms.length}" style="vertical-align:middle;">${escapeHtml(costPeriod(s))}</td>`;
+        }
+        html+=`<td class="num">${escapeHtml(rm.roomType||'-')}</td>`
+             +`<td class="num">${escapeHtml(fmtMoney(rm.rate))}</td>`
+             +`<td class="num">${escapeHtml(fmtMoney(rm.extbed))}</td>`
+             +`<td class="num">${escapeHtml(fmtMoney(rm.joiners))}</td>`
+             +`<td class="remark-col">${rm.remark?renderRemark(rm.remark):'-'}</td>`;
+        if(rowNo===0){
+          html+=`<td rowspan="${total}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div></td>`;
+        }
+        html+='</tr>';
+        rowNo++;
+      });
     });
   });
   body.innerHTML=html;
@@ -2538,23 +2553,39 @@ function syncHotelDraftFromDom(){
   _hotelDraft.name=gv('h-name'); _hotelDraft.region=gv('h-region');
   _hotelDraft.seasons=_hotelDraft.seasons.map((s,i)=>{
     const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo')};
-    // 룸타입 구분은 자유 텍스트 입력
-    ['roomType','twin','single','extbed','joiners'].forEach(k=>{ const el=document.getElementById(`h-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
-    const rm=document.getElementById(`h-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');
+    const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
+    o.rooms=rooms.map((rm,j)=>{
+      const g=k=>{ const el=document.getElementById(`h-${i}-${j}-${k}`); return el?el.value:(rm[k]||''); };
+      return {roomType:g('roomType'),rate:g('rate'),extbed:g('extbed'),joiners:g('joiners'),remark:g('remark')};
+    });
     return o;
   });
 }
-function addHotelSeason(){ syncHotelDraftFromDom(); _hotelDraft.seasons.push({}); renderHotelEditorBody(); }
+function addHotelSeason(){ syncHotelDraftFromDom(); _hotelDraft.seasons.push({rooms:[{}]}); renderHotelEditorBody(); }
+// 기간 안에 룸타입 추가/삭제
+function addHotelRoom(i){
+  syncHotelDraftFromDom();
+  const s=_hotelDraft.seasons[i]; if(!s) return;
+  if(!Array.isArray(s.rooms)||!s.rooms.length) s.rooms=[{}];
+  s.rooms.push({});
+  renderHotelEditorBody();
+}
+function delHotelRoom(i,j){
+  syncHotelDraftFromDom();
+  const s=_hotelDraft.seasons[i]; if(!s) return;
+  if(!Array.isArray(s.rooms)) s.rooms=[{}];
+  if(s.rooms.length<=1) s.rooms=[{}]; else s.rooms.splice(j,1);
+  renderHotelEditorBody();
+}
 function delHotelSeason(i){
   syncHotelDraftFromDom();
-  if(_hotelDraft.seasons.length<=1) _hotelDraft.seasons=[{}];
+  if(_hotelDraft.seasons.length<=1) _hotelDraft.seasons=[{rooms:[{}]}];
   else _hotelDraft.seasons.splice(i,1);
   renderHotelEditorBody();
 }
 function hotelSeasonBlockHtml(s,i){
-  const q='flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;';
   const t='flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;';
-  const h='flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;';
+  const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
   return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${i+1}</span>
@@ -2564,12 +2595,28 @@ function hotelSeasonBlockHtml(s,i){
       <div class="f-row" style="${t}"><label>시즌</label>${hotelSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
       <div class="f-row" style="${t}"><label>시작일</label>${hotelSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
       <div class="f-row" style="${t}"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
-      <div class="f-row" style="${q}"><label>룸타입 구분</label><input type="text" id="h-${i}-roomType" value="${escapeAttr(s.roomType||'')}" placeholder="예: 시티뷰, 씨뷰"/></div>
-      <div class="f-row" style="${q}"><label>트윈</label><input type="text" id="h-${i}-twin" value="${escapeAttr(s.twin||'')}"/></div>
-      <div class="f-row" style="${q}"><label>싱글</label><input type="text" id="h-${i}-single" value="${escapeAttr(s.single||'')}"/></div>
-      <div class="f-row" style="${q}"><label>엑스트라베드</label><input type="text" id="h-${i}-extbed" value="${escapeAttr(s.extbed||'')}"/></div>
-      <div class="f-row" style="${h}"><label>조이너스</label><input type="text" id="h-${i}-joiners" value="${escapeAttr(s.joiners||'')}"/></div>
-      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('h-'+i+'-remark')}<textarea id="h-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px dashed #e3e7ef;">
+      <b style="font-size:12px;color:#3c5a86;">룸타입 구분 (${rooms.length}개)</b>
+      <button type="button" class="btn btn-save" style="padding:0 10px;height:26px;font-size:11.5px;" onclick="addHotelRoom(${i})">＋ 룸타입 추가</button>
+    </div>
+    ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j)).join('')}
+  </div>`;
+}
+// 기간 안의 룸타입 1개 블록 (시티뷰/씨뷰 등)
+function hotelRoomBlockHtml(rm,i,j){
+  const q='flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;';
+  return `<div style="border:1px dashed #d8dfea;border-radius:8px;padding:9px;margin-top:6px;background:#fff;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:11px;color:#8892a0;font-weight:700;">룸타입 ${j+1}</span>
+      <a class="act-del" style="cursor:pointer;font-size:11.5px;" onclick="delHotelRoom(${i},${j})">삭제</a>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">
+      <div class="f-row" style="${q}"><label>룸타입 구분</label><input type="text" id="h-${i}-${j}-roomType" value="${escapeAttr(rm.roomType||'')}" placeholder="예: 시티뷰, 씨뷰"/></div>
+      <div class="f-row" style="${q}"><label>트윈/싱글</label><input type="text" id="h-${i}-${j}-rate" value="${escapeAttr(rm.rate||'')}"/></div>
+      <div class="f-row" style="${q}"><label>엑스트라</label><input type="text" id="h-${i}-${j}-extbed" value="${escapeAttr(rm.extbed||'')}"/></div>
+      <div class="f-row" style="${q}"><label>조이너스</label><input type="text" id="h-${i}-${j}-joiners" value="${escapeAttr(rm.joiners||'')}"/></div>
+      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('h-'+i+'-'+j+'-remark')}<textarea id="h-${i}-${j}-remark">${escapeHtml(rm.remark||'')}</textarea></div>
     </div>
   </div>`;
 }
@@ -2588,9 +2635,10 @@ function renderHotelEditorBody(){
 function openHotelEditor(index){
   hotelEditIndex=index;
   const list=getHotels();
-  const src=(index===null)?{name:'',region:'',seasons:[{}]}:list[index];
+  const src=(index===null)?{name:'',region:'',seasons:[{rooms:[{}]}]}:list[index];
   _hotelDraft=JSON.parse(JSON.stringify(src||{}));
-  if(!Array.isArray(_hotelDraft.seasons)||!_hotelDraft.seasons.length) _hotelDraft.seasons=[{}];
+  if(!Array.isArray(_hotelDraft.seasons)||!_hotelDraft.seasons.length) _hotelDraft.seasons=[{rooms:[{}]}];
+  _hotelDraft.seasons.forEach(s=>{ if(!Array.isArray(s.rooms)||!s.rooms.length) s.rooms=[{}]; });
   document.getElementById('soTitle').textContent=`호텔 ${index===null?'추가':'수정'}`;
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='';
   renderHotelEditorBody();
@@ -2630,12 +2678,29 @@ function openHotelDetail(i){
   const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['호텔명',h.name||'-'],['지역',h.region||'-']].map(x=>line(x[0],x[1])).join('');
   const ss=(h.seasons||[]).map((s,i)=>{
-    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],
-      ['룸타입 구분',s.roomType||'-'],['트윈',fmtMoney(s.twin)],['싱글',fmtMoney(s.single)],
-      ['엑스트라베드',fmtMoney(s.extbed)],['조이너스',fmtMoney(s.joiners)]];
-    return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
-      <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">기간 ${i+1}</div>
-      ${rows.map(x=>line(x[0],x[1])).join('')}${line('비고', s.remark?renderRemark(s.remark):'-', true)}
+    const peak=/성수기/.test(String(s.season||''));
+    const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
+    // 기간 아래 룸타입들을 가로 표로
+    const tbl=`<table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:left;">룸타입</th>
+        <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:center;">트윈/싱글</th>
+        <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:center;">엑스트라</th>
+        <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:center;">조이너스</th>
+      </tr>
+      ${rooms.map(rm=>`<tr>
+        <td style="padding:7px 8px;font-size:12.5px;font-weight:700;color:#3c5a86;border-bottom:1px solid #f2f4f8;">${escapeHtml(rm.roomType||'-')}</td>
+        <td style="padding:7px 8px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(rm.rate))}</td>
+        <td style="padding:7px 8px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(rm.extbed))}</td>
+        <td style="padding:7px 8px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(rm.joiners))}</td>
+      </tr>${rm.remark?`<tr><td colspan="4" style="padding:4px 8px 8px;font-size:12px;color:#4a5570;white-space:pre-wrap;border-bottom:1px solid #f2f4f8;">${renderRemark(rm.remark)}</td></tr>`:''}`).join('')}
+    </table>`;
+    return `<div style="border:1px solid #e5e9f0;border-radius:12px;overflow:hidden;margin-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${peak?'#e6f6ea':'#eef2f9'};border-bottom:1px solid #e5e9f0;">
+        <span style="font-size:11.5px;font-weight:700;color:${peak?'#1a6b3a':'#3c5a86'};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
+        <span style="font-size:12px;color:#4a5570;">${escapeHtml(costPeriod(s))}</span>
+      </div>
+      <div style="padding:8px;">${tbl}</div>
     </div>`;
   }).join('');
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
