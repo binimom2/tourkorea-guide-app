@@ -2438,7 +2438,6 @@ function openGolfDetail(i){
    데이터: [{name,region,seasons:[{season,dateFrom,dateTo,roomType,twin,single,extbed,joiners,remark}]}]
    ※ 같은 기간에 시티뷰·씨뷰가 있으면 '기간'을 2개 만들어 룸타입만 다르게 넣으면 됨 */
 const HOTEL_MONEY=[{k:'twin',label:'트윈'},{k:'single',label:'싱글'},{k:'extbed',label:'엑스트라베드'},{k:'joiners',label:'조이너스'}];
-const HOTEL_ROOMTYPES=['시티뷰','씨뷰'];   // 직접입력으로 디럭스 등도 가능
 
 // 구버전(한 줄=한 기간, rt1/amt1…) → 신버전(호텔 안에 기간들)
 function migrateHotel(rows){
@@ -2468,13 +2467,6 @@ function normHotelSeasons(list){
 }
 function getHotels(){ return normHotelSeasons(migrateHotel(getCostRows('hotel'))); }
 async function saveHotels(arr){ await saveCostRows('hotel',arr); }
-// 표의 '트윈/싱글' 칸: 룸타입 + 금액 (예: 트윈 3,000)
-function hotelRoomCell(s){
-  const rt=String(s.roomType||'').trim();
-  const amt=fmtMoney(s.amount);
-  if(!rt && amt==='-') return '-';
-  return (rt?rt+' ':'')+(amt==='-'?'':amt);
-}
 
 function renderHotelTable(){
   const COLS=['호텔명','지역','시즌','기간','룸타입','트윈','싱글','엑스트라','조이너스','비고'];
@@ -2545,9 +2537,9 @@ function syncHotelDraftFromDom(){
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
   _hotelDraft.name=gv('h-name'); _hotelDraft.region=gv('h-region');
   _hotelDraft.seasons=_hotelDraft.seasons.map((s,i)=>{
-    const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo'),
-             roomType:hotelSelText(i,'roomType')};
-    ['twin','single','extbed','joiners'].forEach(k=>{ const el=document.getElementById(`h-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
+    const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo')};
+    // 룸타입 구분은 자유 텍스트 입력
+    ['roomType','twin','single','extbed','joiners'].forEach(k=>{ const el=document.getElementById(`h-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
     const rm=document.getElementById(`h-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');
     return o;
   });
@@ -2572,7 +2564,7 @@ function hotelSeasonBlockHtml(s,i){
       <div class="f-row" style="${t}"><label>시즌</label>${hotelSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
       <div class="f-row" style="${t}"><label>시작일</label>${hotelSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
       <div class="f-row" style="${t}"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
-      <div class="f-row" style="${q}"><label>룸타입 구분</label>${hotelSelTextHtml(i,'roomType',s.roomType||'',HOTEL_ROOMTYPES,'예: 디럭스')}</div>
+      <div class="f-row" style="${q}"><label>룸타입 구분</label><input type="text" id="h-${i}-roomType" value="${escapeAttr(s.roomType||'')}" placeholder="예: 시티뷰, 씨뷰"/></div>
       <div class="f-row" style="${q}"><label>트윈</label><input type="text" id="h-${i}-twin" value="${escapeAttr(s.twin||'')}"/></div>
       <div class="f-row" style="${q}"><label>싱글</label><input type="text" id="h-${i}-single" value="${escapeAttr(s.single||'')}"/></div>
       <div class="f-row" style="${q}"><label>엑스트라베드</label><input type="text" id="h-${i}-extbed" value="${escapeAttr(s.extbed||'')}"/></div>
