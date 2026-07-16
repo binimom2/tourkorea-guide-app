@@ -605,7 +605,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 /* ══════════════════════════ SUPABASE (가이드정산서와 같은 프로젝트, trv_ 접두어로 분리) ══════════════════════════ */
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'trv-auth',persistSession:true,autoRefreshToken:true}});
 
 async function sbSave(key,data){
   localStorage.setItem(key,JSON.stringify(data));
@@ -646,29 +646,30 @@ async function doLogin(){
   const err=document.getElementById('login-err');
   const btn=document.querySelector('.login-btn');
   err.style.display='none';
+  if(!id||!pw){err.textContent='아이디와 비밀번호를 입력하세요.';err.style.display='block';return;}
   if(btn){btn.textContent='로그인 중...';btn.disabled=true;}
   try{
-    // 이 기기의 로컬 캐시가 오래됐을 수 있으니 로그인 시도 시 계정/관리자비번을 Supabase에서 먼저 새로고침
-    await Promise.all([sbLoad('trv_accounts'),sbLoad('trv_admin_pw')]);
-
-    if(id.toLowerCase()===ADMIN_ID.toLowerCase()&&pw===getAdminPw()){
-      currentUser={id,role:'admin'};
-      await enterApp();return;
-    }
-    const found=getAccounts().find(a=>a.id.toLowerCase()===id.toLowerCase()&&a.pw===pw);
-    if(found){
-      if(found.approved===false){
+    // Supabase 정식 인증 (Auth). 이메일 = 아이디@traveldetail.app
+    const email = id + '@traveldetail.app';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if(!error && data && data.session){
+      const meta = (data.user && data.user.user_metadata) || {};
+      if(meta.approved===false){
+        try{ await sb.auth.signOut(); }catch(e){}
         err.textContent='사용이 허가되지 않은 계정입니다. 관리자에게 문의하세요.';
         err.style.display='block';
         document.getElementById('login-pw').value='';
         return;
       }
-      currentUser={id:found.id,role:found.role||'staff'};
+      currentUser={ id:(meta.login_name||id), role: meta.role||'staff' };
       await enterApp();return;
     }
     err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
     err.style.display='block';
     document.getElementById('login-pw').value='';
+  } catch(e){
+    err.textContent='로그인 중 오류가 발생했습니다. 잠시 후 다시 시도하세요.';
+    err.style.display='block';
   } finally {
     if(btn){btn.textContent='로그인';btn.disabled=false;}
   }
@@ -702,14 +703,12 @@ async function enterApp(){
   setDefaultMonthRange();
   renderAll();
 }
-function doLogout(){
+async function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?'))return;
+  try{ await sb.auth.signOut(); }catch(e){}
+  try{ localStorage.removeItem('trv_session'); }catch(e){}
   currentUser=null;
-  try{ localStorage.removeItem('trv_session'); }catch(e){} // 세션 해제(다음 로드부터 로그인 필요)
-  document.getElementById('app').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('login-id').value='';
-  document.getElementById('login-pw').value='';
+  location.reload();
 }
 // 로그인한 본인의 비밀번호 변경 (관리자관리 화면이 없는 오퍼레이터/매니저도 셀프 변경 가능)
 async function changeMyPassword(){
@@ -2955,10 +2954,17 @@ function showToast(msg){
   toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 // 세션 유지: 새로고침해도 저장된 로그인 세션이 있으면 로그인 화면을 건너뛰고 복원(로그아웃 시에만 해제됨)
-(function restoreSession(){
+(async function restoreSession(){
   try{
-    const s=JSON.parse(localStorage.getItem('trv_session')||'null');
-    if(s&&s.id&&s.role){ currentUser=s; enterApp(); }
+    const { data: { session } } = await sb.auth.getSession();
+    if(session && session.user){
+      const meta = session.user.user_metadata || {};
+      if(meta.approved===false){ try{ await sb.auth.signOut(); }catch(e){} localStorage.removeItem('trv_session'); return; }
+      currentUser = { id:(meta.login_name||'admin'), role: meta.role||'staff' };
+      enterApp();
+    } else {
+      localStorage.removeItem('trv_session');
+    }
   }catch(e){}
 })();
 </script>
