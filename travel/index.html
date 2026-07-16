@@ -2510,8 +2510,13 @@ function renderHotelTable(){
         html+=`<td class="num">${escapeHtml(rm.roomType||'-')}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.rate))}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.extbed))}</td>`
-             +`<td class="num">${escapeHtml(fmtMoney(rm.joiners))}</td>`
-             +`<td class="remark-col">${rm.remark?renderRemark(rm.remark):'-'}</td>`;
+             +`<td class="num">${escapeHtml(fmtMoney(rm.joiners))}</td>`;
+        // 비고: '공통' 켜져 있으면 룸타입 수만큼 한 칸으로 병합
+        if(s.remarkCommon){
+          if(ri===0) html+=`<td rowspan="${rooms.length}" class="remark-col" style="vertical-align:middle;">${s.remark?renderRemark(s.remark):'-'}</td>`;
+        } else {
+          html+=`<td class="remark-col">${rm.remark?renderRemark(rm.remark):'-'}</td>`;
+        }
         if(rowNo===0){
           html+=`<td rowspan="${total}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div></td>`;
         }
@@ -2552,7 +2557,11 @@ function syncHotelDraftFromDom(){
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
   _hotelDraft.name=gv('h-name'); _hotelDraft.region=gv('h-region');
   _hotelDraft.seasons=_hotelDraft.seasons.map((s,i)=>{
-    const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo')};
+    const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo'),
+             remarkCommon:!!s.remarkCommon};
+    // 공통 비고: 켜져 있으면 입력칸에서 읽고, 꺼져 있으면 기존 값 보존
+    const crm=document.getElementById(`h-${i}-remark`);
+    o.remark = crm ? crm.value : (s.remark||'');
     const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
     o.rooms=rooms.map((rm,j)=>{
       const g=k=>{ const el=document.getElementById(`h-${i}-${j}-${k}`); return el?el.value:(rm[k]||''); };
@@ -2586,6 +2595,7 @@ function delHotelSeason(i){
 function hotelSeasonBlockHtml(s,i){
   const t='flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;';
   const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
+  const common=!!s.remarkCommon;   // 비고를 이 기간 공통으로 쓸지
   return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${i+1}</span>
@@ -2596,15 +2606,28 @@ function hotelSeasonBlockHtml(s,i){
       <div class="f-row" style="${t}"><label>시작일</label>${hotelSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
       <div class="f-row" style="${t}"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px dashed #e3e7ef;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed #e3e7ef;">
       <b style="font-size:12px;color:#3c5a86;">룸타입 구분 (${rooms.length}개)</b>
-      <button type="button" class="btn btn-save" style="padding:0 10px;height:26px;font-size:11.5px;" onclick="addHotelRoom(${i})">＋ 룸타입 추가</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5570;cursor:pointer;user-select:none;">
+          <input type="checkbox" ${common?'checked':''} onchange="toggleHotelRemarkCommon(${i})" style="cursor:pointer;"/> 비고 공통 사용
+        </label>
+        <button type="button" class="btn btn-save" style="padding:0 10px;height:26px;font-size:11.5px;" onclick="addHotelRoom(${i})">＋ 룸타입 추가</button>
+      </div>
     </div>
-    ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j)).join('')}
+    ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j,common)).join('')}
+    ${common?`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-top:8px;margin-bottom:0;"><label>비고 (이 기간 공통 — 표에서 한 칸으로 합쳐짐)</label>${remarkColorBar('h-'+i+'-remark')}<textarea id="h-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>`:''}
   </div>`;
 }
+// 비고 공통 사용 켜기/끄기
+function toggleHotelRemarkCommon(i){
+  syncHotelDraftFromDom();
+  const s=_hotelDraft.seasons[i]; if(!s) return;
+  s.remarkCommon=!s.remarkCommon;
+  renderHotelEditorBody();
+}
 // 기간 안의 룸타입 1개 블록 (시티뷰/씨뷰 등)
-function hotelRoomBlockHtml(rm,i,j){
+function hotelRoomBlockHtml(rm,i,j,common){
   const q='flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;';
   return `<div style="border:1px dashed #d8dfea;border-radius:8px;padding:9px;margin-top:6px;background:#fff;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -2616,7 +2639,7 @@ function hotelRoomBlockHtml(rm,i,j){
       <div class="f-row" style="${q}"><label>트윈/싱글</label><input type="text" id="h-${i}-${j}-rate" value="${escapeAttr(rm.rate||'')}"/></div>
       <div class="f-row" style="${q}"><label>엑스트라</label><input type="text" id="h-${i}-${j}-extbed" value="${escapeAttr(rm.extbed||'')}"/></div>
       <div class="f-row" style="${q}"><label>조이너스</label><input type="text" id="h-${i}-${j}-joiners" value="${escapeAttr(rm.joiners||'')}"/></div>
-      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('h-'+i+'-'+j+'-remark')}<textarea id="h-${i}-${j}-remark">${escapeHtml(rm.remark||'')}</textarea></div>
+      ${common?'':`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('h-'+i+'-'+j+'-remark')}<textarea id="h-${i}-${j}-remark">${escapeHtml(rm.remark||'')}</textarea></div>`}
     </div>
   </div>`;
 }
@@ -2693,8 +2716,9 @@ function openHotelDetail(i){
         <td style="padding:7px 8px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(rm.rate))}</td>
         <td style="padding:7px 8px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(rm.extbed))}</td>
         <td style="padding:7px 8px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid #f2f4f8;">${escapeHtml(fmtMoney(rm.joiners))}</td>
-      </tr>${rm.remark?`<tr><td colspan="4" style="padding:4px 8px 8px;font-size:12px;color:#4a5570;white-space:pre-wrap;border-bottom:1px solid #f2f4f8;">${renderRemark(rm.remark)}</td></tr>`:''}`).join('')}
-    </table>`;
+      </tr>${(!s.remarkCommon&&rm.remark)?`<tr><td colspan="4" style="padding:4px 8px 8px;font-size:12px;color:#4a5570;white-space:pre-wrap;border-bottom:1px solid #f2f4f8;">${renderRemark(rm.remark)}</td></tr>`:''}`).join('')}
+    </table>
+    ${(s.remarkCommon&&s.remark)?`<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;"><div style="font-size:10.5px;color:#8892a0;font-weight:700;margin-bottom:3px;">비고 (이 기간 공통)</div>${renderRemark(s.remark)}</div>`:''}`;
     return `<div style="border:1px solid #e5e9f0;border-radius:12px;overflow:hidden;margin-top:10px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${peak?'#e6f6ea':'#eef2f9'};border-bottom:1px solid #e5e9f0;">
         <span style="font-size:11.5px;font-weight:700;color:${peak?'#1a6b3a':'#3c5a86'};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
