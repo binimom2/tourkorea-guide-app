@@ -2104,6 +2104,33 @@ function golfSum27wd(s){return hasNine(s.gf9wd)?costSum(s.gf18wd,s.gf9wd,s.caddy
 function golfSum27we(s){return hasNine(s.gf9we)?costSum(s.gf18we,s.gf9we,s.caddy,s.caddy9,s.cart,s.cart9):'x';}
 function fmtMoney(v){ const s=String(v==null?'':v).trim(); if(s==='') return '-'; if(/^[\d,]+(\.\d+)?$/.test(s)) return Number(s.replace(/,/g,'')).toLocaleString(); return s; }
 function fmtSum(v){ if(typeof v==='string') return v||'-'; return v?Number(v).toLocaleString():'-'; }
+/* ── 비고 글자색: [r]빨강[/r] / [b]파랑[/b] 표시를 색으로 렌더 ──
+   저장은 순수 텍스트(마커)로만 하고, 화면에 그릴 때만 색으로 바꿔서 안전함 */
+function renderRemark(txt){
+  let h=escapeHtml(String(txt==null?'':txt));   // 먼저 이스케이프 → 그 다음 마커만 색으로
+  h=h.replace(/\[r\]([\s\S]*?)\[\/r\]/g,'<span style="color:#e0483f;font-weight:700;">$1</span>');
+  h=h.replace(/\[b\]([\s\S]*?)\[\/b\]/g,'<span style="color:#1e88e5;font-weight:700;">$1</span>');
+  return h;
+}
+// 비고 입력칸에서 선택한 글자에 색 마커 씌우기
+function wrapRemark(id,tag){
+  const el=document.getElementById(id); if(!el) return;
+  const s=el.selectionStart, e=el.selectionEnd;
+  const sel=el.value.slice(s,e);
+  if(!sel){ showToast('색을 넣을 글자를 먼저 드래그해서 선택하세요'); el.focus(); return; }
+  el.value=el.value.slice(0,s)+`[${tag}]`+sel+`[/${tag}]`+el.value.slice(e);
+  el.focus();
+  el.selectionStart=s+3; el.selectionEnd=s+3+sel.length;
+}
+// 비고칸 위 색상 버튼 바
+function remarkColorBar(id){
+  return `<div style="display:flex;gap:5px;align-items:center;margin:2px 0 4px;flex-wrap:wrap;">
+    <span style="font-size:10.5px;color:#9aa1af;">주의사항 색:</span>
+    <button type="button" onclick="wrapRemark('${id}','r')" style="border:1px solid #f3c4c0;background:#fdeceb;color:#e0483f;font-size:11px;font-weight:700;border-radius:5px;padding:2px 9px;cursor:pointer;">빨강</button>
+    <button type="button" onclick="wrapRemark('${id}','b')" style="border:1px solid #c3ddf7;background:#eaf4fd;color:#1e88e5;font-size:11px;font-weight:700;border-radius:5px;padding:2px 9px;cursor:pointer;">파랑</button>
+    <span style="font-size:10px;color:#b8bec9;">글자를 선택하고 클릭</span>
+  </div>`;
+}
 // 검색어 매칭 — 쉼표(,)로 구분하면 여러 개를 한 번에 찾음(OR). 쉼표가 없으면 통째로 한 덩어리 검색.
 // (이름에 띄어쓰기가 들어가는 경우가 있어 공백이 아니라 쉼표를 구분자로 씀)
 function costMatchQuery(hay,q){
@@ -2174,7 +2201,7 @@ function renderGolfTable(){
            +`<td class="cost-sum-col">${escapeHtml(fmtSum(golfSum27wd(s)))}</td>`
            +`<td class="cost-sum-col">${escapeHtml(fmtSum(golfSum27we(s)))}</td>`;
       if(si===0){
-        html+=`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.remark||'-')}</td>`
+        html+=`<td rowspan="${n}" style="vertical-align:middle;white-space:pre-wrap;">${c.remark?renderRemark(c.remark):'-'}</td>`
              +`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div></td>`;
       }
       html+='</tr>';
@@ -2255,7 +2282,7 @@ function renderGolfEditorBody(){
   const head=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
     <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명</label><input type="text" id="g-nameKr" value="${escapeAttr(c.nameKr||c.name||'')}"/></div>
     <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>지역</label><input type="text" id="g-region" value="${escapeAttr(c.region||'')}" placeholder="예: 방콕, 파타야"/></div>
-    <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label><textarea id="g-remark">${escapeHtml(c.remark||'')}</textarea></div>
+    <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('g-remark')}<textarea id="g-remark">${escapeHtml(c.remark||'')}</textarea></div>
   </div>
   <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
     <b style="font-size:13px;color:#1f2a44;">시즌 요금 (${c.seasons.length}개)</b>
@@ -2310,7 +2337,7 @@ function openGolfDetail(i){
       ${c.region?`<span style="font-size:11.5px;color:#3c5a86;background:#e8effa;border-radius:999px;padding:2px 10px;">${escapeHtml(c.region)}</span>`:''}
       ${(c.name&&c.nameKr)?`<span style="font-size:11px;color:#9aa1af;">${escapeHtml(c.name)}</span>`:''}
     </div>
-    ${c.remark?`<div style="font-size:12.5px;color:#4a5570;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;padding:8px 10px;white-space:pre-wrap;">${escapeHtml(c.remark)}</div>`:''}`;
+    ${c.remark?`<div style="font-size:12.5px;color:#4a5570;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;padding:8px 10px;white-space:pre-wrap;">${renderRemark(c.remark)}</div>`:''}`;
 
   const TH='padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:right;';
   const TD='padding:7px 8px;text-align:right;font-size:13px;color:#1f2a44;font-variant-numeric:tabular-nums;';
@@ -2411,7 +2438,7 @@ function renderHotelTable(){
            +`<td>${escapeHtml(hotelRoomCell(s))}</td>`
            +`<td>${escapeHtml(fmtMoney(s.extbed))}</td>`
            +`<td>${escapeHtml(fmtMoney(s.joiners))}</td>`
-           +`<td>${escapeHtml(s.remark||'-')}</td>`;
+           +`<td style="white-space:pre-wrap;">${s.remark?renderRemark(s.remark):'-'}</td>`;
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div></td>`;
       }
@@ -2476,7 +2503,7 @@ function hotelSeasonBlockHtml(s,i){
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>룸타입</label>${hotelSelTextHtml(i,'roomType',s.roomType||'',HOTEL_ROOMTYPES,'예: 디럭스')}</div>
       ${money}
-      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label><textarea id="h-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
+      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('h-'+i+'-remark')}<textarea id="h-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
     </div>
   </div>`;
 }
@@ -2531,13 +2558,14 @@ async function delHotel(i){
 function openHotelDetail(i){
   const h=getHotels()[i]; if(!h) return;
   document.getElementById('soTitle').textContent=`${h.name||'호텔'} — 상세보기`;
-  const line=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${escapeHtml(String(v))}</b></div>`;
+  // raw=true면 이미 만들어진 HTML(비고 색상)을 그대로 넣음
+  const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['호텔명',h.name||'-'],['지역',h.region||'-']].map(x=>line(x[0],x[1])).join('');
   const ss=(h.seasons||[]).map((s,i)=>{
-    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],['룸타입',s.roomType||'-'],['금액',fmtMoney(s.amount)],['엑스트라베드',fmtMoney(s.extbed)],['조이너스',fmtMoney(s.joiners)],['비고',s.remark||'-']];
+    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],['룸타입',s.roomType||'-'],['금액',fmtMoney(s.amount)],['엑스트라베드',fmtMoney(s.extbed)],['조이너스',fmtMoney(s.joiners)]];
     return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
       <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">기간 ${i+1}</div>
-      ${rows.map(x=>line(x[0],x[1])).join('')}
+      ${rows.map(x=>line(x[0],x[1])).join('')}${line('비고', s.remark?renderRemark(s.remark):'-', true)}
     </div>`;
   }).join('');
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
@@ -2598,7 +2626,7 @@ function renderAttrTable(){
       }
       html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
            +`<td>${escapeHtml(fmtMoney(s.adult))}</td><td>${escapeHtml(fmtMoney(s.child))}</td>`
-           +`<td>${escapeHtml(s.remark||'-')}</td>`;
+           +`<td style="white-space:pre-wrap;">${s.remark?renderRemark(s.remark):'-'}</td>`;
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openAttrEditor(${idx})">수정</a><a class="act-edit" onclick="openAttrDetail(${idx})">상세보기</a><a class="act-del" onclick="delAttr(${idx})">삭제</a></div></td>`;
       }
@@ -2662,7 +2690,7 @@ function attrSeasonBlockHtml(s,i){
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${attrSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
       <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>성인요금</label><input type="text" id="a-${i}-adult" value="${escapeAttr(s.adult||'')}"/></div>
       <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>어린이요금</label><input type="text" id="a-${i}-child" value="${escapeAttr(s.child||'')}"/></div>
-      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label><textarea id="a-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
+      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('a-'+i+'-remark')}<textarea id="a-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
     </div>
   </div>`;
 }
@@ -2719,13 +2747,14 @@ async function delAttr(i){
 function openAttrDetail(i){
   const a=getAttrs()[i]; if(!a) return;
   document.getElementById('soTitle').textContent=`${a.name||'항목'} — 상세보기`;
-  const line=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${escapeHtml(String(v))}</b></div>`;
+  // raw=true면 이미 만들어진 HTML(비고 색상)을 그대로 넣음
+  const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['구분',a.category||'-'],['항목명',a.name||'-'],['지역',a.region||'-']].map(x=>line(x[0],x[1])).join('');
   const ss=(a.seasons||[]).map((s,i)=>{
-    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],['성인요금',fmtMoney(s.adult)],['어린이요금',fmtMoney(s.child)],['비고',s.remark||'-']];
+    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],['성인요금',fmtMoney(s.adult)],['어린이요금',fmtMoney(s.child)]];
     return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
       <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">기간 ${i+1}</div>
-      ${rows.map(x=>line(x[0],x[1])).join('')}
+      ${rows.map(x=>line(x[0],x[1])).join('')}${line('비고', s.remark?renderRemark(s.remark):'-', true)}
     </div>`;
   }).join('');
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
