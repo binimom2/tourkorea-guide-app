@@ -200,6 +200,10 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 .smodal-hd{padding:14px 20px;background:#161f38;color:#fff;font-size:13.5px;font-weight:800;display:flex;align-items:center;}
 .smodal-hd button{margin-left:auto;background:rgba(255,255,255,0.12);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;}
 .smodal-body{padding:18px 20px;max-height:64vh;overflow:auto;}
+/* 원가서 편집창은 입력칸이 많아 넓게 — 관광·식당은 더 넓게 */
+#sov[data-mode="cost"] .smodal{max-width:780px;}
+#sov[data-mode="cost"][data-cost-tab="attraction"] .smodal{max-width:1060px;}
+#sov[data-mode="cost"] .smodal-body{max-height:72vh;}
 .smodal-ft{padding:14px 20px;border-top:1px solid #eceef3;display:flex;gap:8px;justify-content:flex-end;}
 
 /* ── MASTER DATA (코드/고객사관리) ── */
@@ -2111,6 +2115,7 @@ function openCostRowEditor(index){
   document.getElementById('soBody').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">${inputs}${preview}</div>`;
   if(computed.length) updateCostComputedPreview();
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 // 상세보기 — 모든 항목(표에 없는 칸 포함)을 읽기 전용으로 표시
@@ -2129,6 +2134,7 @@ function openCostRowDetail(index){
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${items}</div>`;
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';   // 읽기 전용
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 /* ══════════════ 골프장: 골프장 1개 안에 시즌 요금 여러 개 ══════════════
@@ -2376,6 +2382,7 @@ function openGolfEditor(index){
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='';
   renderGolfEditorBody();
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 async function saveGolfCourse(){
@@ -2455,6 +2462,7 @@ function openGolfDetail(i){
     +(blocks||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 시즌 요금이 없습니다</div>');
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 
@@ -2699,6 +2707,7 @@ function openHotelEditor(index){
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='';
   renderHotelEditorBody();
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 async function saveHotel(){
@@ -2764,6 +2773,7 @@ function openHotelDetail(i){
     +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>');
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 
@@ -2903,6 +2913,7 @@ function openAttrEditor(index){
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='';
   renderAttrEditorBody();
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 async function saveAttr(){
@@ -2948,6 +2959,7 @@ function openAttrDetail(i){
     +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>');
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
+  document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
   document.getElementById('sov').classList.add('open');
 }
 
