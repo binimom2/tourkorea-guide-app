@@ -2466,9 +2466,9 @@ function hotelRoomCell(s){
 }
 
 function renderHotelTable(){
-  const COLS=['호텔명','지역','시즌','기간','트윈/싱글','엑스트라','조이너스','비고'];
-  const MONEY=['트윈/싱글','엑스트라','조이너스'];
-  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${MONEY.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
+  const COLS=['호텔명','지역','시즌','기간','룸타입①','금액①','룸타입②','금액②','엑스트라','조이너스','비고'];
+  const CEN=['룸타입①','금액①','룸타입②','금액②','엑스트라','조이너스'];
+  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
   let list=getHotels().map((h,idx)=>({h,idx}));
@@ -2490,7 +2490,8 @@ function renderHotelTable(){
              +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
       }
       html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
-           +`<td class="num">${escapeHtml(hotelRoomCell(s))}</td>`
+           +`<td class="num">${escapeHtml(s.roomType||'-')}</td><td class="num">${escapeHtml(fmtMoney(s.amount))}</td>`
+           +`<td class="num">${escapeHtml(s.roomType2||'-')}</td><td class="num">${escapeHtml(fmtMoney(s.amount2))}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.extbed))}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.joiners))}</td>`
            +`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
@@ -2532,8 +2533,9 @@ function syncHotelDraftFromDom(){
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
   _hotelDraft.name=gv('h-name'); _hotelDraft.region=gv('h-region');
   _hotelDraft.seasons=_hotelDraft.seasons.map((s,i)=>{
-    const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo'),roomType:hotelSelText(i,'roomType')};
-    HOTEL_MONEY.forEach(f=>{ const el=document.getElementById(`h-${i}-${f.k}`); o[f.k]=el?el.value:(s[f.k]||''); });
+    const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo'),
+             roomType:hotelSelText(i,'roomType'),roomType2:hotelSelText(i,'roomType2')};
+    ['amount','amount2','extbed','joiners'].forEach(k=>{ const el=document.getElementById(`h-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
     const rm=document.getElementById(`h-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');
     return o;
   });
@@ -2546,18 +2548,24 @@ function delHotelSeason(i){
   renderHotelEditorBody();
 }
 function hotelSeasonBlockHtml(s,i){
-  const money=HOTEL_MONEY.map(f=>`<div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>${f.label}</label><input type="text" id="h-${i}-${f.k}" value="${escapeAttr(s[f.k]||'')}"/></div>`).join('');
+  const q='flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;';
+  const t='flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;';
+  const h='flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;';
   return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${i+1}</span>
       <a class="act-del" style="cursor:pointer;font-size:12px;" onclick="delHotelSeason(${i})">삭제</a>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시즌</label>${hotelSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시작일</label>${hotelSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>룸타입</label>${hotelSelTextHtml(i,'roomType',s.roomType||'',HOTEL_ROOMTYPES,'예: 디럭스')}</div>
-      ${money}
+      <div class="f-row" style="${t}"><label>시즌</label>${hotelSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
+      <div class="f-row" style="${t}"><label>시작일</label>${hotelSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
+      <div class="f-row" style="${t}"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
+      <div class="f-row" style="${q}"><label>룸타입 ①</label>${hotelSelTextHtml(i,'roomType',s.roomType||'',HOTEL_ROOMTYPES,'예: 디럭스')}</div>
+      <div class="f-row" style="${q}"><label>금액 ①</label><input type="text" id="h-${i}-amount" value="${escapeAttr(s.amount||'')}"/></div>
+      <div class="f-row" style="${q}"><label>룸타입 ②</label>${hotelSelTextHtml(i,'roomType2',s.roomType2||'',HOTEL_ROOMTYPES,'예: 디럭스')}</div>
+      <div class="f-row" style="${q}"><label>금액 ②</label><input type="text" id="h-${i}-amount2" value="${escapeAttr(s.amount2||'')}"/></div>
+      <div class="f-row" style="${h}"><label>엑스트라베드</label><input type="text" id="h-${i}-extbed" value="${escapeAttr(s.extbed||'')}"/></div>
+      <div class="f-row" style="${h}"><label>조이너스</label><input type="text" id="h-${i}-joiners" value="${escapeAttr(s.joiners||'')}"/></div>
       <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('h-'+i+'-remark')}<textarea id="h-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
     </div>
   </div>`;
@@ -2619,7 +2627,10 @@ function openHotelDetail(i){
   const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['호텔명',h.name||'-'],['지역',h.region||'-']].map(x=>line(x[0],x[1])).join('');
   const ss=(h.seasons||[]).map((s,i)=>{
-    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],['룸타입',s.roomType||'-'],['금액',fmtMoney(s.amount)],['엑스트라베드',fmtMoney(s.extbed)],['조이너스',fmtMoney(s.joiners)]];
+    const rows=[['시즌',s.season||'-'],['기간',costPeriod(s)],
+      ['룸타입 ①',s.roomType||'-'],['금액 ①',fmtMoney(s.amount)],
+      ['룸타입 ②',s.roomType2||'-'],['금액 ②',fmtMoney(s.amount2)],
+      ['엑스트라베드',fmtMoney(s.extbed)],['조이너스',fmtMoney(s.joiners)]];
     return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
       <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">기간 ${i+1}</div>
       ${rows.map(x=>line(x[0],x[1])).join('')}${line('비고', s.remark?renderRemark(s.remark):'-', true)}
