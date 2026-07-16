@@ -2130,7 +2130,7 @@ async function saveGolfCourses(arr){ await saveCostRows('golf',arr); }
 /* ── 표: 골프장명은 하나로 병합(rowspan), 시즌만 아래로 쌓임 ── */
 function renderGolfTable(){
   const SUMS=['주중18홀 합','주말18홀 합','주중27홀 합','주말27홀 합'];
-  const COLS=['골프장명(한글)','골프장명(영문)','지역','시즌','기간','18홀그린피(주중)','18홀그린피(주말)','캐디피','전동카'].concat(SUMS).concat(['비고']);
+  const COLS=['골프장명','지역','시즌','기간','18홀그린피(주중)','18홀그린피(주말)','캐디피','전동카'].concat(SUMS).concat(['비고']);
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th${SUMS.indexOf(l)>=0?' class="cost-sum-col"':''}>${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
@@ -2151,8 +2151,7 @@ function renderGolfTable(){
       const peak=/성수기/.test(String(s.season||'')); // 성수기 줄은 연한 초록
       html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
       if(si===0){
-        html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||'-')}</b></td>`
-             +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.name||'-')}</td>`
+        html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||c.name||'-')}</b></td>`
              +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
       }
       html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
