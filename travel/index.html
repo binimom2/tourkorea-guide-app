@@ -2618,7 +2618,11 @@ function hotelSeasonBlockHtml(s,i){
       </div>
     </div>
     ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j,common)).join('')}
-    ${common?`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-top:8px;margin-bottom:0;"><label>비고 (이 기간 공통 — 표에서 한 칸으로 합쳐짐)</label>${remarkColorBar('h-'+i+'-remark')}<textarea id="h-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>`:''}
+    ${common?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
+      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (이 기간 공통 — 룸타입 ${rooms.length}개에 함께 적용, 표에서 한 칸으로 합쳐짐)</div>
+      ${remarkColorBar('h-'+i+'-remark')}
+      <textarea id="h-${i}-remark" style="width:100%;">${escapeHtml(s.remark||'')}</textarea>
+    </div>`:''}
   </div>`;
 }
 // 비고 공통 사용 켜기/끄기
@@ -2626,6 +2630,11 @@ function toggleHotelRemarkCommon(i){
   syncHotelDraftFromDom();
   const s=_hotelDraft.seasons[i]; if(!s) return;
   s.remarkCommon=!s.remarkCommon;
+  // 공통으로 켤 때 공통 비고가 비어있으면, 룸타입에 적어둔 비고를 끌어와 채움(사라진 것처럼 보이지 않게)
+  if(s.remarkCommon && !String(s.remark||'').trim()){
+    const first=(s.rooms||[]).map(r=>String(r.remark||'').trim()).filter(Boolean)[0];
+    if(first) s.remark=first;
+  }
   renderHotelEditorBody();
 }
 // 기간 안의 룸타입 1개 블록 (시티뷰/씨뷰 등)
