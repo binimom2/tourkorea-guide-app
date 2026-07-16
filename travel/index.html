@@ -2222,7 +2222,7 @@ function renderGolfTable(){
   const MONEY=['18홀(주중)','18홀(주말)','캐디피','전동카'];   // 헤더를 짧게 → 칸 폭 축소
   const COLS=['골프장명','지역','시즌','기간'].concat(MONEY).concat(SUMS).concat(['비고']);
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>{
-    const isSum=SUMS.indexOf(l)>=0, isNum=isSum||MONEY.indexOf(l)>=0;
+    const isSum=SUMS.indexOf(l)>=0, isNum=isSum||MONEY.indexOf(l)>=0||l==='기간';
     return `<th class="${isSum?'cost-sum-col ':''}${isNum?'num':''}">${escapeHtml(l)}</th>`;
   }).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
@@ -2246,7 +2246,7 @@ function renderGolfTable(){
         html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||c.name||'-')}</b></td>`
              +`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
       }
-      html+=`<td>${escapeHtml(s.season||'-')}</td><td>${escapeHtml(costPeriod(s))}</td>`
+      html+=`<td>${escapeHtml(s.season||'-')}</td><td class="num">${escapeHtml(costPeriod(s))}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.gf18wd))}</td><td class="num">${escapeHtml(fmtMoney(s.gf18we))}</td>`
            +`<td class="num">${escapeHtml(fmtMoney(s.caddy))}</td><td class="num">${escapeHtml(fmtMoney(s.cart))}</td>`
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum18wd(s)))}</td>`
