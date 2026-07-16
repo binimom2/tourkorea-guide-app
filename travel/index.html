@@ -340,7 +340,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
   <div class="filterbar" id="costFilters" style="display:none;">
     <div class="mtabs" id="costTabs" style="background:transparent;padding:0;"></div>
     <input type="text" id="cf-region" placeholder="지역 (예: 방콕)" style="width:120px;" oninput="renderCostTable()"/>
-    <input type="text" class="search" id="cf-search" placeholder="이름/비고 검색" oninput="renderCostTable()"/>
+    <input type="text" class="search" id="cf-search" placeholder="이름 검색 — 여러 개는 쉼표로 (예: 알파인, 반얀트리)" style="min-width:230px;" oninput="renderCostTable()"/>
     <div class="viewToggle">
       <button id="vtCal2" onclick="setView('cal')">📅 캘린더</button>
       <button id="vtList2" onclick="setView('list')">📋 목록</button>
@@ -2104,6 +2104,14 @@ function golfSum27wd(s){return hasNine(s.gf9wd)?costSum(s.gf18wd,s.gf9wd,s.caddy
 function golfSum27we(s){return hasNine(s.gf9we)?costSum(s.gf18we,s.gf9we,s.caddy,s.caddy9,s.cart,s.cart9):'x';}
 function fmtMoney(v){ const s=String(v==null?'':v).trim(); if(s==='') return '-'; if(/^[\d,]+(\.\d+)?$/.test(s)) return Number(s.replace(/,/g,'')).toLocaleString(); return s; }
 function fmtSum(v){ if(typeof v==='string') return v||'-'; return v?Number(v).toLocaleString():'-'; }
+// 검색어 매칭 — 쉼표(,)로 구분하면 여러 개를 한 번에 찾음(OR). 쉼표가 없으면 통째로 한 덩어리 검색.
+// (이름에 띄어쓰기가 들어가는 경우가 있어 공백이 아니라 쉼표를 구분자로 씀)
+function costMatchQuery(hay,q){
+  const terms=String(q||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!terms.length) return true;
+  const h=String(hay||'').toLowerCase();
+  return terms.some(t=>h.includes(t));
+}
 // 이름 중복 검사 — 중첩 구조라 같은 이름이 두 개면 안 됨(수정 중인 자기 자신은 제외)
 function costDupName(list,name,selfIndex,keyFn){
   const n=String(name||'').trim().toLowerCase();
@@ -2144,7 +2152,7 @@ function renderGolfTable(){
   if(region) list=list.filter(x=>(x.c.region||'').toLowerCase().includes(region));
   if(q) list=list.filter(x=>{
     const st=(x.c.seasons||[]).map(s=>`${s.season||''} ${s.dateFrom||''} ${s.dateTo||''}`).join(' ');
-    return [(x.c.name||''),(x.c.nameKr||''),(x.c.region||''),(x.c.remark||''),st].join(' ').toLowerCase().includes(q);
+    return costMatchQuery([(x.c.name||''),(x.c.nameKr||''),(x.c.region||''),(x.c.remark||''),st].join(' '), q);
   });
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
@@ -2355,7 +2363,7 @@ function renderHotelTable(){
   if(region) list=list.filter(x=>(x.h.region||'').toLowerCase().includes(region));
   if(q) list=list.filter(x=>{
     const st=(x.h.seasons||[]).map(s=>`${s.season||''} ${s.dateFrom||''} ${s.dateTo||''} ${s.roomType||''} ${s.remark||''}`).join(' ');
-    return [(x.h.name||''),(x.h.region||''),st].join(' ').toLowerCase().includes(q);
+    return costMatchQuery([(x.h.name||''),(x.h.region||''),st].join(' '), q);
   });
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
@@ -2545,7 +2553,7 @@ function renderAttrTable(){
   if(region) list=list.filter(x=>(x.a.region||'').toLowerCase().includes(region));
   if(q) list=list.filter(x=>{
     const st=(x.a.seasons||[]).map(s=>`${s.season||''} ${s.dateFrom||''} ${s.dateTo||''} ${s.remark||''}`).join(' ');
-    return [(x.a.name||''),(x.a.category||''),(x.a.region||''),st].join(' ').toLowerCase().includes(q);
+    return costMatchQuery([(x.a.name||''),(x.a.category||''),(x.a.region||''),st].join(' '), q);
   });
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
