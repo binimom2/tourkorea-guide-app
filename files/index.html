@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>자료실 · TourKorea</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕',sans-serif;background:#eef1f6;color:#1f2a44;}
+button{font-family:inherit;cursor:pointer;}
+.hidden{display:none!important;}
+
+/* 로그인 */
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#26324d,#3457d5);}
+.login-box{background:#fff;border-radius:16px;padding:34px 30px;width:330px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+.login-box h1{margin:0 0 4px;font-size:19px;}
+.login-box p{margin:0 0 20px;font-size:12.5px;color:#8892a0;}
+.login-field{margin-bottom:12px;}
+.login-field input{width:100%;padding:11px 12px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13.5px;background:#f8f9fb;}
+.login-btn{width:100%;padding:12px;background:#3457d5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;margin-top:4px;}
+.login-btn:disabled{opacity:.6;}
+.login-err{color:#e0483f;font-size:12px;margin-top:10px;display:none;}
+
+/* 헤더 */
+header{background:#26324d;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+header .brand{font-size:16px;font-weight:800;letter-spacing:.5px;}
+header .brand small{font-weight:400;opacity:.7;font-size:11px;margin-left:6px;}
+header .sp{margin-left:auto;}
+header .who{font-size:12px;opacity:.85;}
+.hbtn{background:rgba(255,255,255,.14);color:#fff;border:none;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:600;}
+.hbtn:hover{background:rgba(255,255,255,.25);}
+.hbtn a{color:#fff;text-decoration:none;}
+
+/* 툴바 */
+.wrap{max-width:1100px;margin:0 auto;padding:18px 20px 60px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.crumb{font-size:13px;color:#5a6270;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.crumb a{color:#3457d5;text-decoration:none;cursor:pointer;font-weight:600;}
+.crumb a:hover{text-decoration:underline;}
+.crumb span.sep{color:#b0b6c2;}
+.search{flex:1;min-width:150px;padding:8px 11px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;background:#fff;}
+.btn{border:none;border-radius:8px;font-size:12.5px;font-weight:700;padding:9px 13px;}
+.btn-primary{background:#3457d5;color:#fff;}
+.btn-primary:hover{background:#2a46b3;}
+.btn-soft{background:#e3e8f2;color:#33415c;}
+.btn-soft:hover{background:#d3dbec;}
+
+/* 파일 목록 */
+.dropzone{background:#fff;border:2px dashed transparent;border-radius:12px;min-height:300px;overflow:hidden;box-shadow:0 4px 18px rgba(20,30,60,.06);transition:border-color .15s,background .15s;}
+.dropzone.drag{border-color:#3457d5;background:#f2f6ff;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;color:#8892a0;font-size:11px;font-weight:700;padding:11px 14px;background:#fafbfd;border-bottom:1px solid #eef0f5;}
+td{padding:10px 14px;border-bottom:1px solid #f3f4f8;vertical-align:middle;}
+tr:hover td{background:#f7f9fd;}
+.name-cell{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.ic{width:26px;height:26px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:17px;border-radius:6px;background:#eef1f7;}
+.name-txt{font-weight:600;word-break:break-all;}
+.muted{color:#9aa1af;font-size:12px;}
+.col-r{text-align:right;white-space:nowrap;}
+.act a{font-size:12px;font-weight:700;margin-left:12px;cursor:pointer;text-decoration:none;}
+.act .dl{color:#1c6b3f;}
+.act .del{color:#e0483f;}
+.empty{padding:50px 20px;text-align:center;color:#b0b6c2;font-size:13.5px;}
+
+/* 업로드 진행 */
+#progress{position:fixed;right:18px;bottom:18px;background:#26324d;color:#fff;border-radius:10px;padding:12px 16px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.3);min-width:200px;display:none;z-index:50;}
+#progress .bar{height:6px;background:rgba(255,255,255,.2);border-radius:4px;margin-top:8px;overflow:hidden;}
+#progress .bar i{display:block;height:100%;width:0;background:#4fd1a5;transition:width .2s;}
+
+/* 미리보기 */
+#viewer{position:fixed;inset:0;background:rgba(15,20,35,.9);display:none;align-items:center;justify-content:center;z-index:60;padding:24px;}
+#viewer img{max-width:95vw;max-height:90vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+#viewer .vclose{position:absolute;top:18px;right:24px;background:rgba(255,255,255,.15);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:20px;}
+
+/* 토스트 */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1f2a44;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:none;z-index:70;}
+@media(max-width:640px){ th.hide-sm,td.hide-sm{display:none;} }
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="login">
+  <div class="login-box">
+    <h1>📁 자료실</h1>
+    <p>TourKorea 직원 공용 자료실</p>
+    <div class="login-field"><input id="login-id" type="text" placeholder="아이디" autocomplete="username"/></div>
+    <div class="login-field"><input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password"/></div>
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">📁 자료실<small>TourKorea</small></div>
+    <div class="sp"></div>
+    <span class="who" id="who"></span>
+    <button class="hbtn"><a href="/travel/">✈ 상세예약</a></button>
+    <button class="hbtn"><a href="/">📊 정산서</a></button>
+    <button class="hbtn" onclick="doLogout()">로그아웃</button>
+  </header>
+
+  <div class="wrap">
+    <div class="toolbar">
+      <div class="crumb" id="crumb"></div>
+      <input class="search" id="search" placeholder="🔍 이 폴더에서 이름 검색" oninput="renderList()"/>
+      <button class="btn btn-soft" onclick="newFolder()">＋ 새 폴더</button>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">⬆ 파일 올리기</button>
+      <input id="fileInput" type="file" multiple class="hidden" onchange="onPick(this.files)"/>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <table>
+        <thead><tr>
+          <th>이름</th>
+          <th class="col-r hide-sm">크기</th>
+          <th class="hide-sm">올린 사람</th>
+          <th class="col-r">관리</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty hidden" id="empty">이 폴더는 비어 있습니다. 파일을 끌어다 놓거나 <b>파일 올리기</b>를 눌러 추가하세요.</div>
+    </div>
+  </div>
+</div>
+
+<div id="progress"><span id="progText">업로드 중…</span><div class="bar"><i id="progBar"></i></div></div>
+<div id="viewer" onclick="closeViewer(event)"><button class="vclose" onclick="closeViewer(event,true)">×</button><img id="viewerImg" src="" alt=""/></div>
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'trv-auth',persistSession:true,autoRefreshToken:true}});
+
+let curPrefix='';        // 현재 폴더 (예: '골프장자료/')
+let listing={folders:[],files:[]};
+let myRole='staff';
+
+/* ── 로그인 ── */
+async function doLogin(){
+  const id=document.getElementById('login-id').value.trim();
+  const pw=document.getElementById('login-pw').value.trim();
+  const err=document.getElementById('login-err');
+  const btn=document.querySelector('.login-btn');
+  err.style.display='none';
+  if(!id||!pw){err.textContent='아이디와 비밀번호를 입력하세요.';err.style.display='block';return;}
+  btn.textContent='로그인 중…';btn.disabled=true;
+  try{
+    const email=id+'@traveldetail.app';
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(!error&&data&&data.session){
+      const meta=(data.user&&data.user.user_metadata)||{};
+      if(meta.approved===false){ await sb.auth.signOut(); throw new Error('사용이 허가되지 않은 계정입니다. 관리자에게 문의하세요.'); }
+      await enterApp();return;
+    }
+    throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
+  }catch(e){
+    err.textContent=e.message||'로그인 중 오류가 발생했습니다.';err.style.display='block';
+    document.getElementById('login-pw').value='';
+  }finally{ btn.textContent='로그인';btn.disabled=false; }
+}
+document.getElementById('login-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+async function enterApp(){
+  const {data:{user}}=await sb.auth.getUser();
+  const meta=(user&&user.user_metadata)||{};
+  myRole=meta.role||'staff';
+  document.getElementById('who').textContent=(meta.login_name||'')+' · '+({admin:'관리자',manager:'매니저'}[myRole]||'직원');
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  curPrefix='';
+  await load();
+}
+async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+
+/* ── API 호출 ── */
+async function token(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session) { location.reload(); throw new Error('세션 만료'); }
+  return session.access_token;
+}
+async function api(path,opt){
+  opt=opt||{};
+  const t=await token();
+  opt.headers=Object.assign({Authorization:'Bearer '+t},opt.headers||{});
+  const r=await fetch('/api/files/'+path,opt);
+  if(!r.ok){ let m='오류'; try{ m=(await r.json()).error||m; }catch(e){} throw new Error(m); }
+  return r;
+}
+
+/* ── 목록 ── */
+async function load(){
+  document.getElementById('search').value='';
+  try{
+    const r=await api('list?prefix='+encodeURIComponent(curPrefix));
+    listing=await r.json();
+    renderCrumb();renderList();
+  }catch(e){ toast('목록을 불러오지 못했습니다: '+e.message); }
+}
+function renderCrumb(){
+  const c=document.getElementById('crumb');
+  const parts=curPrefix.split('/').filter(Boolean);
+  let html='<a onclick="goTo(\'\')">🏠 전체</a>';
+  let acc='';
+  parts.forEach(p=>{ acc+=p+'/'; html+='<span class="sep">/</span><a onclick="goTo(\''+acc.replace(/'/g,"\\'")+'\')">'+esc(p)+'</a>'; });
+  c.innerHTML=html;
+}
+function renderList(){
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  const tb=document.getElementById('tbody');
+  let rows='';
+  const folders=listing.folders.filter(f=>!q||f.name.toLowerCase().includes(q));
+  const files=listing.files.filter(f=>!q||f.name.toLowerCase().includes(q));
+  folders.forEach(f=>{
+    rows+='<tr><td><div class="name-cell" onclick="goTo(\''+f.prefix.replace(/'/g,"\\'")+'\')">'
+      +'<span class="ic">📁</span><span class="name-txt">'+esc(f.name)+'</span></div></td>'
+      +'<td class="col-r hide-sm muted">—</td><td class="hide-sm muted">—</td>'
+      +'<td class="col-r act">'+(canDelete()?'<a class="del" onclick="delFolder(\''+f.prefix.replace(/'/g,"\\'")+'\',\''+esc(f.name)+'\')">삭제</a>':'')+'</td></tr>';
+  });
+  files.forEach(f=>{
+    rows+='<tr><td><div class="name-cell" onclick="openFile('+jattr(f)+')">'
+      +'<span class="ic">'+iconFor(f.name)+'</span><span class="name-txt">'+esc(f.name)+'</span></div></td>'
+      +'<td class="col-r hide-sm muted">'+fmtSize(f.size)+'</td>'
+      +'<td class="hide-sm muted">'+esc(shortBy(f.by))+'</td>'
+      +'<td class="col-r act"><a class="dl" onclick="download('+jattr(f)+')">받기</a>'
+      +(canDelete()?'<a class="del" onclick="delFile('+jattr(f)+')">삭제</a>':'')+'</td></tr>';
+  });
+  tb.innerHTML=rows;
+  document.getElementById('empty').classList.toggle('hidden', folders.length+files.length>0);
+}
+function goTo(p){ curPrefix=p; load(); }
+const canDelete=()=>myRole==='admin'||myRole==='manager';
+
+/* ── 폴더/파일 조작 ── */
+async function newFolder(){
+  const name=prompt('새 폴더 이름을 입력하세요');
+  if(!name) return;
+  if(/[\\/]/.test(name)){ toast('폴더 이름에 / 나 \\ 는 쓸 수 없습니다.'); return; }
+  try{ await api('folder',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({path:curPrefix+name})}); toast('폴더를 만들었습니다.'); load(); }
+  catch(e){ toast('폴더 생성 실패: '+e.message); }
+}
+async function delFile(f){
+  if(!confirm('삭제할까요?\n\n'+f.name)) return;
+  try{ await api('del?key='+encodeURIComponent(f.key),{method:'DELETE'}); toast('삭제했습니다.'); load(); }
+  catch(e){ toast('삭제 실패: '+e.message); }
+}
+async function delFolder(prefix,name){
+  if(!confirm('폴더 안의 모든 파일이 함께 삭제됩니다.\n\n"'+name+'" 폴더를 삭제할까요?')) return;
+  try{ const r=await api('del?folder=1&key='+encodeURIComponent(prefix),{method:'DELETE'}); const j=await r.json(); toast('삭제했습니다. ('+(j.deleted||0)+'개)'); load(); }
+  catch(e){ toast('삭제 실패: '+e.message); }
+}
+
+/* ── 업로드 ── */
+function onPick(files){ if(files&&files.length) uploadAll([...files]); document.getElementById('fileInput').value=''; }
+async function uploadAll(files){
+  const box=document.getElementById('progress'), bar=document.getElementById('progBar'), txt=document.getElementById('progText');
+  box.style.display='block';
+  let done=0;
+  for(const file of files){
+    txt.textContent='업로드 중… '+file.name+' ('+(done+1)+'/'+files.length+')';
+    bar.style.width=Math.round(done/files.length*100)+'%';
+    try{
+      await api('put?key='+encodeURIComponent(curPrefix+file.name),{
+        method:'PUT', headers:{'x-file-type':file.type||'application/octet-stream'}, body:file
+      });
+    }catch(e){ toast('업로드 실패: '+file.name+' — '+e.message); }
+    done++;
+  }
+  bar.style.width='100%';
+  setTimeout(()=>{box.style.display='none';bar.style.width='0';},600);
+  toast(files.length+'개 파일 업로드 완료');
+  load();
+}
+/* 드래그&드롭 */
+const dz=document.getElementById('dropzone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();if(ev!=='dragleave'||e.target===dz)dz.classList.remove('drag');}));
+dz.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files; if(f&&f.length) uploadAll([...f]); });
+
+/* ── 열기 / 다운로드 (인증 헤더 필요 → blob으로 처리) ── */
+async function fetchBlob(f){
+  const r=await api('get?key='+encodeURIComponent(f.key));
+  return await r.blob();
+}
+async function openFile(f){
+  if(/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.name)){
+    try{ const b=await fetchBlob(f); const u=URL.createObjectURL(b);
+      document.getElementById('viewerImg').src=u; document.getElementById('viewer').style.display='flex';
+      document.getElementById('viewer')._url=u;
+    }catch(e){ toast('미리보기 실패: '+e.message); }
+  } else { download(f); }
+}
+function closeViewer(e,force){
+  if(!force && e && e.target.id!=='viewer' && e.target.className!=='vclose') return;
+  const v=document.getElementById('viewer'); v.style.display='none';
+  if(v._url){ URL.revokeObjectURL(v._url); v._url=null; }
+  document.getElementById('viewerImg').src='';
+}
+async function download(f){
+  toast('내려받는 중… '+f.name);
+  try{
+    const b=await fetchBlob(f);
+    const u=URL.createObjectURL(b); const a=document.createElement('a');
+    a.href=u; a.download=f.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),4000);
+  }catch(e){ toast('다운로드 실패: '+e.message); }
+}
+
+/* ── 유틸 ── */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function jattr(o){ return "JSON.parse(decodeURIComponent('"+encodeURIComponent(JSON.stringify(o))+"'))"; }
+function fmtSize(n){ n=+n||0; if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(0)+' KB'; if(n<1073741824)return (n/1048576).toFixed(1)+' MB'; return (n/1073741824).toFixed(2)+' GB'; }
+function shortBy(b){ return b?String(b).split('@')[0]:'—'; }
+function iconFor(name){
+  const e=(name.split('.').pop()||'').toLowerCase();
+  if(/(png|jpe?g|gif|webp|bmp|svg)/.test(e))return '🖼️';
+  if(/(xls|xlsx|csv)/.test(e))return '📊';
+  if(/(doc|docx|hwp|hwpx)/.test(e))return '📝';
+  if(/(ppt|pptx)/.test(e))return '📽️';
+  if(e==='pdf')return '📕';
+  if(/(zip|rar|7z)/.test(e))return '🗜️';
+  if(/(mp4|mov|avi|mkv)/.test(e))return '🎬';
+  return '📄';
+}
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2600); }
+
+/* ── 자동 로그인(세션 유지) ── */
+(async()=>{ const {data:{session}}=await sb.auth.getSession(); if(session) enterApp(); })();
+</script>
+</body>
+</html>
