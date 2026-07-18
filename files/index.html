@@ -109,7 +109,9 @@ tr:hover td{background:#f7f9fd;}
       <input class="search" id="search" placeholder="🔍 이 폴더에서 이름 검색" oninput="renderList()"/>
       <button class="btn btn-soft" onclick="newFolder()">＋ 새 폴더</button>
       <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">⬆ 파일 올리기</button>
+      <button class="btn btn-primary" onclick="document.getElementById('dirInput').click()">📁 폴더 올리기</button>
       <input id="fileInput" type="file" multiple class="hidden" onchange="onPick(this.files)"/>
+      <input id="dirInput" type="file" webkitdirectory multiple class="hidden" onchange="onPickDir(this.files)"/>
     </div>
 
     <div class="dropzone" id="dropzone">
@@ -254,32 +256,57 @@ async function delFolder(prefix,name){
   catch(e){ toast('삭제 실패: '+e.message); }
 }
 
-/* ── 업로드 ── */
-function onPick(files){ if(files&&files.length) uploadAll([...files]); document.getElementById('fileInput').value=''; }
-async function uploadAll(files){
+/* ── 업로드 (파일 / 폴더 통째로) ── */
+// webkitRelativePath 가 있으면 폴더 구조 유지(예: 골프장자료/방콕/사진.jpg)
+function toItems(files){ return [...files].map(f=>({file:f, path:(f.webkitRelativePath||f.name)})); }
+function onPick(files){ if(files&&files.length) uploadAll(toItems(files)); document.getElementById('fileInput').value=''; }
+function onPickDir(files){ if(files&&files.length) uploadAll(toItems(files)); document.getElementById('dirInput').value=''; }
+async function uploadAll(items){
   const box=document.getElementById('progress'), bar=document.getElementById('progBar'), txt=document.getElementById('progText');
   box.style.display='block';
-  let done=0;
-  for(const file of files){
-    txt.textContent='업로드 중… '+file.name+' ('+(done+1)+'/'+files.length+')';
-    bar.style.width=Math.round(done/files.length*100)+'%';
+  let done=0, fail=0;
+  for(const {file,path} of items){
+    txt.textContent='업로드 중… '+path+' ('+(done+1)+'/'+items.length+')';
+    bar.style.width=Math.round(done/items.length*100)+'%';
     try{
-      await api('put?key='+encodeURIComponent(curPrefix+file.name),{
+      await api('put?key='+encodeURIComponent(curPrefix+path),{
         method:'PUT', headers:{'x-file-type':file.type||'application/octet-stream'}, body:file
       });
-    }catch(e){ toast('업로드 실패: '+file.name+' — '+e.message); }
+    }catch(e){ fail++; toast('업로드 실패: '+path+' — '+e.message); }
     done++;
   }
   bar.style.width='100%';
   setTimeout(()=>{box.style.display='none';bar.style.width='0';},600);
-  toast(files.length+'개 파일 업로드 완료');
+  toast((items.length-fail)+'개 업로드 완료'+(fail?(' · '+fail+'개 실패'):''));
   load();
 }
-/* 드래그&드롭 */
+/* 드래그&드롭 (파일·폴더 모두) */
 const dz=document.getElementById('dropzone');
 ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
 ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();if(ev!=='dragleave'||e.target===dz)dz.classList.remove('drag');}));
-dz.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files; if(f&&f.length) uploadAll([...f]); });
+dz.addEventListener('drop',async e=>{
+  const dt=e.dataTransfer; if(!dt) return;
+  const its=dt.items;
+  if(its&&its.length&&its[0]&&its[0].webkitGetAsEntry){
+    const entries=[]; for(const it of its){ const en=it.webkitGetAsEntry(); if(en) entries.push(en); } // 동기적으로 먼저 확보
+    const out=[]; for(const en of entries){ await walkEntry(en,'',out); }
+    if(out.length) uploadAll(out);
+  } else if(dt.files&&dt.files.length){ uploadAll(toItems(dt.files)); }
+});
+// 드롭된 폴더를 재귀적으로 훑어 {file,path} 목록으로
+function walkEntry(entry,prefix,out){
+  return new Promise(resolve=>{
+    if(entry.isFile){ entry.file(f=>{ out.push({file:f, path:prefix+entry.name}); resolve(); }, ()=>resolve()); }
+    else if(entry.isDirectory){
+      const reader=entry.createReader(), acc=[];
+      const step=()=>reader.readEntries(async ents=>{
+        if(!ents.length){ for(const c of acc){ await walkEntry(c, prefix+entry.name+'/', out); } resolve(); }
+        else { acc.push(...ents); step(); }   // readEntries 는 한 번에 최대 100개 → 빌 때까지 반복
+      }, ()=>resolve());
+      step();
+    } else resolve();
+  });
+}
 
 /* ── 열기 / 다운로드 (인증 헤더 필요 → blob으로 처리) ── */
 async function fetchBlob(f){
