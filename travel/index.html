@@ -2243,6 +2243,15 @@ function migrateGolf(rows){
 function getGolfCourses(){ return migrateGolf(getCostRows('golf')); }
 async function saveGolfCourses(arr){ await saveCostRows('golf',arr); }
 
+/* ── 요금표 표시 정렬 헬퍼(원본 데이터 순서는 안 건드림 — idx 그대로 유지) ── */
+function costRegionRank(r){ const s=String(r||''); if(s.indexOf('방콕')>=0) return 0; if(s.indexOf('파타야')>=0) return 1; return 2; }
+function attrCatRank(c){ const s=String(c||''); if(s.indexOf('관광')>=0) return 0; if(s.indexOf('식당')>=0) return 1; if(s.indexOf('맛사지')>=0||s.indexOf('스파')>=0) return 2; return 9; }
+function koCmp(a,b){ return String(a||'').localeCompare(String(b||''),'ko'); }
+// 지역(방콕→파타야→기타) 순 → 각 지역 안에서 이름 ㄱㄴㄷ
+function sortByRegionName(list,getRegion,getName){
+  return list.sort((x,y)=>{ const rr=costRegionRank(getRegion(x))-costRegionRank(getRegion(y)); return rr||koCmp(getName(x),getName(y)); });
+}
+
 /* ── 표: 골프장명은 하나로 병합(rowspan), 시즌만 아래로 쌓임 ── */
 function renderGolfTable(){
   const SUMS=['주중18홀 합','주말18홀 합','주중27홀 합','주말27홀 합'];
@@ -2260,6 +2269,7 @@ function renderGolfTable(){
   // 검색칸은 '이름'만 대상 (지역은 왼쪽 지역칸이 따로 담당 — 지역까지 뒤지면 '파타야' 검색에 파타야 골프장이 전부 걸림)
   if(q) list=list.filter(x=>costMatchQuery([(x.c.nameKr||''),(x.c.name||'')].join(' '), q));
   list=applySeasonFilter(list,'c');
+  list=sortByRegionName(list,x=>x.c.region,x=>x.c.nameKr||x.c.name);   // 방콕→파타야, 각 지역 ㄱㄴㄷ
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
@@ -2517,6 +2527,7 @@ function renderHotelTable(){
   // 검색칸은 '이름'만 대상 (지역은 왼쪽 지역칸이 담당)
   if(q) list=list.filter(x=>costMatchQuery(String(x.h.name||''), q));
   list=applySeasonFilter(list,'h');
+  list=sortByRegionName(list,x=>x.h.region,x=>x.h.name);   // 방콕→파타야, 각 지역 ㄱㄴㄷ
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
@@ -2830,6 +2841,7 @@ function renderAttrTable(){
   // 검색칸은 '이름'만 대상 (지역은 왼쪽 지역칸이 담당)
   if(q) list=list.filter(x=>costMatchQuery(String(x.a.name||''), q));
   // 관광·식당외는 시즌 개념이 없으므로 시즌 필터는 적용하지 않음
+  list.sort((x,y)=>{ const co=attrCatRank(x.a.category)-attrCatRank(y.a.category); return co||koCmp(x.a.name,y.a.name); });   // 관광지→식당→맛사지, 각 분류 ㄱㄴㄷ
   const body=document.getElementById('costTableBody');
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
