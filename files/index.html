@@ -188,7 +188,7 @@ async function api(path,opt){
   const t=await token();
   opt.headers=Object.assign({Authorization:'Bearer '+t},opt.headers||{});
   const r=await fetch('/api/files/'+path,opt);
-  if(!r.ok){ let m='오류'; try{ m=(await r.json()).error||m; }catch(e){} throw new Error(m); }
+  if(!r.ok){ let m='오류'; try{ m=(await r.json()).error||m; }catch(e){} throw new Error('[HTTP '+r.status+'] '+m); }
   return r;
 }
 
@@ -199,7 +199,7 @@ async function load(){
     const r=await api('list?prefix='+encodeURIComponent(curPrefix));
     listing=await r.json();
     renderCrumb();renderList();
-  }catch(e){ toast('목록을 불러오지 못했습니다: '+e.message); }
+  }catch(e){ alert('목록을 불러오지 못했습니다:\n\n'+e.message); }
 }
 function renderCrumb(){
   const c=document.getElementById('crumb');
@@ -241,7 +241,7 @@ async function newFolder(){
   if(!name) return;
   if(/[\\/]/.test(name)){ toast('폴더 이름에 / 나 \\ 는 쓸 수 없습니다.'); return; }
   try{ await api('folder',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({path:curPrefix+name})}); toast('폴더를 만들었습니다.'); load(); }
-  catch(e){ toast('폴더 생성 실패: '+e.message); }
+  catch(e){ alert('폴더 생성 실패:\n\n'+e.message); }
 }
 async function delFile(f){
   if(!confirm('삭제할까요?\n\n'+f.name)) return;
@@ -267,7 +267,7 @@ async function uploadAll(files){
       await api('put?key='+encodeURIComponent(curPrefix+file.name),{
         method:'PUT', headers:{'x-file-type':file.type||'application/octet-stream'}, body:file
       });
-    }catch(e){ toast('업로드 실패: '+file.name+' — '+e.message); }
+    }catch(e){ alert('업로드 실패: '+file.name+'\n\n'+e.message); }
     done++;
   }
   bar.style.width='100%';
