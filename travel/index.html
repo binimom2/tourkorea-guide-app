@@ -171,6 +171,10 @@ table.subtbl td{padding:5px 10px;border-bottom:1px solid #f3f4f8;border-right:1p
 table.subtbl th:last-child,table.subtbl td:last-child{border-right:none;text-align:right;}
 table.subtbl tr:last-child td{border-bottom:none;}
 table.subtbl tr.subtbl-edit-row td{background:#f7f9fd;max-width:none;white-space:normal;}
+/* PAYING/REMARK 등 긴 내용 칸: 180px 제한 해제 + 줄바꿈 허용해 최대한 넓게 */
+table.subtbl th.col-wide,table.subtbl td.col-wide{max-width:none;white-space:normal;word-break:break-word;}
+/* CFM 처럼 체크(OK)만 들어가는 칸: 폭 최소화 + 가운데 */
+table.subtbl th.col-chk,table.subtbl td.col-chk{width:36px;min-width:36px;max-width:36px;text-align:center;padding-left:3px;padding-right:3px;}
 table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px;font-size:11px;font-family:inherit;border:1px solid #dfe3ea;border-radius:5px;box-sizing:border-box;}
 .subtbl-empty{padding:16px;text-align:center;color:#b0b6c2;font-size:11.5px;}
 .subtbl-empty-row td{text-align:center;color:#c3c8d2;padding:10px;}
@@ -1872,9 +1876,9 @@ const SUBSECTIONS=[
     {k:'chkin',label:'CHECK-IN',type:'date',fw:108},
     {k:'nights',label:'N/S',type:'number',fw:40},
     {k:'sgl',label:'SGL',type:'number',fw:40},{k:'twn',label:'TWN',type:'number',fw:40},{k:'dbl',label:'DBL',type:'number',fw:40},{k:'trp',label:'TRP',type:'number',fw:40},{k:'gd',label:'G/D',type:'number',fw:40},
-    {k:'cfm',label:'CFM',type:'checkbox'},
-    {k:'paying',label:'PAYING',type:'text',fw:90},
-    {k:'remark',label:'REMARK',type:'text'},
+    {k:'cfm',label:'CFM',type:'checkbox',cls:'col-chk'},
+    {k:'paying',label:'PAYING',type:'text',fw:280,cls:'col-wide'},
+    {k:'remark',label:'REMARK',type:'text',fw:340,cls:'col-wide'},
   ]},
   {key:'golfs',label:'GOLF',fields:[
     {k:'date',label:'DATE',type:'date',fw:108},
@@ -3473,10 +3477,10 @@ function subsecHtml(sec){
       <h3>${sec.label}</h3><span class="cnt">(${rows.length})</span>
       <button class="subsec-add" onclick="editSubRow('${sec.key}',-1)">＋</button>
     </div>
-    <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th${c.fw?` style="width:${c.fw}px;"`:''}>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
+    <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th${c.cls?` class="${c.cls}"`:''}${c.fw?` style="width:${c.fw}px;"`:''}>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
-    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr>${cols.map(c=>`<td>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
+    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
       <td><div class="row-actions">${sec.reorderable?`<a class="act-move" onclick="moveSubRow('${sec.key}',${i},-1)"${i===0?' style="visibility:hidden;"':''}>▲</a><a class="act-move" onclick="moveSubRow('${sec.key}',${i},1)"${i===rows.length-1?' style="visibility:hidden;"':''}>▼</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a>${PAYING_SYNC[sec.key]?`<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})">฿</a>`:''}</div></td>
     </tr>`).join('')}
     ${(!rows.length&&!isEditingHere)?`<tr class="subtbl-empty-row"><td colspan="${cols.length+1}">-</td></tr>`:''}
