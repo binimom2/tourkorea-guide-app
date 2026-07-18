@@ -46,6 +46,15 @@ header .who{font-size:12px;opacity:.85;}
 .btn-soft{background:#e3e8f2;color:#33415c;}
 .btn-soft:hover{background:#d3dbec;}
 
+/* 주의사항 안내창 */
+.notice{background:#fff8e1;border:1px solid #f0e0a0;border-left:5px solid #f0b400;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13.5px;color:#5c4a00;line-height:1.6;}
+.notice .ntitle{font-weight:800;display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.notice .nedit{margin-left:auto;font-size:12px;font-weight:700;color:#3457d5;cursor:pointer;background:none;border:none;padding:0;}
+.notice .nedit:hover{text-decoration:underline;}
+.notice .nbody{white-space:pre-wrap;word-break:break-word;}
+.notice textarea{width:100%;min-height:90px;border:1px solid #e0cf85;border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit;line-height:1.6;box-sizing:border-box;background:#fff;}
+.notice .nbtns{margin-top:8px;display:flex;gap:8px;justify-content:flex-end;}
+
 /* 파일 목록 */
 .dropzone{background:#fff;border:2px dashed transparent;border-radius:12px;min-height:300px;overflow:hidden;box-shadow:0 4px 18px rgba(20,30,60,.06);transition:border-color .15s,background .15s;}
 .dropzone.drag{border-color:#3457d5;background:#f2f6ff;}
@@ -104,6 +113,7 @@ tr:hover td{background:#f7f9fd;}
   </header>
 
   <div class="wrap">
+    <div id="notice" class="notice" style="display:none;"></div>
     <div class="toolbar">
       <div class="crumb" id="crumb"></div>
       <input class="search" id="search" placeholder="🔍 이 폴더에서 이름 검색" oninput="renderList()"/>
@@ -175,9 +185,47 @@ async function enterApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   curPrefix='';
+  noticeText=await loadNotice(); renderNotice();
   await load();
 }
 async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+
+/* ── 주의사항 안내창 (Supabase guide_data 에 저장) ── */
+let noticeText='';
+const noticeCanEdit=()=>myRole==='admin'||myRole==='manager';
+async function loadNotice(){
+  try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','jaryosil_notice').single();
+    return (row&&row.data&&typeof row.data.text==='string')?row.data.text:''; }
+  catch(e){ return ''; }
+}
+async function saveNotice(text){
+  const {error}=await sb.from('guide_data').upsert({data_key:'jaryosil_notice',data:{text},updated_at:new Date().toISOString()});
+  if(error) throw new Error(error.message);
+}
+function renderNotice(){
+  const box=document.getElementById('notice');
+  if(!noticeText && !noticeCanEdit()){ box.style.display='none'; return; }
+  box.style.display='block';
+  const body = noticeText ? esc(noticeText)
+    : '<span style="color:#b0a060;">(주의사항이 없습니다'+(noticeCanEdit()?' — [수정]을 눌러 작성하세요':'')+')</span>';
+  box.innerHTML='<div class="ntitle">⚠️ 주의사항'
+    +(noticeCanEdit()?'<button class="nedit" onclick="editNotice()">✏ 수정</button>':'')
+    +'</div><div class="nbody">'+body+'</div>';
+}
+function editNotice(){
+  const box=document.getElementById('notice');
+  box.style.display='block';
+  box.innerHTML='<div class="ntitle">⚠️ 주의사항 수정</div>'
+    +'<textarea id="noticeInput" placeholder="직원들에게 보일 주의사항을 입력하세요. (줄바꿈 가능)"></textarea>'
+    +'<div class="nbtns"><button class="btn btn-soft" onclick="renderNotice()">취소</button>'
+    +'<button class="btn btn-primary" onclick="commitNotice()">저장</button></div>';
+  const ta=document.getElementById('noticeInput'); ta.value=noticeText; ta.focus();
+}
+async function commitNotice(){
+  const t=document.getElementById('noticeInput').value;
+  try{ await saveNotice(t); noticeText=t; renderNotice(); toast('주의사항을 저장했습니다.'); }
+  catch(e){ toast('저장 실패: '+e.message); }
+}
 
 /* ── API 호출 ── */
 async function token(){
