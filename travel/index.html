@@ -243,6 +243,11 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 #codeModal .mtab-group-label{color:#4a8f68;}
 #codeModal .mtab-group-row button{background:#fff;border:1px solid #bfe3cc;color:#3a7a55;}
 #codeModal .mtab-group-row button.active{background:#3fae6a;border-color:#3fae6a;color:#fff;}
+/* 문구 탭 REFS=빨강 / CHKS=파랑 */
+#codeModal .mtab-group-row button.phrase-refs{color:#e0483f;border-color:#f0b6b1;}
+#codeModal .mtab-group-row button.phrase-refs.active{background:#e0483f;border-color:#e0483f;color:#fff;}
+#codeModal .mtab-group-row button.phrase-chks{color:#1e88e5;border-color:#b6d6f5;}
+#codeModal .mtab-group-row button.phrase-chks.active{background:#1e88e5;border-color:#1e88e5;color:#fff;}
 #codeModal .smodal-body{max-height:80vh;}
 #codeModal #codeListBody,#codeModal #vendorListBody{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:6px;align-items:start;}
 #codeModal #codeListBody .code-row,#codeModal #vendorListBody .code-row{margin-bottom:0;}
@@ -1340,9 +1345,10 @@ function renderMasterTabs(){
   document.getElementById('masterTabs').innerHTML=groups.map(g=>`
     <div class="mtab-group">
       <div class="mtab-group-label">${g.label}</div>
-      <div class="mtab-group-row">${g.items.map(it=>
-        `<button class="${it.group===masterGroup&&it.key===masterKey?'active':''}" onclick="switchMasterTab('${it.group}','${it.key}')">${it.label}</button>`
-      ).join('')}</div>
+      <div class="mtab-group-row">${g.items.map(it=>{
+        const cc=(it.group==='phrase'&&it.key==='references')?' phrase-refs':(it.group==='phrase'&&it.key==='checks')?' phrase-chks':'';
+        return `<button class="${it.group===masterGroup&&it.key===masterKey?'active':''}${cc}" onclick="switchMasterTab('${it.group}','${it.key}')">${it.label}</button>`;
+      }).join('')}</div>
     </div>`).join('');
 }
 function switchMasterTab(group,key){
