@@ -361,13 +361,27 @@ async function fetchBlob(f){
   const r=await api('get?key='+encodeURIComponent(f.key));
   return await r.blob();
 }
+// 브라우저에서 바로 볼 수 있는 형식 (엑셀/한글/워드/압축은 불가 → 다운로드)
+const VIEWABLE_TAB=/\.(pdf|txt|csv|md|log|json|xml|html?|mp4|webm|ogg|mp3|wav|m4a)$/i;
 async function openFile(f){
   if(/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.name)){
+    // 사진 → 화면 안 미리보기(라이트박스)
     try{ const b=await fetchBlob(f); const u=URL.createObjectURL(b);
       document.getElementById('viewerImg').src=u; document.getElementById('viewer').style.display='flex';
       document.getElementById('viewer')._url=u;
     }catch(e){ toast('미리보기 실패: '+e.message); }
-  } else { download(f); }
+  } else if(VIEWABLE_TAB.test(f.name)){
+    // PDF·텍스트·동영상 → 새 탭에서 바로 열기 (팝업차단 방지: 빈 탭 먼저 연 뒤 주소 지정)
+    const w=window.open('','_blank');
+    toast('여는 중… '+f.name);
+    try{ const b=await fetchBlob(f); const u=URL.createObjectURL(b);
+      if(w){ w.location.href=u; } else { const a=document.createElement('a'); a.href=u; a.target='_blank'; a.click(); }
+      setTimeout(()=>URL.revokeObjectURL(u),120000);
+    }catch(e){ if(w) w.close(); toast('열기 실패: '+e.message); }
+  } else {
+    // 엑셀·한글·워드 등 → 브라우저가 못 여니 다운로드
+    download(f);
+  }
 }
 function closeViewer(e,force){
   if(!force && e && e.target.id!=='viewer' && e.target.className!=='vclose') return;
