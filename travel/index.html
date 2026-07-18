@@ -360,6 +360,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <option value="관광지">관광지</option>
       <option value="식당">식당</option>
       <option value="맛사지&스파">맛사지&스파</option>
+      <option value="행사">행사</option>
     </select>
     <input type="text" id="cf-region" placeholder="지역 (예: 방콕)" style="width:120px;" oninput="renderCostTable()"/>
     <select id="cf-season" style="width:110px;" onchange="renderCostTable()">
@@ -2245,7 +2246,7 @@ async function saveGolfCourses(arr){ await saveCostRows('golf',arr); }
 
 /* ── 요금표 표시 정렬 헬퍼(원본 데이터 순서는 안 건드림 — idx 그대로 유지) ── */
 function costRegionRank(r){ const s=String(r||''); if(s.indexOf('방콕')>=0) return 0; if(s.indexOf('파타야')>=0) return 1; return 2; }
-function attrCatRank(c){ const s=String(c||''); if(s.indexOf('관광')>=0) return 0; if(s.indexOf('식당')>=0) return 1; if(s.indexOf('맛사지')>=0||s.indexOf('스파')>=0) return 2; return 9; }
+function attrCatRank(c){ const s=String(c||''); if(s.indexOf('관광')>=0) return 0; if(s.indexOf('식당')>=0) return 1; if(s.indexOf('맛사지')>=0||s.indexOf('스파')>=0) return 2; if(s.indexOf('행사')>=0) return 3; return 9; }
 function koCmp(a,b){ return String(a||'').localeCompare(String(b||''),'ko'); }
 // 지역(방콕→파타야→기타) 순 → 각 지역 안에서 이름 ㄱㄴㄷ
 function sortByRegionName(list,getRegion,getName){
@@ -2790,7 +2791,7 @@ function openHotelDetail(i){
 
 /* ══════════════ 관광·식당외 입장료: 항목 1개 안에 기간 요금 여러 개 (골프·호텔과 동일 패턴) ══════════════
    데이터: [{category,name,region,seasons:[{season,dateFrom,dateTo,adult,child,remark}]}] */
-const ATTR_CATEGORIES=['관광지','식당','맛사지&스파'];
+const ATTR_CATEGORIES=['관광지','식당','맛사지&스파','행사'];
 
 // 구버전(한 줄=한 항목) → 신버전(항목 안에 기간들). 완전히 빈 줄은 버림.
 function migrateAttr(rows){
