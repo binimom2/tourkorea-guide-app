@@ -2068,14 +2068,29 @@ function downloadCostExcel(){
   if(!cat){ return; }
   const rows=getCostRows(costTab);
   if(!rows.length){ showToast('⚠ 내려받을 항목이 없습니다'); return; }
-  const LBL={caddy9:'캐디피(9홀)',cart9:'전동카(9홀)'};   // 9홀 캐디/전동카 라벨 구분
-  const cols=cat.fields.filter(f=>f.label);               // 숨김·계산 항목까지 전부 포함(9홀 상세 포함)
+  // 시즌 단위로 평면화 (코스/호텔/항목 × 시즌 = 한 행). 시즌 안의 9홀 상세까지 그대로 포함.
+  const flat=[];
+  rows.forEach(top=>{
+    const base={}; Object.keys(top).forEach(k=>{ if(k!=='seasons') base[k]=top[k]; });
+    const ss=Array.isArray(top.seasons)?top.seasons:[];
+    if(ss.length) ss.forEach(s=>flat.push(Object.assign({},base,s)));
+    else flat.push(base);
+  });
+  // 실제 데이터에 등장하는 모든 키 수집(상위→시즌), 보기 좋은 순서로 정렬
+  const seen=new Set(), keys=[], collect=k=>{ if(!seen.has(k)){ seen.add(k); keys.push(k); } };
+  rows.forEach(t=>Object.keys(t).forEach(k=>{ if(k!=='seasons') collect(k); }));
+  rows.forEach(t=>(t.seasons||[]).forEach(s=>Object.keys(s).forEach(collect)));
+  const PREF=['name','nameKr','region','category','season','period','dateFrom','dateTo','gf18wd','gf18we','caddy','cart','gf9wd','gf9we','caddy9','cart9','roomType','twin','amount','extbed','rooms','joiners','adult','child','remark'];
+  keys.sort((a,b)=>{ let ia=PREF.indexOf(a),ib=PREF.indexOf(b); if(ia<0)ia=99; if(ib<0)ib=99; return ia-ib; });
+  const nameLbl = costTab==='golf'?'골프장명(영문)':costTab==='hotel'?'호텔명':'이름';
+  const LBL={ name:nameLbl,nameKr:'골프장명(한글)',region:'지역',remark:'비고',category:'구분',
+    season:'시즌',dateFrom:'시작일',dateTo:'종료일',period:'기간',
+    gf18wd:'18홀그린피(주중)',gf18we:'18홀그린피(주말)',caddy:'캐디피',cart:'전동카',
+    gf9wd:'9홀그린피(주중)',gf9we:'9홀그린피(주말)',caddy9:'캐디피(9홀)',cart9:'전동카(9홀)',
+    roomType:'룸타입',twin:'트윈',amount:'금액',extbed:'EXT BED',rooms:'룸수',joiners:'조인',adult:'성인',child:'아동' };
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const head='<tr>'+cols.map(c=>`<th>${esc(LBL[c.k]||c.label)}</th>`).join('')+'</tr>';
-  const body=rows.map(r=>'<tr>'+cols.map(c=>{
-    let v; try{ v = c.compute ? c.compute(r) : r[c.k]; }catch(e){ v=''; }
-    return `<td>${esc(v)}</td>`;
-  }).join('')+'</tr>').join('');
+  const head='<tr>'+keys.map(k=>`<th>${esc(LBL[k]||k)}</th>`).join('')+'</tr>';
+  const body=flat.map(r=>'<tr>'+keys.map(k=>`<td>${esc(r[k])}</td>`).join('')+'</tr>').join('');
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
   const dstr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`, ymd=dstr.replace(/-/g,'');
   const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">`
@@ -2084,7 +2099,7 @@ function downloadCostExcel(){
     +`<x:Name>${cat.label}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>`
     +`</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->`
     +`<style>table{border-collapse:collapse;}td,th{border:1px solid #b0b7c3;padding:4px 8px;font-size:12px;mso-number-format:"\\@";}th{background:#e8eef7;font-weight:bold;}</style></head>`
-    +`<body><h3>원가서 · ${cat.label} (${dstr}) · 전체 ${rows.length}건</h3>`
+    +`<body><h3>원가서 · ${cat.label} (${dstr}) · ${rows.length}개 · ${flat.length}행</h3>`
     +`<table><thead>${head}</thead><tbody>${body}</tbody></table></body></html>`;
   const blob=new Blob(['﻿'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -2092,7 +2107,7 @@ function downloadCostExcel(){
   a.href=url; a.download=`원가서_${cat.label}_${ymd}.xls`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1500);
-  showToast(`📥 ${cat.label} 원가서 전체(${rows.length}건)를 엑셀로 내려받았습니다`);
+  showToast(`📥 ${cat.label} 원가서 전체(${flat.length}행)를 엑셀로 내려받았습니다`);
 }
 function renderCostTable(){
   if(costTab==='golf'){ renderGolfTable(); return; }   // 골프장은 전용 표(골프장명 병합 + 시즌 여러개)
