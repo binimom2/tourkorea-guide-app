@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>골프 견적 (베타)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{--fairway:#123A2B;--fairway-deep:#0B231A;--sand:#E9DFC8;--paper:#F7F3E9;--marigold:#E8A33D;--ink:#15211C;--line:rgba(18,58,43,.18);--muted:#5E6F66;--danger:#c0492f;--font:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;--num:"JetBrains Mono",ui-monospace,monospace;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 80px}
+.head{border-bottom:2px solid var(--fairway);padding-bottom:14px;margin-bottom:22px}
+.head .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.eyebrow{font-size:12px;letter-spacing:.22em;color:var(--muted);font-weight:600}
+.head h1{margin:6px 0 0;font-size:clamp(24px,5vw,36px);font-weight:800;letter-spacing:-.03em}
+.head a,.head button.link{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:700;color:var(--fairway);text-decoration:none;cursor:pointer}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:16px;font-weight:800}
+.grid{display:grid;gap:12px}
+@media(min-width:640px){.grid.g4{grid-template-columns:repeat(4,1fr)}.grid.g2{grid-template-columns:1fr 1fr}}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:12px;font-weight:700;color:var(--muted)}
+.f input,.f select{font:inherit;font-size:15px;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink)}
+.f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+/* 날짜별 라운딩 */
+.day{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:11px;border:1px solid var(--line);border-radius:11px;margin-bottom:9px;background:var(--paper)}
+.day .dlabel{font-weight:700;font-size:14px;min-width:118px}
+.day .dlabel small{display:block;font-weight:600;font-size:11.5px;color:var(--muted)}
+.day .rchk{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700}
+.day select{font:inherit;font-size:13.5px;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.day .reg{width:90px}.day .course{flex:1;min-width:150px}.day .holes{width:92px}
+.day.off{opacity:.55}
+.badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--sand);color:var(--fairway)}
+.badge.we{background:#f6dcae;color:#7a4a00}
+/* 결과 */
+.card.res{background:var(--fairway);color:var(--sand);border:0}
+.card.res h2{color:var(--sand)}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+.res th,.res td{padding:9px 4px;text-align:left}
+.res thead th{font-size:11px;letter-spacing:.14em;opacity:.6;font-weight:600}
+.res tbody tr{border-top:1px solid rgba(233,223,200,.14)}
+.res td.n{text-align:right;font-family:var(--num);white-space:nowrap}
+.res td .sub{display:block;font-size:11.5px;opacity:.6;margin-top:2px}
+.res tfoot td{border-top:2px solid var(--marigold);padding-top:14px;font-weight:800;font-size:19px}
+.res tfoot td.n{font-size:24px;color:var(--marigold)}
+.perp{padding-top:10px;font-size:13.5px;opacity:.8}
+.warn{color:#ffcaa8}
+/* 로그인 */
+#golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
+#golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
+#golfLogin h1{margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)}
+#golfLogin p{margin:0 0 16px;font-size:12.5px;color:var(--muted)}
+#golfLogin label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 5px}
+#golfLogin input{width:100%;font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}
+#golfLogin button{width:100%;margin-top:18px;font:inherit;font-weight:700;font-size:15px;padding:12px;border:0;border-radius:9px;background:var(--fairway);color:var(--sand);cursor:pointer}
+</style>
+</head>
+<body>
+<div id="golfLogin"><div class="box">
+  <h1>⛳ 골프 견적 (베타)</h1><p>기존 앱과 동일한 계정으로 로그인</p>
+  <label>아이디</label><input id="glid" autocomplete="off" onkeydown="if(event.key==='Enter')gLogin()">
+  <label>비밀번호</label><input id="glpw" type="password" autocomplete="off" onkeydown="if(event.key==='Enter')gLogin()">
+  <button id="gbtn" onclick="gLogin()">로그인</button>
+  <div id="gerr" style="color:#c0492f;font-size:12.5px;margin-top:10px;min-height:16px"></div>
+</div></div>
+
+<div class="wrap" id="golfApp" style="display:none">
+  <header class="head">
+    <div class="top">
+      <div><div class="eyebrow">THAILAND GOLF · BETA</div></div>
+      <div style="display:flex;gap:8px">
+        <a href="/travel/">← 예약관리</a>
+        <button class="link" onclick="doLogout()">로그아웃</button>
+      </div>
+    </div>
+    <h1>골프 견적 내기</h1>
+  </header>
+
+  <div class="card">
+    <h2>1. 기본 정보</h2>
+    <div class="grid g4">
+      <div class="f"><label>출발 일자</label><input type="date" id="startDate"></div>
+      <div class="f"><label>인원수</label><input type="number" id="pax" min="1" value="4"></div>
+      <div class="f"><label>방콕 (박)</label><input type="number" id="nBkk" min="0" value="0"></div>
+      <div class="f"><label>파타야 (박)</label><input type="number" id="nPty" min="0" value="3"></div>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="f"><label>먼저 가는 지역</label><select id="firstRegion"><option value="방콕">방콕 먼저</option><option value="파타야" selected>파타야 먼저</option></select></div>
+      <div class="f"><label>일정</label><input id="tripInfo" readonly style="background:#fff;border-style:dashed"></div>
+    </div>
+    <div class="hint" id="paxInfo"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. 날짜별 라운딩</h2>
+    <div class="hint" style="margin-top:0;margin-bottom:10px">라운딩할 날만 체크하세요. 그 날 지역의 골프장이 나옵니다. (그린피+캐디+전동카 포함)</div>
+    <div id="days"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. 숙소 <span style="font-weight:400;font-size:12.5px;color:var(--muted)">(선택)</span></h2>
+    <div class="grid g2">
+      <div class="f"><label>방콕 숙소</label><select id="hotelBkk"></select></div>
+      <div class="f"><label>파타야 숙소</label><select id="hotelPty"></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4. 가이드 <span style="font-weight:400;font-size:12.5px;color:var(--muted)">(선택)</span></h2>
+    <div class="f" style="max-width:320px"><select id="guide">
+      <option value="none">노가이드</option>
+      <option value="한국인가이드">한국인 가이드</option>
+      <option value="로컬가이드">로컬 가이드(한국어 가능)</option>
+    </select></div>
+  </div>
+
+  <section class="card res">
+    <h2>견적 결과</h2>
+    <table>
+      <thead><tr><th>항목</th><th class="n">금액 (THB)</th></tr></thead>
+      <tbody id="lines"></tbody>
+      <tfoot><tr><td>총 합계</td><td class="n" id="total">0</td></tr></tfoot>
+    </table>
+    <div class="perp" id="perp"></div>
+  </section>
+  <div class="hint">※ 표시 금액은 THB 기준, 항공료 미포함. 태국 공휴일·토·일은 주말 요금 적용.</div>
+</div>
+
+<script>
+/* ── 골프장 데이터(주신 자료) ── */
+const COURSES = {
+"방콕":[
+ {n:"수파프룩",note:"주말 11:30 이후 1,000밧 · 9홀추가 15:00 이후 · TK",s:[{from:"2026-03-01",to:"2026-10-31",g18:[600,1800],cad:450,crt:700,g9:[450,900],cad9:250,crt9:350}]},
+ {n:"시암방콕",note:"주중4 주말4 · 카트 진입(의무) · 갤러리 2,500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[3400,4800],cad:500,crt:1000,g9:[2050,2700],cad9:300,crt9:600}]},
+ {n:"알파인",note:"주말·휴일 12:00 이후 · 주중4 주말4 · 카트 진입(의무)",s:[{from:"2026-04-01",to:"2026-09-30",g18:[4600,6100],cad:0,crt:0,g9:null,cad9:null,crt9:null},{from:"2026-10-01",to:"2027-03-31",g18:[6800,null],cad:0,crt:0,g9:null,cad9:null,crt9:null}]},
+ {n:"카스카타",note:"36홀",s:[{from:"2026-04-01",to:"2026-09-30",g18:[900,1700],cad:430,crt:770,g9:[500,900],cad9:300,crt9:420}]}
+],
+"파타야":[
+ {n:"그린우드",note:"27홀 · 주중5 주말 오전4 오후5 · 갤러리 300밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[650,850],cad:350,crt:600,g9:[300,400],cad9:200,crt9:300}]},
+ {n:"람차방",note:"27홀 · 주중5 주말4 · 카트 진입(의무) · 갤러리 600밧",s:[{from:"2026-04-01",to:"2026-09-30",g18:[2400,2700],cad:450,crt:980,g9:[1350,1500],cad9:300,crt9:500}]},
+ {n:"라용그린밸리",note:"스포츠데이(수) 2,150밧 · 주중5 주말5 · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1000,1200],cad:450,crt:900,g9:[500,600],cad9:250,crt9:450}]},
+ {n:"방프라",note:"스포츠데이(월·수) 1,650밧 · 카트 진입(의무) · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1650,2150],cad:0,crt:0,g9:[1100,1300],cad9:0,crt9:0}]},
+ {n:"부라파",note:"36홀 · 스포츠데이(월·수) 2,150밧 · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1200,1500],cad:400,crt:850,g9:[650,800],cad9:200,crt9:450}]},
+ {n:"뿌탈루앙",note:"주중5 주말5 · 갤러리 300밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1300,1400],cad:0,crt:0,g9:[1000,1100],cad9:0,crt9:0}]},
+ {n:"세인트앤드류2000",note:"스포츠데이(월) 2,150밧 · 주중 12시 이후 2,150밧 · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1000,1200],cad:450,crt:900,g9:[500,600],cad9:250,crt9:450}]},
+ {n:"시암올드",note:"비수기 월요일 휴장 · 주중4 주말4 · 갤러리 2,500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[3800,5250],cad:500,crt:1000,g9:[2200,2900],cad9:300,crt9:600}]},
+ {n:"시암플랜/워터/롤링",note:"플랜 27홀, 워터·롤링 18홀 · 갤러리 2,500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[3100,4100],cad:500,crt:1000,g9:[1800,2200],cad9:300,crt9:600}]},
+ {n:"이스턴스타",note:"주중 오전5 오후6 · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[2350,3400],cad:0,crt:0,g9:[1400,1700],cad9:0,crt9:0}]},
+ {n:"찌짠",note:"주중4 주말4 · 카트 진입(의무) · 갤러리 1,500밧",s:[{from:"2026-04-01",to:"2026-09-30",g18:[3400,4200],cad:450,crt:850,g9:[2350,2850],cad9:250,crt9:450}]},
+ {n:"카오키여우",note:"주중5 주말5 · 카트 진입(의무) · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1950,2550],cad:0,crt:0,g9:[1100,1400],cad9:0,crt9:0}]},
+ {n:"트레져힐",note:"주중6 주말6 · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[500,600],cad:380,crt:700,g9:[300,350],cad9:220,crt9:400}]},
+ {n:"파타나",note:"27홀 · 스포츠데이(화) 2,000밧 · 갤러리 800밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1300,1800],cad:400,crt:800,g9:[900,1300],cad9:200,crt9:400}]},
+ {n:"파타비아",note:"주중 오전5 오후6 · 카트 진입(의무) · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[500,800],cad:350,crt:600,g9:[500,700],cad9:200,crt9:300}]},
+ {n:"파타야",note:"스포츠데이(목) 1,900밧 · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[900,1100],cad:400,crt:700,g9:[600,700],cad9:200,crt9:350}]},
+ {n:"피닉스",note:"27홀 · 주중5 주말5 · 카트 진입(의무) · 갤러리 500밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[1400,1900],cad:400,crt:700,g9:[800,1050],cad9:200,crt9:350}]},
+ {n:"헤르매스",note:"주중5 주말5 · 카트 진입(의무) · 갤러리 1,300밧",s:[{from:"2026-04-01",to:"2026-10-31",g18:[2000,2300],cad:0,crt:0,g9:[1250,1400],cad9:0,crt9:0}]}
+]
+};
+/* 기본 요금(관리자 저장값 없을 때 폴백) */
+const DEFAULT_PRICING = {
+  holidays:["2026-05-01","2026-05-04","2026-06-01","2026-06-03","2026-07-28","2026-07-29","2026-07-30","2026-08-12","2026-10-13","2026-10-23","2026-12-07","2026-12-10","2026-12-31"],
+  hotels:{"방콕":[{name:"방콕 시내 4성",perNight:2200},{name:"방콕 시내 5성",perNight:3800}],"파타야":[{name:"파타야 비치 4성",perNight:1800},{name:"파타야 비치 5성",perNight:3200}]},
+  handlingPeriods:{}, guidePeriods:{}, vehiclePeriods:{}
+};
+const GUIDE_PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
+let P = DEFAULT_PRICING;   // 요금 데이터(공휴일·가이드·핸들링·차량·호텔)
+
+const $=s=>document.querySelector(s);
+const won=n=>Math.round(n).toLocaleString('en-US');
+const iso=d=>d.toISOString().slice(0,10);
+const isWeekend=d=>[0,6].includes(d.getDay());
+const isHoliday=s=>(P.holidays||[]).includes(s);
+function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
+function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
+/* 총 박수 → 가이드/핸들링 기간 키 */
+function periodKey(nights){
+  if(nights<=0) return '1일';
+  if(nights===1) return '1박2일';
+  if(nights===2) return '2박3일';
+  return '3박4일'; // 3박 이상은 3박4일 + 1박추가 로 계산
+}
+function extraNights(nights){ return nights>3 ? nights-3 : 0; }
+
+/* ── 날짜 행 렌더 ── */
+let dayState=[];  // {date, region, round:bool, course:idx, holes}
+function buildDays(){
+  const start=$('#startDate').value, nB=+$('#nBkk').value||0, nP=+$('#nPty').value||0;
+  const nights=nB+nP, days=nights+1;
+  const first=$('#firstRegion').value, second=first==='방콕'?'파타야':'방콕';
+  const firstNights=first==='방콕'?nB:nP;
+  // 일정 표시
+  $('#tripInfo').value = nights>0 ? `${nights}박 ${days}일` : '당일';
+  // 지역 자동배정: 앞 지역이 (firstNights+1)일, 뒤 지역이 나머지
+  const wrap=$('#days'); wrap.innerHTML='';
+  dayState=[];
+  if(!start){ wrap.innerHTML='<div class="hint">출발 일자를 먼저 선택하세요.</div>'; return; }
+  for(let i=0;i<days;i++){
+    const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+i); const ds=iso(d);
+    const we=isWeekend(d)||isHoliday(ds);
+    const region = (i < firstNights+1) ? first : second;
+    const st={date:ds, region, round:false, course:'', holes:'18'};
+    const st_i=dayState.push(st)-1;
+    const row=document.createElement('div'); row.className='day off'; row.dataset.i=st_i;
+    row.innerHTML=`
+      <div class="dlabel">${ds.slice(5).replace('-','/')} <small>${['일','월','화','수','목','금','토'][d.getDay()]}요일 ${we?'<span class="badge we">주말/휴일</span>':'<span class="badge">주중</span>'}</small></div>
+      <label class="rchk"><input type="checkbox" data-r="${st_i}"> 라운딩</label>
+      <select class="reg" data-reg="${st_i}"><option ${region==='방콕'?'selected':''}>방콕</option><option ${region==='파타야'?'selected':''}>파타야</option></select>
+      <select class="course" data-c="${st_i}" disabled></select>
+      <select class="holes" data-h="${st_i}" disabled></select>`;
+    wrap.appendChild(row);
+    fillCourses(st_i);
+  }
+}
+function fillCourses(i){
+  const st=dayState[i];
+  const sel=document.querySelector(`[data-c="${i}"]`);
+  const list=(COURSES[st.region]||[]).slice().sort(ganada);
+  sel.innerHTML='<option value="">골프장 선택</option>'+list.map(c=>`<option value="${c.n}">${c.n}</option>`).join('');
+  sel.value=st.course||'';
+  fillHoles(i);
+}
+function fillHoles(i){
+  const st=dayState[i];
+  const sel=document.querySelector(`[data-h="${i}"]`);
+  const c=(COURSES[st.region]||[]).find(x=>x.n===st.course);
+  let opts=['<option value="18">18홀</option>'];
+  if(c){ const has9=(c.s||[]).some(s=>s.g9); if(has9){ opts.push('<option value="27">27홀</option>'); opts.push('<option value="9">9홀</option>'); } }
+  sel.innerHTML=opts.join(''); sel.value=st.holes||'18';
+}
+function fillHotels(){
+  const H=P.hotels||DEFAULT_PRICING.hotels;
+  ['Bkk','Pty'].forEach(k=>{
+    const region=k==='Bkk'?'방콕':'파타야';
+    const sel=$('#hotel'+k);
+    sel.innerHTML='<option value="">숙소 없이</option>'+(H[region]||[]).map((h,idx)=>`<option value="${idx}">${h.name} · ${won(h.perNight)} THB/박</option>`).join('');
+  });
+}
+
+/* ── 계산 ── */
+function calc(){
+  if(!window._ready) return;
+  const pax=Math.max(1,+$('#pax').value||1);
+  const nB=+$('#nBkk').value||0, nP=+$('#nPty').value||0, nights=nB+nP;
+  const rooms=Math.ceil(pax/2);
+  $('#paxInfo').textContent=`${pax}명 · 방콕 ${nB}박 + 파타야 ${nP}박 = 총 ${nights}박`;
+  const lines=[];
+  // 1) 골프 (체크된 날)
+  dayState.forEach(st=>{
+    if(!st.round || !st.course) return;
+    const c=(COURSES[st.region]||[]).find(x=>x.n===st.course); if(!c) return;
+    const ss=seasonOf(c,st.date);
+    const we=isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date);
+    const wk=we?1:0;
+    const nm=`${c.n} ${st.holes}홀`, dl=`${st.date.slice(5)} ${st.region}`;
+    if(!ss){ lines.push({t:nm,s:`${dl} · 해당일 요금 미등록`,v:0,warn:1}); return; }
+    let unit=null;
+    if(st.holes==='18') unit = ss.g18[wk]!=null ? ss.g18[wk]+ss.cad+ss.crt : null;
+    else if(st.holes==='27') unit = (ss.g18[wk]!=null&&ss.g9&&ss.g9[wk]!=null) ? ss.g18[wk]+ss.g9[wk]+ss.cad+ss.cad9+ss.crt+ss.crt9 : null;
+    else if(st.holes==='9') unit = (ss.g9&&ss.g9[wk]!=null) ? ss.g9[wk]+ss.cad9+ss.crt9 : null;
+    if(unit==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
+    lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(unit)} × ${pax}명`,v:unit*pax});
+  });
+  // 2) 차량 (데이터 미입력)
+  const vp=(P.vehiclePeriods||{})[periodKey(nights)];
+  if(vp&&vp.amount){ const vans=Math.ceil(pax/7); lines.push({t:'차량 (12인승 밴)',s:`${won(vp.amount)} × ${vans}대`,v:vp.amount*vans}); }
+  else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
+  // 3) 핸들링
+  const hp=(P.handlingPeriods||{})[periodKey(nights)];
+  if(hp&&hp.amount) lines.push({t:'핸들링 차지',s:`${won(hp.amount)} × ${pax}명`,v:hp.amount*pax});
+  // 4) 가이드
+  const gt=$('#guide').value;
+  if(gt!=='none'){
+    const G=(P.guidePeriods||{})[gt];
+    if(G){
+      const base=(G[periodKey(nights)]||{}).bkk||0;
+      const ex=extraNights(nights); // 3박 초과분(가이드 base엔 3박4일까지만 있어 근사)
+      const pty=(G.ptyPerNight||0)*nP;
+      const v=base+pty;
+      lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`기본 ${won(base)} + 파타야 ${won(G.ptyPerNight||0)}×${nP}박${ex?` (※${ex}박 추가분 별도)`:''}`,v});
+    }
+  }
+  // 5) 숙소
+  const H=P.hotels||DEFAULT_PRICING.hotels;
+  [['Bkk','방콕',nB],['Pty','파타야',nP]].forEach(([k,region,nn])=>{
+    const idx=$('#hotel'+k).value;
+    if(idx!==''&&nn>0){ const h=(H[region]||[])[+idx]; if(h){ lines.push({t:`숙소 · ${h.name}`,s:`${won(h.perNight)} × ${nn}박 × ${rooms}실`,v:h.perNight*nn*rooms}); } }
+  });
+  const total=lines.reduce((a,b)=>a+b.v,0);
+  $('#lines').innerHTML=lines.map(l=>`<tr><td>${l.t}<span class="sub ${l.warn?'warn':''}">${l.s}</span></td><td class="n">${won(l.v)}</td></tr>`).join('')||`<tr><td colspan="2" style="opacity:.6">라운딩할 날을 체크하면 견적이 나옵니다.</td></tr>`;
+  $('#total').textContent=won(total);
+  $('#perp').textContent=`1인당 약 ${won(total/pax)} THB`;
+}
+
+/* ── 이벤트 ── */
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(['startDate','nBkk','nPty','firstRegion'].includes(t.id)){ buildDays(); calc(); return; }
+  if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
+  if(t.dataset.reg!==undefined){ const i=+t.dataset.reg; dayState[i].region=t.value; dayState[i].course=''; fillCourses(i); }
+  if(t.dataset.c!==undefined){ const i=+t.dataset.c; dayState[i].course=t.value; fillHoles(i); }
+  if(t.dataset.h!==undefined){ const i=+t.dataset.h; dayState[i].holes=t.value; }
+  calc();
+});
+document.addEventListener('input',e=>{ if(['pax'].includes(e.target.id)) calc(); });
+
+/* ── Supabase 로그인 + 요금 로드 ── */
+const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-auth',persistSession:true,autoRefreshToken:true}});
+async function loadPricing(){
+  try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_pricing').single();
+    if(row&&row.data){ const d=row.data; P={
+      holidays:d.holidays&&d.holidays.length?d.holidays:DEFAULT_PRICING.holidays,
+      hotels:DEFAULT_PRICING.hotels,
+      handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{}
+    }; }
+  }catch(e){}
+}
+function startApp(){
+  fillHotels();
+  const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
+  buildDays(); window._ready=true; calc();
+  $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
+}
+async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single(); if(row&&row.data){const k=(typed||'').toLowerCase(); if(row.data[k])return row.data[k];} }catch(e){} return null; }
+async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
+  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); startApp(); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
+async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
+(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); startApp(); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
+</script>
+</body>
+</html>
