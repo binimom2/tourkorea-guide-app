@@ -204,8 +204,12 @@ function buildDays(){
   const start=$('#startDate').value;
   const nB=$('#cBkk').checked?(+$('#nBkk').value||0):0, nP=$('#cPty').checked?(+$('#nPty').value||0):0;
   const nights=nB+nP, days=nights+1;
-  const first=$('#firstRegion').value, second=first==='방콕'?'파타야':'방콕';
-  const firstNights=first==='방콕'?nB:nP;
+  // 지역 배정: 박수 있는 지역만. 둘 다 있으면 먼저 가는 지역 우선.
+  let first, second, firstNights;
+  if(nB>0 && nP>0){ first=$('#firstRegion').value; second=(first==='방콕'?'파타야':'방콕'); firstNights=(first==='방콕'?nB:nP); }
+  else if(nB>0){ first='방콕'; second='방콕'; firstNights=nB; }
+  else if(nP>0){ first='파타야'; second='파타야'; firstNights=nP; }
+  else { first=$('#firstRegion').value; second=first; firstNights=0; }
   // 일정 표시
   $('#tripInfo').value = nights>0 ? `${nights}박 ${days}일` : '당일';
   // 지역 자동배정: 앞 지역이 (firstNights+1)일, 뒤 지역이 나머지
