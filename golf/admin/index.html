@@ -94,6 +94,13 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .crow a{cursor:pointer;font-size:12px;font-weight:700}
 .corder{display:flex;flex-direction:column;line-height:.75}
 .corder a{font-size:10px;color:var(--muted)}
+/* 기간별 요금표 */
+.ptable{width:100%;border-collapse:collapse;margin-top:4px}
+.ptable th{font-size:11.5px;font-weight:700;color:var(--muted);text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+.ptable td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ptable td.pname{font-weight:700;font-size:13.5px;white-space:nowrap;color:var(--fairway)}
+.ptable input.pin{width:100%;font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper)}
+.ptable input.pin:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
 .hidden{display:none!important}
 </style>
 </head>
@@ -255,6 +262,15 @@ function normalize(d){
   const g = JSON.parse(JSON.stringify(d));
   ['holidays','vehicle','handling','localGuide','korGuide','guideOptions','durations'].forEach(k=>{ if(g[k]==null) g[k]=JSON.parse(JSON.stringify(DEFAULT[k])); });
   if(g.paxPerVan==null) g.paxPerVan=DEFAULT.paxPerVan;
+  // 기간별 요금(차량/핸들링/가이드) — 구조 보장
+  if(!g.vehiclePeriods)  g.vehiclePeriods={};
+  if(!g.handlingPeriods) g.handlingPeriods={};
+  if(!g.guidePeriods)    g.guidePeriods={};
+  PERIODS.forEach(p=>{
+    if(!g.vehiclePeriods[p])  g.vehiclePeriods[p]={amount:null,remark:''};
+    if(!g.handlingPeriods[p]) g.handlingPeriods[p]={amount:null,remark:''};
+  });
+  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,pty:null,remark:''}; }); });
   if(!g.regions) g.regions={};
   Object.values(g.regions).forEach(r=>{
     (r.courses||[]).forEach(c=>{
@@ -330,22 +346,64 @@ function dateInput(obj,key){
   return i;
 }
 
+/* ══════════ 기간별 요금표 ══════════ */
+const PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일'];
+const GUIDE_TYPES=['한국가이드','로컬가이드'];
+function thEl(t){ const th=document.createElement('th'); th.textContent=t; return th; }
+// 기간 × [금액,비고] 단순 표 (차량·핸들링)
+function periodTable(title,desc,dataObj){
+  const c=card(title,desc);
+  const tbl=document.createElement('table'); tbl.className='ptable';
+  const thead=document.createElement('thead'); const hr=document.createElement('tr');
+  ['기간','금액(THB)','비고'].forEach(h=>hr.appendChild(thEl(h)));
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tb=document.createElement('tbody');
+  PERIODS.forEach(p=>{
+    if(!dataObj[p]) dataObj[p]={amount:null,remark:''};
+    const tr=document.createElement('tr');
+    const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
+    const tdA=document.createElement('td'); const a=numInput(dataObj[p],'amount'); a.className='pin'; tdA.appendChild(a); tr.appendChild(tdA);
+    const tdR=document.createElement('td'); const r=txtInput(dataObj[p],'remark',{ph:'비고'}); r.className='pin'; tdR.appendChild(r); tr.appendChild(tdR);
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb); c.appendChild(tbl); return c;
+}
+// 구분(한국/로컬) × 기간 × [방콕,파타야,비고] (가이드)
+function guideTable(){
+  const c=card('🧑‍🏫 가이드 요금','한국가이드·로컬가이드별, 지역(방콕/파타야)·기간별 요금.');
+  GUIDE_TYPES.forEach(type=>{
+    if(!G.guidePeriods[type]) G.guidePeriods[type]={};
+    c.appendChild(el('div','mini','· '+type));
+    const tbl=document.createElement('table'); tbl.className='ptable';
+    const thead=document.createElement('thead'); const hr=document.createElement('tr');
+    ['기간','방콕','파타야','비고'].forEach(h=>hr.appendChild(thEl(h)));
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb=document.createElement('tbody');
+    PERIODS.forEach(p=>{
+      if(!G.guidePeriods[type][p]) G.guidePeriods[type][p]={bkk:null,pty:null,remark:''};
+      const o=G.guidePeriods[type][p];
+      const tr=document.createElement('tr');
+      const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
+      const tB=document.createElement('td'); const b=numInput(o,'bkk'); b.className='pin'; tB.appendChild(b); tr.appendChild(tB);
+      const tP=document.createElement('td'); const pp=numInput(o,'pty'); pp.className='pin'; tP.appendChild(pp); tr.appendChild(tP);
+      const tR=document.createElement('td'); const r=txtInput(o,'remark',{ph:'비고'}); r.className='pin'; tR.appendChild(r); tr.appendChild(tR);
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb); c.appendChild(tbl);
+  });
+  return c;
+}
+
 /* ══════════ 렌더 ══════════ */
 function render(){
   const root=document.getElementById('editor'); root.innerHTML='';
 
-  // 1) 차량 요금
-  root.appendChild(tierCard('🚐 차량 요금 (12인승 밴 1대 기준)','박수별 요금. 5박 초과분은 "+1박 추가" 금액이 박수만큼 더해집니다.',G.vehicle));
-  // 2) 핸들링
-  const hc=card('🧳 핸들링 차지 (1인 기준)','기준 박수까지는 기본요금, 초과 1박당 추가요금이 붙습니다.');
-  const hrow=el('div','row');
-  hrow.appendChild(field('기본요금(THB)',numInput(G.handling,'base')));
-  hrow.appendChild(field('기준 박수',numInput(G.handling,'baseNights')));
-  hrow.appendChild(field('1박 추가당(THB)',numInput(G.handling,'perExtraNight')));
-  hc.appendChild(hrow); root.appendChild(hc);
-  // 3) 가이드
-  root.appendChild(tierCard('🧑‍🏫 로컬 가이드 (한국어 가능)','박수별 요금.',G.localGuide));
-  root.appendChild(tierCard('🇰🇷 한국인 가이드','박수별 요금.',G.korGuide));
+  // 1) 차량 요금 (기간별)
+  root.appendChild(periodTable('🚐 차량 요금 (12인승 밴 1대 기준)','기간별 요금. "풀"은 풀데이(종일) 기준입니다.',G.vehiclePeriods));
+  // 2) 핸들링 차지 (기간별)
+  root.appendChild(periodTable('🧳 핸들링 차지 (1인 기준)','기간별 핸들링 요금.',G.handlingPeriods));
+  // 3) 가이드 (구분·지역·기간별)
+  root.appendChild(guideTable());
   // 4) 공휴일
   root.appendChild(holidayCard());
   // 5) 기타
