@@ -386,6 +386,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <button id="vtCost2" class="active" onclick="setView('cost')">💰 원가서</button>
     </div>
     <button class="tbtn-primary" onclick="openCostRowEditor(null)">＋ 항목 추가</button>
+    <button class="tbtn" onclick="downloadCostExcel()" title="현재 원가서 표를 엑셀로 다운로드">📥 엑셀</button>
   </div>
 
   <main>
@@ -2059,6 +2060,33 @@ function costFieldValue(f){
   }
   const el=document.getElementById('so-'+f.k);
   return el?el.value:'';
+}
+// 현재 원가서 표를 엑셀(.xls, Excel 호환 HTML)로 다운로드. 탭(골프/호텔/관광지)별로 각각 받을 수 있음.
+function downloadCostExcel(){
+  const table=document.getElementById('costTable');
+  if(!table || !table.querySelector('tbody tr')){ showToast('⚠ 내려받을 항목이 없습니다'); return; }
+  const cat=COST_CATEGORIES.find(c=>c.key===costTab);
+  const label=cat?cat.label:costTab;
+  const clone=table.cloneNode(true);
+  // 편집용 요소(버튼·링크·입력)는 제외
+  clone.querySelectorAll('button,a,input,select').forEach(el=>el.remove());
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  const dstr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const ymd=dstr.replace(/-/g,'');
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">`
+    +`<head><meta charset="utf-8">`
+    +`<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>`
+    +`<x:Name>${label}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>`
+    +`</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->`
+    +`<style>table{border-collapse:collapse;}td,th{border:1px solid #b0b7c3;padding:4px 8px;font-size:12px;mso-number-format:"\\@";}th{background:#e8eef7;font-weight:bold;}</style></head>`
+    +`<body><h3>원가서 · ${label} (${dstr})</h3>${clone.outerHTML}</body></html>`;
+  const blob=new Blob(['﻿'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`원가서_${label}_${ymd}.xls`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  showToast(`📥 ${label} 원가서를 엑셀로 내려받았습니다`);
 }
 function renderCostTable(){
   if(costTab==='golf'){ renderGolfTable(); return; }   // 골프장은 전용 표(골프장명 병합 + 시즌 여러개)
