@@ -81,11 +81,22 @@ table{width:100%;border-collapse:collapse;font-size:14.5px}
 
   <div class="card">
     <h2>1. 기본 정보</h2>
-    <div class="grid g4">
+    <div class="grid g2">
       <div class="f"><label>출발 일자</label><input type="date" id="startDate"></div>
       <div class="f"><label>인원수</label><input type="number" id="pax" min="1" value="4"></div>
-      <div class="f"><label>방콕 (박)</label><input type="number" id="nBkk" min="0" value="0"></div>
-      <div class="f"><label>파타야 (박)</label><input type="number" id="nPty" min="0" value="3"></div>
+    </div>
+    <div class="f" style="margin-top:12px">
+      <label>지역 선택 <span style="font-weight:400;color:var(--muted)">(체크한 지역만 포함)</span></label>
+      <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap;padding-top:4px">
+        <span style="display:flex;align-items:center;gap:8px">
+          <label style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="cBkk"> 방콕</label>
+          <input type="number" id="nBkk" min="0" value="0" style="width:72px"><span style="color:var(--muted)">박</span>
+        </span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <label style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="cPty" checked> 파타야</label>
+          <input type="number" id="nPty" min="0" value="3" style="width:72px"><span style="color:var(--muted)">박</span>
+        </span>
+      </div>
     </div>
     <div class="grid g2" style="margin-top:12px">
       <div class="f"><label>먼저 가는 지역</label><select id="firstRegion"><option value="방콕">방콕 먼저</option><option value="파타야" selected>파타야 먼저</option></select></div>
@@ -175,19 +186,23 @@ const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
 function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
-/* 총 박수 → 가이드/핸들링 기간 키 */
-function periodKey(nights){
-  if(nights<=0) return '1일';
-  if(nights===1) return '1박2일';
-  if(nights===2) return '2박3일';
-  return '3박4일'; // 3박 이상은 3박4일 + 1박추가 로 계산
+/* 기간 요금 확장: 입력된 최고 기간을 기준으로 초과 박수만큼 "1박추가시" 금액을 더함
+   예) 핸들링이 2박3일까지만 있으면 3박 = 2박3일 + 1박추가시×1 */
+function tierValue(obj, N, key){
+  const order=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];  // 풀 제외한 기준 기간
+  const oneMore=((obj||{})['1박추가시']||{})[key]||0;
+  let base=null, bn=0;
+  order.forEach(([nm,pn])=>{ const v=((obj||{})[nm]||{})[key]; if(v!=null&&v>0&&pn<=N){ base=v; bn=pn; } });
+  if(base===null){ for(const [nm,pn] of order){ const v=((obj||{})[nm]||{})[key]; if(v!=null&&v>0){ base=v; bn=pn; break; } } }
+  if(base===null) return null;
+  return { value: base + oneMore*Math.max(0,N-bn), base, bn, oneMore, extra:Math.max(0,N-bn) };
 }
-function extraNights(nights){ return nights>3 ? nights-3 : 0; }
 
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
 function buildDays(){
-  const start=$('#startDate').value, nB=+$('#nBkk').value||0, nP=+$('#nPty').value||0;
+  const start=$('#startDate').value;
+  const nB=$('#cBkk').checked?(+$('#nBkk').value||0):0, nP=$('#cPty').checked?(+$('#nPty').value||0):0;
   const nights=nB+nP, days=nights+1;
   const first=$('#firstRegion').value, second=first==='방콕'?'파타야':'방콕';
   const firstNights=first==='방콕'?nB:nP;
@@ -243,7 +258,7 @@ function fillHotels(){
 function calc(){
   if(!window._ready) return;
   const pax=Math.max(1,+$('#pax').value||1);
-  const nB=+$('#nBkk').value||0, nP=+$('#nPty').value||0, nights=nB+nP;
+  const nB=$('#cBkk').checked?(+$('#nBkk').value||0):0, nP=$('#cPty').checked?(+$('#nPty').value||0):0, nights=nB+nP;
   const rooms=Math.ceil(pax/2);
   $('#paxInfo').textContent=`${pax}명 · 방콕 ${nB}박 + 파타야 ${nP}박 = 총 ${nights}박`;
   const lines=[];
@@ -263,24 +278,23 @@ function calc(){
     if(unit==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
     lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(unit)} × ${pax}명`,v:unit*pax});
   });
-  // 2) 차량 (데이터 미입력)
-  const vp=(P.vehiclePeriods||{})[periodKey(nights)];
-  if(vp&&vp.amount){ const vans=Math.ceil(pax/7); lines.push({t:'차량 (12인승 밴)',s:`${won(vp.amount)} × ${vans}대`,v:vp.amount*vans}); }
+  // 2) 차량 (기간값 + 1박추가 확장)
+  const vt=tierValue(P.vehiclePeriods||{},nights,'amount');
+  if(vt){ const vans=Math.ceil(pax/7); lines.push({t:'차량 (12인승 밴)',s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
   else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
   // 3) 핸들링
-  const hp=(P.handlingPeriods||{})[periodKey(nights)];
-  if(hp&&hp.amount) lines.push({t:'핸들링 차지',s:`${won(hp.amount)} × ${pax}명`,v:hp.amount*pax});
-  // 4) 가이드
+  const ht=tierValue(P.handlingPeriods||{},nights,'amount');
+  if(ht) lines.push({t:'핸들링 차지',s:`${won(ht.value)}${ht.extra?` (기본 ${won(ht.base)} +1박추가 ${won(ht.oneMore)}×${ht.extra})`:''} × ${pax}명`,v:ht.value*pax});
+  else lines.push({t:'핸들링',s:'요금 미입력',v:0,warn:1});
+  // 4) 가이드 (기간값 + 1박추가 확장 + 파타야 박당)
   const gt=$('#guide').value;
   if(gt!=='none'){
     const G=(P.guidePeriods||{})[gt];
-    if(G){
-      const base=(G[periodKey(nights)]||{}).bkk||0;
-      const ex=extraNights(nights); // 3박 초과분(가이드 base엔 3박4일까지만 있어 근사)
+    const gv=G?tierValue(G,nights,'bkk'):null;
+    if(gv){
       const pty=(G.ptyPerNight||0)*nP;
-      const v=base+pty;
-      lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`기본 ${won(base)} + 파타야 ${won(G.ptyPerNight||0)}×${nP}박${ex?` (※${ex}박 추가분 별도)`:''}`,v});
-    }
+      lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`기본 ${won(gv.value)}${gv.extra?` (+1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}${nP?` + 파타야 ${won(G.ptyPerNight||0)}×${nP}박`:''}`,v:gv.value+pty});
+    } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
   }
   // 5) 숙소
   const H=P.hotels||DEFAULT_PRICING.hotels;
@@ -297,7 +311,7 @@ function calc(){
 /* ── 이벤트 ── */
 document.addEventListener('change',e=>{
   const t=e.target;
-  if(['startDate','nBkk','nPty','firstRegion'].includes(t.id)){ buildDays(); calc(); return; }
+  if(['startDate','nBkk','nPty','firstRegion','cBkk','cPty'].includes(t.id)){ $('#nBkk').disabled=!$('#cBkk').checked; $('#nPty').disabled=!$('#cPty').checked; buildDays(); calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
   if(t.dataset.reg!==undefined){ const i=+t.dataset.reg; dayState[i].region=t.value; dayState[i].course=''; fillCourses(i); }
   if(t.dataset.c!==undefined){ const i=+t.dataset.c; dayState[i].course=t.value; fillHoles(i); }
@@ -322,6 +336,7 @@ async function loadPricing(){
 function startApp(){
   fillHotels();
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
+  $('#nBkk').disabled=!$('#cBkk').checked; $('#nPty').disabled=!$('#cPty').checked;
   buildDays(); window._ready=true; calc();
   $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
 }
