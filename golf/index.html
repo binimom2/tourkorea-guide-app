@@ -71,7 +71,8 @@ table{width:100%;border-collapse:collapse;font-size:14.5px}
   <header class="head">
     <div class="top">
       <div><div class="eyebrow">THAILAND GOLF</div></div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/golf/admin/" id="adminLink" style="display:none;background:var(--fairway);color:var(--sand)">🔧 코드·요금 관리</a>
         <a href="/travel/">← 예약관리</a>
         <button class="link" onclick="doLogout()">로그아웃</button>
       </div>
@@ -328,6 +329,8 @@ document.addEventListener('input',e=>{ if(['pax'].includes(e.target.id)) calc();
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-auth',persistSession:true,autoRefreshToken:true}});
+const ELEVATED_ADMIN_IDS=['lds1207'];
+function isAdmin(u){ const m=(u&&u.user_metadata)||{}; const id=(m.acc_id||m.login_name||'').toLowerCase(); return m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id); }
 async function loadPricing(){
   try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_pricing').single();
     if(row&&row.data){ const d=row.data; P={
@@ -350,7 +353,8 @@ async function loadPricing(){
     }
   }catch(e){}
 }
-function startApp(){
+function startApp(user){
+  if(user&&isAdmin(user)) document.getElementById('adminLink').style.display='';
   fillHotels();
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
   $('#nBkk').disabled=!$('#cBkk').checked; $('#nPty').disabled=!$('#cPty').checked;
@@ -359,9 +363,9 @@ function startApp(){
 }
 async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single(); if(row&&row.data){const k=(typed||'').toLowerCase(); if(row.data[k])return row.data[k];} }catch(e){} return null; }
 async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
-  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); startApp(); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
+  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
 async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
-(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); startApp(); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
+(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); startApp(session.user); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
 </script>
 </body>
 </html>
