@@ -175,7 +175,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ storageKey
 
 /* ── 기본값 (Supabase에 저장된 값이 없을 때 사용) ── */
 const DEFAULT = {
-  holidays: ["2026-01-01","2026-04-13","2026-04-14","2026-04-15","2026-05-01","2026-12-05","2026-12-10","2026-12-31"],
+  holidays: ["2026-05-01","2026-05-04","2026-06-01","2026-06-03","2026-07-28","2026-07-29","2026-07-30","2026-08-12","2026-10-13","2026-10-23","2026-12-07","2026-12-10","2026-12-31"],
   vehicle:   { 0:3500, 1:6500, 2:9500, 3:12500, 4:15500, 5:18500, extraNight:3000 },
   handling:  { base:500, baseNights:3, perExtraNight:100 },
   localGuide:{ 0:2000, 1:3500, 2:5000, 3:6500, 4:8000, 5:9500, extraNight:1500 },
@@ -323,6 +323,7 @@ async function loadPricing(){
   if(data && data.regions){ const fs=Object.values(data.regions)[0]?.courses?.[0]?.seasons?.[0]; if(fs && fs.gf18!==undefined) savedNewCourses=true; }
   G = normalize(data || DEFAULT);
   if(!savedNewCourses){ G.regions = JSON.parse(JSON.stringify(DEFAULT.regions)); }
+  if(!(G.holidays||[]).includes('2026-05-04')) G.holidays = DEFAULT.holidays.slice();  // 옛 공휴일이면 새 13개로
   RA = Object.entries(G.regions).map(([name,v])=>({ name, courses:v.courses||[], hotels:v.hotels||[] }));
   flattenRegions();
   render();

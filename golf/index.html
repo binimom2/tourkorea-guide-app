@@ -334,7 +334,7 @@ function isAdmin(u){ const m=(u&&u.user_metadata)||{}; const id=(m.acc_id||m.log
 async function loadPricing(){
   try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_pricing').single();
     if(row&&row.data){ const d=row.data; P={
-      holidays:d.holidays&&d.holidays.length?d.holidays:DEFAULT_PRICING.holidays,
+      holidays:(d.holidays&&d.holidays.includes('2026-05-04'))?d.holidays:DEFAULT_PRICING.holidays,
       hotels:DEFAULT_PRICING.hotels,
       handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{}
     };
