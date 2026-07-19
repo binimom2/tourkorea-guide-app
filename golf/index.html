@@ -120,7 +120,10 @@ button:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
   <header class="head">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <div class="eyebrow">THAILAND GOLF</div>
-      <a href="/travel/" style="font-size:12.5px;font-weight:700;color:var(--fairway);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;white-space:nowrap">← 예약관리</a>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="/golf/admin/" id="adminLink" style="display:none;font-size:12.5px;font-weight:700;color:var(--sand);background:var(--fairway);text-decoration:none;border:1px solid var(--fairway);border-radius:999px;padding:6px 13px;white-space:nowrap">⚙ 요금·코드 관리</a>
+        <a href="/travel/" style="font-size:12.5px;font-weight:700;color:var(--fairway);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;white-space:nowrap">← 예약관리</a>
+      </div>
     </div>
     <h1>골프 견적 내기</h1>
     <p>일정과 인원을 넣으면 차량·가이드·그린피를 합쳐 바로 계산합니다.</p>
@@ -487,6 +490,9 @@ document.addEventListener('input', calc);
 const SUPABASE_URL = 'https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ storageKey:'gs-auth', persistSession:true, autoRefreshToken:true }});
+const ELEVATED_ADMIN_IDS = ['lds1207'];
+let _user = null;
+function isAdminUser(u){ const m=(u&&u.user_metadata)||{}; const id=(m.acc_id||m.login_name||'').toLowerCase(); return m.role==='admin' || ELEVATED_ADMIN_IDS.includes(id); }
 
 function startApp(){
   bootLists();
@@ -497,6 +503,7 @@ function startApp(){
   calc();
   document.getElementById('golfLogin').style.display = 'none';
   document.getElementById('golfApp').style.display = 'block';
+  if(isAdminUser(_user)){ const a=document.getElementById('adminLink'); if(a) a.style.display=''; }
 }
 
 /* 저장된 요금 불러오기 (없거나 실패 시 코드에 박힌 기본값 사용) */
@@ -525,7 +532,7 @@ async function gLogin(){
     const email=await resolveEmail(id);
     if(email){
       const { data,error } = await sb.auth.signInWithPassword({ email, password:pw });
-      if(!error && data && data.session){ await loadPricing(); startApp(); return; }
+      if(!error && data && data.session){ _user = data.user; await loadPricing(); startApp(); return; }
     }
     err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
   }catch(e){ err.textContent='로그인 중 오류가 발생했습니다.'; }
@@ -536,7 +543,7 @@ async function gLogin(){
 (async function boot(){
   try{
     const { data:{ session } } = await sb.auth.getSession();
-    if(session && session.user){ await loadPricing(); startApp(); return; }
+    if(session && session.user){ _user = session.user; await loadPricing(); startApp(); return; }
   }catch(e){}
   document.getElementById('golfLogin').style.display='flex';
   const f=document.getElementById('glid'); if(f) f.focus();
