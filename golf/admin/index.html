@@ -129,6 +129,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="who" id="who"></span>
+      <button class="link" onclick="showData()">🔍 데이터 보기</button>
       <a href="/golf/" target="_blank">⛳ 견적 페이지</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
@@ -139,6 +140,19 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
   </div>
   <div id="codesPane"></div>
   <div id="editor" style="display:none"></div>
+</div>
+
+<div id="dataModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;max-width:820px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
+      <b style="font-size:15px">🔍 저장 데이터 (golf_pricing)</b>
+      <div style="display:flex;gap:8px">
+        <button class="btn ghost sm" onclick="copyData()">📋 복사</button>
+        <button class="btn sm" onclick="document.getElementById('dataModal').classList.add('hidden')">닫기</button>
+      </div>
+    </div>
+    <pre id="dataView" style="margin:0;padding:16px 18px;overflow:auto;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all;color:var(--ink)"></pre>
+  </div>
 </div>
 
 <div class="savebar hidden" id="savebar">
@@ -522,6 +536,27 @@ function courseBlock(region,c,ci){
   addS.onclick=()=>{ c.seasons.push(newSeason()); renderRegions(); };
   cb.appendChild(addS);
   return cb;
+}
+
+/* ══════════ 데이터 보기 ══════════ */
+function buildCurrentData(){
+  const regions={};
+  RA.forEach(r=>{ const name=(r.name||'').trim(); if(!name) return;
+    const courses=(r.courses||[]).map(c=>({ name:(c.name||'').trim(), note:c.note||'',
+      seasons:(c.seasons||[]).map(s=>({ label:s.label||'', from:s.from||'', to:s.to||'',
+        green:{wd:s.green?.wd??null,we:s.green?.we??null}, caddie:s.caddie??0, cart:s.cart??0,
+        total27:collapse(s.total27), total36:collapse(s.total36) })) }));
+    regions[name]={ courses, hotels:(r.hotels||[]).map(h=>({name:(h.name||'').trim(),perNight:h.perNight??0,note:h.note||''})) };
+  });
+  return Object.assign({}, G, {regions});
+}
+function showData(){
+  document.getElementById('dataView').textContent = JSON.stringify(buildCurrentData(), null, 2);
+  document.getElementById('dataModal').classList.remove('hidden');
+}
+function copyData(){
+  const t=document.getElementById('dataView').textContent;
+  navigator.clipboard.writeText(t).then(()=>gToast('📋 복사됨')).catch(()=>gToast('복사 실패'));
 }
 
 /* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
