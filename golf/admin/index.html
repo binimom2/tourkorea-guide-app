@@ -270,7 +270,7 @@ function normalize(d){
     if(!g.vehiclePeriods[p])  g.vehiclePeriods[p]={amount:null,remark:''};
     if(!g.handlingPeriods[p]) g.handlingPeriods[p]={amount:null,remark:''};
   });
-  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,pty:null,remark:''}; }); });
+  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,pty:null,remark:''}; }); });
   if(!g.regions) g.regions={};
   Object.values(g.regions).forEach(r=>{
     (r.courses||[]).forEach(c=>{
@@ -348,7 +348,8 @@ function dateInput(obj,key){
 
 /* ══════════ 기간별 요금표 ══════════ */
 const PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일'];
-const GUIDE_TYPES=['한국가이드','로컬가이드'];
+const GUIDE_PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
+const GUIDE_TYPES=['한국인가이드','로컬가이드'];
 function thEl(t){ const th=document.createElement('th'); th.textContent=t; return th; }
 // 기간 × [금액,비고] 단순 표 (차량·핸들링)
 function periodTable(title,desc,dataObj){
@@ -379,7 +380,7 @@ function guideTable(){
     ['기간','방콕','파타야','비고'].forEach(h=>hr.appendChild(thEl(h)));
     thead.appendChild(hr); tbl.appendChild(thead);
     const tb=document.createElement('tbody');
-    PERIODS.forEach(p=>{
+    GUIDE_PERIODS.forEach(p=>{
       if(!G.guidePeriods[type][p]) G.guidePeriods[type][p]={bkk:null,pty:null,remark:''};
       const o=G.guidePeriods[type][p];
       const tr=document.createElement('tr');
