@@ -125,7 +125,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
   <header class="head">
     <div>
       <div class="eyebrow">THAILAND GOLF · ADMIN</div>
-      <h1>골프 요금 관리</h1>
+      <h1>코드 및 요금표</h1>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="who" id="who"></span>
@@ -134,12 +134,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
   </header>
-  <div class="tabbar" id="tabbar">
-    <button class="tabbtn active" data-pane="codes" onclick="showPane('codes')">🏷 코드관리</button>
-    <button class="tabbtn" data-pane="prices" onclick="showPane('prices')">💰 요금표</button>
-  </div>
-  <div id="codesPane"></div>
-  <div id="editor" style="display:none"></div>
+  <div id="editor"></div>
 </div>
 
 <div id="dataModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px">
@@ -266,8 +261,6 @@ function afterAuth(user){
   document.getElementById('savebar').classList.remove('hidden');
   document.getElementById('who').textContent=(info.name||'')+' · admin';
   loadPricing();
-  loadCodes();
-  showPane('prices');
 }
 
 /* ══════════ 데이터 로드/저장 ══════════ */
