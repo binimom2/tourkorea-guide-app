@@ -386,7 +386,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <button id="vtCost2" class="active" onclick="setView('cost')">💰 원가서</button>
     </div>
     <button class="tbtn-primary" onclick="openCostRowEditor(null)">＋ 항목 추가</button>
-    <button class="tbtn" onclick="downloadCostExcel()" title="현재 원가서 표를 엑셀로 다운로드">📥 엑셀</button>
+    <button class="tbtn" id="btnCostExcel" onclick="downloadCostExcel()" title="현재 원가서를 엑셀로 다운로드" style="display:none;">📥 엑셀</button>
   </div>
 
   <main>
@@ -751,6 +751,7 @@ async function enterApp(){
   document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
   // 계정관리는 admin 전용. 그 외 기능(코드관리·예약입력 등)은 매니저·오퍼레이터 모두 admin과 동일. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
   document.getElementById('btnAccounts').style.display=(currentUser.role==='admin')?'':'none'; // 계정관리: admin만
+  document.getElementById('btnCostExcel').style.display=(currentUser.role==='admin')?'':'none'; // 원가서 엑셀: admin만
   document.getElementById('btnGolf').style.display=(currentUser.role==='admin')?'':'none'; // 골프견적: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
@@ -2061,32 +2062,37 @@ function costFieldValue(f){
   const el=document.getElementById('so-'+f.k);
   return el?el.value:'';
 }
-// 현재 원가서 표를 엑셀(.xls, Excel 호환 HTML)로 다운로드. 탭(골프/호텔/관광지)별로 각각 받을 수 있음.
+// 현재 원가서를 엑셀(.xls)로 다운로드. 데이터에서 모든 항목(표에 숨긴 9홀 그린피·캐디·전동카 포함)을 뽑아 전체 내역을 받음.
 function downloadCostExcel(){
-  const table=document.getElementById('costTable');
-  if(!table || !table.querySelector('tbody tr')){ showToast('⚠ 내려받을 항목이 없습니다'); return; }
   const cat=COST_CATEGORIES.find(c=>c.key===costTab);
-  const label=cat?cat.label:costTab;
-  const clone=table.cloneNode(true);
-  // 편집용 요소(버튼·링크·입력)는 제외
-  clone.querySelectorAll('button,a,input,select').forEach(el=>el.remove());
+  if(!cat){ return; }
+  const rows=getCostRows(costTab);
+  if(!rows.length){ showToast('⚠ 내려받을 항목이 없습니다'); return; }
+  const LBL={caddy9:'캐디피(9홀)',cart9:'전동카(9홀)'};   // 9홀 캐디/전동카 라벨 구분
+  const cols=cat.fields.filter(f=>f.label);               // 숨김·계산 항목까지 전부 포함(9홀 상세 포함)
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const head='<tr>'+cols.map(c=>`<th>${esc(LBL[c.k]||c.label)}</th>`).join('')+'</tr>';
+  const body=rows.map(r=>'<tr>'+cols.map(c=>{
+    let v; try{ v = c.compute ? c.compute(r) : r[c.k]; }catch(e){ v=''; }
+    return `<td>${esc(v)}</td>`;
+  }).join('')+'</tr>').join('');
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
-  const dstr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  const ymd=dstr.replace(/-/g,'');
+  const dstr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`, ymd=dstr.replace(/-/g,'');
   const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">`
     +`<head><meta charset="utf-8">`
     +`<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>`
-    +`<x:Name>${label}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>`
+    +`<x:Name>${cat.label}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>`
     +`</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->`
     +`<style>table{border-collapse:collapse;}td,th{border:1px solid #b0b7c3;padding:4px 8px;font-size:12px;mso-number-format:"\\@";}th{background:#e8eef7;font-weight:bold;}</style></head>`
-    +`<body><h3>원가서 · ${label} (${dstr})</h3>${clone.outerHTML}</body></html>`;
+    +`<body><h3>원가서 · ${cat.label} (${dstr}) · 전체 ${rows.length}건</h3>`
+    +`<table><thead>${head}</thead><tbody>${body}</tbody></table></body></html>`;
   const blob=new Blob(['﻿'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download=`원가서_${label}_${ymd}.xls`;
+  a.href=url; a.download=`원가서_${cat.label}_${ymd}.xls`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1500);
-  showToast(`📥 ${label} 원가서를 엑셀로 내려받았습니다`);
+  showToast(`📥 ${cat.label} 원가서 전체(${rows.length}건)를 엑셀로 내려받았습니다`);
 }
 function renderCostTable(){
   if(costTab==='golf'){ renderGolfTable(); return; }   // 골프장은 전용 표(골프장명 병합 + 시즌 여러개)
