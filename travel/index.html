@@ -341,6 +341,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <div class="topbar-right">
       <span id="whoami"></span>
       <button class="tbtn" onclick="window.open('/files/','_blank')" title="직원 공용 자료실 열기">📁 자료실</button>
+      <button class="tbtn" id="btnGolf" onclick="window.open('/golf/','_blank')" title="골프 견적 계산기 열기" style="display:none;">⛳ 골프견적</button>
       <button class="tbtn" id="btnCodes" onclick="openCodeModal()" style="display:none;">🏷 코드관리</button>
       <button class="tbtn" id="btnAccounts" onclick="openAccountModal()" style="display:none;">👤 계정관리</button>
       <button class="tbtn" onclick="changeMyPassword()">🔑 비번변경</button>
@@ -749,6 +750,7 @@ async function enterApp(){
   document.getElementById('whoami').textContent=`${currentUser.id} (${roleLabel(currentUser.role)})`;
   // 계정관리는 admin 전용. 그 외 기능(코드관리·예약입력 등)은 매니저·오퍼레이터 모두 admin과 동일. 로그인마다 역할 기준으로 재설정(이전 세션 잔존 방지).
   document.getElementById('btnAccounts').style.display=(currentUser.role==='admin')?'':'none'; // 계정관리: admin만
+  document.getElementById('btnGolf').style.display=(currentUser.role==='admin')?'':'none'; // 골프견적: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
   // 기준 데이터 시딩/마이그레이션은 역할과 무관하게 전원 실행(모두 idempotent·버전가드).
