@@ -334,7 +334,20 @@ async function loadPricing(){
       holidays:d.holidays&&d.holidays.length?d.holidays:DEFAULT_PRICING.holidays,
       hotels:DEFAULT_PRICING.hotels,
       handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{}
-    }; }
+    };
+      // 저장된 골프장(새 구조)이 있으면 반영
+      if(d.regions){ const fs=Object.values(d.regions)[0]?.courses?.[0]?.seasons?.[0];
+        if(fs && fs.gf18!==undefined){
+          const conv={}, hot={};
+          Object.entries(d.regions).forEach(([reg,rv])=>{
+            conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'', s:(c.seasons||[]).map(s=>({ from:s.from, to:s.to, g18:[s.gf18?.wd??null,s.gf18?.we??null], cad:s.caddie||0, crt:s.cart||0, g9:(s.gf9&&(s.gf9.wd!=null||s.gf9.we!=null))?[s.gf9.wd??null,s.gf9.we??null]:null, cad9:s.caddie9||0, crt9:s.cart9||0 })) }));
+            if(rv.hotels&&rv.hotels.length) hot[reg]=rv.hotels;
+          });
+          Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
+          if(Object.keys(hot).length) P.hotels=hot;
+        }
+      }
+    }
   }catch(e){}
 }
 function startApp(){

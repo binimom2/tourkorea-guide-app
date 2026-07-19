@@ -172,24 +172,35 @@ const DEFAULT = {
   korGuide:  { 0:4000, 1:7000, 2:10000, 3:13000, 4:16000, 5:19000, extraNight:3000 },
   regions: {
     "방콕": { courses:[
-      { name:"수파프룩", note:"주말 11:30 이후 1,000밧 · 9홀 추가 15:00 이후 가능 · TK",
-        seasons:[{ label:"비수기", from:"2026-03-01", to:"2026-10-31", green:{wd:600,we:1800}, caddie:450, cart:700, total27:{wd:2800,we:4450}, total36:null }]},
-      { name:"시암방콕", note:"주중 4명 주말 4명 · 카트 페어웨이 진입가능(의무사용) · 갤러리 2,500밧",
-        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", green:{wd:3400,we:4800}, caddie:500, cart:1000, total27:{wd:7850,we:9900}, total36:null }]},
-      { name:"알파인", note:"주말·휴일 12:00 이후 가능 · 주중 4명 주말 4명 · 카트 페어웨이 진입가능(의무사용)",
-        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", green:{wd:4600,we:6100}, caddie:0, cart:0, total27:null, total36:null },
-                 { label:"성수기", from:"2026-10-01", to:"2027-03-31", green:{wd:6800,we:null}, caddie:0, cart:0, total27:null, total36:null }]},
-      { name:"카스카타", note:"36홀",
-        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", green:{wd:900,we:1700}, caddie:430, cart:770, total27:{wd:3320,we:4520}, total36:null }]}
+      { name:"수파프룩", note:"주말 11:30 이후 1,000밧 · 9홀추가 15:00 이후 · TK", seasons:[{ label:"비수기", from:"2026-03-01", to:"2026-10-31", gf18:{wd:600,we:1800}, caddie:450, cart:700, gf9:{wd:450,we:900}, caddie9:250, cart9:350 }]},
+      { name:"시암방콕", note:"주중4 주말4 · 카트 진입(의무) · 갤러리 2,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:3400,we:4800}, caddie:500, cart:1000, gf9:{wd:2050,we:2700}, caddie9:300, cart9:600 }]},
+      { name:"알파인", note:"주말·휴일 12:00 이후 · 주중4 주말4 · 카트 진입(의무)", seasons:[
+        { label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:4600,we:6100}, caddie:0, cart:0, gf9:{wd:null,we:null}, caddie9:0, cart9:0 },
+        { label:"성수기", from:"2026-10-01", to:"2027-03-31", gf18:{wd:6800,we:null}, caddie:0, cart:0, gf9:{wd:null,we:null}, caddie9:0, cart9:0 }]},
+      { name:"카스카타", note:"36홀", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:900,we:1700}, caddie:430, cart:770, gf9:{wd:500,we:900}, caddie9:300, cart9:420 }]}
     ], hotels:[
       { name:"방콕 시내 4성 호텔", perNight:2200, note:"2인 1실 기준 1박" },
       { name:"방콕 시내 5성 호텔", perNight:3800, note:"2인 1실 기준 1박" }
     ]},
     "파타야": { courses:[
-      { name:"그린우드", note:"27홀 · 주중 5명 주말 오전4명 오후5명 · 카트 페어웨이 진입가능(5인 라운딩 시 의무사용) · 갤러리 300밧",
-        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", green:{wd:650,we:850}, caddie:350, cart:600, total27:{wd:2400,we:2700}, total36:null }]},
-      { name:"라용그린밸리", note:"26년 비수기 스포츠데이(수) 2,150밧 · 주중 12시 이후 2,150밧 · 주중 5명 주말 5명 · 카트 페어웨이 진입가능(의무사용) · 갤러리 500밧",
-        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", green:{wd:1000,we:1200}, caddie:450, cart:900, total27:{wd:3550,we:3850}, total36:null }]}
+      { name:"그린우드", note:"27홀 · 주중5 주말 오전4 오후5 · 갤러리 300밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:650,we:850}, caddie:350, cart:600, gf9:{wd:300,we:400}, caddie9:200, cart9:300 }]},
+      { name:"람차방", note:"27홀 · 주중5 주말4 · 카트 진입(의무) · 갤러리 600밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:2400,we:2700}, caddie:450, cart:980, gf9:{wd:1350,we:1500}, caddie9:300, cart9:500 }]},
+      { name:"라용그린밸리", note:"스포츠데이(수) 2,150밧 · 주중5 주말5 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1000,we:1200}, caddie:450, cart:900, gf9:{wd:500,we:600}, caddie9:250, cart9:450 }]},
+      { name:"방프라", note:"스포츠데이(월·수) 1,650밧 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1650,we:2150}, caddie:0, cart:0, gf9:{wd:1100,we:1300}, caddie9:0, cart9:0 }]},
+      { name:"부라파", note:"36홀 · 스포츠데이(월·수) 2,150밧 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1200,we:1500}, caddie:400, cart:850, gf9:{wd:650,we:800}, caddie9:200, cart9:450 }]},
+      { name:"뿌탈루앙", note:"주중5 주말5 · 갤러리 300밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1300,we:1400}, caddie:0, cart:0, gf9:{wd:1000,we:1100}, caddie9:0, cart9:0 }]},
+      { name:"세인트앤드류2000", note:"스포츠데이(월) 2,150밧 · 주중 12시 이후 2,150밧 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1000,we:1200}, caddie:450, cart:900, gf9:{wd:500,we:600}, caddie9:250, cart9:450 }]},
+      { name:"시암올드", note:"비수기 월요일 휴장 · 주중4 주말4 · 갤러리 2,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:3800,we:5250}, caddie:500, cart:1000, gf9:{wd:2200,we:2900}, caddie9:300, cart9:600 }]},
+      { name:"시암플랜/워터/롤링", note:"플랜 27홀, 워터·롤링 18홀 · 갤러리 2,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:3100,we:4100}, caddie:500, cart:1000, gf9:{wd:1800,we:2200}, caddie9:300, cart9:600 }]},
+      { name:"이스턴스타", note:"주중 오전5 오후6 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:2350,we:3400}, caddie:0, cart:0, gf9:{wd:1400,we:1700}, caddie9:0, cart9:0 }]},
+      { name:"찌짠", note:"주중4 주말4 · 카트 진입(의무) · 갤러리 1,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:3400,we:4200}, caddie:450, cart:850, gf9:{wd:2350,we:2850}, caddie9:250, cart9:450 }]},
+      { name:"카오키여우", note:"주중5 주말5 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1950,we:2550}, caddie:0, cart:0, gf9:{wd:1100,we:1400}, caddie9:0, cart9:0 }]},
+      { name:"트레져힐", note:"주중6 주말6 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:500,we:600}, caddie:380, cart:700, gf9:{wd:300,we:350}, caddie9:220, cart9:400 }]},
+      { name:"파타나", note:"27홀 · 스포츠데이(화) 2,000밧 · 갤러리 800밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1300,we:1800}, caddie:400, cart:800, gf9:{wd:900,we:1300}, caddie9:200, cart9:400 }]},
+      { name:"파타비아", note:"주중 오전5 오후6 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:500,we:800}, caddie:350, cart:600, gf9:{wd:500,we:700}, caddie9:200, cart9:300 }]},
+      { name:"파타야", note:"스포츠데이(목) 1,900밧 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:900,we:1100}, caddie:400, cart:700, gf9:{wd:600,we:700}, caddie9:200, cart9:350 }]},
+      { name:"피닉스", note:"27홀 · 주중5 주말5 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1400,we:1900}, caddie:400, cart:700, gf9:{wd:800,we:1050}, caddie9:200, cart9:350 }]},
+      { name:"헤르매스", note:"주중5 주말5 · 카트 진입(의무) · 갤러리 1,300밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:2000,we:2300}, caddie:0, cart:0, gf9:{wd:1250,we:1400}, caddie9:0, cart9:0 }]}
     ], hotels:[
       { name:"파타야 비치 4성 호텔", perNight:1800, note:"2인 1실 기준 1박" },
       { name:"파타야 비치 5성 호텔", perNight:3200, note:"2인 1실 기준 1박" }
@@ -282,9 +293,10 @@ function normalize(d){
   Object.values(g.regions).forEach(r=>{
     (r.courses||[]).forEach(c=>{
       (c.seasons||[]).forEach(s=>{
-        if(!s.green) s.green={wd:null,we:null};
-        s.total27 = s.total27 || {wd:null,we:null};
-        s.total36 = s.total36 || {wd:null,we:null};
+        if(!s.gf18) s.gf18={wd:s.green?.wd??null,we:s.green?.we??null};
+        if(!s.gf9) s.gf9={wd:null,we:null};
+        if(s.caddie9==null) s.caddie9=0;
+        if(s.cart9==null) s.cart9=0;
       });
     });
   });
@@ -296,7 +308,11 @@ async function loadPricing(){
     const { data:row } = await sb.from('guide_data').select('data').eq('data_key',PRICING_KEY).single();
     if(row && row.data) data=row.data;
   }catch(e){}
+  // 저장된 골프장이 옛 구조(green)거나 없으면 새 기본 골프장(24개, 18/9홀)으로 대체
+  let savedNewCourses=false;
+  if(data && data.regions){ const fs=Object.values(data.regions)[0]?.courses?.[0]?.seasons?.[0]; if(fs && fs.gf18!==undefined) savedNewCourses=true; }
   G = normalize(data || DEFAULT);
+  if(!savedNewCourses){ G.regions = JSON.parse(JSON.stringify(DEFAULT.regions)); }
   RA = Object.entries(G.regions).map(([name,v])=>({ name, courses:v.courses||[], hotels:v.hotels||[] }));
   render();
   document.getElementById('saveMsg').textContent = data ? '저장된 요금을 불러왔습니다.' : '저장된 값이 없어 기본 요금을 불러왔습니다. 저장하면 반영됩니다.';
@@ -314,9 +330,8 @@ async function saveAll(){
       name:(c.name||'').trim(), note:c.note||'',
       seasons:(c.seasons||[]).map(s=>({
         label:s.label||'', from:s.from||'', to:s.to||'',
-        green:{ wd:s.green?.wd??null, we:s.green?.we??null },
-        caddie:s.caddie??0, cart:s.cart??0,
-        total27:collapse(s.total27), total36:collapse(s.total36)
+        gf18:{ wd:s.gf18?.wd??null, we:s.gf18?.we??null }, caddie:s.caddie??0, cart:s.cart??0,
+        gf9:{ wd:s.gf9?.wd??null, we:s.gf9?.we??null }, caddie9:s.caddie9??0, cart9:s.cart9??0
       }))
     }));
     regions[name]={ courses, hotels:(r.hotels||[]).map(h=>({ name:(h.name||'').trim(), perNight:h.perNight??0, note:h.note||'' })) };
@@ -493,7 +508,7 @@ function renderRegions(){
     wrap.appendChild(blk);
   });
 }
-function newSeason(){ return { label:'비수기', from:'', to:'', green:{wd:null,we:null}, caddie:0, cart:0, total27:{wd:null,we:null}, total36:{wd:null,we:null} }; }
+function newSeason(){ return { label:'비수기', from:'', to:'', gf18:{wd:null,we:null}, caddie:0, cart:0, gf9:{wd:null,we:null}, caddie9:0, cart9:0 }; }
 function courseBlock(region,c,ci){
   const cb=el('div','course');
   const top=el('div','course-top');
@@ -512,16 +527,16 @@ function courseBlock(region,c,ci){
     if((c.seasons||[]).length>1){ const dS=el('button','btn del sm','시즌삭제'); dS.style.alignSelf='flex-end'; dS.onclick=()=>{ c.seasons.splice(si,1); renderRegions(); }; r1.appendChild(dS); }
     sb2.appendChild(r1);
     const r2=el('div','row');
-    r2.appendChild(field('그린피 주중',numInput(s.green,'wd')));
-    r2.appendChild(field('그린피 주말',numInput(s.green,'we',{nullable:true,ph:'없으면 비움'})));
+    r2.appendChild(field('18홀그린피 주중',numInput(s.gf18,'wd')));
+    r2.appendChild(field('18홀그린피 주말',numInput(s.gf18,'we',{nullable:true,ph:'없으면 비움'})));
     r2.appendChild(field('캐디피',numInput(s,'caddie')));
     r2.appendChild(field('전동카',numInput(s,'cart')));
     sb2.appendChild(r2);
     const r3=el('div','row');
-    r3.appendChild(field('27홀 주중',numInput(s.total27,'wd',{nullable:true,ph:'없으면 비움'})));
-    r3.appendChild(field('27홀 주말',numInput(s.total27,'we',{nullable:true,ph:'없으면 비움'})));
-    r3.appendChild(field('36홀 주중',numInput(s.total36,'wd',{nullable:true,ph:'없으면 비움'})));
-    r3.appendChild(field('36홀 주말',numInput(s.total36,'we',{nullable:true,ph:'없으면 비움'})));
+    r3.appendChild(field('9홀그린피 주중',numInput(s.gf9,'wd',{nullable:true,ph:'없으면 비움'})));
+    r3.appendChild(field('9홀그린피 주말',numInput(s.gf9,'we',{nullable:true,ph:'없으면 비움'})));
+    r3.appendChild(field('캐디피(9홀)',numInput(s,'caddie9',{nullable:true})));
+    r3.appendChild(field('전동카(9홀)',numInput(s,'cart9',{nullable:true})));
     sb2.appendChild(r3);
     cb.appendChild(sb2);
   });
@@ -537,8 +552,8 @@ function buildCurrentData(){
   RA.forEach(r=>{ const name=(r.name||'').trim(); if(!name) return;
     const courses=(r.courses||[]).map(c=>({ name:(c.name||'').trim(), note:c.note||'',
       seasons:(c.seasons||[]).map(s=>({ label:s.label||'', from:s.from||'', to:s.to||'',
-        green:{wd:s.green?.wd??null,we:s.green?.we??null}, caddie:s.caddie??0, cart:s.cart??0,
-        total27:collapse(s.total27), total36:collapse(s.total36) })) }));
+        gf18:{wd:s.gf18?.wd??null,we:s.gf18?.we??null}, caddie:s.caddie??0, cart:s.cart??0,
+        gf9:{wd:s.gf9?.wd??null,we:s.gf9?.we??null}, caddie9:s.caddie9??0, cart9:s.cart9??0 })) }));
     regions[name]={ courses, hotels:(r.hotels||[]).map(h=>({name:(h.name||'').trim(),perNight:h.perNight??0,note:h.note||''})) };
   });
   return Object.assign({}, G, {regions});
