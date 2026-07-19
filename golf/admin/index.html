@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>골프 요금 관리</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --fairway:#123A2B; --fairway-deep:#0B231A; --sand:#E9DFC8; --paper:#F7F3E9;
+  --marigold:#E8A33D; --ink:#15211C; --line:rgba(18,58,43,.18); --muted:#5E6F66;
+  --danger:#c0492f; --font:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 140px}
+
+/* 로그인 */
+#login{position:fixed;inset:0;background:var(--fairway-deep);display:flex;align-items:center;justify-content:center;z-index:50}
+.login-box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.login-box h1{margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)}
+.login-box p{margin:0 0 18px;font-size:12.5px;color:var(--muted)}
+.login-box label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 5px}
+.login-box input{width:100%;font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}
+.login-box input:focus{outline:2px solid var(--marigold);outline-offset:1px}
+.login-box button{width:100%;margin-top:18px;font:inherit;font-weight:700;font-size:15px;padding:12px;border:0;border-radius:9px;background:var(--fairway);color:var(--sand);cursor:pointer}
+.login-err{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:16px}
+
+/* 헤더 */
+.head{border-bottom:2px solid var(--fairway);padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.head .eyebrow{font-size:12px;letter-spacing:.22em;color:var(--muted);font-weight:600}
+.head h1{margin:6px 0 0;font-size:clamp(24px,5vw,34px);font-weight:800;letter-spacing:-.03em}
+.head .who{font-size:12.5px;color:var(--muted)}
+.head a,.head button.link{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:700;color:var(--fairway);text-decoration:none;cursor:pointer}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 4px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+.card .desc{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+.grid{display:grid;gap:12px}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:11.5px;font-weight:700;color:var(--muted)}
+.f input{font:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.f input:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row .f{flex:1;min-width:120px}
+
+.course{border:1px solid var(--line);border-radius:11px;padding:13px;margin-bottom:11px;background:var(--paper)}
+.course-top{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.course-top input{flex:1;font-weight:700}
+.season{border:1px dashed var(--line);border-radius:9px;padding:11px;margin-top:9px;background:#fff}
+.season .row + .row{margin-top:9px}
+.mini{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin:2px 0 6px}
+.regionblk{border:2px solid var(--line);border-radius:13px;padding:14px;margin-bottom:16px}
+.regionblk > .rhead{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.regionblk > .rhead input{font-size:16px;font-weight:800;flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+
+.btn{font:inherit;font-weight:700;font-size:13px;padding:8px 13px;border-radius:8px;border:1px solid var(--fairway);background:var(--fairway);color:var(--sand);cursor:pointer}
+.btn.ghost{background:#fff;color:var(--fairway)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.del{border-color:var(--danger);color:var(--danger);background:#fff}
+.btn.del.sm{padding:4px 9px}
+.hotel{display:flex;gap:9px;align-items:center;margin-bottom:8px}
+.hotel input.hn{flex:2;min-width:120px}
+.hotel input.hp{width:110px}
+.hotel input.ht{flex:2;min-width:120px}
+.hotel input{font:inherit;font-size:13.5px;padding:8px 9px;border:1px solid var(--line);border-radius:8px}
+.holidays{display:flex;flex-wrap:wrap;gap:8px}
+.holidays .hd{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:4px 6px;background:var(--paper)}
+.holidays .hd input{font:inherit;font-size:13px;border:0;background:none}
+.holidays .hd button{border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800}
+
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--fairway);color:var(--sand);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:30}
+.savebar .msg{font-size:13px}
+.savebar button{font:inherit;font-weight:800;font-size:15px;padding:11px 26px;border-radius:9px;border:0;background:var(--marigold);color:#3a2600;cursor:pointer}
+.savebar button:disabled{opacity:.5;cursor:default}
+.noauth{max-width:420px;margin:80px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="login">
+  <div class="login-box">
+    <h1>⛳ 골프 요금 관리</h1>
+    <p>관리자 전용 · 기존 앱과 동일한 계정으로 로그인</p>
+    <label>아이디</label>
+    <input id="lid" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    <label>비밀번호</label>
+    <input id="lpw" type="password" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" id="lbtn">로그인</button>
+    <div class="login-err" id="lerr"></div>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div class="wrap hidden" id="app">
+  <header class="head">
+    <div>
+      <div class="eyebrow">THAILAND GOLF · ADMIN</div>
+      <h1>골프 요금 관리</h1>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="who" id="who"></span>
+      <a href="/golf/" target="_blank">⛳ 견적 페이지</a>
+      <button class="link" onclick="doLogout()">로그아웃</button>
+    </div>
+  </header>
+  <div id="editor"></div>
+</div>
+
+<div class="savebar hidden" id="savebar">
+  <span class="msg" id="saveMsg">변경 후 저장을 눌러주세요. 저장하면 견적 페이지에 즉시 반영됩니다.</span>
+  <button onclick="saveAll()" id="saveBtn">💾 저장</button>
+</div>
+
+<script>
+/* ── Supabase (기존 앱과 동일 프로젝트·세션 공유) ── */
+const SUPABASE_URL = 'https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const PRICING_KEY  = 'golf_pricing';
+const ELEVATED_ADMIN_IDS = ['lds1207'];
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ storageKey:'gs-auth', persistSession:true, autoRefreshToken:true }});
+
+/* ── 기본값 (Supabase에 저장된 값이 없을 때 사용) ── */
+const DEFAULT = {
+  holidays: ["2026-01-01","2026-04-13","2026-04-14","2026-04-15","2026-05-01","2026-12-05","2026-12-10","2026-12-31"],
+  vehicle:   { 0:3500, 1:6500, 2:9500, 3:12500, 4:15500, 5:18500, extraNight:3000 },
+  handling:  { base:500, baseNights:3, perExtraNight:100 },
+  localGuide:{ 0:2000, 1:3500, 2:5000, 3:6500, 4:8000, 5:9500, extraNight:1500 },
+  korGuide:  { 0:4000, 1:7000, 2:10000, 3:13000, 4:16000, 5:19000, extraNight:3000 },
+  regions: {
+    "방콕": { courses:[
+      { name:"수파프룩", note:"주말 11:30 이후 1,000밧 · 9홀 추가 15:00 이후 가능 · TK",
+        seasons:[{ label:"비수기", from:"2026-03-01", to:"2026-10-31", green:{wd:600,we:1800}, caddie:450, cart:700, total27:{wd:2800,we:4450}, total36:null }]},
+      { name:"시암방콕", note:"주중 4명 주말 4명 · 카트 페어웨이 진입가능(의무사용) · 갤러리 2,500밧",
+        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", green:{wd:3400,we:4800}, caddie:500, cart:1000, total27:{wd:7850,we:9900}, total36:null }]},
+      { name:"알파인", note:"주말·휴일 12:00 이후 가능 · 주중 4명 주말 4명 · 카트 페어웨이 진입가능(의무사용)",
+        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", green:{wd:4600,we:6100}, caddie:0, cart:0, total27:null, total36:null },
+                 { label:"성수기", from:"2026-10-01", to:"2027-03-31", green:{wd:6800,we:null}, caddie:0, cart:0, total27:null, total36:null }]},
+      { name:"카스카타", note:"36홀",
+        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", green:{wd:900,we:1700}, caddie:430, cart:770, total27:{wd:3320,we:4520}, total36:null }]}
+    ], hotels:[
+      { name:"방콕 시내 4성 호텔", perNight:2200, note:"2인 1실 기준 1박" },
+      { name:"방콕 시내 5성 호텔", perNight:3800, note:"2인 1실 기준 1박" }
+    ]},
+    "파타야": { courses:[
+      { name:"그린우드", note:"27홀 · 주중 5명 주말 오전4명 오후5명 · 카트 페어웨이 진입가능(5인 라운딩 시 의무사용) · 갤러리 300밧",
+        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", green:{wd:650,we:850}, caddie:350, cart:600, total27:{wd:2400,we:2700}, total36:null }]},
+      { name:"라용그린밸리", note:"26년 비수기 스포츠데이(수) 2,150밧 · 주중 12시 이후 2,150밧 · 주중 5명 주말 5명 · 카트 페어웨이 진입가능(의무사용) · 갤러리 500밧",
+        seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", green:{wd:1000,we:1200}, caddie:450, cart:900, total27:{wd:3550,we:3850}, total36:null }]}
+    ], hotels:[
+      { name:"파타야 비치 4성 호텔", perNight:1800, note:"2인 1실 기준 1박" },
+      { name:"파타야 비치 5성 호텔", perNight:3200, note:"2인 1실 기준 1박" }
+    ]}
+  },
+  guideOptions: [
+    { id:"none",  label:"노가이드",            desc:"차량 기사분과 미팅부터 아웃하실 때까지 진행" },
+    { id:"local", label:"한국말 가능 로컬가이드", desc:"현지 가이드 · 전 일정 동행" },
+    { id:"kor",   label:"한국인 가이드",         desc:"한국인 가이드 · 전 일정 동행" }
+  ],
+  durations: [
+    {n:0,label:"당일 (1일)"},{n:1,label:"1박 2일"},{n:2,label:"2박 3일"},{n:3,label:"3박 4일"},
+    {n:4,label:"4박 5일"},{n:5,label:"5박 6일"},{n:6,label:"6박 7일"},{n:7,label:"7박 8일"}
+  ],
+  paxPerVan: 7
+};
+
+let G = null;      // 편집 중인 요금 데이터
+let RA = [];       // 지역 편집용 배열 [{name,courses,hotels}]
+let currentUser = null;
+
+/* ══════════ 인증 ══════════ */
+function roleOf(user){
+  const meta = (user && user.user_metadata) || {};
+  const accId = (meta.acc_id || meta.login_name || '').toLowerCase();
+  let role = meta.role || 'guide';
+  if (ELEVATED_ADMIN_IDS.includes(accId)) role = 'admin';
+  return { role, name: meta.name || meta.acc_id || '관리자', id: meta.acc_id || meta.login_name || '' };
+}
+async function resolveEmail(typed){
+  try{
+    const { data:row } = await sb.from('guide_data').select('data').eq('data_key','login_directory').single();
+    if(row && row.data){ const k=(typed||'').toLowerCase(); if(row.data[k]) return row.data[k]; }
+  }catch(e){}
+  return null;
+}
+async function doLogin(){
+  const id=(document.getElementById('lid').value||'').trim();
+  const pw=(document.getElementById('lpw').value||'').trim();
+  const err=document.getElementById('lerr'), btn=document.getElementById('lbtn');
+  err.textContent='';
+  if(!id||!pw){ err.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  btn.textContent='로그인 중...'; btn.disabled=true;
+  try{
+    const email=await resolveEmail(id);
+    if(email){
+      const { data, error } = await sb.auth.signInWithPassword({ email, password:pw });
+      if(!error && data && data.session){ afterAuth(data.user); return; }
+    }
+    err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
+  }catch(e){ err.textContent='로그인 중 오류가 발생했습니다.'; }
+  finally{ btn.textContent='로그인'; btn.disabled=false; }
+}
+async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
+
+function afterAuth(user){
+  const info=roleOf(user);
+  currentUser=info;
+  if(info.role!=='admin'){
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('editor').innerHTML=
+      '<div class="noauth"><h2>접근 권한 없음</h2><p style="color:var(--muted)">이 페이지는 <b>관리자(admin)</b>만 사용할 수 있습니다.<br>현재 권한: '+info.role+'</p><button class="btn ghost" onclick="doLogout()" style="margin-top:14px">다른 계정으로 로그인</button></div>';
+    document.getElementById('who').textContent=(info.name||'')+' · '+info.role;
+    return;
+  }
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('savebar').classList.remove('hidden');
+  document.getElementById('who').textContent=(info.name||'')+' · admin';
+  loadPricing();
+}
+
+/* ══════════ 데이터 로드/저장 ══════════ */
+function normalize(d){
+  // 누락 필드 보정 + 편집 편의를 위해 total27/36, green 을 객체로 보장
+  const g = JSON.parse(JSON.stringify(d));
+  ['holidays','vehicle','handling','localGuide','korGuide','guideOptions','durations'].forEach(k=>{ if(g[k]==null) g[k]=JSON.parse(JSON.stringify(DEFAULT[k])); });
+  if(g.paxPerVan==null) g.paxPerVan=DEFAULT.paxPerVan;
+  if(!g.regions) g.regions={};
+  Object.values(g.regions).forEach(r=>{
+    (r.courses||[]).forEach(c=>{
+      (c.seasons||[]).forEach(s=>{
+        if(!s.green) s.green={wd:null,we:null};
+        s.total27 = s.total27 || {wd:null,we:null};
+        s.total36 = s.total36 || {wd:null,we:null};
+      });
+    });
+  });
+  return g;
+}
+async function loadPricing(){
+  let data=null;
+  try{
+    const { data:row } = await sb.from('guide_data').select('data').eq('data_key',PRICING_KEY).single();
+    if(row && row.data) data=row.data;
+  }catch(e){}
+  G = normalize(data || DEFAULT);
+  RA = Object.entries(G.regions).map(([name,v])=>({ name, courses:v.courses||[], hotels:v.hotels||[] }));
+  render();
+  document.getElementById('saveMsg').textContent = data ? '저장된 요금을 불러왔습니다.' : '저장된 값이 없어 기본 요금을 불러왔습니다. 저장하면 반영됩니다.';
+}
+function collapse(o){ // {wd,we} 둘 다 비면 null
+  if(o && (o.wd!=null || o.we!=null)) return { wd:o.wd??null, we:o.we??null };
+  return null;
+}
+async function saveAll(){
+  // RA → G.regions 재구성 + total 정리
+  const regions={};
+  RA.forEach(r=>{
+    const name=(r.name||'').trim(); if(!name) return;
+    const courses=(r.courses||[]).map(c=>({
+      name:(c.name||'').trim(), note:c.note||'',
+      seasons:(c.seasons||[]).map(s=>({
+        label:s.label||'', from:s.from||'', to:s.to||'',
+        green:{ wd:s.green?.wd??null, we:s.green?.we??null },
+        caddie:s.caddie??0, cart:s.cart??0,
+        total27:collapse(s.total27), total36:collapse(s.total36)
+      }))
+    }));
+    regions[name]={ courses, hotels:(r.hotels||[]).map(h=>({ name:(h.name||'').trim(), perNight:h.perNight??0, note:h.note||'' })) };
+  });
+  G.regions=regions;
+  const btn=document.getElementById('saveBtn'), msg=document.getElementById('saveMsg');
+  btn.disabled=true; btn.textContent='저장 중...';
+  try{
+    const { error } = await sb.from('guide_data').upsert({ data_key:PRICING_KEY, data:G, updated_at:new Date().toISOString() });
+    if(error) throw error;
+    msg.textContent='✅ 저장 완료 — 견적 페이지에 반영됩니다. ('+new Date().toLocaleTimeString('ko-KR')+')';
+  }catch(e){
+    msg.textContent='❌ 저장 실패: '+(e.message||e);
+  }finally{ btn.disabled=false; btn.textContent='💾 저장'; }
+}
+
+/* ══════════ 렌더 헬퍼 ══════════ */
+function el(tag,cls,txt){ const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
+function field(label,input){ const f=el('div','f'); f.appendChild(el('label',null,label)); f.appendChild(input); return f; }
+function numInput(obj,key,{nullable=false,ph=''}={}){
+  const i=document.createElement('input'); i.type='number'; i.inputMode='numeric'; i.placeholder=ph;
+  i.value=(obj[key]==null?'':obj[key]);
+  i.oninput=()=>{ const v=i.value.trim(); obj[key]= v===''?(nullable?null:0):Number(v); };
+  return i;
+}
+function txtInput(obj,key,{ph=''}={}){
+  const i=document.createElement('input'); i.type='text'; i.placeholder=ph; i.value=obj[key]||'';
+  i.oninput=()=>{ obj[key]=i.value; };
+  return i;
+}
+function dateInput(obj,key){
+  const i=document.createElement('input'); i.type='date'; i.value=obj[key]||'';
+  i.oninput=()=>{ obj[key]=i.value; };
+  return i;
+}
+
+/* ══════════ 렌더 ══════════ */
+function render(){
+  const root=document.getElementById('editor'); root.innerHTML='';
+
+  // 1) 차량 요금
+  root.appendChild(tierCard('🚐 차량 요금 (12인승 밴 1대 기준)','박수별 요금. 5박 초과분은 "+1박 추가" 금액이 박수만큼 더해집니다.',G.vehicle));
+  // 2) 핸들링
+  const hc=card('🧳 핸들링 차지 (1인 기준)','기준 박수까지는 기본요금, 초과 1박당 추가요금이 붙습니다.');
+  const hrow=el('div','row');
+  hrow.appendChild(field('기본요금(THB)',numInput(G.handling,'base')));
+  hrow.appendChild(field('기준 박수',numInput(G.handling,'baseNights')));
+  hrow.appendChild(field('1박 추가당(THB)',numInput(G.handling,'perExtraNight')));
+  hc.appendChild(hrow); root.appendChild(hc);
+  // 3) 가이드
+  root.appendChild(tierCard('🧑‍🏫 로컬 가이드 (한국어 가능)','박수별 요금.',G.localGuide));
+  root.appendChild(tierCard('🇰🇷 한국인 가이드','박수별 요금.',G.korGuide));
+  // 4) 공휴일
+  root.appendChild(holidayCard());
+  // 5) 기타
+  const oc=card('⚙️ 기타','');
+  const orow=el('div','row');
+  orow.appendChild(field('밴 1대당 최대 인원(명)',numInput(G,'paxPerVan')));
+  oc.appendChild(orow); root.appendChild(oc);
+  // 6) 지역 · 골프장 · 숙소
+  const rc=card('🗺️ 지역 · 골프장 · 숙소','지역을 추가하고, 각 지역에 골프장과 숙소를 등록하세요. 빈 칸(예: 27·36홀)은 "요금 없음"으로 처리됩니다.');
+  const rwrap=el('div'); rwrap.id='regionsWrap'; rc.appendChild(rwrap);
+  const addR=el('button','btn ghost sm','＋ 지역 추가');
+  addR.onclick=()=>{ RA.push({name:'새 지역',courses:[],hotels:[]}); renderRegions(); };
+  rc.appendChild(addR);
+  root.appendChild(rc);
+  renderRegions();
+}
+function card(title,desc){ const c=el('div','card'); c.appendChild(el('h2',null,title)); if(desc)c.appendChild(el('p','desc',desc)); return c; }
+function tierCard(title,desc,obj){
+  const c=card(title,desc);
+  const t=el('div','tiers');
+  [['0','당일'],['1','1박'],['2','2박'],['3','3박'],['4','4박'],['5','5박'],['extraNight','+1박 추가']].forEach(([k,lab])=>{
+    t.appendChild(field(lab,numInput(obj,k)));
+  });
+  c.appendChild(t); return c;
+}
+function holidayCard(){
+  const c=card('📅 공휴일 (주말 요금 적용)','태국 공휴일·주말요금이 적용될 날짜.');
+  const box=el('div','holidays');
+  function draw(){
+    box.innerHTML='';
+    G.holidays.forEach((d,idx)=>{
+      const hd=el('div','hd');
+      const i=document.createElement('input'); i.type='date'; i.value=d;
+      i.oninput=()=>{ G.holidays[idx]=i.value; };
+      const x=el('button',null,'×'); x.onclick=()=>{ G.holidays.splice(idx,1); draw(); };
+      hd.appendChild(i); hd.appendChild(x); box.appendChild(hd);
+    });
+    const add=el('button','btn ghost sm','＋ 날짜'); add.onclick=()=>{ G.holidays.push(''); draw(); };
+    box.appendChild(add);
+  }
+  draw(); c.appendChild(box); return c;
+}
+function renderRegions(){
+  const wrap=document.getElementById('regionsWrap'); wrap.innerHTML='';
+  RA.forEach((r,ri)=>{
+    const blk=el('div','regionblk');
+    const rh=el('div','rhead');
+    rh.appendChild(txtInput(r,'name',{ph:'지역명 (예: 방콕)'}));
+    const delR=el('button','btn del sm','지역 삭제'); delR.onclick=()=>{ if(confirm('"'+r.name+'" 지역을 삭제할까요?')){ RA.splice(ri,1); renderRegions(); } };
+    rh.appendChild(delR);
+    blk.appendChild(rh);
+
+    // 골프장
+    blk.appendChild(el('div','mini','⛳ 골프장'));
+    (r.courses||[]).forEach((c,ci)=>blk.appendChild(courseBlock(r,c,ci)));
+    const addC=el('button','btn ghost sm','＋ 골프장 추가');
+    addC.onclick=()=>{ r.courses.push({name:'',note:'',seasons:[newSeason()]}); renderRegions(); };
+    blk.appendChild(addC);
+
+    // 숙소
+    blk.appendChild(el('div','mini','🏨 숙소'));
+    const hwrap=el('div');
+    (r.hotels||[]).forEach((h,hi)=>{
+      const hr=el('div','hotel');
+      const n=txtInput(h,'name',{ph:'숙소명'}); n.className='hn';
+      const p=numInput(h,'perNight'); p.className='hp'; p.placeholder='1박요금';
+      const t=txtInput(h,'note',{ph:'메모'}); t.className='ht';
+      const x=el('button','btn del sm','×'); x.onclick=()=>{ r.hotels.splice(hi,1); renderRegions(); };
+      hr.appendChild(n); hr.appendChild(p); hr.appendChild(t); hr.appendChild(x);
+      hwrap.appendChild(hr);
+    });
+    blk.appendChild(hwrap);
+    const addH=el('button','btn ghost sm','＋ 숙소 추가');
+    addH.onclick=()=>{ r.hotels.push({name:'',perNight:0,note:'2인 1실 기준 1박'}); renderRegions(); };
+    blk.appendChild(addH);
+
+    wrap.appendChild(blk);
+  });
+}
+function newSeason(){ return { label:'비수기', from:'', to:'', green:{wd:null,we:null}, caddie:0, cart:0, total27:{wd:null,we:null}, total36:{wd:null,we:null} }; }
+function courseBlock(region,c,ci){
+  const cb=el('div','course');
+  const top=el('div','course-top');
+  top.appendChild(txtInput(c,'name',{ph:'골프장 이름'}));
+  const delC=el('button','btn del sm','삭제'); delC.onclick=()=>{ region.courses.splice(ci,1); renderRegions(); };
+  top.appendChild(delC);
+  cb.appendChild(top);
+  cb.appendChild(field('메모 (선택)',txtInput(c,'note',{ph:'주말시간·갤러리비 등'})));
+
+  (c.seasons||[]).forEach((s,si)=>{
+    const sb2=el('div','season');
+    const r1=el('div','row');
+    r1.appendChild(field('시즌명',txtInput(s,'label',{ph:'비수기/성수기'})));
+    r1.appendChild(field('시작일',dateInput(s,'from')));
+    r1.appendChild(field('종료일',dateInput(s,'to')));
+    if((c.seasons||[]).length>1){ const dS=el('button','btn del sm','시즌삭제'); dS.style.alignSelf='flex-end'; dS.onclick=()=>{ c.seasons.splice(si,1); renderRegions(); }; r1.appendChild(dS); }
+    sb2.appendChild(r1);
+    const r2=el('div','row');
+    r2.appendChild(field('그린피 주중',numInput(s.green,'wd')));
+    r2.appendChild(field('그린피 주말',numInput(s.green,'we',{nullable:true,ph:'없으면 비움'})));
+    r2.appendChild(field('캐디피',numInput(s,'caddie')));
+    r2.appendChild(field('전동카',numInput(s,'cart')));
+    sb2.appendChild(r2);
+    const r3=el('div','row');
+    r3.appendChild(field('27홀 주중',numInput(s.total27,'wd',{nullable:true,ph:'없으면 비움'})));
+    r3.appendChild(field('27홀 주말',numInput(s.total27,'we',{nullable:true,ph:'없으면 비움'})));
+    r3.appendChild(field('36홀 주중',numInput(s.total36,'wd',{nullable:true,ph:'없으면 비움'})));
+    r3.appendChild(field('36홀 주말',numInput(s.total36,'we',{nullable:true,ph:'없으면 비움'})));
+    sb2.appendChild(r3);
+    cb.appendChild(sb2);
+  });
+  const addS=el('button','btn ghost sm','＋ 시즌 추가'); addS.style.marginTop='8px';
+  addS.onclick=()=>{ c.seasons.push(newSeason()); renderRegions(); };
+  cb.appendChild(addS);
+  return cb;
+}
+
+/* ══════════ 시작: 기존 세션 확인 ══════════ */
+(async function init(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session && session.user){ afterAuth(session.user); return; }
+  }catch(e){}
+  document.getElementById('lid').focus();
+})();
+</script>
+</body>
+</html>
