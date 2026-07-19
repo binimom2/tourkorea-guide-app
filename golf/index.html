@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>골프 견적 내기</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --fairway:#123A2B;
@@ -102,7 +103,19 @@ button:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div id="golfLogin" style="position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50">
+  <div style="background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <h1 style="margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)">⛳ 골프 견적</h1>
+    <p style="margin:0 0 16px;font-size:12.5px;color:var(--muted)">기존 앱과 동일한 계정으로 로그인</p>
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 5px">아이디</label>
+    <input id="glid" autocomplete="off" onkeydown="if(event.key==='Enter')gLogin()" style="width:100%;font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:var(--paper)">
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 5px">비밀번호</label>
+    <input id="glpw" type="password" autocomplete="off" onkeydown="if(event.key==='Enter')gLogin()" style="width:100%;font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:var(--paper)">
+    <button id="gbtn" onclick="gLogin()" style="width:100%;margin-top:18px;font:inherit;font-weight:700;font-size:15px;padding:12px;border:0;border-radius:9px;background:var(--fairway);color:var(--sand);cursor:pointer">로그인</button>
+    <div id="gerr" style="color:#c0492f;font-size:12.5px;margin-top:10px;min-height:16px"></div>
+  </div>
+</div>
+<div class="wrap" id="golfApp" style="display:none">
 
   <header class="head">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -187,7 +200,7 @@ button:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
 /* ══════════════════════════════════════════════════════════
    ▼▼▼ 여기 값만 채우시면 됩니다 (요금 단위: THB) ▼▼▼
    ══════════════════════════════════════════════════════════ */
-const DATA = {
+let DATA = {
 
   // 1) 태국 공휴일 — 주말 요금 적용
   holidays: [
@@ -293,7 +306,8 @@ const $ = s => document.querySelector(s);
 const won = n => Math.round(n).toLocaleString('en-US');
 const state = { region:null, courses:[], hotel:null, guide:"none" };
 
-/* ── 초기 렌더 ── */
+/* ── 초기 렌더 (로그인·데이터 로드 후 실행) ── */
+function bootLists(){
 $('#nights').innerHTML = DATA.durations
   .map(d => `<option value="${d.n}">${d.label}</option>`).join('');
 $('#nights').value = 3;
@@ -306,6 +320,7 @@ state.region = Object.keys(DATA.regions)[0];
 $('#guides').innerHTML = DATA.guideOptions.map((g,i) =>
   `<label class="chip"><input type="radio" name="guide" value="${g.id}" ${i===0?'checked':''}>
    <span>${g.label}<small>${g.desc}</small></span></label>`).join('');
+}
 
 function renderRegionLists(){
   const r = DATA.regions[state.region];
@@ -353,6 +368,7 @@ function tierPrice(tbl, nights){
 
 /* ── 계산 ── */
 function calc(){
+  if(!window._gready) return;
   const start  = $('#startDate').value;
   const nights = +$('#nights').value;
   const pax    = Math.max(1, +$('#pax').value || 1);
@@ -467,11 +483,64 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('input', calc);
 
-/* 기본 출발일 = 2주 뒤 */
-const d0 = new Date(); d0.setDate(d0.getDate()+14);
-$('#startDate').value = iso(d0);
-renderRegionLists();
-calc();
+/* ══════════ 로그인 + 요금 로드 후 시작 ══════════ */
+const SUPABASE_URL = 'https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ storageKey:'gs-auth', persistSession:true, autoRefreshToken:true }});
+
+function startApp(){
+  bootLists();
+  const d0 = new Date(); d0.setDate(d0.getDate()+14);
+  $('#startDate').value = iso(d0);
+  renderRegionLists();
+  window._gready = true;
+  calc();
+  document.getElementById('golfLogin').style.display = 'none';
+  document.getElementById('golfApp').style.display = 'block';
+}
+
+/* 저장된 요금 불러오기 (없거나 실패 시 코드에 박힌 기본값 사용) */
+async function loadPricing(){
+  try{
+    const { data:row } = await sb.from('guide_data').select('data').eq('data_key','golf_pricing').single();
+    if(row && row.data && row.data.regions) DATA = row.data;
+  }catch(e){ /* 폴백: 기본 DATA 유지 */ }
+}
+
+async function resolveEmail(typed){
+  try{
+    const { data:row } = await sb.from('guide_data').select('data').eq('data_key','login_directory').single();
+    if(row && row.data){ const k=(typed||'').toLowerCase(); if(row.data[k]) return row.data[k]; }
+  }catch(e){}
+  return null;
+}
+async function gLogin(){
+  const id=(document.getElementById('glid').value||'').trim();
+  const pw=(document.getElementById('glpw').value||'').trim();
+  const err=document.getElementById('gerr'), btn=document.getElementById('gbtn');
+  err.textContent='';
+  if(!id||!pw){ err.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  btn.textContent='로그인 중...'; btn.disabled=true;
+  try{
+    const email=await resolveEmail(id);
+    if(email){
+      const { data,error } = await sb.auth.signInWithPassword({ email, password:pw });
+      if(!error && data && data.session){ await loadPricing(); startApp(); return; }
+    }
+    err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
+  }catch(e){ err.textContent='로그인 중 오류가 발생했습니다.'; }
+  finally{ btn.textContent='로그인'; btn.disabled=false; }
+}
+
+/* 시작: 기존 세션 있으면 자동 로그인, 없으면 로그인 화면 */
+(async function boot(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session && session.user){ await loadPricing(); startApp(); return; }
+  }catch(e){}
+  document.getElementById('golfLogin').style.display='flex';
+  const f=document.getElementById('glid'); if(f) f.focus();
+})();
 </script>
 </body>
 </html>
