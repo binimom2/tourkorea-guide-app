@@ -76,6 +76,24 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .savebar button{font:inherit;font-weight:800;font-size:15px;padding:11px 26px;border-radius:9px;border:0;background:var(--marigold);color:#3a2600;cursor:pointer}
 .savebar button:disabled{opacity:.5;cursor:default}
 .noauth{max-width:420px;margin:80px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px}
+/* 탭바 + 코드관리 */
+.tabbar{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.tabbtn{background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;font:inherit;font-size:14.5px;font-weight:700;color:var(--muted);cursor:pointer;margin-bottom:-1px}
+.tabbtn.active{color:var(--fairway);border-bottom-color:var(--fairway)}
+.ccats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.ccat{padding:8px 15px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font:inherit;font-size:13.5px;font-weight:700;color:var(--fairway);cursor:pointer}
+.ccat.active{background:var(--fairway);color:var(--sand);border-color:var(--fairway)}
+.caddrow{display:flex;gap:9px;margin:14px 0 8px}
+.caddrow input{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.caddrow input.wlabel{flex:1}
+.caddrow input.wcode{flex:0 0 170px}
+.crow{display:flex;align-items:center;gap:11px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.crow.inactive{opacity:.45}
+.crow .tag{flex:0 0 auto;min-width:72px;font-weight:800;font-size:12.5px;color:var(--fairway);background:var(--sand);border-radius:6px;padding:4px 9px;text-align:center}
+.crow .lbl{flex:1;font-size:14.5px}
+.crow a{cursor:pointer;font-size:12px;font-weight:700}
+.corder{display:flex;flex-direction:column;line-height:.75}
+.corder a{font-size:10px;color:var(--muted)}
 .hidden{display:none!important}
 </style>
 </head>
@@ -108,7 +126,12 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
   </header>
-  <div id="editor"></div>
+  <div class="tabbar" id="tabbar">
+    <button class="tabbtn active" data-pane="codes" onclick="showPane('codes')">🏷 코드관리</button>
+    <button class="tabbtn" data-pane="prices" onclick="showPane('prices')">💰 요금표</button>
+  </div>
+  <div id="codesPane"></div>
+  <div id="editor" style="display:none"></div>
 </div>
 
 <div class="savebar hidden" id="savebar">
@@ -222,6 +245,8 @@ function afterAuth(user){
   document.getElementById('savebar').classList.remove('hidden');
   document.getElementById('who').textContent=(info.name||'')+' · admin';
   loadPricing();
+  loadCodes();
+  showPane('codes');
 }
 
 /* ══════════ 데이터 로드/저장 ══════════ */
@@ -437,6 +462,86 @@ function courseBlock(region,c,ci){
   cb.appendChild(addS);
   return cb;
 }
+
+/* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
+const GOLF_CODE_CATS=[
+  {key:'region',label:'지역'},{key:'club',label:'골프장'},{key:'hotel',label:'호텔'},
+  {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'}
+];
+let GC={}, gcTab='region', gcEdit=null;
+function gToast(msg){
+  let t=document.getElementById('gtoast');
+  if(!t){ t=document.createElement('div'); t.id='gtoast';
+    t.style.cssText='position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--fairway);color:var(--sand);padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:700;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .3s;opacity:0';
+    document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1'; clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; },1800);
+}
+async function loadCodes(){
+  try{ const { data:row } = await sb.from('guide_data').select('data').eq('data_key','golf_codes').single(); if(row&&row.data) GC=row.data; }catch(e){}
+  GOLF_CODE_CATS.forEach(c=>{ if(!Array.isArray(GC[c.key])) GC[c.key]=[]; });
+  renderCodes();
+}
+async function saveCodes(){
+  try{ await sb.from('guide_data').upsert({ data_key:'golf_codes', data:GC, updated_at:new Date().toISOString() }); }
+  catch(e){ gToast('❌ 저장 실패: '+(e.message||e)); }
+}
+function showPane(p){
+  document.getElementById('codesPane').style.display = p==='codes'?'':'none';
+  document.getElementById('editor').style.display    = p==='prices'?'':'none';
+  document.getElementById('savebar').style.display   = p==='prices'?'':'none';
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.pane===p));
+}
+function renderCodes(){
+  const pane=document.getElementById('codesPane'); pane.innerHTML='';
+  const c=card('🏷 코드관리','골프 견적에서 쓰는 코드를 관리합니다. 예약관리(/travel/)의 코드와 완전히 분리된 독립 데이터입니다.');
+  const cats=el('div','ccats');
+  GOLF_CODE_CATS.forEach(cat=>{ const b=el('button','ccat'+(cat.key===gcTab?' active':''),cat.label); b.onclick=()=>{ gcTab=cat.key; gcEdit=null; renderCodes(); }; cats.appendChild(b); });
+  c.appendChild(cats);
+  const add=el('div','caddrow');
+  const ic=document.createElement('input'); ic.className='wcode'; ic.id='gc-code'; ic.placeholder='코드 (예: TKB)';
+  const il=document.createElement('input'); il.className='wlabel'; il.id='gc-label'; il.placeholder='라벨 (예: 방콕)';
+  const ab=el('button','btn','＋ 추가'); ab.onclick=addCode;
+  ic.onkeydown=il.onkeydown=e=>{ if(e.key==='Enter') addCode(); };
+  add.appendChild(ic); add.appendChild(il); add.appendChild(ab); c.appendChild(add);
+  const list=GC[gcTab]||[]; const body=el('div');
+  if(!list.length) body.appendChild(el('p','desc','등록된 항목이 없습니다.'));
+  list.forEach((it,i)=>{
+    const active=it.active!==false;
+    const row=el('div','crow'+(active?'':' inactive'));
+    const ord=el('div','corder');
+    const up=el('a',null,'▲'); up.style.visibility=i===0?'hidden':''; up.onclick=()=>moveCode(i,-1);
+    const dn=el('a',null,'▼'); dn.style.visibility=i===list.length-1?'hidden':''; dn.onclick=()=>moveCode(i,1);
+    ord.appendChild(up); ord.appendChild(dn); row.appendChild(ord);
+    if(i===gcEdit){
+      const ec=document.createElement('input'); ec.value=it.code; ec.style.cssText='flex:0 0 130px;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px';
+      const elb=document.createElement('input'); elb.value=it.label; elb.style.cssText='flex:1;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px';
+      const sv=el('a',null,'저장'); sv.style.color='var(--fairway)';
+      sv.onclick=async()=>{ const nc=ec.value.trim().toUpperCase(), nl=elb.value.trim(); if(!nc||!nl){ gToast('⚠ 코드와 라벨을 입력하세요'); return; } if(list.some((x,xi)=>xi!==i&&x.code===nc)){ gToast('⚠ 이미 있는 코드'); return; } it.code=nc; it.label=nl; await saveCodes(); gcEdit=null; renderCodes(); gToast('✅ 수정됨'); };
+      const cx=el('a',null,'취소'); cx.style.color='var(--muted)'; cx.onclick=()=>{ gcEdit=null; renderCodes(); };
+      row.appendChild(ec); row.appendChild(elb); row.appendChild(sv); row.appendChild(cx);
+    } else {
+      row.appendChild(el('span','tag',it.code));
+      row.appendChild(el('span','lbl',it.label));
+      const tg=el('a',null,active?'🟢 사용':'⚪ 미사용'); tg.style.color=active?'var(--fairway)':'var(--muted)'; tg.onclick=()=>toggleCode(i);
+      const ed=el('a',null,'✏ 수정'); ed.style.color='#0369a1'; ed.onclick=()=>{ gcEdit=i; renderCodes(); };
+      const dl=el('a',null,'삭제'); dl.style.color='#c0492f'; dl.onclick=()=>delCode(i);
+      row.appendChild(tg); row.appendChild(ed); row.appendChild(dl);
+    }
+    body.appendChild(row);
+  });
+  c.appendChild(body); pane.appendChild(c);
+}
+async function addCode(){
+  const ic=document.getElementById('gc-code'), il=document.getElementById('gc-label');
+  const code=(ic.value||'').trim().toUpperCase(), label=(il.value||'').trim();
+  if(!code||!label){ gToast('⚠ 코드와 라벨을 입력하세요'); return; }
+  GC[gcTab]=GC[gcTab]||[];
+  if(GC[gcTab].find(x=>x.code===code)){ gToast('⚠ 이미 있는 코드'); return; }
+  GC[gcTab].push({ code, label }); await saveCodes(); ic.value=''; il.value=''; renderCodes(); gToast('✅ 추가됨');
+}
+async function moveCode(i,d){ const l=GC[gcTab], j=i+d; if(j<0||j>=l.length) return; [l[i],l[j]]=[l[j],l[i]]; await saveCodes(); renderCodes(); }
+async function toggleCode(i){ const it=GC[gcTab][i]; it.active = it.active===false ? true : false; await saveCodes(); renderCodes(); }
+async function delCode(i){ const it=GC[gcTab][i]; if(!confirm('['+it.code+'] '+it.label+' 코드를 삭제할까요?')) return; GC[gcTab].splice(i,1); await saveCodes(); renderCodes(); }
 
 /* ══════════ 시작: 기존 세션 확인 ══════════ */
 (async function init(){
