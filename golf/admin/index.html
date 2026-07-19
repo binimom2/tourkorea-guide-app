@@ -270,7 +270,7 @@ function normalize(d){
     if(!g.vehiclePeriods[p])  g.vehiclePeriods[p]={amount:null,remark:''};
     if(!g.handlingPeriods[p]) g.handlingPeriods[p]={amount:null,remark:''};
   });
-  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,pty:null,remark:''}; }); });
+  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; if(g.guidePeriods[t].ptyPerNight===undefined) g.guidePeriods[t].ptyPerNight=null; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
   if(!g.regions) g.regions={};
   Object.values(g.regions).forEach(r=>{
     (r.courses||[]).forEach(c=>{
@@ -371,22 +371,24 @@ function periodTable(title,desc,dataObj){
 }
 // 구분(한국/로컬) × 기간 × [방콕,파타야,비고] (가이드)
 function guideTable(){
-  const c=card('🧑‍🏫 가이드 요금','한국가이드·로컬가이드별, 지역(방콕/파타야)·기간별 요금.');
+  const c=card('🧑‍🏫 가이드 요금','한국인·로컬 가이드별 방콕 기본요금(기간별) + 파타야 1박당 추가. 파타야 요금 = 방콕 기본 + (파타야 박당 추가 × 파타야 숙박수).');
   GUIDE_TYPES.forEach(type=>{
-    if(!G.guidePeriods[type]) G.guidePeriods[type]={};
+    const T=(G.guidePeriods[type]=G.guidePeriods[type]||{});
     c.appendChild(el('div','mini','· '+type));
+    const prow=el('div','row'); prow.style.margin='4px 0 8px';
+    prow.appendChild(field('파타야 1박당 추가(밧)',numInput(T,'ptyPerNight',{nullable:true,ph:'예: 600'})));
+    c.appendChild(prow);
     const tbl=document.createElement('table'); tbl.className='ptable';
     const thead=document.createElement('thead'); const hr=document.createElement('tr');
-    ['기간','방콕','파타야','비고'].forEach(h=>hr.appendChild(thEl(h)));
+    ['기간','방콕 기본(THB)','비고'].forEach(h=>hr.appendChild(thEl(h)));
     thead.appendChild(hr); tbl.appendChild(thead);
     const tb=document.createElement('tbody');
     GUIDE_PERIODS.forEach(p=>{
-      if(!G.guidePeriods[type][p]) G.guidePeriods[type][p]={bkk:null,pty:null,remark:''};
-      const o=G.guidePeriods[type][p];
+      if(!T[p]) T[p]={bkk:null,remark:''};
+      const o=T[p];
       const tr=document.createElement('tr');
       const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
       const tB=document.createElement('td'); const b=numInput(o,'bkk'); b.className='pin'; tB.appendChild(b); tr.appendChild(tB);
-      const tP=document.createElement('td'); const pp=numInput(o,'pty'); pp.className='pin'; tP.appendChild(pp); tr.appendChild(tP);
       const tR=document.createElement('td'); const r=txtInput(o,'remark',{ph:'비고'}); r.className='pin'; tR.appendChild(r); tr.appendChild(tR);
       tb.appendChild(tr);
     });
