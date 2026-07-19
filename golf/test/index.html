@@ -170,7 +170,7 @@ let P = DEFAULT_PRICING;   // 요금 데이터(공휴일·가이드·핸들링·
 
 const $=s=>document.querySelector(s);
 const won=n=>Math.round(n).toLocaleString('en-US');
-const iso=d=>d.toISOString().slice(0,10);
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
