@@ -717,9 +717,12 @@
     .header-right { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap; width: 100%; }
     .app-meta { display: none !important; }
     .app-header .admin-only { display: none !important; }
-    .app-header .logout-btn:not(#btnSubmit):not(#btnSave):not(#btnNewReport) { display: none !important; }
+    /* 비번변경·로그아웃은 모바일에서도 보여야 한다(자기 계정 관리라 PC가 없으면 방법이 없음) */
+    .app-header .logout-btn:not(#btnSubmit):not(#btnSave):not(#btnNewReport):not(#btnPwChange):not(#btnLogout) { display: none !important; }
     .role-badge { font-size: 10px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
     #btnSave, #btnSubmit, #btnNewReport { font-size: 12px; padding: 6px 12px; margin-right: 0 !important; white-space: nowrap; }
+    #btnPwChange, #btnLogout { font-size: 11px; padding: 6px 9px; margin-right: 0 !important; white-space: nowrap; flex-shrink: 0; }
+    .header-right { gap: 5px; }
     /* 줄3: 탭바 */
     .tab-bar { gap: 4px; padding: 5px 8px; overflow-x: auto; flex-wrap: nowrap; }
     .tab-btn { font-size: 12px; padding: 6px 12px; white-space: nowrap; flex-shrink: 0; }
@@ -880,8 +883,8 @@
       <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
       <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 설정</button>
       <a class="logout-btn admin-only" href="/travel/" style="background:rgba(52,87,213,0.6);margin-right:4px;text-decoration:none;display:inline-block;">✈ 상세예약</a>
-      <button class="logout-btn" onclick="openPwChange()" style="background:rgba(255,255,255,0.15);margin-right:4px;">🔑</button>
-      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+      <button class="logout-btn" id="btnPwChange" onclick="openPwChange()" style="background:rgba(255,255,255,0.15);margin-right:4px;" title="비밀번호 변경">🔑</button>
+      <button class="logout-btn" id="btnLogout" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
   <div class="tab-bar" id="tabBar"></div>
@@ -1785,6 +1788,42 @@ const ELEVATED_ADMIN_IDS = ['lds1207'];   // 이 계정들은 로그인 시 admi
 
 let currentRole = null;
 let currentUser = null;
+
+/* ══════════ 자동 로그아웃 ══════════
+   아무 작업 없이 1시간이 지나면 로그아웃한다(예약관리 /travel/ 과 같은 규칙).
+   창을 닫아둔 시간도 함께 세므로, 닫았다 열어도 1시간이 지났으면 다시 로그인해야 한다. */
+const IDLE_LIMIT = 60*60*1000;   // 1시간
+const IDLE_WARN  = 60*1000;      // 1분 전 예고
+const IDLE_KEY   = 'gs_last_act';
+let _idleAt = Date.now(), _idleWarnEl = null;
+function touchIdle(){
+  _idleAt = Date.now();
+  try{ localStorage.setItem(IDLE_KEY, String(_idleAt)); }catch(e){}
+  if(_idleWarnEl){ _idleWarnEl.remove(); _idleWarnEl = null; }
+}
+['mousedown','keydown','wheel','touchstart'].forEach(ev =>
+  window.addEventListener(ev, touchIdle, {passive:true, capture:true}));
+function showIdleWarn(sec){
+  if(!_idleWarnEl){
+    _idleWarnEl = document.createElement('div');
+    _idleWarnEl.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99999;background:#dc2626;color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:92vw;';
+    document.body.appendChild(_idleWarnEl);
+  }
+  _idleWarnEl.innerHTML = `⏰ ${sec}초 후 자동 로그아웃 — 화면을 누르면 계속 사용합니다`
+    + `<br><span style="font-weight:600;opacity:.9;font-size:11.5px;">(Auto sign-out in ${sec}s — tap anywhere to stay signed in)</span>`;
+}
+async function idleLogout(){
+  try{ await sb.auth.signOut(); }catch(e){}
+  try{ localStorage.removeItem(SESSION_KEY); localStorage.removeItem(IDLE_KEY); }catch(e){}
+  alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.\n\n(Signed out after 1 hour of inactivity. Please sign in again.)');
+  location.reload();
+}
+setInterval(() => {
+  if(!currentUser) return;
+  const idle = Date.now() - _idleAt;
+  if(idle >= IDLE_LIMIT) idleLogout();
+  else if(idle >= IDLE_LIMIT - IDLE_WARN) showIdleWarn(Math.ceil((IDLE_LIMIT-idle)/1000));
+}, 1000);
 let appSettings  = { categories:['메인','1일','2일','3일'], products:[], eventContents:[] };
 let submissionsDB = [];
 
@@ -1960,6 +1999,7 @@ function _clearViewBanner() {
 }
 
 function _completeLogin() {
+  touchIdle();   // 들어온 시점부터 무작업 1시간을 다시 센다
   _clearViewBanner();
   localStorage.setItem(SESSION_KEY, JSON.stringify({ id: currentUser.id, name: currentUser.name, role: currentRole }));
   document.getElementById('loginScreen').style.display='none';
@@ -4101,6 +4141,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   // 새로고침해도 로그인 유지 — Supabase Auth 세션이 살아있을 때만 복원
   (async () => {
     try {
+      // 창을 닫아둔 사이에 1시간이 지났으면 세션을 끊는다(자동 로그아웃과 같은 기준)
+      const last = +(localStorage.getItem(IDLE_KEY) || 0);
+      if (last && Date.now() - last > IDLE_LIMIT) {
+        try { await sb.auth.signOut(); } catch(e) {}
+        localStorage.removeItem(SESSION_KEY); localStorage.removeItem(IDLE_KEY);
+        return;
+      }
       const { data: { session } } = await sb.auth.getSession();
       if (session && session.user) {
         const meta = session.user.user_metadata || {};
