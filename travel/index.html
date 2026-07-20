@@ -615,6 +615,28 @@ table.subtbl input.numcell{text-align:center;}
   </div>
 </div>
 
+<!-- ── +BAHT 입력 (금액 + 비고) ── -->
+<div class="sov" id="bahtModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeBahtModal()">
+  <div class="smodal" style="max-width:420px;">
+    <div class="smodal-hd"><span>฿ 금액 입력</span><button onclick="closeBahtModal()">✕</button></div>
+    <div class="smodal-body">
+      <div id="baht-title" style="font-size:12.5px;font-weight:700;color:#1f4a85;margin-bottom:10px;"></div>
+      <div class="f-row">
+        <label>금액 (THB) <span style="font-weight:400;color:#8a90a0;">비우면 삭제됩니다 / empty = remove</span></label>
+        <input type="text" id="baht-amt" inputmode="numeric" placeholder="예: 80000" onkeydown="if(event.key==='Enter')document.getElementById('baht-memo').focus()"/>
+      </div>
+      <div class="f-row" style="margin-top:8px;">
+        <label>비고 (REMARK)</label>
+        <input type="text" id="baht-memo" placeholder="입출금 REMARK란에 표시됩니다" onkeydown="if(event.key==='Enter')saveBahtEntry()"/>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button class="btn" onclick="closeBahtModal()" style="background:#eef0f5;color:#5a6274;">취소</button>
+        <button class="btn btn-save" onclick="saveBahtEntry()">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── BACKUP RESTORE MODAL ── -->
 <div class="sov" id="bakModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeBakModal()">
   <div class="smodal" style="max-width:560px;">
@@ -689,7 +711,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-i';
+const APP_VERSION='2026-07-20-j';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -2266,7 +2288,7 @@ const SUBSECTIONS=[
     {k:'acc',label:'ACC',type:'text'},
     {k:'currency',label:'CURRENCY',type:'select',options:['THB','KRW','USD']},
     {k:'amount',label:'AMOUNT',type:'number'},
-    {k:'summary',label:'SUMMARY',type:'text'},
+    {k:'summary',label:'REMARK',type:'text'},
   ]},
   {key:'withdrawals',label:'WITHDRAWALS',ledger:true,fields:[
     {k:'date',label:'DATE',type:'date',fw:108},
@@ -2274,7 +2296,7 @@ const SUBSECTIONS=[
     {k:'acc',label:'ACC',type:'text'},
     {k:'currency',label:'CURRENCY',type:'select',options:['THB','KRW','USD']},
     {k:'amount',label:'AMOUNT',type:'number'},
-    {k:'summary',label:'SUMMARY',type:'text'},
+    {k:'summary',label:'REMARK',type:'text'},
   ]},
 ];
 
@@ -4260,6 +4282,7 @@ function saveSubRowInline(sectionKey,index){
   if(prev){
     if(prev._id) row._id=prev._id;
     if(prev.payingAmt!==undefined) row.payingAmt=prev.payingAmt;
+    if(prev.payingMemo!==undefined) row.payingMemo=prev.payingMemo;   // +Baht 비고 유지
   }
   if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
@@ -4285,13 +4308,36 @@ function updateNamePrefixFromFlights(){
   if(nameEl) nameEl.value=name;
 }
 // 행 끝 "BAHT" 클릭 시 금액을 입력받아 워킹레스에 저장하고 DEPOSITS에 동기화
+/* +Baht 입력 — 금액과 함께 비고(REMARK)를 받는다. 비고는 DEPOSITS/WITHDRAWALS의
+   REMARK란에 그대로 표시된다. */
+let _bahtCtx=null;
 function promptVendorBaht(sectionKey,index){
-  const row=workingRes[sectionKey][index];
-  const input=prompt('BAHT 금액 입력 (비우면 삭제):',row.payingAmt||'');
-  if(input===null) return;
-  row.payingAmt=input.trim();
+  const row=(workingRes[sectionKey]||[])[index];
+  if(!row) return;
+  _bahtCtx={sectionKey,index};
+  const cfg=PAYING_SYNC[sectionKey]||{};
+  const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
+  const who=row[cfg.nameField]||'';
+  document.getElementById('baht-title').textContent=`${sec?sec.label:sectionKey}${who?' · '+who:''}`;
+  document.getElementById('baht-amt').value=row.payingAmt||'';
+  document.getElementById('baht-memo').value=row.payingMemo||'';
+  document.getElementById('bahtModal').classList.add('open');
+  setTimeout(()=>{ const el=document.getElementById('baht-amt'); if(el){ el.focus(); el.select(); } },40);
+}
+function closeBahtModal(){
+  document.getElementById('bahtModal').classList.remove('open');
+  _bahtCtx=null;
+}
+function saveBahtEntry(){
+  if(!_bahtCtx) return;
+  const {sectionKey,index}=_bahtCtx;
+  const row=(workingRes[sectionKey]||[])[index];
+  if(!row){ closeBahtModal(); return; }
+  row.payingAmt=(document.getElementById('baht-amt').value||'').trim();
+  row.payingMemo=(document.getElementById('baht-memo').value||'').trim();
   if(!row._id) row._id=(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   syncVendorDeposit(sectionKey,row);
+  closeBahtModal();
   renderSubsections();
 }
 // 호텔/골프/가이드/차량/공연 등의 +Baht 금액을 DEPOSITS에 자동 반영/동기화(출금은 음수로 표기)
@@ -4301,7 +4347,7 @@ function syncVendorDeposit(sectionKey,row){
   const dArr=workingRes.deposits=workingRes.deposits||[];
   const idx=dArr.findIndex(d=>d.linkedRowId===row._id);
   if(amt>0){
-    const dRow={date:(cfg.dateField&&row[cfg.dateField])||'',who:row[cfg.nameField]||'',acc:cfg.acc,currency:'THB',amount:-Math.abs(amt),summary:'',linkedRowId:row._id};
+    const dRow={date:(cfg.dateField&&row[cfg.dateField])||'',who:row[cfg.nameField]||'',acc:cfg.acc,currency:'THB',amount:-Math.abs(amt),summary:row.payingMemo||'',linkedRowId:row._id};
     if(idx>=0) dArr[idx]=dRow; else dArr.push(dRow);
   }else if(idx>=0){
     dArr.splice(idx,1);
