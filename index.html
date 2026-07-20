@@ -2884,10 +2884,12 @@ function applyGigatipToSettlement(tipByCur, tcTHB) {
   if (hasKRW) ['inc-land1','gu-land1','st-land1'].forEach(id=>setVal(id, tipByCur.KRW));
   if (hasUSD) ['inc-land2','gu-land2','st-land2'].forEach(id=>setVal(id, tipByCur.USD));
   if (hasTHB) ['inc-land3','gu-land3','st-land3'].forEach(id=>setVal(id, tipByCur.THB));
-  if (hasTC)  setVal('st-tc', tcTHB);
+  // TC정산금은 정산서(st-tc)와 인센티브 정산서(inc-exp2 = 'TC 정산금') 양쪽에 넣는다.
+  // 예전엔 st-tc만 채워서 인센티브 정산서에는 값이 넘어오지 않았다.
+  if (hasTC) { setVal('st-tc', tcTHB); setVal('inc-exp2', tcTHB); }
 
   if (hasKRW || hasUSD || hasTHB) { calcIncentive(); calcGuarantee(); calcSettle(); }
-  else if (hasTC) { calcSettle(); }
+  else if (hasTC) { calcIncentive(); calcSettle(); }
 }
 
 // ══════════════════════════════════
