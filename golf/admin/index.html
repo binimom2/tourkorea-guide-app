@@ -163,6 +163,16 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
   </div>
 </div>
 
+<div id="codeCatModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px" onmousedown="if(event.target===this)closeCodeCat()">
+  <div style="background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:86vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
+      <b id="codeCatTitle" style="font-size:15px">🏷 코드</b>
+      <button class="btn sm" onclick="closeCodeCat()">닫기</button>
+    </div>
+    <div id="codeCatBody" style="padding:16px 18px;overflow:auto"></div>
+  </div>
+</div>
+
 <div id="gbakModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:75;display:flex;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
@@ -937,7 +947,7 @@ async function downloadGolfXlsx(){
 /* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
 const GOLF_CODE_CATS=[
   {key:'region',label:'지역'},{key:'club',label:'골프장'},{key:'hotel',label:'호텔'},
-  {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'}
+  {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'},{key:'handling',label:'핸들링차지'}
 ];
 let GC={}, gcTab='region', gcEdit=null;
 function gToast(msg){
@@ -979,10 +989,35 @@ async function saveCodes(){
 }
 function renderCodes(){
   const pane=document.getElementById('codesPane'); pane.innerHTML='';
-  const c=card('🏷 코드관리','골프 견적에서 쓰는 코드를 관리합니다. 예약관리(/travel/)의 코드와 완전히 분리된 독립 데이터입니다.');
+  const c=card('🏷 코드관리','골프 견적에서 쓰는 코드를 관리합니다. 종류를 누르면 창이 열립니다. 예약관리(/travel/)의 코드와 완전히 분리된 독립 데이터입니다.');
   const cats=el('div','ccats');
-  GOLF_CODE_CATS.forEach(cat=>{ const b=el('button','ccat'+(cat.key===gcTab?' active':''),cat.label); b.onclick=()=>{ gcTab=cat.key; gcEdit=null; renderCodes(); }; cats.appendChild(b); });
+  GOLF_CODE_CATS.forEach(cat=>{
+    const n=(GC[cat.key]||[]).filter(x=>x.active!==false).length;
+    const b=el('button','ccat',`${cat.label} (${n})`);
+    b.onclick=()=>openCodeCat(cat.key);
+    cats.appendChild(b);
+  });
   c.appendChild(cats);
+  pane.appendChild(c);
+  // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
+  if(document.getElementById('gtbody')){ renderGolfBody(); renderHotelBody(); }
+}
+
+/* 종류를 누르면 그 종류만 팝업 창으로 열어 편집한다 */
+function openCodeCat(key){
+  gcTab=key; gcEdit=null;
+  document.getElementById('codeCatModal').classList.remove('hidden');
+  renderCodeList();
+}
+function closeCodeCat(){
+  document.getElementById('codeCatModal').classList.add('hidden');
+  gcEdit=null;
+  renderCodes();   // 개수 표시 갱신
+}
+function renderCodeList(){
+  const cat=GOLF_CODE_CATS.find(x=>x.key===gcTab)||{label:gcTab};
+  document.getElementById('codeCatTitle').textContent='🏷 '+cat.label;
+  const c=document.getElementById('codeCatBody'); c.innerHTML='';
   const add=el('div','caddrow');
   const ic=document.createElement('input'); ic.className='wcode'; ic.id='gc-code'; ic.placeholder='코드 (예: TKB)';
   const il=document.createElement('input'); il.className='wlabel'; il.id='gc-label'; il.placeholder='라벨 (예: 방콕)';
@@ -1002,20 +1037,20 @@ function renderCodes(){
       const ec=document.createElement('input'); ec.value=it.code; ec.style.cssText='flex:0 0 130px;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px';
       const elb=document.createElement('input'); elb.value=it.label; elb.style.cssText='flex:1;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px';
       const sv=el('a',null,'저장'); sv.style.color='var(--fairway)';
-      sv.onclick=async()=>{ const nc=ec.value.trim().toUpperCase(), nl=elb.value.trim(); if(!nc||!nl){ gToast('⚠ 코드와 라벨을 입력하세요'); return; } if(list.some((x,xi)=>xi!==i&&x.code===nc)){ gToast('⚠ 이미 있는 코드'); return; } it.code=nc; it.label=nl; await saveCodes(); gcEdit=null; renderCodes(); gToast('✅ 수정됨'); };
-      const cx=el('a',null,'취소'); cx.style.color='var(--muted)'; cx.onclick=()=>{ gcEdit=null; renderCodes(); };
+      sv.onclick=async()=>{ const nc=ec.value.trim().toUpperCase(), nl=elb.value.trim(); if(!nc||!nl){ gToast('⚠ 코드와 라벨을 입력하세요'); return; } if(list.some((x,xi)=>xi!==i&&x.code===nc)){ gToast('⚠ 이미 있는 코드'); return; } it.code=nc; it.label=nl; await saveCodes(); gcEdit=null; renderCodeList(); gToast('✅ 수정됨'); };
+      const cx=el('a',null,'취소'); cx.style.color='var(--muted)'; cx.onclick=()=>{ gcEdit=null; renderCodeList(); };
       row.appendChild(ec); row.appendChild(elb); row.appendChild(sv); row.appendChild(cx);
     } else {
       row.appendChild(el('span','tag',it.code));
       row.appendChild(el('span','lbl',it.label));
       const tg=el('a',null,active?'🟢 사용':'⚪ 미사용'); tg.style.color=active?'var(--fairway)':'var(--muted)'; tg.onclick=()=>toggleCode(i);
-      const ed=el('a',null,'✏ 수정'); ed.style.color='#0369a1'; ed.onclick=()=>{ gcEdit=i; renderCodes(); };
+      const ed=el('a',null,'✏ 수정'); ed.style.color='#0369a1'; ed.onclick=()=>{ gcEdit=i; renderCodeList(); };
       const dl=el('a',null,'삭제'); dl.style.color='#c0492f'; dl.onclick=()=>delCode(i);
       row.appendChild(tg); row.appendChild(ed); row.appendChild(dl);
     }
     body.appendChild(row);
   });
-  c.appendChild(body); pane.appendChild(c);
+  c.appendChild(body);
   // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
   if(document.getElementById('gtbody')){ renderGolfBody(); renderHotelBody(); }
 }
@@ -1025,11 +1060,11 @@ async function addCode(){
   if(!code||!label){ gToast('⚠ 코드와 라벨을 입력하세요'); return; }
   GC[gcTab]=GC[gcTab]||[];
   if(GC[gcTab].find(x=>x.code===code)){ gToast('⚠ 이미 있는 코드'); return; }
-  GC[gcTab].push({ code, label }); await saveCodes(); ic.value=''; il.value=''; renderCodes(); gToast('✅ 추가됨');
+  GC[gcTab].push({ code, label }); await saveCodes(); ic.value=''; il.value=''; renderCodeList(); ic.focus(); gToast('✅ 추가됨');
 }
-async function moveCode(i,d){ const l=GC[gcTab], j=i+d; if(j<0||j>=l.length) return; [l[i],l[j]]=[l[j],l[i]]; await saveCodes(); renderCodes(); }
-async function toggleCode(i){ const it=GC[gcTab][i]; it.active = it.active===false ? true : false; await saveCodes(); renderCodes(); }
-async function delCode(i){ const it=GC[gcTab][i]; if(!confirm('['+it.code+'] '+it.label+' 코드를 삭제할까요?')) return; GC[gcTab].splice(i,1); await saveCodes(); renderCodes(); }
+async function moveCode(i,d){ const l=GC[gcTab], j=i+d; if(j<0||j>=l.length) return; [l[i],l[j]]=[l[j],l[i]]; await saveCodes(); renderCodeList(); }
+async function toggleCode(i){ const it=GC[gcTab][i]; it.active = it.active===false ? true : false; await saveCodes(); renderCodeList(); }
+async function delCode(i){ const it=GC[gcTab][i]; if(!confirm('['+it.code+'] '+it.label+' 코드를 삭제할까요?')) return; GC[gcTab].splice(i,1); await saveCodes(); renderCodeList(); }
 
 /* ══════════ 시작: 기존 세션 확인 ══════════ */
 (async function init(){
