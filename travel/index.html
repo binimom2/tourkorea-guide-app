@@ -680,6 +680,30 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 <div class="toast" id="toast"></div>
 
 <script>
+/* ══════════════════════════ 버전 확인 ══════════════════════════
+   창을 며칠씩 열어둔 채 쓰면 그 탭은 옛 코드로 계속 돈다. 옛 코드에는 데이터 보호가
+   없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
+   (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
+   대조해서, 다르면 저장 전에 강제로 새로고침한다. */
+const APP_VERSION='2026-07-20-e';
+let _verAt=0, _verBusy=false;
+async function checkAppVersion(force){
+  const now=Date.now();
+  if(_verBusy||(!force&&now-_verAt<180000)) return;   // 3분에 한 번
+  _verBusy=true; _verAt=now;
+  try{
+    const r=await fetch(location.pathname+'?_v='+now,{cache:'no-store'});
+    const m=(await r.text()).match(/const APP_VERSION='([^']+)'/);
+    if(m&&m[1]!==APP_VERSION){
+      alert('앱이 업데이트되었습니다.\n\n지금 이 창은 예전 버전이라, 이대로 저장하면\n다른 사람이 입력한 내용이 사라질 수 있습니다.\n\n확인을 누르면 새로고침합니다.');
+      location.reload();
+    }
+  }catch(e){}finally{ _verBusy=false; }
+}
+window.addEventListener('focus',()=>checkAppVersion());
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkAppVersion(); });
+setInterval(()=>checkAppVersion(),600000);   // 열어둔 채로도 10분마다
+
 /* ══════════════════════════ SUPABASE (가이드정산서와 같은 프로젝트, trv_ 접두어로 분리) ══════════════════════════ */
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
@@ -897,6 +921,28 @@ async function sbSaveSafe(key,data,opts){
         localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
         if(opts.onCancel) opts.onCancel(server);
         showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
+        return false;
+      }
+    }
+  }
+
+  /* ── 마지막 안전망 ──
+     앞의 병합이 어떤 이유로든 실패해도, 한 번의 저장으로 2건 이상이 서버에서
+     사라지는 일은 없어야 한다. 정상 작업은 한 번에 1건만 지운다(삭제 버튼).
+     2건 이상 사라지면 무엇이 사라지는지 보여주고 반드시 확인받는다. */
+  if(Array.isArray(server)&&Array.isArray(out)){
+    const kf=_pickKeyField([server,out]);
+    let gone=[];
+    if(kf){ const keep=new Set(out.map(it=>String(it[kf]))); gone=server.filter(it=>!keep.has(String(it[kf]))); }
+    else if(out.length<server.length) gone=server.slice(out.length);
+    if(gone.length>=2){
+      const nm=it=>(opts.labelFn?opts.labelFn(it):(it&&(it.name||it.code||it.id)))||'(이름없음)';
+      const names=gone.slice(0,12).map(it=>'· '+nm(it)).join('\n');
+      const more=gone.length>12?`\n… 외 ${gone.length-12}건`:'';
+      if(!confirm(`⚠ 경고 — 이 저장으로 [${trvLabel(key)}] ${gone.length}건이 서버에서 사라집니다.\n\n${names}${more}\n\n의도한 삭제가 맞습니까?\n아니라면 반드시 [취소]를 누르고 새로고침(Ctrl+Shift+R) 해주세요.`)){
+        localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
+        if(opts.onCancel) opts.onCancel(server);
+        showToast('↩ 저장을 취소했습니다. 최신 내용을 불러왔습니다.');
         return false;
       }
     }
