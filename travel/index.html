@@ -344,7 +344,6 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <button class="tbtn" id="btnGolf" onclick="window.open('/golf/','_blank')" title="골프 견적 계산기 열기" style="display:none;">⛳ 골프견적</button>
       <button class="tbtn" id="btnCodes" onclick="openCodeModal()" style="display:none;">🏷 코드관리</button>
       <button class="tbtn" id="btnAccounts" onclick="openAccountModal()" style="display:none;">👤 계정관리</button>
-      <button class="tbtn" id="btnBak" onclick="openBakModal()" style="display:none;" title="예약 데이터를 이전 시점으로 되돌리기">🗄 백업복원</button>
       <button class="tbtn" onclick="changeMyPassword()">🔑 비번변경</button>
       <button class="tbtn" onclick="doLogout()">Logout</button>
     </div>
@@ -596,6 +595,10 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       </div>
       <div id="acc-err" style="color:#e0483f;font-size:11.5px;margin-top:6px;"></div>
       <ul id="accList" style="list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:8px;"></ul>
+      <div style="margin-top:18px;padding-top:14px;border-top:1.5px solid #eceff4;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <span style="font-size:11.5px;color:#8a90a0;">저장할 때마다 직전 상태가 자동 보관됩니다</span>
+        <a onclick="openBakModal()" style="cursor:pointer;font-size:12px;color:#1f4a85;font-weight:700;white-space:nowrap;">🗄 데이터 백업 복원</a>
+      </div>
     </div>
   </div>
 </div>
@@ -606,9 +609,10 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
     <div class="smodal-hd"><span>백업 복원</span><button onclick="closeBakModal()">✕</button></div>
     <div class="smodal-body">
       <div style="font-size:12px;color:#7a8296;line-height:1.65;margin-bottom:12px;">
-        예약을 저장할 때마다 <b>직전 상태</b>가 자동으로 보관됩니다(최근 10개).<br>
+        저장할 때마다 <b>직전 상태</b>가 자동으로 보관됩니다(항목별 최근 10개).<br>
         복원해도 현재 내용이 함께 백업되므로 다시 되돌릴 수 있습니다.
       </div>
+      <select id="bakKey" onchange="renderBakList()" style="width:100%;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:12px;"></select>
       <ul id="bakList" style="list-style:none;display:flex;flex-direction:column;gap:8px;"></ul>
     </div>
   </div>
@@ -696,17 +700,19 @@ function applyProcColor(){
   el.style.fontWeight='700';
 }
 
+/* 저장은 전부 sbSaveSafe를 거친다 — 통째 덮어쓰기로 남의 작업이 사라지는 사고를 막기 위해.
+   (2026-07-15 골프 66행 소멸, 2026-07-20 예약 7/29~31 소멸) */
 async function sbSave(key,data){
-  localStorage.setItem(key,JSON.stringify(data));
-  try{
-    const{error}=await sb.from('guide_data').upsert({data_key:key,data,updated_at:new Date().toISOString()});
-    if(error) showToast('❌ 동기화 실패: '+error.message);
-  }catch(e){ showToast('❌ Supabase 오류: '+e.message); }
+  return await sbSaveSafe(key,data);
 }
 async function sbLoad(key){
   try{
     const{data:row}=await sb.from('guide_data').select('data').eq('data_key',key).single();
-    if(row&&row.data!==undefined&&row.data!==null){ localStorage.setItem(key,JSON.stringify(row.data)); return row.data; }
+    if(row&&row.data!==undefined&&row.data!==null){
+      localStorage.setItem(key,JSON.stringify(row.data));
+      _sbBase[key]=_sbSnap(row.data);   // 「내가 마지막으로 본 서버 상태」 = 병합 기준
+      return row.data;
+    }
   }catch(e){}
   return null;
 }
@@ -724,25 +730,151 @@ async function sbSaveRaw(key,data){
   }catch(e){ return false; }
 }
 
-/* ══════════ 예약 백업 스냅샷 ══════════
-   덮어쓰기 직전의 서버본을 슬롯 10개에 순환 보관한다. 사고가 나도 되돌릴 수 있게. */
-const RES_BAK_SLOTS=10;
-const RES_BAK_META='trv_res_bakmeta';
-async function pushResBackup(serverArr){
-  if(!Array.isArray(serverArr)) return;
-  let meta=[];
-  try{ meta=(await sbLoadRaw(RES_BAK_META))||[]; }catch(e){ meta=[]; }
-  if(!Array.isArray(meta)) meta=[];
-  const sig=serverArr.length+':'+JSON.stringify(serverArr).length;
-  if(meta.length&&meta[0].sig===sig) return;          // 직전 백업과 동일 → 중복 보관 안 함
-  const slot=meta.length?((meta[0].slot+1)%RES_BAK_SLOTS):0;
-  if(!await sbSaveRaw('trv_res_bak_'+slot,serverArr)) return;
-  meta.unshift({slot,at:new Date().toISOString(),by:(currentUser?currentUser.id:''),count:serverArr.length,sig});
-  await sbSaveRaw(RES_BAK_META,meta.slice(0,RES_BAK_SLOTS));
+/* ══════════════════════════ 안전 저장 (병합 + 백업) ══════════════════════════
+   문제: 저장이 「내 화면의 값으로 서버를 통째 교체」였다. 오래 열어둔 탭에서 저장하면
+   그 사이 남이 넣은 데이터가 통째로 사라진다.
+   해결: 저장 직전에 ① 서버 최신본을 다시 읽고 ② 내가 바꾼 항목만 그 위에 얹는다.
+   항목 구분이 불가능한 데이터(문자열 배열 등)는 병합 대신 경고 후 확인받고, 어느 쪽이든
+   덮어쓰기 직전 서버본을 백업해 되돌릴 수 있게 한다. */
+
+const _sbBase={};   // data_key → 마지막으로 서버와 맞춰진 값(JSON 문자열). 「내가 뭘 바꿨나」의 기준.
+function _sbSnap(v){ try{ return JSON.stringify(v===undefined?null:v); }catch(e){ return null; } }
+
+// 항목을 구분할 고유키 필드를 자동으로 찾는다(세 배열 모두에서 값이 있고 중복이 없어야 함).
+const _KEY_CANDIDATES=['id','code','name'];
+function _pickKeyField(arrs){
+  return _KEY_CANDIDATES.find(f=>arrs.every(a=>{
+    if(!Array.isArray(a)) return false;
+    const seen=new Set();
+    return a.every(it=>{
+      if(!it||typeof it!=='object') return false;
+      const v=it[f]; if(v===undefined||v===null||v==='') return false;
+      const s=String(v); if(seen.has(s)) return false;   // 중복이 있으면 병합 기준으로 못 씀
+      seen.add(s); return true;
+    });
+  }))||null;
 }
+function _byKey(arr,f){ const m=new Map(); arr.forEach(it=>m.set(String(it[f]),it)); return m; }
+
+// base(내가 본 서버) / mine(내 화면) / server(현재 서버) → 서버 위에 내 변경분만 얹은 결과
+function _mergeByKey(base,mine,server,f){
+  const bM=_byKey(base,f), cM=_byKey(mine,f);
+  const ups=[]; const dels=new Set();
+  cM.forEach((it,k)=>{ const b=bM.get(k); if(!b||JSON.stringify(b)!==JSON.stringify(it)) ups.push(it); });
+  bM.forEach((b,k)=>{ if(!cM.has(k)) dels.add(k); });
+  const out=server.filter(it=>!dels.has(String(it[f])));
+  const pos=new Map(); out.forEach((it,i)=>pos.set(String(it[f]),i));
+  ups.forEach(it=>{ const k=String(it[f]);
+    if(pos.has(k)) out[pos.get(k)]=it; else { pos.set(k,out.length); out.push(it); } });
+  return {out,ups,bM};
+}
+
+/* ── 백업 스냅샷: 덮어쓰기 직전 서버본을 키별로 슬롯 10개에 순환 보관 ── */
+const BAK_SLOTS=10;
+// 예약은 이미 배포된 키 이름을 유지한다(오늘 쌓인 스냅샷을 계속 쓸 수 있게)
+function _bakSlotKey(key,slot){ return key==='trv_reservations'?('trv_res_bak_'+slot):('trv_bak_'+key+'_'+slot); }
+function _bakMetaKey(key){ return key==='trv_reservations'?'trv_res_bakmeta':('trv_bakmeta_'+key); }
+async function pushBackup(key,serverVal){
+  if(serverVal===undefined||serverVal===null) return;
+  let meta=[];
+  try{ meta=(await sbLoadRaw(_bakMetaKey(key)))||[]; }catch(e){ return; }
+  if(!Array.isArray(meta)) meta=[];
+  const count=Array.isArray(serverVal)?serverVal.length:-1;
+  const sig=count+':'+(_sbSnap(serverVal)||'').length;
+  if(meta.length&&meta[0].sig===sig) return;   // 직전 백업과 같으면 중복 보관 안 함
+  const slot=meta.length?((meta[0].slot+1)%BAK_SLOTS):0;
+  if(!await sbSaveRaw(_bakSlotKey(key,slot),serverVal)) return;
+  meta.unshift({slot,at:new Date().toISOString(),by:(currentUser?currentUser.id:''),count,sig});
+  await sbSaveRaw(_bakMetaKey(key),meta.slice(0,BAK_SLOTS));
+}
+
+const TRV_LABEL={
+  trv_reservations:'예약', trv_codes:'코드', trv_customers:'고객사', trv_accounts:'계정',
+  trv_admin_pw:'관리자 비밀번호',
+  trv_cost_golf:'원가서 · 골프', trv_cost_hotel:'원가서 · 호텔', trv_cost_attraction:'원가서 · 관광지',
+};
+function trvLabel(key){
+  if(TRV_LABEL[key]) return TRV_LABEL[key];
+  if(key==='trv_vendor_flights') return '거래처 · 항공편 스케줄';
+  if(key.indexOf('trv_vendor_')===0){
+    const k=key.slice(11);
+    const t=VENDOR_CATEGORY_TABS.find(v=>v.key===k);
+    return '거래처 · '+(t?t.label:k);
+  }
+  if(key.indexOf('trv_phrases_')===0){
+    const k=key.slice(12);
+    const t=PHRASE_TABS.find(p=>p.key===k);
+    return '문구 · '+(t?t.label:k);
+  }
+  return key;
+}
+
+/* 안전 저장. 성공하면 실제로 저장된 값을, 취소·실패하면 false를 반환한다.
+   opts.labelFn(item) — 충돌 경고에 보여줄 항목 이름 */
+async function sbSaveSafe(key,data,opts){
+  opts=opts||{};
+  const baseStr=_sbBase[key];
+
+  let server=null, fetched=false;
+  try{ server=await sbLoadRaw(key); fetched=true; }catch(e){ fetched=false; }
+
+  if(!fetched){   // 오프라인/장애 — 서버를 건드리지 않는다
+    localStorage.setItem(key,JSON.stringify(data));
+    showToast('⚠ 서버 연결 실패 — 이 기기에만 저장했습니다. 연결된 뒤 다시 저장해 주세요.');
+    return false;
+  }
+
+  const srvStr=_sbSnap(server);
+  let out=data;
+
+  // 내가 마지막으로 본 서버 상태와 지금 서버가 다르다 = 그 사이 누군가 바꿨다
+  if(baseStr!=null && srvStr!==baseStr){
+    const base=JSON.parse(baseStr);
+    const f=(Array.isArray(base)&&Array.isArray(data)&&Array.isArray(server))?_pickKeyField([base,data,server]):null;
+    if(f){
+      const {out:merged,ups,bM}=_mergeByKey(base,data,server,f);
+      // 내가 고친 항목을 남도 고쳤는지 확인(자동 병합으로 남의 수정을 조용히 지우지 않도록)
+      const sM=_byKey(server,f);
+      const clash=ups.filter(it=>{ const k=String(it[f]); const b=bM.get(k), s=sM.get(k);
+        return b&&s&&JSON.stringify(b)!==JSON.stringify(s); });
+      if(clash.length){
+        const names=clash.slice(0,10).map(it=>'· '+(opts.labelFn?opts.labelFn(it):(it.name||it.code||it.id))).join('\n');
+        const more=clash.length>10?`\n… 외 ${clash.length-10}건`:'';
+        if(!confirm(`[${trvLabel(key)}] 아래 항목을 그 사이 다른 사람이 수정했습니다.\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)`)){
+          localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
+          if(opts.onCancel) opts.onCancel(server);
+          showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
+          return false;
+        }
+      }
+      out=merged;
+    } else {
+      // 항목을 구분할 수 없는 데이터(문자열 배열·객체 등) — 병합 불가, 확인받고 덮어쓴다
+      if(!confirm(`[${trvLabel(key)}] 데이터를 그 사이 다른 사람이 변경했습니다.\n\n내 내용으로 저장하면 그 변경이 사라집니다.\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n계속할까요?`)){
+        localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
+        if(opts.onCancel) opts.onCancel(server);
+        showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
+        return false;
+      }
+    }
+  }
+
+  try{ await pushBackup(key,server); }catch(e){}   // 덮어쓰기 직전 상태 보관
+
+  localStorage.setItem(key,JSON.stringify(out));
+  if(!await sbSaveRaw(key,out)){
+    showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다');
+    return false;
+  }
+  _sbBase[key]=_sbSnap(out);
+  return out;
+}
+// 실제로 쓰이는 data_key 전체. (구버전 소문자 벤더키 trv_vendor_hotels/golfs/… 는 대문자 키로
+// 이관 완료돼서 뺐다 — 이관 로직은 필요한 키를 직접 sbLoad 한다.)
 const TRV_KEYS=['trv_reservations','trv_codes','trv_customers','trv_accounts','trv_admin_pw',
-  'trv_vendor_agents','trv_vendor_flightSched','trv_vendor_hotels','trv_vendor_golfs','trv_vendor_guides','trv_vendor_vehicles','trv_vendor_shows','trv_vendor_shops',
-  'trv_phrases_includes','trv_phrases_decludes',
+  'trv_vendor_AIRLINES','trv_vendor_HOTEL','trv_vendor_CLUB','trv_vendor_GUIDE','trv_vendor_RESTAURANT',
+  'trv_vendor_TICKET','trv_vendor_MASSAGE','trv_vendor_SHOW','trv_vendor_VEHICLES','trv_vendor_flights',
+  'trv_phrases_includes','trv_phrases_decludes','trv_phrases_references','trv_phrases_checks',
   'trv_cost_golf','trv_cost_hotel','trv_cost_attraction'];
 async function loadAllFromSupabase(){
   await Promise.all(TRV_KEYS.map(k=>sbLoad(k)));
@@ -802,7 +934,6 @@ async function enterApp(){
   document.getElementById('btnAccounts').style.display=(currentUser.role==='admin')?'':'none'; // 계정관리: admin만
   document.getElementById('btnCostExcel').style.display=(currentUser.role==='admin')?'':'none'; // 원가서 엑셀: admin만
   document.getElementById('btnGolf').style.display=(currentUser.role==='admin')?'':'none'; // 골프견적: admin만
-  document.getElementById('btnBak').style.display=(currentUser.role==='admin')?'':'none';  // 백업복원: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
   // 기준 데이터 시딩/마이그레이션은 역할과 무관하게 전원 실행(모두 idempotent·버전가드).
@@ -3125,84 +3256,20 @@ async function delCostRow(i){
 }
 
 let reservations=[];
-let _resBase=[];   // 마지막으로 서버와 맞춰진 시점의 스냅샷. 「내가 바꾼 것」을 가려내는 기준.
-function _resSnap(a){ try{ return JSON.parse(JSON.stringify(a||[])); }catch{ return []; } }
-function _resMap(a){ const m=new Map(); (a||[]).forEach(r=>{ if(r&&r.id!=null) m.set(String(r.id),r); }); return m; }
-function _resAllHaveId(a){ return (a||[]).every(r=>r&&r.id!=null); }
-function setReservations(arr){ reservations=Array.isArray(arr)?arr:[]; _resBase=_resSnap(reservations); }
+function setReservations(arr){ reservations=Array.isArray(arr)?arr:[]; }
 
 function loadData(){
   try{ reservations=JSON.parse(localStorage.getItem('trv_reservations')||'[]'); }catch{ reservations=[]; }
-  _resBase=_resSnap(reservations);
 }
 
-/* 저장 = 「서버 최신본을 다시 읽어 → 내가 바꾼 예약만 얹어서 → 저장」.
-   배열을 통째로 덮어쓰지 않으므로, 오래된 탭에서 저장해도 그 사이 남이 넣은 예약이 사라지지 않는다.
-   (2026-07-20: 통째 덮어쓰기로 7/29~31 예약이 소멸한 사고 대응) */
+// 예약 저장. 병합·충돌확인·백업은 sbSaveSafe가 담당하고, 여기선 화면 상태만 맞춘다.
 async function saveData(){
-  const local=reservations;
-
-  // ① 기준(_resBase) 대비 내가 추가·수정·삭제한 것만 골라낸다
-  const baseMap=_resMap(_resBase), curMap=_resMap(local);
-  const ups=[], dels=[];
-  curMap.forEach((r,id)=>{ const b=baseMap.get(id); if(!b||JSON.stringify(b)!==JSON.stringify(r)) ups.push(r); });
-  baseMap.forEach((b,id)=>{ if(!curMap.has(id)) dels.push(id); });
-
-  // ② 서버 최신본을 읽는다
-  let server=null, fetched=false;
-  try{ server=await sbLoadRaw('trv_reservations'); fetched=true; }catch(e){ fetched=false; }
-
-  if(!fetched){   // 오프라인/일시 장애 — 서버를 덮어쓰지 않고 이 기기에만 남긴다
-    localStorage.setItem('trv_reservations',JSON.stringify(local));
-    showToast('⚠ 서버 연결 실패 — 이 기기에만 저장했습니다. 연결된 뒤 다시 저장해 주세요.');
-    return false;
-  }
-
-  // id 없는 데이터가 섞여 있으면 병합이 위험하다(정상 예약엔 항상 id가 있음)
-  const mergeable = Array.isArray(server) && _resAllHaveId(server) && _resAllHaveId(local) && _resAllHaveId(_resBase);
-
-  let merged;
-  if(!mergeable){
-    // 서버에서 기존 목록을 못 읽었는데 로컬엔 이력이 있다 → 읽기 권한 문제일 수 있어 통째 대체는 위험
-    if(!Array.isArray(server) && _resBase.length){
-      if(!confirm('서버에서 기존 예약 목록을 읽지 못했습니다.\n이대로 저장하면 서버 데이터가 현재 화면 내용으로 대체됩니다.\n계속할까요?')) return false;
-    }
-    merged=local.slice();
-  } else {
-    // ③ 충돌 감지 — 내가 고친 예약을 그 사이 다른 사람도 고쳤는가?
-    const srvMap=_resMap(server);
-    const clash=ups.filter(r=>{
-      const b=baseMap.get(String(r.id)), s=srvMap.get(String(r.id));
-      return b&&s&&JSON.stringify(b)!==JSON.stringify(s);
-    });
-    if(clash.length){
-      const names=clash.map(r=>`· ${r.datein||''} ${r.name||r.code||''}`).join('\n');
-      if(!confirm(`아래 예약을 그 사이 다른 사람이 수정했습니다.\n\n${names}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 다시 불러옵니다)`)){
-        localStorage.setItem('trv_reservations',JSON.stringify(server));
-        setReservations(server);
-        renderFilters(); renderAll();
-        showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
-        return false;
-      }
-    }
-    // ④ 서버본 위에 내 변경분만 얹는다
-    const dset=new Set(dels);
-    merged=server.filter(r=>!dset.has(String(r&&r.id)));
-    const pos=new Map(); merged.forEach((r,i)=>pos.set(String(r.id),i));
-    ups.forEach(r=>{ const id=String(r.id);
-      if(pos.has(id)) merged[pos.get(id)]=r; else { pos.set(id,merged.length); merged.push(r); } });
-
-    // ⑤ 덮어쓰기 직전의 서버본을 백업(사고 시 되돌리기용)
-    try{ await pushResBackup(server); }catch(e){}
-  }
-
-  // ⑥ 저장
-  localStorage.setItem('trv_reservations',JSON.stringify(merged));
-  if(!await sbSaveRaw('trv_reservations',merged)){
-    showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다');
-    return false;
-  }
-  reservations=merged; _resBase=_resSnap(merged);
+  const out=await sbSaveSafe('trv_reservations',reservations,{
+    labelFn:r=>`${r.datein||''} ${r.name||r.code||''}`.trim(),
+    onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); },
+  });
+  if(out===false) return false;
+  setReservations(out);   // 병합 결과(남이 추가한 예약 포함)를 화면에도 반영
   return true;
 }
 
@@ -3213,38 +3280,47 @@ function _bakTs(iso){
   const p=n=>String(n).padStart(2,'0');
   return `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}`;
 }
-async function openBakModal(){
+function openBakModal(){
+  const sel=document.getElementById('bakKey');
+  if(!sel.options.length) sel.innerHTML=TRV_KEYS.map(k=>`<option value="${k}">${escapeHtml(trvLabel(k))}</option>`).join('');
   document.getElementById('bakModal').classList.add('open');
+  renderBakList();
+}
+async function renderBakList(){
+  const key=document.getElementById('bakKey').value;
   const host=document.getElementById('bakList');
   host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">불러오는 중…</li>';
   let meta=[];
-  try{ meta=(await sbLoadRaw(RES_BAK_META))||[]; }catch(e){ meta=[]; }
+  try{ meta=(await sbLoadRaw(_bakMetaKey(key)))||[]; }catch(e){ meta=[]; }
+  if(document.getElementById('bakKey').value!==key) return;   // 그새 다른 항목을 고름
   if(!Array.isArray(meta)||!meta.length){
-    host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">아직 백업이 없습니다. 예약을 한 번 저장하면 만들어집니다.</li>';
+    host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">아직 백업이 없습니다. 이 항목을 한 번 저장하면 만들어집니다.</li>';
     return;
   }
   host.innerHTML=meta.map(m=>{
     const ts=_bakTs(m.at);
+    const cnt=(m.count>=0)?`${m.count}건`:'값 1개';
     return `<li style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid #dfe3ea;border-radius:8px;">
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#1f2b46;">${ts}</div>
-        <div style="font-size:11.5px;color:#7a8296;">예약 ${m.count}건 · 저장자 ${m.by||'-'}</div>
+        <div style="font-size:11.5px;color:#7a8296;">${cnt} · 저장자 ${escapeHtml(m.by||'-')}</div>
       </div>
-      <button class="btn btn-save" style="padding:0 14px;white-space:nowrap;" onclick="restoreResBackup(${m.slot},'${ts}',${m.count})">이 시점으로 복원</button>
+      <button class="btn btn-save" style="padding:0 14px;white-space:nowrap;" onclick="restoreBackup('${key}',${m.slot},'${ts}')">이 시점으로 복원</button>
     </li>`;
   }).join('');
 }
-async function restoreResBackup(slot,ts,count){
-  if(!confirm(`${ts} 시점(예약 ${count}건)으로 되돌립니다.\n현재 내용도 백업되므로 다시 되돌릴 수 있습니다.\n\n진행할까요?`)) return;
-  let snap=null;
-  try{ snap=await sbLoadRaw('trv_res_bak_'+slot); }catch(e){}
-  if(!Array.isArray(snap)){ showToast('❌ 백업을 읽지 못했습니다'); return; }
-  try{ const cur=await sbLoadRaw('trv_reservations'); await pushResBackup(cur); }catch(e){}
-  if(!await sbSaveRaw('trv_reservations',snap)){ showToast('❌ 복원 저장 실패'); return; }
-  localStorage.setItem('trv_reservations',JSON.stringify(snap));
-  setReservations(snap);
-  closeBakModal(); renderFilters(); renderAll();
-  showToast(`✅ ${ts} 시점으로 복원했습니다 (${snap.length}건)`);
+async function restoreBackup(key,slot,ts){
+  const nm=trvLabel(key);
+  if(!confirm(`[${nm}] 데이터를 ${ts} 시점으로 되돌립니다.\n현재 내용도 백업되므로 다시 되돌릴 수 있습니다.\n\n복원 후 화면이 새로고침됩니다.\n진행할까요?`)) return;
+  let snap;
+  try{ snap=await sbLoadRaw(_bakSlotKey(key,slot)); }catch(e){ snap=undefined; }
+  if(snap===undefined||snap===null){ showToast('❌ 백업을 읽지 못했습니다'); return; }
+  try{ await pushBackup(key,await sbLoadRaw(key)); }catch(e){}   // 되돌리기 전 현재 상태도 보관
+  if(!await sbSaveRaw(key,snap)){ showToast('❌ 복원 저장 실패'); return; }
+  localStorage.setItem(key,JSON.stringify(snap));
+  _sbBase[key]=_sbSnap(snap);
+  alert(`✅ [${nm}]를 ${ts} 시점으로 복원했습니다.\n확인을 누르면 화면을 새로고침합니다.`);
+  location.reload();   // 화면 곳곳의 캐시된 값까지 확실히 맞추기 위해 전체 재로딩
 }
 
 /* ══════════════════════════ FILTERS / VIEW ══════════════════════════ */
