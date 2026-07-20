@@ -705,16 +705,24 @@ function applyProcColor(){
 async function sbSave(key,data){
   return await sbSaveSafe(key,data);
 }
+/* 불러오기에 실패한 키. 실패하면 _sbBase(병합 기준)가 안 잡히는데, 이때 localStorage에는
+   지난번 접속 때의 낡은 값이 그대로 남아 있다. 그걸 모르고 저장하면 예전처럼 통째 덮어쓰기가
+   된다 → 저장 쪽에서 이 상태를 반드시 감지해야 한다. (2026-07-20 7/30·31 재소멸 원인) */
+const _sbLoadFailed={};
 async function sbLoad(key){
   try{
-    const{data:row}=await sb.from('guide_data').select('data').eq('data_key',key).single();
-    if(row&&row.data!==undefined&&row.data!==null){
-      localStorage.setItem(key,JSON.stringify(row.data));
-      _sbBase[key]=_sbSnap(row.data);   // 「내가 마지막으로 본 서버 상태」 = 병합 기준
-      return row.data;
-    }
-  }catch(e){}
-  return null;
+    const{data:row,error}=await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
+    if(error) throw error;
+    const val=(row&&row.data!==undefined&&row.data!==null)?row.data:null;
+    // 행이 없는 것도 「서버가 비어있다」는 정상 상태 — 기준값을 잡아야 한다
+    _sbBase[key]=_sbSnap(val);
+    delete _sbLoadFailed[key];
+    if(val!==null){ localStorage.setItem(key,JSON.stringify(val)); return val; }
+    return null;
+  }catch(e){
+    _sbLoadFailed[key]=true;   // 기준값 없음 — 저장할 때 삭제를 반영하지 않는다
+    return null;
+  }
 }
 // localStorage를 건드리지 않고 서버 최신본만 읽는다(병합 저장·백업용). 행이 없으면 null, 통신 실패면 throw.
 async function sbLoadRaw(key){
@@ -827,6 +835,33 @@ async function sbSaveSafe(key,data,opts){
   const srvStr=_sbSnap(server);
   let out=data;
 
+  /* 기준값을 모른다(불러오기 실패 등) = 내 화면이 서버보다 낡았을 수 있다.
+     이때 통째로 저장하면 서버에만 있는 항목이 전부 지워진다 → 절대 지우지 않고,
+     내 항목을 서버 위에 「더하기만」 한다. 삭제는 새로고침 후 다시 하도록 안내. */
+  if(baseStr==null && Array.isArray(server) && Array.isArray(data)){
+    const f=_pickKeyField([data,server]);
+    if(f){
+      const sM=_byKey(server,f);
+      const out2=server.slice();
+      const pos=new Map(); out2.forEach((it,i)=>pos.set(String(it[f]),i));
+      let added=0;
+      data.forEach(it=>{ const k=String(it[f]);
+        if(pos.has(k)){ out2[pos.get(k)]=it; } else { pos.set(k,out2.length); out2.push(it); added++; } });
+      const dropped=server.length-data.filter(it=>sM.has(String(it[f]))).length;
+      out=out2;
+      if(dropped>0) showToast('⚠ 최신 목록을 못 받은 상태라 삭제는 반영하지 않았습니다. 새로고침 후 다시 해주세요.');
+      try{ await pushBackup(key,server); }catch(e){}
+      localStorage.setItem(key,JSON.stringify(out));
+      if(!await sbSaveRaw(key,out)){ showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다'); return false; }
+      _sbBase[key]=_sbSnap(out); delete _sbLoadFailed[key];
+      return out;
+    }
+    // 항목 구분이 안 되는 데이터인데 기준값도 없다 → 덮어쓰면 위험. 확인받는다.
+    if(server!==null && srvStr!==_sbSnap(data)){
+      if(!confirm(`[${trvLabel(key)}] 최신 내용을 확인하지 못한 상태입니다.\n\n지금 저장하면 서버 내용이 현재 화면 내용으로 대체됩니다.\n(취소 후 새로고침을 권합니다)\n\n계속할까요?`)) return false;
+    }
+  }
+
   // 내가 마지막으로 본 서버 상태와 지금 서버가 다르다 = 그 사이 누군가 바꿨다
   if(baseStr!=null && srvStr!==baseStr){
     const base=JSON.parse(baseStr);
@@ -936,6 +971,10 @@ async function enterApp(){
   document.getElementById('btnGolf').style.display=(currentUser.role==='admin')?'':'none'; // 골프견적: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
+  // 예약 목록을 못 받았으면 화면이 낡은 상태다 — 모르고 저장하면 서버 데이터가 밀린다
+  if(_sbLoadFailed['trv_reservations']){
+    alert('⚠ 예약 목록을 서버에서 불러오지 못했습니다.\n\n지금 화면은 예전에 받아둔 낡은 내용일 수 있습니다.\n이 상태로 저장하면 최근 예약이 반영되지 않을 수 있으니,\n새로고침(Ctrl+Shift+R) 후 다시 사용해 주세요.');
+  }
   // 기준 데이터 시딩/마이그레이션은 역할과 무관하게 전원 실행(모두 idempotent·버전가드).
   // 오퍼레이터/매니저가 먼저 접속해도 코드·거래처·벤더·문구가 채워지도록(입력창 값 비어있음 방지).
   await ensureCodesMigrated();
