@@ -139,7 +139,9 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="who" id="who"></span>
+      <button class="link" onclick="downloadGolfXlsx()" id="gxlsBtn">📥 엑셀</button>
       <button class="link" onclick="showData()">🔍 데이터 보기</button>
+      <button class="link" onclick="openGBak()">🗄 백업복원</button>
       <a href="/golf/" target="_blank">⛳ 견적 페이지</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
@@ -157,6 +159,26 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       </div>
     </div>
     <pre id="dataView" style="margin:0;padding:16px 18px;overflow:auto;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all;color:var(--ink)"></pre>
+  </div>
+</div>
+
+<div id="gbakModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:75;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
+      <b style="font-size:15px">🗄 백업 복원</b>
+      <button class="btn sm" onclick="document.getElementById('gbakModal').classList.add('hidden')">닫기</button>
+    </div>
+    <div style="padding:16px 18px;overflow:auto">
+      <p style="margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.65">
+        저장할 때마다 <b>직전 상태</b>가 자동으로 보관됩니다(항목별 최근 10개).<br>
+        복원해도 현재 내용이 함께 백업되므로 다시 되돌릴 수 있습니다.
+      </p>
+      <select id="gbakKey" onchange="renderGBakList()" style="width:100%;font:inherit;font-size:13.5px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-bottom:12px">
+        <option value="golf_pricing">요금표</option>
+        <option value="golf_codes">코드</option>
+      </select>
+      <div id="gbakList" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
   </div>
 </div>
 
@@ -231,6 +253,54 @@ const DEFAULT = {
 let G = null;      // 편집 중인 요금 데이터
 let RA = [];       // 지역 편집용 배열 [{name,courses,hotels}]
 let currentUser = null;
+
+/* ══════════ 안전 저장 (덮어쓰기 방지 + 백업) ══════════
+   이 페이지의 저장은 요금표 전체를 한 번에 교체한다. 창을 오래 열어둔 채 저장하면
+   그 사이 다른 관리자가 넣은 값이 통째로 사라진다(예약관리에서 실제로 난 사고).
+   → 저장 직전 서버 최신본을 확인하고, 달라졌으면 알린 뒤 확인받는다.
+     어느 경우든 덮어쓰기 직전 상태를 백업해 되돌릴 수 있게 한다. */
+const GBAK_SLOTS=10;
+const _gBase={};   // data_key → 마지막으로 서버와 맞춘 값(JSON 문자열)
+function _gSnap(v){ try{ return JSON.stringify(v===undefined?null:v); }catch(e){ return null; } }
+async function gsLoadRaw(key){
+  const { data:row, error } = await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
+  if(error) throw error;
+  return (row&&row.data!==undefined&&row.data!==null)?row.data:null;
+}
+async function gsSaveRaw(key,data){
+  try{
+    const { error } = await sb.from('guide_data').upsert({ data_key:key, data, updated_at:new Date().toISOString() });
+    return !error;
+  }catch(e){ return false; }
+}
+function _gbakSlotKey(key,slot){ return 'golf_bak_'+key+'_'+slot; }
+function _gbakMetaKey(key){ return 'golf_bakmeta_'+key; }
+async function gPushBackup(key,val){
+  if(val===undefined||val===null) return;
+  let meta=[];
+  try{ meta=(await gsLoadRaw(_gbakMetaKey(key)))||[]; }catch(e){ return; }
+  if(!Array.isArray(meta)) meta=[];
+  const sig=(_gSnap(val)||'').length;
+  if(meta.length&&meta[0].sig===sig) return;   // 직전 백업과 같으면 중복 보관 안 함
+  const slot=meta.length?((meta[0].slot+1)%GBAK_SLOTS):0;
+  if(!await gsSaveRaw(_gbakSlotKey(key,slot),val)) return;
+  meta.unshift({ slot, at:new Date().toISOString(), by:(currentUser&&currentUser.id)||'', sig });
+  await gsSaveRaw(_gbakMetaKey(key),meta.slice(0,GBAK_SLOTS));
+}
+const GKEY_LABEL={ golf_pricing:'요금표', golf_codes:'코드' };
+async function gSaveSafe(key,data){
+  let server=null;
+  try{ server=await gsLoadRaw(key); }
+  catch(e){ gToast('⚠ 서버 연결 실패 — 저장하지 않았습니다'); return false; }
+  const baseStr=_gBase[key], srvStr=_gSnap(server);
+  if(baseStr!=null && srvStr!==baseStr){
+    if(!confirm(`[${GKEY_LABEL[key]||key}]를 그 사이 다른 관리자가 변경했습니다.\n\n지금 저장하면 그 변경 내용이 사라집니다.\n(취소하면 저장하지 않습니다 — 새로고침해서 최신 내용을 확인하세요)\n\n계속할까요?`)) return false;
+  }
+  try{ await gPushBackup(key,server); }catch(e){}
+  if(!await gsSaveRaw(key,data)){ gToast('❌ 서버 저장 실패'); return false; }
+  _gBase[key]=_gSnap(data);
+  return true;
+}
 
 /* ══════════ 인증 ══════════ */
 function roleOf(user){
@@ -318,6 +388,7 @@ async function loadPricing(){
     const { data:row } = await sb.from('guide_data').select('data').eq('data_key',PRICING_KEY).single();
     if(row && row.data) data=row.data;
   }catch(e){}
+  _gBase[PRICING_KEY]=_gSnap(data);   // 「내가 불러온 시점의 서버 상태」 = 덮어쓰기 판단 기준
   // 저장된 골프장이 옛 구조(green)거나 없으면 새 기본 골프장(24개, 18/9홀)으로 대체
   let savedNewCourses=false;
   if(data && data.regions){ const fs=Object.values(data.regions)[0]?.courses?.[0]?.seasons?.[0]; if(fs && fs.gf18!==undefined) savedNewCourses=true; }
@@ -339,9 +410,12 @@ async function saveAll(){
   const btn=document.getElementById('saveBtn'), msg=document.getElementById('saveMsg');
   btn.disabled=true; btn.textContent='저장 중...';
   try{
-    const { error } = await sb.from('guide_data').upsert({ data_key:PRICING_KEY, data:G, updated_at:new Date().toISOString() });
-    if(error) throw error;
-    msg.textContent='✅ 저장 완료 — 견적 페이지에 반영됩니다. ('+new Date().toLocaleTimeString('ko-KR')+')';
+    if(await gSaveSafe(PRICING_KEY,G)){
+      _dirty=false;
+      msg.textContent='✅ 저장 완료 — 견적 페이지에 반영됩니다. ('+new Date().toLocaleTimeString('ko-KR')+')';
+    } else {
+      msg.textContent='⚠ 저장하지 않았습니다.';
+    }
   }catch(e){
     msg.textContent='❌ 저장 실패: '+(e.message||e);
   }finally{ btn.disabled=false; btn.textContent='💾 저장'; }
@@ -350,20 +424,30 @@ async function saveAll(){
 /* ══════════ 렌더 헬퍼 ══════════ */
 function el(tag,cls,txt){ const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
 function field(label,input){ const f=el('div','f'); f.appendChild(el('label',null,label)); f.appendChild(input); return f; }
+/* 저장 안 한 변경이 있는지 — 실수로 창을 닫아 작업을 날리는 걸 막는다 */
+let _dirty=false;
+function _touch(){
+  if(_dirty) return;
+  _dirty=true;
+  const m=document.getElementById('saveMsg');
+  if(m) m.textContent='✏ 저장하지 않은 변경이 있습니다. 저장을 눌러주세요.';
+}
+window.addEventListener('beforeunload',e=>{ if(_dirty){ e.preventDefault(); e.returnValue=''; } });
+
 function numInput(obj,key,{nullable=false,ph=''}={}){
   const i=document.createElement('input'); i.type='number'; i.inputMode='numeric'; i.placeholder=ph;
   i.value=(obj[key]==null?'':obj[key]);
-  i.oninput=()=>{ const v=i.value.trim(); obj[key]= v===''?(nullable?null:0):Number(v); };
+  i.oninput=()=>{ const v=i.value.trim(); obj[key]= v===''?(nullable?null:0):Number(v); _touch(); };
   return i;
 }
 function txtInput(obj,key,{ph=''}={}){
   const i=document.createElement('input'); i.type='text'; i.placeholder=ph; i.value=obj[key]||'';
-  i.oninput=()=>{ obj[key]=i.value; };
+  i.oninput=()=>{ obj[key]=i.value; _touch(); };
   return i;
 }
 function dateInput(obj,key){
   const i=document.createElement('input'); i.type='date'; i.value=obj[key]||'';
-  i.oninput=()=>{ obj[key]=i.value; };
+  i.oninput=()=>{ obj[key]=i.value; _touch(); };
   return i;
 }
 
@@ -455,11 +539,11 @@ function holidayCard(){
     G.holidays.forEach((d,idx)=>{
       const hd=el('div','hd');
       const i=document.createElement('input'); i.type='date'; i.value=d;
-      i.oninput=()=>{ G.holidays[idx]=i.value; };
-      const x=el('button',null,'×'); x.onclick=()=>{ G.holidays.splice(idx,1); draw(); };
+      i.oninput=()=>{ G.holidays[idx]=i.value; _touch(); };
+      const x=el('button',null,'×'); x.onclick=()=>{ G.holidays.splice(idx,1); _touch(); draw(); };
       hd.appendChild(i); hd.appendChild(x); box.appendChild(hd);
     });
-    const add=el('button','btn ghost sm','＋ 날짜'); add.onclick=()=>{ G.holidays.push(''); draw(); };
+    const add=el('button','btn ghost sm','＋ 날짜'); add.onclick=()=>{ G.holidays.push(''); _touch(); draw(); };
     box.appendChild(add);
   }
   draw(); c.appendChild(box); return c;
@@ -499,38 +583,61 @@ function regionSelect(obj){
   const s=document.createElement('select');
   const opts=REGION_OPTS.slice(); if(obj.region&&!opts.includes(obj.region)) opts.push(obj.region);
   s.innerHTML=opts.map(r=>`<option ${obj.region===r?'selected':''}>${r}</option>`).join('');
-  s.onchange=()=>{ obj.region=s.value; };
+  s.onchange=()=>{ obj.region=s.value; _touch(); };
   return s;
 }
 function numCell(obj,key,nullable){
   const i=document.createElement('input'); i.type='number'; i.className='n cnum'; i.value=(obj[key]==null?'':obj[key]);
-  i.oninput=()=>{ const v=i.value.trim(); obj[key]=v===''?(nullable?null:0):Number(v); }; return i;
+  i.oninput=()=>{ const v=i.value.trim(); obj[key]=v===''?(nullable?null:0):Number(v); _touch(); }; return i;
 }
-function txtCell(obj,key,cls){ const i=document.createElement('input'); i.type='text'; if(cls)i.className=cls; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;}; return i; }
-function dateCell(obj,key){ const i=document.createElement('input'); i.type='date'; i.className='cdate'; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;}; return i; }
+function txtCell(obj,key,cls){ const i=document.createElement('input'); i.type='text'; if(cls)i.className=cls; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;_touch();}; return i; }
+function dateCell(obj,key){ const i=document.createElement('input'); i.type='date'; i.className='cdate'; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;_touch();}; return i; }
 function tdw(node){ const td=document.createElement('td'); td.appendChild(node); return td; }
 function golfSection(){
   const c=card('🗺️ 골프장 · 숙소','한 줄에 골프장 하나(시즌별). 좌우로 스크롤하며 입력하세요. 같은 골프장에 시즌이 2개면 같은 이름으로 2줄 넣으면 됩니다. 빈 칸은 "요금 없음".');
   c.appendChild(el('div','mini','⛳ 골프장'));
+  // 골프장이 20개가 넘어 스크롤로 찾기 번거롭다 — 이름·지역·시즌으로 걸러본다(원본은 안 건드림)
+  const fbar=el('div'); fbar.style.cssText='display:flex;gap:8px;align-items:center;margin:2px 0 8px;flex-wrap:wrap';
+  const fin=document.createElement('input'); fin.type='text'; fin.id='gtFilter'; fin.placeholder='🔎 골프장명·지역·시즌으로 찾기';
+  fin.style.cssText='flex:1;min-width:200px;font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--paper)';
+  fin.value=_gtFilter;
+  fin.oninput=()=>{ _gtFilter=fin.value; renderGolfBody(); };
+  const fcnt=el('span','desc'); fcnt.id='gtCount'; fcnt.style.cssText='font-size:12px;white-space:nowrap';
+  fbar.appendChild(fin); fbar.appendChild(fcnt); c.appendChild(fbar);
   const wrap=el('div','gtwrap'); const tbl=document.createElement('table'); tbl.className='gt';
   tbl.innerHTML='<thead><tr>'+['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="gtbody"></tbody>';
   wrap.appendChild(tbl); c.appendChild(wrap);
   const addC=el('button','btn ghost sm','＋ 골프장 줄 추가'); addC.style.marginTop='9px';
-  addC.onclick=()=>{ CR.push({region:'방콕',name:'',note:'',label:'비수기',from:'',to:'',gf18wd:null,gf18we:null,caddie:0,cart:0,gf9wd:null,gf9we:null,caddie9:0,cart9:0}); renderGolfBody(); };
+  addC.onclick=()=>{ CR.push({region:'방콕',name:'',note:'',label:'비수기',from:'',to:'',gf18wd:null,gf18we:null,caddie:0,cart:0,gf9wd:null,gf9we:null,caddie9:0,cart9:0});
+    _gtFilter=''; const fi=document.getElementById('gtFilter'); if(fi) fi.value='';   // 새 줄이 필터에 가려지지 않게
+    _touch(); renderGolfBody(); };
   c.appendChild(addC);
   c.appendChild(el('div','mini','🏨 숙소'));
   const hwrap=el('div','gtwrap'); const htbl=document.createElement('table'); htbl.className='gt'; htbl.style.minWidth='620px';
   htbl.innerHTML='<thead><tr>'+['지역','숙소명','1박요금','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="htbody"></tbody>';
   hwrap.appendChild(htbl); c.appendChild(hwrap);
   const addH=el('button','btn ghost sm','＋ 숙소 줄 추가'); addH.style.marginTop='9px';
-  addH.onclick=()=>{ HR.push({region:'방콕',name:'',perNight:0,note:'2인 1실 기준 1박'}); renderHotelBody(); };
+  addH.onclick=()=>{ HR.push({region:'방콕',name:'',perNight:0,note:'2인 1실 기준 1박'}); _touch(); renderHotelBody(); };
   c.appendChild(addH);
   setTimeout(()=>{ renderGolfBody(); renderHotelBody(); },0);
   return c;
 }
+let _gtFilter='';
 function renderGolfBody(){
   const tb=document.getElementById('gtbody'); if(!tb) return; tb.innerHTML='';
-  CR.forEach((row,i)=>{
+  const q=_gtFilter.trim().toLowerCase();
+  // 필터를 걸어도 삭제·수정이 올바른 줄에 가도록 원본 인덱스(i)를 그대로 들고 다닌다
+  const rows=CR.map((row,i)=>({row,i})).filter(({row})=>!q||
+    [row.name,row.region,row.label,row.note].some(v=>String(v||'').toLowerCase().includes(q)));
+  const cnt=document.getElementById('gtCount');
+  if(cnt) cnt.textContent = q ? `${rows.length} / ${CR.length}줄` : `${CR.length}줄`;
+  if(!rows.length){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=15; td.style.cssText='padding:16px;text-align:center;color:var(--muted)';
+    td.textContent='조건에 맞는 골프장이 없습니다';
+    tr.appendChild(td); tb.appendChild(tr); return;
+  }
+  rows.forEach(({row,i})=>{
     const tr=document.createElement('tr');
     tr.appendChild(tdw(regionSelect(row)));
     tr.appendChild(tdw(txtCell(row,'name','cname')));
@@ -546,7 +653,9 @@ function renderGolfBody(){
     tr.appendChild(tdw(numCell(row,'caddie9',true)));
     tr.appendChild(tdw(numCell(row,'cart9',true)));
     tr.appendChild(tdw(txtCell(row,'note','cnote')));
-    const x=document.createElement('td'); x.className='cx'; x.textContent='✕'; x.title='이 줄 삭제'; x.onclick=()=>{ CR.splice(i,1); renderGolfBody(); }; tr.appendChild(x);
+    const x=document.createElement('td'); x.className='cx'; x.textContent='✕'; x.title='이 줄 삭제';
+    x.onclick=()=>{ if(!confirm(`[${row.name||'이름없음'} · ${row.label||''}] 줄을 삭제할까요?`)) return; CR.splice(i,1); _touch(); renderGolfBody(); };
+    tr.appendChild(x);
     tb.appendChild(tr);
   });
 }
@@ -558,7 +667,9 @@ function renderHotelBody(){
     tr.appendChild(tdw(txtCell(row,'name','cname')));
     tr.appendChild(tdw(numCell(row,'perNight',false)));
     tr.appendChild(tdw(txtCell(row,'note','cnote')));
-    const x=document.createElement('td'); x.className='cx'; x.textContent='✕'; x.onclick=()=>{ HR.splice(i,1); renderHotelBody(); }; tr.appendChild(x);
+    const x=document.createElement('td'); x.className='cx'; x.textContent='✕';
+    x.onclick=()=>{ if(!confirm(`[${row.name||'이름없음'}] 숙소 줄을 삭제할까요?`)) return; HR.splice(i,1); _touch(); renderHotelBody(); };
+    tr.appendChild(x);
     tb.appendChild(tr);
   });
 }
@@ -576,6 +687,115 @@ function copyData(){
   navigator.clipboard.writeText(t).then(()=>gToast('📋 복사됨')).catch(()=>gToast('복사 실패'));
 }
 
+/* ══════════ 백업 복원 ══════════ */
+function _gbakTs(iso){
+  const t=new Date(iso); if(isNaN(t)) return String(iso||'');
+  const p=n=>String(n).padStart(2,'0');
+  return `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}`;
+}
+function openGBak(){ document.getElementById('gbakModal').classList.remove('hidden'); renderGBakList(); }
+async function renderGBakList(){
+  const key=document.getElementById('gbakKey').value;
+  const host=document.getElementById('gbakList');
+  host.innerHTML='<p class="desc" style="font-size:12.5px">불러오는 중…</p>';
+  let meta=[];
+  try{ meta=(await gsLoadRaw(_gbakMetaKey(key)))||[]; }catch(e){ meta=[]; }
+  if(document.getElementById('gbakKey').value!==key) return;
+  if(!Array.isArray(meta)||!meta.length){
+    host.innerHTML='<p class="desc" style="font-size:12.5px">아직 백업이 없습니다. 한 번 저장하면 만들어집니다.</p>';
+    return;
+  }
+  host.innerHTML=meta.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:8px">
+      <div style="flex:1">
+        <div style="font-size:13.5px;font-weight:700;color:var(--fairway)">${_gbakTs(m.at)}</div>
+        <div style="font-size:11.5px;color:var(--muted)">저장자 ${m.by||'-'}</div>
+      </div>
+      <button class="btn sm" onclick="restoreGBak('${key}',${m.slot},'${_gbakTs(m.at)}')">이 시점으로 복원</button>
+    </div>`).join('');
+}
+async function restoreGBak(key,slot,ts){
+  const nm=GKEY_LABEL[key]||key;
+  if(!confirm(`[${nm}]를 ${ts} 시점으로 되돌립니다.\n현재 내용도 백업되므로 다시 되돌릴 수 있습니다.\n\n복원 후 화면이 새로고침됩니다.\n진행할까요?`)) return;
+  let snap;
+  try{ snap=await gsLoadRaw(_gbakSlotKey(key,slot)); }catch(e){ snap=undefined; }
+  if(snap===undefined||snap===null){ gToast('❌ 백업을 읽지 못했습니다'); return; }
+  try{ await gPushBackup(key,await gsLoadRaw(key)); }catch(e){}
+  if(!await gsSaveRaw(key,snap)){ gToast('❌ 복원 저장 실패'); return; }
+  _gBase[key]=_gSnap(snap); _dirty=false;
+  alert(`✅ [${nm}]를 ${ts} 시점으로 복원했습니다.\n확인을 누르면 새로고침합니다.`);
+  location.reload();
+}
+
+/* ══════════ 엑셀 다운로드 ══════════ */
+async function ensureExcelJS(){
+  if(window.ExcelJS) return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error('엑셀 라이브러리를 불러오지 못했습니다(인터넷 확인)'));
+    document.head.appendChild(s);
+  });
+}
+function _gxSheet(wb,name,header,rows){
+  const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});
+  ws.addRow(header); rows.forEach(r=>ws.addRow(r));
+  const hd=ws.getRow(1);
+  hd.font={bold:true,size:10,color:{argb:'FFFFFFFF'}};
+  hd.alignment={vertical:'middle',horizontal:'center'}; hd.height=22;
+  hd.eachCell(c=>{ c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1B5E3F'}}; });
+  const w=n=>String(n==null?'':n).split('').reduce((a,ch)=>a+(ch.charCodeAt(0)>127?2:1),0);
+  header.forEach((h,i)=>{
+    let mx=w(h); rows.forEach(r=>{ const v=w(r[i]); if(v>mx) mx=v; });
+    ws.getColumn(i+1).width=Math.min(Math.max(mx+3,7),52);
+  });
+  ws.autoFilter={from:{row:1,column:1},to:{row:1,column:header.length}};
+}
+const _gxNum=v=>(v==null||v==='')?'':Number(v);
+async function downloadGolfXlsx(){
+  if(!G){ gToast('⚠ 요금표를 아직 불러오지 못했습니다'); return; }
+  const btn=document.getElementById('gxlsBtn'); const old=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='만드는 중…'; }
+  try{
+    await ensureExcelJS();
+    const wb=new ExcelJS.Workbook(); wb.created=new Date();
+
+    _gxSheet(wb,'골프장',
+      ['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','메모'],
+      CR.map(r=>[r.region||'',r.name||'',r.label||'',r.from||'',r.to||'',
+        _gxNum(r.gf18wd),_gxNum(r.gf18we),_gxNum(r.caddie),_gxNum(r.cart),
+        _gxNum(r.gf9wd),_gxNum(r.gf9we),_gxNum(r.caddie9),_gxNum(r.cart9),r.note||'']));
+
+    _gxSheet(wb,'숙소',['지역','숙소명','1박요금','메모'],
+      HR.map(h=>[h.region||'',h.name||'',_gxNum(h.perNight),h.note||'']));
+
+    _gxSheet(wb,'차량요금',['기간','금액(THB)','비고'],
+      PERIODS.map(p=>[p,_gxNum((G.vehiclePeriods[p]||{}).amount),(G.vehiclePeriods[p]||{}).remark||'']));
+
+    _gxSheet(wb,'핸들링차지',['기간','금액(THB)','비고'],
+      PERIODS.map(p=>[p,_gxNum((G.handlingPeriods[p]||{}).amount),(G.handlingPeriods[p]||{}).remark||'']));
+
+    const grows=[];
+    GUIDE_TYPES.forEach(t=>{
+      const T=G.guidePeriods[t]||{};
+      GUIDE_PERIODS.forEach(p=>grows.push([t,p,_gxNum((T[p]||{}).bkk),_gxNum(T.ptyPerNight),(T[p]||{}).remark||'']));
+    });
+    _gxSheet(wb,'가이드요금',['구분','기간','방콕 기본(THB)','파타야 1박당 추가','비고'],grows);
+
+    _gxSheet(wb,'공휴일',['날짜'],(G.holidays||[]).filter(Boolean).map(d=>[d]));
+    _gxSheet(wb,'기타',['항목','값'],[['밴 1대당 최대 인원(명)',_gxNum(G.paxPerVan)]]);
+
+    const p=n=>String(n).padStart(2,'0'); const d=new Date();
+    const fname=`골프요금표_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`;
+    const buf=await wb.xlsx.writeBuffer();
+    const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    const a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    gToast('✅ 요금표를 내려받았습니다');
+  }catch(e){ gToast('❌ 다운로드 실패: '+(e&&e.message||e)); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=old; } }
+}
+
 /* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
 const GOLF_CODE_CATS=[
   {key:'region',label:'지역'},{key:'club',label:'골프장'},{key:'hotel',label:'호텔'},
@@ -590,13 +810,17 @@ function gToast(msg){
   t.textContent=msg; t.style.opacity='1'; clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; },1800);
 }
 async function loadCodes(){
-  try{ const { data:row } = await sb.from('guide_data').select('data').eq('data_key','golf_codes').single(); if(row&&row.data) GC=row.data; }catch(e){}
+  let raw=null;
+  try{ const { data:row } = await sb.from('guide_data').select('data').eq('data_key','golf_codes').single(); if(row&&row.data) raw=row.data; }catch(e){}
+  _gBase['golf_codes']=_gSnap(raw);
+  GC = raw ? JSON.parse(JSON.stringify(raw)) : {};
   GOLF_CODE_CATS.forEach(c=>{ if(!Array.isArray(GC[c.key])) GC[c.key]=[]; });
   renderCodes();
 }
+// 코드는 버튼 하나로 즉시 저장된다 — 취소하면 화면에 남은 변경을 서버 기준으로 되돌린다.
 async function saveCodes(){
-  try{ await sb.from('guide_data').upsert({ data_key:'golf_codes', data:GC, updated_at:new Date().toISOString() }); }
-  catch(e){ gToast('❌ 저장 실패: '+(e.message||e)); }
+  if(!await gSaveSafe('golf_codes',GC)){ await loadCodes(); return false; }
+  return true;
 }
 function showPane(p){
   document.getElementById('codesPane').style.display = p==='codes'?'':'none';
