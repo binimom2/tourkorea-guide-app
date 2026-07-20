@@ -26,6 +26,19 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .f input,.f select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
 .f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
 .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+/* 지역 선택 — 가는 순서대로 클릭, 고른 것만 아래에 펼쳐 박수 입력 */
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding-top:3px}
+.chip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 13px;font:inherit;font-size:13px;font-weight:700;color:var(--fairway);cursor:pointer}
+.chip:hover{border-color:var(--fairway)}
+.chip.on{background:var(--fairway);color:var(--sand);border-color:var(--fairway)}
+.chip .seq{width:16px;height:16px;border-radius:50%;background:var(--marigold);color:#3a2400;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.picked{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.picked:empty{display:none}
+.pick{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 8px;font-size:13px;font-weight:700;color:var(--fairway)}
+.pick .seq{width:17px;height:17px;border-radius:50%;background:var(--fairway);color:var(--sand);font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.pick input{width:50px;font:inherit;font-size:13px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+.pick .x{color:var(--danger);cursor:pointer;font-weight:800;padding-left:2px}
+.pick small{font-weight:600;color:var(--muted)}
 /* 날짜별 라운딩 — 한 줄에 한 날짜(날짜·요일·구분을 한 줄로 붙여 높이를 줄임) */
 .day{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:4px;background:var(--paper)}
 .day .dlabel{font-weight:700;font-size:13px;min-width:152px;display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -83,25 +96,16 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 
   <div class="card">
     <h2>1. 기본 정보</h2>
-    <div class="grid g4">
+    <div class="grid g3">
       <div class="f"><label>출발 일자</label><input type="date" id="startDate"></div>
       <div class="f"><label>인원수</label><input type="number" id="pax" min="1" value="4"></div>
-      <div class="f"><label>먼저 가는 지역</label><select id="firstRegion"><option value="방콕">방콕 먼저</option><option value="파타야" selected>파타야 먼저</option></select></div>
-      <div class="f"><label>일정</label><input id="tripInfo" readonly style="background:#fff;border-style:dashed"></div>
+      <div class="f"><label>일정</label><select id="tripSel"></select></div>
     </div>
     <div class="f" style="margin-top:8px">
-      <label>지역 선택 <span style="font-weight:400;color:var(--muted)">(체크한 지역만 포함)</span></label>
-      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding-top:2px">
-        <span style="display:flex;align-items:center;gap:7px">
-          <label style="font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cBkk"> 방콕</label>
-          <input type="number" id="nBkk" min="0" value="0" style="width:62px"><span style="color:var(--muted);font-size:12.5px">박</span>
-        </span>
-        <span style="display:flex;align-items:center;gap:7px">
-          <label style="font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cPty" checked> 파타야</label>
-          <input type="number" id="nPty" min="0" value="3" style="width:62px"><span style="color:var(--muted);font-size:12.5px">박</span>
-        </span>
-        <span class="hint" id="paxInfo" style="margin-top:0"></span>
-      </div>
+      <label>지역 선택 <span style="font-weight:400;color:var(--muted)">가시는 순서대로 클릭하세요</span></label>
+      <div class="chips" id="regChips"></div>
+      <div class="picked" id="regPicked"></div>
+      <div class="hint" id="paxInfo"></div>
     </div>
   </div>
 
@@ -113,8 +117,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
   <div class="card">
     <h2>3. 숙소 · 가이드 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">(선택)</span></h2>
     <div class="grid g3">
-      <div class="f"><label>방콕 숙소</label><select id="hotelBkk"></select></div>
-      <div class="f"><label>파타야 숙소</label><select id="hotelPty"></select></div>
+      <div id="hotelWrap" style="display:contents"></div>
       <div class="f"><label>가이드</label><select id="guide">
         <option value="none">노가이드</option>
         <option value="한국인가이드">한국인 가이드</option>
@@ -193,35 +196,82 @@ function tierValue(obj, N, key){
   return { value: base + oneMore*Math.max(0,N-bn), base, bn, oneMore, extra:Math.max(0,N-bn) };
 }
 
+/* ── 지역 선택(가는 순서) ──
+   REGIONS = 관리자 코드관리('지역')에서 오는 목록. ROUTE = 클릭한 순서 = 실제 여행 순서. */
+let REGIONS=[];
+let ROUTE=[];              // [{region, nights}]
+let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
+const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카오야이','아유타야'];
+
+function totalNights(){ return ROUTE.reduce((a,r)=>a+(+r.nights||0),0); }
+function tripLabel(n){ return n>0?`${n}박 ${n+1}일`:'당일'; }
+function buildTripOptions(){
+  const s=$('#tripSel');
+  s.innerHTML=Array.from({length:15},(_,n)=>`<option value="${n}">${tripLabel(n)}</option>`).join('');
+}
+function syncTripSelect(){ $('#tripSel').value=String(totalNights()); }
+// 일정을 직접 고치면 뒤쪽 지역 박수를 늘리거나(추가) 뒤에서부터 깎아서(감소) 합을 맞춘다
+function applyTripToRoute(n){
+  if(!ROUTE.length) return;
+  let d=n-totalNights();
+  if(d>0){ const last=ROUTE[ROUTE.length-1]; last.nights=(+last.nights||0)+d; return; }
+  for(let i=ROUTE.length-1;i>=0&&d<0;i--){
+    const take=Math.min(+ROUTE[i].nights||0,-d);
+    ROUTE[i].nights=(+ROUTE[i].nights||0)-take; d+=take;
+  }
+}
+function toggleRegion(name){
+  const i=ROUTE.findIndex(r=>r.region===name);
+  if(i>=0){ ROUTE.splice(i,1); delete hotelPick[name]; }
+  else ROUTE.push({region:name,nights:0});   // 박수는 사용자가 직접 입력(일정이 멋대로 늘지 않게)
+  refreshAll();
+}
+function renderRegions(){
+  const chips=$('#regChips');
+  chips.innerHTML=REGIONS.map(r=>{
+    const i=ROUTE.findIndex(x=>x.region===r);
+    return `<button type="button" class="chip${i>=0?' on':''}" data-reg-pick="${r}">${i>=0?`<span class="seq">${i+1}</span>`:''}${r}</button>`;
+  }).join('');
+  $('#regPicked').innerHTML=ROUTE.map((r,i)=>
+    `<span class="pick"><span class="seq">${i+1}</span>${r.region}
+      <input type="number" min="0" max="14" value="${+r.nights||0}" data-reg-n="${i}"><small>박</small>
+      <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
+}
+function refreshAll(){ renderRegions(); syncTripSelect(); renderHotels(); buildDays(); calc(); }
+
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
+// 지역 k는 그 지역 박수만큼의 날을 차지하고, 마지막 지역이 체크아웃 날(+1일)까지 갖는다
+function regionForDay(i){
+  let acc=0;
+  for(let k=0;k<ROUTE.length;k++){
+    const span=(+ROUTE[k].nights||0)+(k===ROUTE.length-1?1:0);
+    if(i<acc+span) return ROUTE[k].region;
+    acc+=span;
+  }
+  return ROUTE.length?ROUTE[ROUTE.length-1].region:'';
+}
+function regionOptionsHtml(sel){
+  const opts=REGIONS.slice(); if(sel&&!opts.includes(sel)) opts.push(sel);
+  return opts.map(r=>`<option${r===sel?' selected':''}>${r}</option>`).join('');
+}
 function buildDays(){
+  const wrap=$('#days'); wrap.innerHTML=''; dayState=[];
+  if(!ROUTE.length){ wrap.innerHTML='<div class="hint">위에서 지역을 먼저 선택하세요.</div>'; return; }
   const start=$('#startDate').value;
-  const nB=$('#cBkk').checked?(+$('#nBkk').value||0):0, nP=$('#cPty').checked?(+$('#nPty').value||0):0;
-  const nights=nB+nP, days=nights+1;
-  // 지역 배정: 박수 있는 지역만. 둘 다 있으면 먼저 가는 지역 우선.
-  let first, second, firstNights;
-  if(nB>0 && nP>0){ first=$('#firstRegion').value; second=(first==='방콕'?'파타야':'방콕'); firstNights=(first==='방콕'?nB:nP); }
-  else if(nB>0){ first='방콕'; second='방콕'; firstNights=nB; }
-  else if(nP>0){ first='파타야'; second='파타야'; firstNights=nP; }
-  else { first=$('#firstRegion').value; second=first; firstNights=0; }
-  // 일정 표시
-  $('#tripInfo').value = nights>0 ? `${nights}박 ${days}일` : '당일';
-  // 지역 자동배정: 앞 지역이 (firstNights+1)일, 뒤 지역이 나머지
-  const wrap=$('#days'); wrap.innerHTML='';
-  dayState=[];
   if(!start){ wrap.innerHTML='<div class="hint">출발 일자를 먼저 선택하세요.</div>'; return; }
+  const days=totalNights()+1;
   for(let i=0;i<days;i++){
     const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+i); const ds=iso(d);
     const we=isWeekend(d)||isHoliday(ds);
-    const region = (i < firstNights+1) ? first : second;
+    const region=regionForDay(i);
     const st={date:ds, region, round:false, course:'', holes:'18'};
     const st_i=dayState.push(st)-1;
     const row=document.createElement('div'); row.className='day off'; row.dataset.i=st_i;
     row.innerHTML=`
       <div class="dlabel">${ds.slice(5).replace('-','/')} <small>${['일','월','화','수','목','금','토'][d.getDay()]}요일 ${we?'<span class="badge we">주말/휴일</span>':'<span class="badge">주중</span>'}</small></div>
       <label class="rchk"><input type="checkbox" data-r="${st_i}"> 라운딩</label>
-      <select class="reg" data-reg="${st_i}"><option ${region==='방콕'?'selected':''}>방콕</option><option ${region==='파타야'?'selected':''}>파타야</option></select>
+      <select class="reg" data-reg="${st_i}">${regionOptionsHtml(region)}</select>
       <select class="course" data-c="${st_i}" disabled></select>
       <select class="holes" data-h="${st_i}" disabled></select>`;
     wrap.appendChild(row);
@@ -244,12 +294,17 @@ function fillHoles(i){
   if(c){ const has9=(c.s||[]).some(s=>s.g9); if(has9){ opts.push('<option value="27">27홀</option>'); opts.push('<option value="9">9홀</option>'); } }
   sel.innerHTML=opts.join(''); sel.value=st.holes||'18';
 }
-function fillHotels(){
-  const H=P.hotels||DEFAULT_PRICING.hotels;
-  ['Bkk','Pty'].forEach(k=>{
-    const region=k==='Bkk'?'방콕':'파타야';
-    const sel=$('#hotel'+k);
-    sel.innerHTML='<option value="">숙소 없이</option>'+(H[region]||[]).map((h,idx)=>`<option value="${idx}">${h.name} · ${won(h.perNight)} THB/박</option>`).join('');
+// 숙소는 「고른 지역 중 1박 이상인 곳」만 칸을 만든다
+function renderHotels(){
+  const H=P.hotels||{};
+  const wrap=$('#hotelWrap'); wrap.innerHTML='';
+  ROUTE.filter(r=>(+r.nights||0)>0).forEach(r=>{
+    const list=H[r.region]||[];
+    const f=document.createElement('div'); f.className='f';
+    const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.region])===String(idx)?' selected':''}>${h.name} · ${won(h.perNight)} THB/박</option>`).join('');
+    f.innerHTML=`<label>${r.region} 숙소 <span style="font-weight:400;color:var(--muted)">${r.nights}박</span></label>`+
+      `<select data-hotel="${r.region}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`;
+    wrap.appendChild(f);
   });
 }
 
@@ -257,9 +312,12 @@ function fillHotels(){
 function calc(){
   if(!window._ready) return;
   const pax=Math.max(1,+$('#pax').value||1);
-  const nB=$('#cBkk').checked?(+$('#nBkk').value||0):0, nP=$('#cPty').checked?(+$('#nPty').value||0):0, nights=nB+nP;
+  const nights=totalNights();
   const rooms=Math.ceil(pax/2);
-  $('#paxInfo').textContent=`${pax}명 · 방콕 ${nB}박 + 파타야 ${nP}박 = 총 ${nights}박`;
+  const nP=(ROUTE.find(r=>r.region==='파타야')||{}).nights||0;   // 가이드 파타야 박당 추가용
+  $('#paxInfo').textContent=ROUTE.length
+    ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${nights+1}일`
+    : `${pax}명 · 지역을 선택하세요`;
   const lines=[];
   // 1) 골프 (체크된 날)
   dayState.forEach(st=>{
@@ -295,11 +353,14 @@ function calc(){
       lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`기본 ${won(gv.value)}${gv.extra?` (+1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}${nP?` + 파타야 ${won(G.ptyPerNight||0)}×${nP}박`:''}`,v:gv.value+pty});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
   }
-  // 5) 숙소
-  const H=P.hotels||DEFAULT_PRICING.hotels;
-  [['Bkk','방콕',nB],['Pty','파타야',nP]].forEach(([k,region,nn])=>{
-    const idx=$('#hotel'+k).value;
-    if(idx!==''&&nn>0){ const h=(H[region]||[])[+idx]; if(h){ lines.push({t:`숙소 · ${h.name}`,s:`${won(h.perNight)} × ${nn}박 × ${rooms}실`,v:h.perNight*nn*rooms}); } }
+  // 5) 숙소 — 고른 지역별로
+  const H=P.hotels||{};
+  ROUTE.forEach(r=>{
+    const nn=+r.nights||0; if(!nn) return;
+    const idx=hotelPick[r.region];
+    if(idx===undefined||idx==='') return;
+    const h=(H[r.region]||[])[+idx]; if(!h) return;
+    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${won(h.perNight)} × ${nn}박 × ${rooms}실`,v:h.perNight*nn*rooms});
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
   $('#lines').innerHTML=lines.map(l=>`<tr><td>${l.t}<span class="sub ${l.warn?'warn':''}">${l.s}</span></td><td class="n">${won(l.v)}</td></tr>`).join('')||`<tr><td colspan="2" style="opacity:.6">라운딩할 날을 체크하면 견적이 나옵니다.</td></tr>`;
@@ -308,16 +369,35 @@ function calc(){
 }
 
 /* ── 이벤트 ── */
+// 지역 칩 클릭 / 빼기
+document.addEventListener('click',e=>{
+  const pick=e.target.closest('[data-reg-pick]');
+  if(pick){ toggleRegion(pick.dataset.regPick); return; }
+  const del=e.target.closest('[data-reg-del]');
+  if(del){ const i=+del.dataset.regDel; const r=ROUTE[i]; if(r) delete hotelPick[r.region]; ROUTE.splice(i,1); refreshAll(); return; }
+});
+// 지역별 박수 입력
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.regN!==undefined){
+    const i=+t.dataset.regN; if(!ROUTE[i]) return;
+    ROUTE[i].nights=Math.max(0,+t.value||0);
+    syncTripSelect(); renderHotels(); buildDays(); calc();   // 칩은 다시 안 그림(입력 포커스 유지)
+    return;
+  }
+  if(t.id==='pax') calc();
+});
 document.addEventListener('change',e=>{
   const t=e.target;
-  if(['startDate','nBkk','nPty','firstRegion','cBkk','cPty'].includes(t.id)){ $('#nBkk').disabled=!$('#cBkk').checked; $('#nPty').disabled=!$('#cPty').checked; buildDays(); calc(); return; }
+  if(t.id==='startDate'){ buildDays(); calc(); return; }
+  if(t.id==='tripSel'){ applyTripToRoute(+t.value||0); refreshAll(); return; }
+  if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
   if(t.dataset.reg!==undefined){ const i=+t.dataset.reg; dayState[i].region=t.value; dayState[i].course=''; fillCourses(i); }
   if(t.dataset.c!==undefined){ const i=+t.dataset.c; dayState[i].course=t.value; fillHoles(i); }
   if(t.dataset.h!==undefined){ const i=+t.dataset.h; dayState[i].holes=t.value; }
   calc();
 });
-document.addEventListener('input',e=>{ if(['pax'].includes(e.target.id)) calc(); });
 
 /* ── Supabase 로그인 + 요금 로드 ── */
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
@@ -347,19 +427,30 @@ async function loadPricing(){
     }
   }catch(e){}
 }
+// 지역 목록은 관리자 코드관리('지역')에서 가져온다 — 관리자가 추가/수정/삭제하면 여기 바로 반영
+async function loadRegionCodes(){
+  try{
+    const {data:row,error}=await sb.from('guide_data').select('data').eq('data_key','golf_codes').maybeSingle();
+    if(!error&&row&&row.data&&Array.isArray(row.data.region)){
+      const l=row.data.region.filter(r=>r.active!==false).map(r=>r.label).filter(Boolean);
+      if(l.length){ REGIONS=l; return; }
+    }
+  }catch(e){}
+  REGIONS=REGION_FALLBACK.slice();
+}
 function startApp(user){
   if(user&&isAdmin(user)) document.getElementById('adminLink').style.display='';
-  fillHotels();
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
-  $('#nBkk').disabled=!$('#cBkk').checked; $('#nPty').disabled=!$('#cPty').checked;
-  buildDays(); window._ready=true; calc();
+  buildTripOptions();
+  window._ready=true;
+  refreshAll();
   $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
 }
 async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single(); if(row&&row.data){const k=(typed||'').toLowerCase(); if(row.data[k])return row.data[k];} }catch(e){} return null; }
 async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
-  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
+  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); await loadRegionCodes(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
 async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
-(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); startApp(session.user); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
+(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); await loadRegionCodes(); startApp(session.user); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
 </script>
 </body>
 </html>

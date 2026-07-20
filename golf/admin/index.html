@@ -146,6 +146,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
   </header>
+  <div id="codesPane"></div>
   <div id="editor"></div>
 </div>
 
@@ -351,7 +352,8 @@ function afterAuth(user){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('savebar').classList.remove('hidden');
   document.getElementById('who').textContent=(info.name||'')+' · admin';
-  loadPricing();
+  // 코드를 먼저 불러와야 요금표의 지역 선택칸이 코드 목록으로 채워진다
+  loadCodes().then(loadPricing);
 }
 
 /* ══════════ 데이터 로드/저장 ══════════ */
@@ -550,7 +552,6 @@ function holidayCard(){
 }
 /* ── 골프장·숙소: 가로 표(한 줄=한 골프장 시즌) ── */
 let CR=[], HR=[];
-const REGION_OPTS=['방콕','파타야'];
 function flattenRegions(){
   CR=[]; HR=[];
   RA.forEach(r=>{
@@ -581,7 +582,8 @@ function regroupRegions(){
 }
 function regionSelect(obj){
   const s=document.createElement('select');
-  const opts=REGION_OPTS.slice(); if(obj.region&&!opts.includes(obj.region)) opts.push(obj.region);
+  // 코드관리의 지역 목록 + (이미 쓰이고 있는데 코드에서 빠진 지역은 그대로 유지)
+  const opts=regionOpts().slice(); if(obj.region&&!opts.includes(obj.region)) opts.push(obj.region);
   s.innerHTML=opts.map(r=>`<option ${obj.region===r?'selected':''}>${r}</option>`).join('');
   s.onchange=()=>{ obj.region=s.value; _touch(); };
   return s;
@@ -809,24 +811,35 @@ function gToast(msg){
     document.body.appendChild(t); }
   t.textContent=msg; t.style.opacity='1'; clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; },1800);
 }
+// 지역 코드 최초 시딩 — 견적 페이지의 지역 목록이 이 코드에서 나온다
+const REGION_SEED=[
+  {code:'BKK',label:'방콕'},{code:'PTY',label:'파타야'},{code:'HHN',label:'후아힌'},
+  {code:'KCB',label:'칸차나부리'},{code:'KYI',label:'카오야이'},{code:'AYA',label:'아유타야'},
+];
 async function loadCodes(){
   let raw=null;
-  try{ const { data:row } = await sb.from('guide_data').select('data').eq('data_key','golf_codes').single(); if(row&&row.data) raw=row.data; }catch(e){}
+  try{
+    const { data:row, error } = await sb.from('guide_data').select('data').eq('data_key','golf_codes').maybeSingle();
+    if(error) throw error;
+    if(row&&row.data) raw=row.data;
+  }catch(e){}
   _gBase['golf_codes']=_gSnap(raw);
   GC = raw ? JSON.parse(JSON.stringify(raw)) : {};
   GOLF_CODE_CATS.forEach(c=>{ if(!Array.isArray(GC[c.key])) GC[c.key]=[]; });
+  // 시딩은 gSaveSafe를 직접 부른다 — saveCodes()는 실패 시 loadCodes()를 다시 부르므로
+  // 여기서 쓰면 「시딩 → 저장 실패 → 재로드 → 다시 시딩」 무한 루프가 된다.
+  if(!GC.region.length){ GC.region=REGION_SEED.map(r=>Object.assign({},r)); await gSaveSafe('golf_codes',GC); }
   renderCodes();
+}
+// 사용중인 지역 이름 목록(코드관리에서 관리). 요금표·견적 양쪽이 이걸 쓴다.
+function regionOpts(){
+  const l=(GC.region||[]).filter(r=>r.active!==false).map(r=>r.label).filter(Boolean);
+  return l.length?l:REGION_SEED.map(r=>r.label);
 }
 // 코드는 버튼 하나로 즉시 저장된다 — 취소하면 화면에 남은 변경을 서버 기준으로 되돌린다.
 async function saveCodes(){
   if(!await gSaveSafe('golf_codes',GC)){ await loadCodes(); return false; }
   return true;
-}
-function showPane(p){
-  document.getElementById('codesPane').style.display = p==='codes'?'':'none';
-  document.getElementById('editor').style.display    = p==='prices'?'':'none';
-  document.getElementById('savebar').style.display   = p==='prices'?'':'none';
-  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.pane===p));
 }
 function renderCodes(){
   const pane=document.getElementById('codesPane'); pane.innerHTML='';
@@ -867,6 +880,8 @@ function renderCodes(){
     body.appendChild(row);
   });
   c.appendChild(body); pane.appendChild(c);
+  // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
+  if(document.getElementById('gtbody')){ renderGolfBody(); renderHotelBody(); }
 }
 async function addCode(){
   const ic=document.getElementById('gc-code'), il=document.getElementById('gc-label');
