@@ -3635,18 +3635,42 @@ async function downloadListXlsx(){
 let editingId=null;
 let modalMode='create'; // 'create' | 'edit'
 // 가이드정산코드 형식: YYMMDD-순번(같은 체크인 날짜 내 입력 순서, 01부터)
+function _dcode(datein){ return (datein||'').replace(/-/g,'').slice(2)||'000000'; }
+// 같은 체크인 날짜에서 다음 순번 = 이미 쓰인 번호의 최댓값+1.
+// (개수+1로 하면 중간 예약을 삭제했을 때 이미 나간 번호를 다시 내줘 코드가 중복된다)
+function nextSeqForDate(list,d,excludeId){
+  let mx=0;
+  (list||[]).forEach(r=>{
+    if(!r||(excludeId&&r.id===excludeId)) return;
+    const c=String(r.code||'');
+    if(c.slice(0,6)!==d) return;
+    const n=parseInt(c.slice(7),10);
+    if(!isNaN(n)&&n>mx) mx=n;
+  });
+  return mx+1;
+}
 function genCode(datein){
-  const d=(datein||'').replace(/-/g,'').slice(2)||'000000';
-  const sameDate=reservations.filter(r=>(r.datein||'').replace(/-/g,'').slice(2)===d);
-  const seq=String(sameDate.length+1).padStart(2,'0');
-  return `${d}-${seq}`;
+  const d=_dcode(datein);
+  return `${d}-${String(nextSeqForDate(reservations,d)).padStart(2,'0')}`;
 }
 function genCodePreview(datein){
   if(!datein) return '자동생성 (체크인 입력시 표시)';
-  const d=datein.replace(/-/g,'').slice(2);
-  const sameDate=reservations.filter(r=>(r.datein||'').replace(/-/g,'').slice(2)===d&&r.id!==(workingRes&&workingRes.id));
-  const seq=String(sameDate.length+1).padStart(2,'0');
-  return `${d}-${seq}`;
+  const d=_dcode(datein);
+  return `${d}-${String(nextSeqForDate(reservations,d,workingRes&&workingRes.id)).padStart(2,'0')}`;
+}
+/* 저장 병합 후, 그 사이 다른 사람이 같은 코드를 먼저 써버렸으면 내 새 예약의 번호를 다시 딴다.
+   (코드는 저장 전 내 화면 기준으로 뽑히므로, 둘이 같은 날짜에 동시에 만들면 겹칠 수 있다) */
+async function resolveCodeCollisions(created){
+  const list=(Array.isArray(created)?created:[created]).filter(Boolean);
+  let changed=false;
+  list.forEach(res=>{
+    if(!reservations.some(r=>r&&r.id!==res.id&&r.code===res.code)) return;
+    const d=_dcode(res.datein);
+    res.code=`${d}-${String(nextSeqForDate(reservations,d,res.id)).padStart(2,'0')}`;
+    changed=true;
+  });
+  if(changed) await saveData();
+  return changed;
 }
 function blankReservation(){
   const codes=getCodes();
@@ -4153,7 +4177,10 @@ async function saveReservation(){
     workingRes.createdBy=currentUser?currentUser.id:'';
     workingRes.updatedBy=workingRes.createdBy;
     reservations.push(workingRes);
-    await saveData();
+    if(await saveData()){
+      // 같은 날짜로 동시에 만들면 코드가 겹칠 수 있다 — 병합 후 확인하고 필요하면 다시 채번
+      if(await resolveCodeCollisions(workingRes)) showToast(`ℹ 같은 코드가 이미 있어 ${workingRes.code}로 번호를 다시 부여했습니다`);
+    }
     editingId=workingRes.id;
     modalMode='edit';
     document.getElementById('rmTitle').textContent='예약 수정 (EditReservation)';
@@ -4219,7 +4246,7 @@ async function confirmDateAmend(){
   clone.createdBy=currentUser?currentUser.id:'';
   clone.updatedBy=clone.createdBy;
   reservations.push(clone);
-  await saveData();
+  if(await saveData()) await resolveCodeCollisions(clone);
   closeAmendModal();
   renderFilters();renderAll();
   openReservation(clone.id); // 이관된 새 예약을 바로 열기
@@ -4262,7 +4289,7 @@ async function confirmCopyReservation(){
   dates.sort();
   // 원본은 변경하지 않음(그대로 유지). 각 날짜마다 새 예약 생성.
   const nights=Math.max(0,Math.round((new Date((workingRes.dateout||copyOrigDate)+'T00:00:00')-new Date(copyOrigDate+'T00:00:00'))/86400000));
-  const codes=[];
+  const clones=[];
   dates.forEach(nd=>{
     const clone=JSON.parse(JSON.stringify(workingRes));
     clone.id='id_'+Date.now()+Math.random().toString(36).slice(2,9);
@@ -4275,12 +4302,12 @@ async function confirmCopyReservation(){
     clone.createdBy=currentUser?currentUser.id:'';
     clone.updatedBy=clone.createdBy;
     reservations.push(clone);
-    codes.push(clone.code);
+    clones.push(clone);
   });
-  await saveData();
+  if(await saveData()) await resolveCodeCollisions(clones);
   closeCopyModal();
   renderFilters();renderAll();
-  showToast(`✅ ${dates.length}건 복사 완료 (${codes.join(', ')}) — 원본 ${copyOrigCode} 유지`);
+  showToast(`✅ ${dates.length}건 복사 완료 (${clones.map(c=>c.code).join(', ')}) — 원본 ${copyOrigCode} 유지`);
 }
 
 /* ══════════════════════════ BALANCE ══════════════════════════ */
