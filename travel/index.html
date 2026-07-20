@@ -689,7 +689,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-h';
+const APP_VERSION='2026-07-20-i';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -697,7 +697,8 @@ function showVerBanner(){
   if(_verBanner) return;
   _verBanner=document.createElement('div');
   _verBanner.style.cssText='position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99998;background:#1f4a85;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.28);cursor:pointer;';
-  _verBanner.textContent='🔄 새 버전이 있습니다 — 작업 중인 내용을 저장한 뒤 이 알림을 누르면 새로고침합니다';
+  _verBanner.innerHTML='🔄 새 버전이 있습니다 — 작업 중인 내용을 저장한 뒤 이 알림을 누르면 새로고침합니다'
+    +'<br><span style="font-weight:600;opacity:.85;font-size:12px;">(New version available — save your work, then click here to refresh)</span>';
   _verBanner.onclick=()=>location.reload();
   document.body.appendChild(_verBanner);
 }
@@ -711,7 +712,7 @@ async function checkAppVersion(force){
     if(m&&m[1]!==APP_VERSION){
       _verStale=true;
       if(_isEditingRes()){ showVerBanner(); return; }   // 입력 중 — 저장할 때까지 기다린다
-      alert('앱이 업데이트되었습니다.\n\n지금 이 창은 예전 버전이라, 이대로 저장하면\n다른 사람이 입력한 내용이 사라질 수 있습니다.\n\n확인을 누르면 새로고침합니다.');
+      alert('앱이 업데이트되었습니다.\n지금 이 창은 예전 버전이라, 이대로 저장하면\n다른 사람이 입력한 내용이 사라질 수 있습니다.\n\n(The app has been updated. This window is running an old version —\nsaving now could erase data entered by others.)\n\n확인을 누르면 새로고침합니다. / Press OK to refresh.');
       location.reload();
     }
   }catch(e){}finally{ _verBusy=false; }
@@ -743,12 +744,13 @@ function showIdleWarn(sec){
     _idleWarnEl.style.cssText='position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99999;background:#e0483f;color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.28);';
     document.body.appendChild(_idleWarnEl);
   }
-  _idleWarnEl.textContent=`⏰ ${sec}초 후 자동 로그아웃 — 화면을 클릭하면 계속 사용합니다`;
+  _idleWarnEl.innerHTML=`⏰ ${sec}초 후 자동 로그아웃 — 화면을 클릭하면 계속 사용합니다`
+    +`<br><span style="font-weight:600;opacity:.9;font-size:12px;">(Auto sign-out in ${sec}s — click anywhere to stay signed in)</span>`;
 }
 async function idleLogout(){
   try{ await sb.auth.signOut(); }catch(e){}
   try{ localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY); }catch(e){}
-  alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.');
+  alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.\n\n(Signed out after 1 hour of inactivity. Please sign in again.)');
   location.reload();
 }
 setInterval(()=>{
@@ -914,7 +916,7 @@ async function sbSaveSafe(key,data,opts){
 
   if(!fetched){   // 오프라인/장애 — 서버를 건드리지 않는다
     localStorage.setItem(key,JSON.stringify(data));
-    showToast('⚠ 서버 연결 실패 — 이 기기에만 저장했습니다. 연결된 뒤 다시 저장해 주세요.');
+    showToast('⚠ 서버 연결 실패 — 이 기기에만 저장했습니다. 연결된 뒤 다시 저장해 주세요. (Server unreachable — saved on this device only. Please save again once connected.)');
     return false;
   }
 
@@ -935,16 +937,16 @@ async function sbSaveSafe(key,data,opts){
         if(pos.has(k)){ out2[pos.get(k)]=it; } else { pos.set(k,out2.length); out2.push(it); added++; } });
       const dropped=server.length-data.filter(it=>sM.has(String(it[f]))).length;
       out=out2;
-      if(dropped>0) showToast('⚠ 최신 목록을 못 받은 상태라 삭제는 반영하지 않았습니다. 새로고침 후 다시 해주세요.');
+      if(dropped>0) showToast('⚠ 최신 목록을 못 받은 상태라 삭제는 반영하지 않았습니다. 새로고침 후 다시 해주세요. (Deletions were not applied because the latest list could not be loaded. Please refresh and retry.)');
       try{ await pushBackup(key,server); }catch(e){}
       localStorage.setItem(key,JSON.stringify(out));
-      if(!await sbSaveRaw(key,out)){ showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다'); return false; }
+      if(!await sbSaveRaw(key,out)){ showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다 (Server save failed — saved on this device only)'); return false; }
       _sbBase[key]=_sbSnap(out); delete _sbLoadFailed[key];
       return out;
     }
     // 항목 구분이 안 되는 데이터인데 기준값도 없다 → 덮어쓰면 위험. 확인받는다.
     if(server!==null && srvStr!==_sbSnap(data)){
-      if(!confirm(`[${trvLabel(key)}] 최신 내용을 확인하지 못한 상태입니다.\n\n지금 저장하면 서버 내용이 현재 화면 내용으로 대체됩니다.\n(취소 후 새로고침을 권합니다)\n\n계속할까요?`)) return false;
+      if(!confirm(`[${trvLabel(key)}] 최신 내용을 확인하지 못한 상태입니다.\n지금 저장하면 서버 내용이 현재 화면 내용으로 대체됩니다.\n(취소 후 새로고침을 권합니다)\n\n(Could not verify the latest data. Saving now will replace the server data\nwith what is on your screen. Cancel and refresh is recommended.)\n\n계속할까요? / Continue?`)) return false;
     }
   }
 
@@ -961,20 +963,20 @@ async function sbSaveSafe(key,data,opts){
       if(clash.length){
         const names=clash.slice(0,10).map(it=>'· '+(opts.labelFn?opts.labelFn(it):(it.name||it.code||it.id))).join('\n');
         const more=clash.length>10?`\n… 외 ${clash.length-10}건`:'';
-        if(!confirm(`[${trvLabel(key)}] 아래 항목을 그 사이 다른 사람이 수정했습니다.\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)`)){
+        if(!confirm(`[${trvLabel(key)}] 아래 항목을 그 사이 다른 사람이 수정했습니다.\n(Someone else has modified these items in the meantime.)\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n(Overwrite with your version? Cancel = discard your changes and reload the latest.)`)){
           localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
           if(opts.onCancel) opts.onCancel(server);
-          showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
+          showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다 (Save cancelled — latest data reloaded)');
           return false;
         }
       }
       out=merged;
     } else {
       // 항목을 구분할 수 없는 데이터(문자열 배열·객체 등) — 병합 불가, 확인받고 덮어쓴다
-      if(!confirm(`[${trvLabel(key)}] 데이터를 그 사이 다른 사람이 변경했습니다.\n\n내 내용으로 저장하면 그 변경이 사라집니다.\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n계속할까요?`)){
+      if(!confirm(`[${trvLabel(key)}] 데이터를 그 사이 다른 사람이 변경했습니다.\n내 내용으로 저장하면 그 변경이 사라집니다.\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n(Someone else changed this data. Saving yours will discard their changes.\nCancel = don't save and reload the latest.)\n\n계속할까요? / Continue?`)){
         localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
         if(opts.onCancel) opts.onCancel(server);
-        showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
+        showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다 (Save cancelled — latest data reloaded)');
         return false;
       }
     }
@@ -993,10 +995,10 @@ async function sbSaveSafe(key,data,opts){
       const nm=it=>(opts.labelFn?opts.labelFn(it):(it&&(it.name||it.code||it.id)))||'(이름없음)';
       const names=gone.slice(0,12).map(it=>'· '+nm(it)).join('\n');
       const more=gone.length>12?`\n… 외 ${gone.length-12}건`:'';
-      if(!confirm(`⚠ 경고 — 이 저장으로 [${trvLabel(key)}] ${gone.length}건이 서버에서 사라집니다.\n\n${names}${more}\n\n의도한 삭제가 맞습니까?\n아니라면 반드시 [취소]를 누르고 새로고침(Ctrl+Shift+R) 해주세요.`)){
+      if(!confirm(`⚠ 경고 — 이 저장으로 [${trvLabel(key)}] ${gone.length}건이 서버에서 사라집니다.\n(WARNING: this save will DELETE ${gone.length} record(s) from the server.)\n\n${names}${more}\n\n의도한 삭제가 맞습니까?\n아니라면 반드시 [취소]를 누르고 새로고침(Ctrl+Shift+R) 해주세요.\n\n(Is this deletion intended? If not, press CANCEL and refresh with Ctrl+Shift+R.)`)){
         localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
         if(opts.onCancel) opts.onCancel(server);
-        showToast('↩ 저장을 취소했습니다. 최신 내용을 불러왔습니다.');
+        showToast('↩ 저장을 취소했습니다. 최신 내용을 불러왔습니다. (Save cancelled — latest data reloaded)');
         return false;
       }
     }
@@ -1006,7 +1008,7 @@ async function sbSaveSafe(key,data,opts){
 
   localStorage.setItem(key,JSON.stringify(out));
   if(!await sbSaveRaw(key,out)){
-    showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다');
+    showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다 (Server save failed — saved on this device only)');
     return false;
   }
   _sbBase[key]=_sbSnap(out);
@@ -1082,7 +1084,7 @@ async function enterApp(){
   await loadAllFromSupabase();
   // 예약 목록을 못 받았으면 화면이 낡은 상태다 — 모르고 저장하면 서버 데이터가 밀린다
   if(_sbLoadFailed['trv_reservations']){
-    alert('⚠ 예약 목록을 서버에서 불러오지 못했습니다.\n\n지금 화면은 예전에 받아둔 낡은 내용일 수 있습니다.\n이 상태로 저장하면 최근 예약이 반영되지 않을 수 있으니,\n새로고침(Ctrl+Shift+R) 후 다시 사용해 주세요.');
+    alert('⚠ 예약 목록을 서버에서 불러오지 못했습니다.\n지금 화면은 예전에 받아둔 낡은 내용일 수 있습니다.\n새로고침(Ctrl+Shift+R) 후 다시 사용해 주세요.\n\n(Could not load the reservation list from the server.\nThis screen may be showing outdated data.\nPlease refresh with Ctrl+Shift+R before continuing.)');
   }
   // 기준 데이터 시딩/마이그레이션은 역할과 무관하게 전원 실행(모두 idempotent·버전가드).
   // 오퍼레이터/매니저가 먼저 접속해도 코드·거래처·벤더·문구가 채워지도록(입력창 값 비어있음 방지).
@@ -1105,7 +1107,7 @@ async function enterApp(){
   renderAll();
 }
 async function doLogout(){
-  if(!confirm('로그아웃 하시겠습니까?'))return;
+  if(!confirm('로그아웃 하시겠습니까?\n\n(Sign out?)'))return;
   try{ await sb.auth.signOut(); }catch(e){}
   try{ localStorage.removeItem('trv_session'); }catch(e){}
   currentUser=null;
@@ -2809,7 +2811,7 @@ async function saveGolfCourse(){
   closeSubEditor();
   renderCostTable();
   showCostUpdated();
-  showToast('✅ 저장되었습니다');
+  showToast('✅ 저장되었습니다 (Saved)');
 }
 async function delGolfCourse(i){
   const c=getGolfCourses()[i];
@@ -3135,7 +3137,7 @@ async function saveHotel(){
   closeSubEditor();
   renderCostTable();
   showCostUpdated();
-  showToast('✅ 저장되었습니다');
+  showToast('✅ 저장되었습니다 (Saved)');
 }
 async function delHotel(i){
   const h=getHotels()[i];
@@ -3342,7 +3344,7 @@ async function saveAttr(){
   closeSubEditor();
   renderCostTable();
   showCostUpdated();
-  showToast('✅ 저장되었습니다');
+  showToast('✅ 저장되었습니다 (Saved)');
 }
 async function delAttr(i){
   const a=getAttrs()[i];
@@ -3398,7 +3400,7 @@ async function saveCostRow(){
   closeSubEditor();
   renderCostTable();
   showCostUpdated();
-  showToast('✅ 저장되었습니다');
+  showToast('✅ 저장되었습니다 (Saved)');
 }
 async function delCostRow(i){
   if(costTab==='golf'){ return delGolfCourse(i); }   // 골프장 전용 삭제
@@ -4331,8 +4333,8 @@ function syncFormToRes(){
 async function saveReservation(){
   syncFormToRes();
 
-  if(!workingRes.datein){showToast('⚠ 체크인 날짜를 입력해주세요');return;}
-  if(!workingRes.name){showToast('⚠ 예약명을 입력해주세요');return;}
+  if(!workingRes.datein){showToast('⚠ 체크인 날짜를 입력해주세요 (Please enter the check-in date)');return;}
+  if(!workingRes.name){showToast('⚠ 예약명을 입력해주세요 (Please enter the reservation name)');return;}
 
   if(modalMode==='create'){
     workingRes.code=genCode(workingRes.datein);
@@ -4355,7 +4357,7 @@ async function saveReservation(){
     document.getElementById('btnSaveRes').textContent='Save';
     renderSubsections();
     renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
-    showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요.');
+    showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요. (Reservation created — now add the assignments)');
   } else {
     workingRes.updatedAt=new Date().toISOString();
     workingRes.updatedBy=currentUser?currentUser.id:'';
@@ -4364,21 +4366,21 @@ async function saveReservation(){
     await saveData();
     renderSubsections();
     renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
-    showToast('✅ 저장되었습니다');
+    showToast('✅ 저장되었습니다 (Saved)');
   }
 }
 async function deleteReservation(){
-  if(!confirm('이 예약을 삭제할까요? 삭제된 데이터는 복구할 수 없습니다.'))return;
+  if(!confirm('이 예약을 삭제할까요? 삭제된 데이터는 복구할 수 없습니다.\n\n(Delete this reservation? This cannot be undone.)'))return;
   reservations=reservations.filter(r=>r.id!==editingId);
   await saveData();
   closeReservation();
   renderFilters();renderAll();
-  showToast('🗑 예약이 삭제되었습니다');
+  showToast('🗑 예약이 삭제되었습니다 (Reservation deleted)');
 }
 // 날짜변경 어멘드: 원본은 그 자리에 원 코드로 '취소' 유지, 내용을 복제해 새 날짜+새 코드로 이관
 let amendOrigDate='', amendOrigCode='';
 function dateChangeAmend(){
-  if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다'); return; }
+  if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다 (Only available on a saved reservation)'); return; }
   syncFormToRes(); // 현재 폼 내용 반영
   amendOrigDate=workingRes.datein; amendOrigCode=workingRes.code;
   if(!amendOrigDate){ showToast('⚠ 체크인 날짜가 없습니다'); return; }
@@ -4419,7 +4421,7 @@ async function confirmDateAmend(){
 // 예약 복사(시리즈): 원본은 그대로 두고 여러 날짜마다 새 코드로 내용을 복제 (캔슬 표기 없음)
 let copyOrigDate='', copyOrigCode='', copyDates=[];
 function copyReservation(){
-  if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다'); return; }
+  if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다 (Only available on a saved reservation)'); return; }
   syncFormToRes();
   copyOrigDate=workingRes.datein; copyOrigCode=workingRes.code;
   if(!copyOrigDate){ showToast('⚠ 체크인 날짜가 없습니다'); return; }
@@ -4449,7 +4451,7 @@ async function confirmCopyReservation(){
   const cur=(document.getElementById('copy-date').value||'').trim();
   const dates=[...copyDates];
   if(cur && !dates.includes(cur)) dates.push(cur); // 입력창에 남은 날짜도 포함
-  if(!dates.length){ showToast('⚠ 복사할 날짜를 1개 이상 선택해주세요'); return; }
+  if(!dates.length){ showToast('⚠ 복사할 날짜를 1개 이상 선택해주세요 (Select at least one date to copy)'); return; }
   dates.sort();
   // 원본은 변경하지 않음(그대로 유지). 각 날짜마다 새 예약 생성.
   const nights=Math.max(0,Math.round((new Date((workingRes.dateout||copyOrigDate)+'T00:00:00')-new Date(copyOrigDate+'T00:00:00'))/86400000));
