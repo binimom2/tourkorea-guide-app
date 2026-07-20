@@ -4944,7 +4944,10 @@ function _buildLedgerData() {
   // 아직 제출 이력이 없는 가이드도 이월금 설정 등을 위해 목록에 먼저 포함
   getAccounts().filter(a=>a.role==='guide').forEach(a=>{ ensure(a.name, a.name, a.id); });
 
-  submissionsDB.forEach(s=>{
+  // 정산완료(settled) 처리된 건만 수첩에 올린다 — 월별 엑셀과 같은 기준.
+  // 어드민이 [완료]를 누르기 전(작성·수정 중)에는 금액이 잡히면 안 되고,
+  // 같은 정산코드로 제출본+수정본이 남아 있어도 확정본만 집계돼 중복도 막힌다.
+  submissionsDB.filter(s=>s.settled).forEach(s=>{
     const k = keyOf(s);
     const g = ensure(k, s.guideName, s.username);
     g.settleTotal += (s.guideSettle||0);
