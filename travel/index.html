@@ -184,6 +184,10 @@ table.subtbl th.col-wide,table.subtbl td.col-wide{max-width:none;white-space:nor
 /* CFM 처럼 체크(OK)만 들어가는 칸: 폭 최소화 + 가운데 */
 table.subtbl th.col-chk,table.subtbl td.col-chk{width:36px;min-width:36px;max-width:36px;text-align:center;padding-left:3px;padding-right:3px;}
 table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px;font-size:11px;font-family:inherit;border:1px solid #dfe3ea;border-radius:5px;box-sizing:border-box;}
+/* 숫자칸: 위아래 조정 화살표 제거(그냥 타이핑으로 입력) */
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;}
+table.subtbl input.numcell{text-align:center;}
 .subtbl-empty{padding:16px;text-align:center;color:#b0b6c2;font-size:11.5px;}
 .subtbl-empty-row td{text-align:center;color:#c3c8d2;padding:10px;}
 .subtbl-summary-row td{border-top:1px solid #eceef3;color:#3457d5;font-weight:700;background:#f8f9fc;}
@@ -685,7 +689,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-g';
+const APP_VERSION='2026-07-20-h';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1900,12 +1904,20 @@ function getVendors(key){ try{return JSON.parse(localStorage.getItem('trv_vendor
 async function saveVendors(key,arr){ await sbSave('trv_vendor_'+key,arr); }
 function findVendor(key,name){ return getVendors(key).find(v=>v.name===name); }
 
+/* 거래처(골프장·호텔 등) 이름 정렬 — 한글 가나다 + 영문 A→Z.
+   정렬이 안 되면 골프장이 수십 개라 목록에서 타이핑으로 찾을 때 엉뚱한 곳으로 튄다
+   (예: SU를 쳤을 때 SUMMIT과 SUWAN이 서로 멀리 떨어져 있음). */
+function byVendorName(a,b){
+  return String(a.name||'').localeCompare(String(b.name||''),'ko',{numeric:true,sensitivity:'base'});
+}
+function sortedVendors(key){ return getVendors(key).filter(v=>v.active!==false).slice().sort(byVendorName); }
+
 function renderVendorDatalists(){
   getVendorTabs().forEach(v=>{
     if(isFlightVendorTab(v.key)) return;
     const dl=document.getElementById(`dl-${v.key}`);
     if(!dl) return;
-    dl.innerHTML=getVendors(v.key).filter(item=>item.active!==false)
+    dl.innerHTML=sortedVendors(v.key)
       .map(item=>`<option value="${escapeAttr(item.name)}">`).join('');
   });
   // 항공편: 방향별로 도착/출발 데이터리스트에 분리해서 채움 (예약폼 FLIGHTS 섹션에서 사용)
@@ -4123,7 +4135,7 @@ function renderSubFieldInput(f,val){
     const keys=f.vendorKeys||[f.vendorKey];
     let optsHtml='';const allNames=[];
     keys.forEach(key=>{
-      const list=getVendors(key).filter(v=>v.active!==false);
+      const list=sortedVendors(key);   // 이름순 정렬 — 타이핑으로 찾을 수 있게
       if(!list.length) return;
       const inner=list.map(v=>`<option value="${escapeAttr(v.name)}" ${v.name===val?'selected':''}>${escapeHtml(v.name)}</option>`).join('');
       list.forEach(v=>allNames.push(v.name));
@@ -4157,11 +4169,15 @@ function renderSubFieldInput(f,val){
   if(f.fixed){
     return `<input type="text" id="${id}" value="${escapeAttr(val||f.fixed)}" readonly style="background:#f4f6fa;color:#6b7484;"/>`;
   }
-  const langAttr=f.type==='date'?' lang="en"':'';
+  // 숫자칸(텀·인원·박수·홀수 등)은 위아래 조정 화살표가 오히려 걸리적거린다.
+  // type=text로 두되 모바일에서 숫자 키패드가 뜨도록 inputmode만 지정한다.
+  const isNum=f.type==='number';
+  const typeAttr=isNum?'text':f.type;
+  const extra=isNum?' inputmode="numeric" class="numcell"':(f.type==='date'?' lang="en"':'');
   if(f.fw){
-    return `<input type="${f.type}"${langAttr} id="${id}" value="${escapeAttr(val)}" style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`;
+    return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}" style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`;
   }
-  return `<input type="${f.type}"${langAttr} id="${id}" value="${escapeAttr(val)}"/>`;
+  return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}"/>`;
 }
 // vendor select: NONE 선택 시 텍스트 직접입력으로 전환, ≡ 버튼으로 목록 복귀
 function vendorSelChange(sel,id,wrapId,keys,phone){
@@ -4180,7 +4196,7 @@ function vendorToSelect(id,wrapId,keys,phone){
   const cur=(document.getElementById(id)||{}).value||'';
   let optsHtml='';
   keys.forEach(key=>{
-    const list=getVendors(key).filter(v=>v.active!==false);
+    const list=sortedVendors(key);   // 이름순 정렬 — 목록 복귀 때도 동일하게
     if(!list.length) return;
     const inner=list.map(v=>`<option value="${escapeAttr(v.name)}" ${v.name===cur?'selected':''}>${escapeHtml(v.name)}</option>`).join('');
     if(keys.length>1){ const lbl=(VENDOR_CATEGORY_TABS.find(t=>t.key===key)||{}).label||key; optsHtml+=`<optgroup label="${escapeHtml(lbl)}">${inner}</optgroup>`; }
