@@ -715,7 +715,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-l';
+const APP_VERSION='2026-07-20-m';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -4131,9 +4131,7 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
      → 예약 체크인 날짜를 기본값으로 넣어 그 달이 바로 열리게 한다.
      입출금은 성격이 달라 오늘(입력일)을 쓴다. */
   if(isNew && !val && f.type==='date' && workingRes){
-    val = (sectionKey==='deposits'||sectionKey==='withdrawals')
-      ? _todayStr()
-      : (workingRes.datein||'');
+    val = (sectionKey==='deposits'||sectionKey==='withdrawals') ? _todayStr() : _basicCheckin();
   }
   const id=`sf-${f.k}`;
   if(f.k==='arrival'||f.k==='departure'){
@@ -4328,6 +4326,13 @@ let _bahtCtx=null;
 function _todayStr(){
   const d=new Date(), p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+/* 베이직 인포의 CHECK-IN 값. 화면 입력칸을 먼저 읽는다 —
+   workingRes.datein은 저장(syncFormToRes) 때만 갱신돼서, 신규 예약에서 체크인을
+   막 입력하고 바로 세부배정을 추가하면 아직 비어 있기 때문. */
+function _basicCheckin(){
+  const el=document.getElementById('r-datein');
+  return (el&&el.value) || (workingRes&&workingRes.datein) || '';
 }
 /* 입출금에 찍을 날짜 = 금액을 입력한 날짜(payingDate). 저장할 때 확정해 두므로 이후 바뀌지 않는다.
    payingDate가 없는 예전 데이터는 종전 방식(그 줄의 날짜 → 예약 체크인)으로 표시해 값이 흔들리지 않게 한다. */
