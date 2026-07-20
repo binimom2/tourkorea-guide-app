@@ -715,7 +715,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-k';
+const APP_VERSION='2026-07-20-l';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -4073,7 +4073,7 @@ function subsecHtml(sec){
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
   const isEditingHere=subEditKey===sec.key;
   const hasCfm=sec.fields.some(f=>f.k==='cfm');   // CFM 칸이 있는 섹션만 확정 여부로 색을 준다
-  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row" onfocusout="handleSubRowFocusOut(event,'${sec.key}',${idx})">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k])}</td>`).join('')}
+  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row" onfocusout="handleSubRowFocusOut(event,'${sec.key}',${idx})">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k],sec.key,idx===-1)}</td>`).join('')}
       <td><div class="row-actions"><a class="act-edit" onclick="saveSubRowInline('${sec.key}',${idx})">Save</a><a class="act-del" onclick="cancelSubRowInline()">Cancel</a></div></td>
     </tr>`;
   return `
@@ -4124,8 +4124,17 @@ function flightArrKey(v){
 }
 const FREE_FLIGHT_SENTINEL='__FREE__'; // 항공사 선택없음(편명 직접입력) 표시용 값
 // 서브섹션 인라인 편집용 입력요소 생성 (텍스트/숫자/날짜/select/코드연동 벤더 select)
-function renderSubFieldInput(f,val){
+function renderSubFieldInput(f,val,sectionKey,isNew){
   val=val??'';
+  /* 새 줄의 날짜칸이 비어 있으면 달력이 '오늘' 달로 열려서, 몇 달 뒤 팀을 수배할 때
+     매번 그 달까지 넘겨야 한다(1월 팀인데 7월 달력이 뜨는 문제).
+     → 예약 체크인 날짜를 기본값으로 넣어 그 달이 바로 열리게 한다.
+     입출금은 성격이 달라 오늘(입력일)을 쓴다. */
+  if(isNew && !val && f.type==='date' && workingRes){
+    val = (sectionKey==='deposits'||sectionKey==='withdrawals')
+      ? _todayStr()
+      : (workingRes.datein||'');
+  }
   const id=`sf-${f.k}`;
   if(f.k==='arrival'||f.k==='departure'){
     const dirType=f.k==='arrival'?'arr':'dep';
