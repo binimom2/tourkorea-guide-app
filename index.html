@@ -3932,6 +3932,9 @@ function loadData() {
   // ⑥ 계산 갱신
   try { updateMiniBar(); syncRate2FromBase(); calcOptionTotal(); } catch(e) {}
   try { syncExpenseSumToSettle(); } catch(e) {}
+  // 기가팁·TC정산금 자동반영을 여기서 한 번 더 — ④에서 채운 값을 ⑤(저장필드 복원)가
+  // 옛 저장값으로 덮어쓰기 때문. 항목이 없으면 아무것도 안 건드리므로 수동입력은 보존된다.
+  try { calcGigatipTotal(); } catch(e) {}
   try { calcIncentive(); calcIncentiveAdmin(); } catch(e) {}
   try { calcGuarantee(); calcGuaranteeAdmin(); } catch(e) {}
   try { calcSettle(); calcSettleAdmin(); } catch(e) {}
