@@ -685,7 +685,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-e';
+const APP_VERSION='2026-07-20-f';
 let _verAt=0, _verBusy=false;
 async function checkAppVersion(force){
   const now=Date.now();
@@ -703,6 +703,42 @@ async function checkAppVersion(force){
 window.addEventListener('focus',()=>checkAppVersion());
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkAppVersion(); });
 setInterval(()=>checkAppVersion(),600000);   // 열어둔 채로도 10분마다
+
+/* ══════════════════════════ 자동 로그아웃 ══════════════════════════
+   아무 작업 없이 1시간이 지나면 로그아웃한다. 자리를 비운 사이 남이 쓰는 걸 막고,
+   덤으로 방치된 낡은 탭이 오래 살아남지 못하게 한다.
+   창을 닫아둔 시간도 포함해서 센다(마지막 조작 시각을 저장해 둠). */
+const IDLE_LIMIT=60*60*1000;   // 1시간
+const IDLE_WARN=60*1000;       // 1분 전부터 예고
+const IDLE_KEY='trv_last_act';
+let _idleAt=Date.now(), _idleWarnEl=null;
+function touchIdle(){
+  _idleAt=Date.now();
+  try{ localStorage.setItem(IDLE_KEY,String(_idleAt)); }catch(e){}
+  if(_idleWarnEl){ _idleWarnEl.remove(); _idleWarnEl=null; }
+}
+['mousedown','keydown','wheel','touchstart'].forEach(ev=>
+  window.addEventListener(ev,touchIdle,{passive:true,capture:true}));
+function showIdleWarn(sec){
+  if(!_idleWarnEl){
+    _idleWarnEl=document.createElement('div');
+    _idleWarnEl.style.cssText='position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99999;background:#e0483f;color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.28);';
+    document.body.appendChild(_idleWarnEl);
+  }
+  _idleWarnEl.textContent=`⏰ ${sec}초 후 자동 로그아웃 — 화면을 클릭하면 계속 사용합니다`;
+}
+async function idleLogout(){
+  try{ await sb.auth.signOut(); }catch(e){}
+  try{ localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY); }catch(e){}
+  alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.');
+  location.reload();
+}
+setInterval(()=>{
+  if(!currentUser) return;
+  const idle=Date.now()-_idleAt;
+  if(idle>=IDLE_LIMIT) idleLogout();
+  else if(idle>=IDLE_LIMIT-IDLE_WARN) showIdleWarn(Math.ceil((IDLE_LIMIT-idle)/1000));
+},1000);
 
 /* ══════════════════════════ SUPABASE (가이드정산서와 같은 프로젝트, trv_ 접두어로 분리) ══════════════════════════ */
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
@@ -1015,6 +1051,7 @@ async function doLogin(){
   }
 }
 async function enterApp(){
+  touchIdle();   // 들어온 시점부터 무작업 1시간을 다시 센다
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   try{ localStorage.setItem('trv_session',JSON.stringify(currentUser)); }catch(e){} // 새로고침해도 로그인 유지
@@ -4476,6 +4513,13 @@ function showToast(msg){
 // 세션 유지: 새로고침해도 저장된 로그인 세션이 있으면 로그인 화면을 건너뛰고 복원(로그아웃 시에만 해제됨)
 (async function restoreSession(){
   try{
+    // 창을 닫아둔 사이에 1시간이 지났으면 세션을 끊는다(자동 로그아웃과 같은 기준)
+    const last=+(localStorage.getItem(IDLE_KEY)||0);
+    if(last && Date.now()-last>IDLE_LIMIT){
+      try{ await sb.auth.signOut(); }catch(e){}
+      localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY);
+      return;
+    }
     const { data: { session } } = await sb.auth.getSession();
     if(session && session.user){
       const meta = session.user.user_metadata || {};
