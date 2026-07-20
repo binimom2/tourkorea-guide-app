@@ -685,8 +685,18 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-f';
-let _verAt=0, _verBusy=false;
+const APP_VERSION='2026-07-20-g';
+let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
+// 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
+function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
+function showVerBanner(){
+  if(_verBanner) return;
+  _verBanner=document.createElement('div');
+  _verBanner.style.cssText='position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99998;background:#1f4a85;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.28);cursor:pointer;';
+  _verBanner.textContent='🔄 새 버전이 있습니다 — 작업 중인 내용을 저장한 뒤 이 알림을 누르면 새로고침합니다';
+  _verBanner.onclick=()=>location.reload();
+  document.body.appendChild(_verBanner);
+}
 async function checkAppVersion(force){
   const now=Date.now();
   if(_verBusy||(!force&&now-_verAt<180000)) return;   // 3분에 한 번
@@ -695,11 +705,15 @@ async function checkAppVersion(force){
     const r=await fetch(location.pathname+'?_v='+now,{cache:'no-store'});
     const m=(await r.text()).match(/const APP_VERSION='([^']+)'/);
     if(m&&m[1]!==APP_VERSION){
+      _verStale=true;
+      if(_isEditingRes()){ showVerBanner(); return; }   // 입력 중 — 저장할 때까지 기다린다
       alert('앱이 업데이트되었습니다.\n\n지금 이 창은 예전 버전이라, 이대로 저장하면\n다른 사람이 입력한 내용이 사라질 수 있습니다.\n\n확인을 누르면 새로고침합니다.');
       location.reload();
     }
   }catch(e){}finally{ _verBusy=false; }
 }
+// 수정창을 닫는 순간(= 저장했거나 취소했음) 미뤄둔 새로고침을 실행한다
+function applyPendingReload(){ if(_verStale&&!_isEditingRes()) location.reload(); }
 window.addEventListener('focus',()=>checkAppVersion());
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkAppVersion(); });
 setInterval(()=>checkAppVersion(),600000);   // 열어둔 채로도 10분마다
@@ -3875,6 +3889,7 @@ function closeReservation(){
   stopPresence();
   document.getElementById('rov').classList.remove('open');
   workingRes=null;editingId=null;
+  applyPendingReload();   // 버전이 바뀌어 미뤄뒀던 새로고침이 있으면 지금 실행
 }
 /* ── 동시 열람(presence): 같은 예약을 여러 명이 열면 서로의 아이디를 빨간색으로 표시 ── */
 let presenceTimer=null, presenceKey='', presenceCode='';
