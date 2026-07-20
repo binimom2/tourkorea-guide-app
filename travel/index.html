@@ -626,6 +626,10 @@ table.subtbl input.numcell{text-align:center;}
         <input type="text" id="baht-amt" inputmode="numeric" placeholder="예: 80000" onkeydown="if(event.key==='Enter')document.getElementById('baht-memo').focus()"/>
       </div>
       <div class="f-row" style="margin-top:8px;">
+        <label>입력일 <span style="font-weight:400;color:#8a90a0;" id="baht-date-hint"></span></label>
+        <input type="date" lang="en" id="baht-date"/>
+      </div>
+      <div class="f-row" style="margin-top:8px;">
         <label>비고 (REMARK)</label>
         <input type="text" id="baht-memo" placeholder="입출금 REMARK란에 표시됩니다" onkeydown="if(event.key==='Enter')saveBahtEntry()"/>
       </div>
@@ -711,7 +715,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-20-j';
+const APP_VERSION='2026-07-20-k';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -4283,6 +4287,7 @@ function saveSubRowInline(sectionKey,index){
     if(prev._id) row._id=prev._id;
     if(prev.payingAmt!==undefined) row.payingAmt=prev.payingAmt;
     if(prev.payingMemo!==undefined) row.payingMemo=prev.payingMemo;   // +Baht 비고 유지
+    if(prev.payingDate!==undefined) row.payingDate=prev.payingDate;   // +Baht 날짜 유지
   }
   if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
@@ -4311,6 +4316,16 @@ function updateNamePrefixFromFlights(){
 /* +Baht 입력 — 금액과 함께 비고(REMARK)를 받는다. 비고는 DEPOSITS/WITHDRAWALS의
    REMARK란에 그대로 표시된다. */
 let _bahtCtx=null;
+function _todayStr(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+/* 입출금에 찍을 날짜 = 금액을 입력한 날짜(payingDate). 저장할 때 확정해 두므로 이후 바뀌지 않는다.
+   payingDate가 없는 예전 데이터는 종전 방식(그 줄의 날짜 → 예약 체크인)으로 표시해 값이 흔들리지 않게 한다. */
+function _bahtDate(sectionKey,row){
+  const cfg=PAYING_SYNC[sectionKey]||{};
+  return row.payingDate || (cfg.dateField&&row[cfg.dateField]) || (workingRes&&workingRes.datein) || '';
+}
 function promptVendorBaht(sectionKey,index){
   const row=(workingRes[sectionKey]||[])[index];
   if(!row) return;
@@ -4321,6 +4336,9 @@ function promptVendorBaht(sectionKey,index){
   document.getElementById('baht-title').textContent=`${sec?sec.label:sectionKey}${who?' · '+who:''}`;
   document.getElementById('baht-amt').value=row.payingAmt||'';
   document.getElementById('baht-memo').value=row.payingMemo||'';
+  // 새로 넣는 건 오늘(입력일). 이미 저장된 건 그때 찍힌 날짜를 그대로 보여준다.
+  document.getElementById('baht-date').value = row.payingDate || _todayStr();
+  document.getElementById('baht-date-hint').textContent = row.payingDate ? '' : '오늘(입력일)';
   document.getElementById('bahtModal').classList.add('open');
   setTimeout(()=>{ const el=document.getElementById('baht-amt'); if(el){ el.focus(); el.select(); } },40);
 }
@@ -4335,6 +4353,8 @@ function saveBahtEntry(){
   if(!row){ closeBahtModal(); return; }
   row.payingAmt=(document.getElementById('baht-amt').value||'').trim();
   row.payingMemo=(document.getElementById('baht-memo').value||'').trim();
+  // 비워도 오늘(입력일)로 확정 — 입출금 DATE가 비는 일이 없게
+  row.payingDate=(document.getElementById('baht-date').value||'').trim()||_todayStr();
   if(!row._id) row._id=(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   syncVendorDeposit(sectionKey,row);
   closeBahtModal();
@@ -4347,7 +4367,7 @@ function syncVendorDeposit(sectionKey,row){
   const dArr=workingRes.deposits=workingRes.deposits||[];
   const idx=dArr.findIndex(d=>d.linkedRowId===row._id);
   if(amt>0){
-    const dRow={date:(cfg.dateField&&row[cfg.dateField])||'',who:row[cfg.nameField]||'',acc:cfg.acc,currency:'THB',amount:-Math.abs(amt),summary:row.payingMemo||'',linkedRowId:row._id};
+    const dRow={date:_bahtDate(sectionKey,row),who:row[cfg.nameField]||'',acc:cfg.acc,currency:'THB',amount:-Math.abs(amt),summary:row.payingMemo||'',linkedRowId:row._id};
     if(idx>=0) dArr[idx]=dRow; else dArr.push(dRow);
   }else if(idx>=0){
     dArr.splice(idx,1);
