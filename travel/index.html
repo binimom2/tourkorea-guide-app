@@ -344,6 +344,7 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       <button class="tbtn" id="btnGolf" onclick="window.open('/golf/','_blank')" title="골프 견적 계산기 열기" style="display:none;">⛳ 골프견적</button>
       <button class="tbtn" id="btnCodes" onclick="openCodeModal()" style="display:none;">🏷 코드관리</button>
       <button class="tbtn" id="btnAccounts" onclick="openAccountModal()" style="display:none;">👤 계정관리</button>
+      <button class="tbtn" id="btnBak" onclick="openBakModal()" style="display:none;" title="예약 데이터를 이전 시점으로 되돌리기">🗄 백업복원</button>
       <button class="tbtn" onclick="changeMyPassword()">🔑 비번변경</button>
       <button class="tbtn" onclick="doLogout()">Logout</button>
     </div>
@@ -402,6 +403,10 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
       </div>
     </div>
     <div id="listView" style="display:none;">
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:8px;">
+        <span id="listCount" style="font-size:12px;color:#7a8296;"></span>
+        <button class="btn btn-save" id="btnListXlsx" onclick="downloadListXlsx()" style="padding:0 16px;height:32px;white-space:nowrap;">⬇ 엑셀 다운로드</button>
+      </div>
       <div class="list-wrap">
         <table class="rlist">
           <thead><tr>
@@ -595,6 +600,20 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
   </div>
 </div>
 
+<!-- ── BACKUP RESTORE MODAL ── -->
+<div class="sov" id="bakModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeBakModal()">
+  <div class="smodal" style="max-width:560px;">
+    <div class="smodal-hd"><span>백업 복원</span><button onclick="closeBakModal()">✕</button></div>
+    <div class="smodal-body">
+      <div style="font-size:12px;color:#7a8296;line-height:1.65;margin-bottom:12px;">
+        예약을 저장할 때마다 <b>직전 상태</b>가 자동으로 보관됩니다(최근 10개).<br>
+        복원해도 현재 내용이 함께 백업되므로 다시 되돌릴 수 있습니다.
+      </div>
+      <ul id="bakList" style="list-style:none;display:flex;flex-direction:column;gap:8px;"></ul>
+    </div>
+  </div>
+</div>
+
 <!-- ── CODE MODAL (통합: 코드/고객사/거래처·업체/문구) ── -->
 <div class="sov" id="codeModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeCodeModal()">
   <div class="smodal" style="max-width:960px;">
@@ -691,6 +710,36 @@ async function sbLoad(key){
   }catch(e){}
   return null;
 }
+// localStorage를 건드리지 않고 서버 최신본만 읽는다(병합 저장·백업용). 행이 없으면 null, 통신 실패면 throw.
+async function sbLoadRaw(key){
+  const{data:row,error}=await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
+  if(error) throw error;
+  return (row&&row.data!==undefined&&row.data!==null)?row.data:null;
+}
+// localStorage를 건드리지 않고 서버에만 저장. 성공 여부를 반환(호출측이 실패를 알아야 함).
+async function sbSaveRaw(key,data){
+  try{
+    const{error}=await sb.from('guide_data').upsert({data_key:key,data,updated_at:new Date().toISOString()});
+    return !error;
+  }catch(e){ return false; }
+}
+
+/* ══════════ 예약 백업 스냅샷 ══════════
+   덮어쓰기 직전의 서버본을 슬롯 10개에 순환 보관한다. 사고가 나도 되돌릴 수 있게. */
+const RES_BAK_SLOTS=10;
+const RES_BAK_META='trv_res_bakmeta';
+async function pushResBackup(serverArr){
+  if(!Array.isArray(serverArr)) return;
+  let meta=[];
+  try{ meta=(await sbLoadRaw(RES_BAK_META))||[]; }catch(e){ meta=[]; }
+  if(!Array.isArray(meta)) meta=[];
+  const sig=serverArr.length+':'+JSON.stringify(serverArr).length;
+  if(meta.length&&meta[0].sig===sig) return;          // 직전 백업과 동일 → 중복 보관 안 함
+  const slot=meta.length?((meta[0].slot+1)%RES_BAK_SLOTS):0;
+  if(!await sbSaveRaw('trv_res_bak_'+slot,serverArr)) return;
+  meta.unshift({slot,at:new Date().toISOString(),by:(currentUser?currentUser.id:''),count:serverArr.length,sig});
+  await sbSaveRaw(RES_BAK_META,meta.slice(0,RES_BAK_SLOTS));
+}
 const TRV_KEYS=['trv_reservations','trv_codes','trv_customers','trv_accounts','trv_admin_pw',
   'trv_vendor_agents','trv_vendor_flightSched','trv_vendor_hotels','trv_vendor_golfs','trv_vendor_guides','trv_vendor_vehicles','trv_vendor_shows','trv_vendor_shops',
   'trv_phrases_includes','trv_phrases_decludes',
@@ -753,6 +802,7 @@ async function enterApp(){
   document.getElementById('btnAccounts').style.display=(currentUser.role==='admin')?'':'none'; // 계정관리: admin만
   document.getElementById('btnCostExcel').style.display=(currentUser.role==='admin')?'':'none'; // 원가서 엑셀: admin만
   document.getElementById('btnGolf').style.display=(currentUser.role==='admin')?'':'none'; // 골프견적: admin만
+  document.getElementById('btnBak').style.display=(currentUser.role==='admin')?'':'none';  // 백업복원: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
   // 기준 데이터 시딩/마이그레이션은 역할과 무관하게 전원 실행(모두 idempotent·버전가드).
@@ -3075,11 +3125,126 @@ async function delCostRow(i){
 }
 
 let reservations=[];
+let _resBase=[];   // 마지막으로 서버와 맞춰진 시점의 스냅샷. 「내가 바꾼 것」을 가려내는 기준.
+function _resSnap(a){ try{ return JSON.parse(JSON.stringify(a||[])); }catch{ return []; } }
+function _resMap(a){ const m=new Map(); (a||[]).forEach(r=>{ if(r&&r.id!=null) m.set(String(r.id),r); }); return m; }
+function _resAllHaveId(a){ return (a||[]).every(r=>r&&r.id!=null); }
+function setReservations(arr){ reservations=Array.isArray(arr)?arr:[]; _resBase=_resSnap(reservations); }
+
 function loadData(){
   try{ reservations=JSON.parse(localStorage.getItem('trv_reservations')||'[]'); }catch{ reservations=[]; }
+  _resBase=_resSnap(reservations);
 }
+
+/* 저장 = 「서버 최신본을 다시 읽어 → 내가 바꾼 예약만 얹어서 → 저장」.
+   배열을 통째로 덮어쓰지 않으므로, 오래된 탭에서 저장해도 그 사이 남이 넣은 예약이 사라지지 않는다.
+   (2026-07-20: 통째 덮어쓰기로 7/29~31 예약이 소멸한 사고 대응) */
 async function saveData(){
-  await sbSave('trv_reservations',reservations);
+  const local=reservations;
+
+  // ① 기준(_resBase) 대비 내가 추가·수정·삭제한 것만 골라낸다
+  const baseMap=_resMap(_resBase), curMap=_resMap(local);
+  const ups=[], dels=[];
+  curMap.forEach((r,id)=>{ const b=baseMap.get(id); if(!b||JSON.stringify(b)!==JSON.stringify(r)) ups.push(r); });
+  baseMap.forEach((b,id)=>{ if(!curMap.has(id)) dels.push(id); });
+
+  // ② 서버 최신본을 읽는다
+  let server=null, fetched=false;
+  try{ server=await sbLoadRaw('trv_reservations'); fetched=true; }catch(e){ fetched=false; }
+
+  if(!fetched){   // 오프라인/일시 장애 — 서버를 덮어쓰지 않고 이 기기에만 남긴다
+    localStorage.setItem('trv_reservations',JSON.stringify(local));
+    showToast('⚠ 서버 연결 실패 — 이 기기에만 저장했습니다. 연결된 뒤 다시 저장해 주세요.');
+    return false;
+  }
+
+  // id 없는 데이터가 섞여 있으면 병합이 위험하다(정상 예약엔 항상 id가 있음)
+  const mergeable = Array.isArray(server) && _resAllHaveId(server) && _resAllHaveId(local) && _resAllHaveId(_resBase);
+
+  let merged;
+  if(!mergeable){
+    // 서버에서 기존 목록을 못 읽었는데 로컬엔 이력이 있다 → 읽기 권한 문제일 수 있어 통째 대체는 위험
+    if(!Array.isArray(server) && _resBase.length){
+      if(!confirm('서버에서 기존 예약 목록을 읽지 못했습니다.\n이대로 저장하면 서버 데이터가 현재 화면 내용으로 대체됩니다.\n계속할까요?')) return false;
+    }
+    merged=local.slice();
+  } else {
+    // ③ 충돌 감지 — 내가 고친 예약을 그 사이 다른 사람도 고쳤는가?
+    const srvMap=_resMap(server);
+    const clash=ups.filter(r=>{
+      const b=baseMap.get(String(r.id)), s=srvMap.get(String(r.id));
+      return b&&s&&JSON.stringify(b)!==JSON.stringify(s);
+    });
+    if(clash.length){
+      const names=clash.map(r=>`· ${r.datein||''} ${r.name||r.code||''}`).join('\n');
+      if(!confirm(`아래 예약을 그 사이 다른 사람이 수정했습니다.\n\n${names}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 다시 불러옵니다)`)){
+        localStorage.setItem('trv_reservations',JSON.stringify(server));
+        setReservations(server);
+        renderFilters(); renderAll();
+        showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다');
+        return false;
+      }
+    }
+    // ④ 서버본 위에 내 변경분만 얹는다
+    const dset=new Set(dels);
+    merged=server.filter(r=>!dset.has(String(r&&r.id)));
+    const pos=new Map(); merged.forEach((r,i)=>pos.set(String(r.id),i));
+    ups.forEach(r=>{ const id=String(r.id);
+      if(pos.has(id)) merged[pos.get(id)]=r; else { pos.set(id,merged.length); merged.push(r); } });
+
+    // ⑤ 덮어쓰기 직전의 서버본을 백업(사고 시 되돌리기용)
+    try{ await pushResBackup(server); }catch(e){}
+  }
+
+  // ⑥ 저장
+  localStorage.setItem('trv_reservations',JSON.stringify(merged));
+  if(!await sbSaveRaw('trv_reservations',merged)){
+    showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다');
+    return false;
+  }
+  reservations=merged; _resBase=_resSnap(merged);
+  return true;
+}
+
+/* ── 백업 복원 UI (admin 전용) ── */
+function closeBakModal(){ document.getElementById('bakModal').classList.remove('open'); }
+function _bakTs(iso){
+  const t=new Date(iso); if(isNaN(t)) return String(iso||'');
+  const p=n=>String(n).padStart(2,'0');
+  return `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}`;
+}
+async function openBakModal(){
+  document.getElementById('bakModal').classList.add('open');
+  const host=document.getElementById('bakList');
+  host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">불러오는 중…</li>';
+  let meta=[];
+  try{ meta=(await sbLoadRaw(RES_BAK_META))||[]; }catch(e){ meta=[]; }
+  if(!Array.isArray(meta)||!meta.length){
+    host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">아직 백업이 없습니다. 예약을 한 번 저장하면 만들어집니다.</li>';
+    return;
+  }
+  host.innerHTML=meta.map(m=>{
+    const ts=_bakTs(m.at);
+    return `<li style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid #dfe3ea;border-radius:8px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1f2b46;">${ts}</div>
+        <div style="font-size:11.5px;color:#7a8296;">예약 ${m.count}건 · 저장자 ${m.by||'-'}</div>
+      </div>
+      <button class="btn btn-save" style="padding:0 14px;white-space:nowrap;" onclick="restoreResBackup(${m.slot},'${ts}',${m.count})">이 시점으로 복원</button>
+    </li>`;
+  }).join('');
+}
+async function restoreResBackup(slot,ts,count){
+  if(!confirm(`${ts} 시점(예약 ${count}건)으로 되돌립니다.\n현재 내용도 백업되므로 다시 되돌릴 수 있습니다.\n\n진행할까요?`)) return;
+  let snap=null;
+  try{ snap=await sbLoadRaw('trv_res_bak_'+slot); }catch(e){}
+  if(!Array.isArray(snap)){ showToast('❌ 백업을 읽지 못했습니다'); return; }
+  try{ const cur=await sbLoadRaw('trv_reservations'); await pushResBackup(cur); }catch(e){}
+  if(!await sbSaveRaw('trv_reservations',snap)){ showToast('❌ 복원 저장 실패'); return; }
+  localStorage.setItem('trv_reservations',JSON.stringify(snap));
+  setReservations(snap);
+  closeBakModal(); renderFilters(); renderAll();
+  showToast(`✅ ${ts} 시점으로 복원했습니다 (${snap.length}건)`);
 }
 
 /* ══════════════════════════ FILTERS / VIEW ══════════════════════════ */
@@ -3277,6 +3442,7 @@ function openDayList(dateStr){
 function renderList(){
   const list=getFiltered().sort((a,b)=>(a.datein||'').localeCompare(b.datein||''));
   const body=document.getElementById('listBody');
+  const cnt=document.getElementById('listCount'); if(cnt) cnt.textContent=`${list.length}건`;
   if(!list.length){ body.innerHTML='<tr class="empty-row"><td colspan="10">조건에 맞는 예약이 없습니다</td></tr>'; return; }
   body.innerHTML=list.map(r=>{
     const pax=resPax(r);
@@ -3294,6 +3460,99 @@ function renderList(){
       <td>${pax||'-'}</td>
     </tr>`;
   }).join('');
+}
+
+/* ══════════════════════════ 목록 엑셀 다운로드 ══════════════════════════
+   현재 필터·검색이 적용된 목록을 그대로 xlsx로 내보낸다.
+   시트1=예약목록(화면과 동일한 10칸), 이후 SUBSECTIONS 기준으로 세부 배정 시트를 자동 생성. */
+async function ensureExcelJS(){
+  if(window.ExcelJS) return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error('엑셀 라이브러리를 불러오지 못했습니다(인터넷 연결 확인)'));
+    document.head.appendChild(s);
+  });
+}
+function _xlStatusText(r){
+  return r.status==='CANCEL'?codeLabel('statuses','CANCEL'):codeLabel('procs',r.proc);
+}
+// 화면에 보이는 값 그대로 셀에 담는다(체크박스는 O, 숫자는 숫자형으로)
+function _xlCell(v,type){
+  if(v===undefined||v===null||v==='') return '';
+  if(type==='checkbox') return (v===true||v==='Y'||v==='O')?'O':'';
+  if(type==='number'){ const n=Number(v); return isNaN(n)?String(v):n; }
+  return String(v);
+}
+function _xlSheet(wb,name,header,rows){
+  const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});
+  ws.addRow(header);
+  rows.forEach(r=>ws.addRow(r));
+  const hd=ws.getRow(1);
+  hd.font={bold:true,size:10,color:{argb:'FFFFFFFF'}};
+  hd.alignment={vertical:'middle',horizontal:'center'};
+  hd.height=22;
+  hd.eachCell(c=>{ c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4A85'}}; });
+  // 열 너비: 머리글/값 중 가장 긴 것에 맞춤(한글은 폭을 넓게 계산)
+  const w=n=>String(n==null?'':n).split('').reduce((a,ch)=>a+(ch.charCodeAt(0)>127?2:1),0);
+  header.forEach((h,i)=>{
+    let mx=w(h);
+    rows.forEach(r=>{ const v=w(r[i]); if(v>mx) mx=v; });
+    ws.getColumn(i+1).width=Math.min(Math.max(mx+3,7),52);
+  });
+  ws.autoFilter={from:{row:1,column:1},to:{row:1,column:header.length}};
+  return ws;
+}
+async function downloadListXlsx(){
+  const list=getFiltered().sort((a,b)=>(a.datein||'').localeCompare(b.datein||''));
+  if(!list.length){ showToast('⚠ 내려받을 예약이 없습니다'); return; }
+  const btn=document.getElementById('btnListXlsx');
+  const label=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='만드는 중…'; }
+  try{
+    await ensureExcelJS();
+    const wb=new ExcelJS.Workbook();
+    wb.created=new Date();
+
+    // ── 시트1: 예약목록 (화면과 동일) ──
+    _xlSheet(wb,'예약목록',
+      ['CODE','구분','유형','상태','체크인','체크아웃','예약명','거래처','담당자','인원'],
+      list.map(r=>[
+        r.code||'', codeLabel('divisions',r.division), codeLabel('types',r.type), _xlStatusText(r),
+        r.datein||'', r.dateout||'', r.name||'', r.customer||'', r.manager||'', resPax(r)||0,
+      ]));
+
+    // ── 세부 배정 시트 (항공/호텔/골프/가이드/차량/쇼/입금/출금) ──
+    SUBSECTIONS.forEach(sec=>{
+      const header=['CODE','예약명','체크인'].concat(sec.fields.map(f=>f.label));
+      const rows=[];
+      list.forEach(r=>{
+        (r[sec.key]||[]).forEach(it=>{
+          rows.push([r.code||'',r.name||'',r.datein||''].concat(sec.fields.map(f=>_xlCell(it[f.k],f.type))));
+        });
+      });
+      if(rows.length) _xlSheet(wb,sec.label.replace(/[\\\/\*\?\[\]:]/g,'-').slice(0,31),header,rows);
+    });
+
+    const from=document.getElementById('f-from').value||'전체';
+    const to=document.getElementById('f-to').value||'전체';
+    const p=n=>String(n).padStart(2,'0');
+    const d=new Date();
+    const stamp=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+    const fname=`예약목록_${from}~${to}_${stamp}.xlsx`;
+
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    showToast(`✅ ${list.length}건을 내려받았습니다`);
+  }catch(e){
+    showToast('❌ 다운로드 실패: '+(e&&e.message||e));
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=label; }
+  }
 }
 
 /* ══════════════════════════ RESERVATION MODAL ══════════════════════════ */
