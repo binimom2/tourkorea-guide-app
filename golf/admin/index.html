@@ -248,7 +248,17 @@ const DEFAULT = {
     {n:0,label:"당일 (1일)"},{n:1,label:"1박 2일"},{n:2,label:"2박 3일"},{n:3,label:"3박 4일"},
     {n:4,label:"4박 5일"},{n:5,label:"5박 6일"},{n:6,label:"6박 7일"},{n:7,label:"7박 8일"}
   ],
-  paxPerVan: 7
+  paxPerVan: 7,
+  // 차량 요금 아래에 붙는 안내 문구 (견적서에도 그대로 노출)
+  vehicleNotes: [
+    '일정외지역으로 운행시 추가유류비가 발생될 수 있습니다',
+    '19시 초과시 시간당 300밧씩 추가 요금이 발생됩니다',
+  ],
+  // 공항↔호텔 수송밴 등 기간과 무관한 단건 요금
+  transfers: [
+    { label:'수완나폼 → 방콕호텔 수송밴',  amount:1500 },
+    { label:'수완나폼 → 파타야호텔 수송밴', amount:3000 },
+  ],
 };
 
 let G = null;      // 편집 중인 요금 데이터
@@ -370,7 +380,20 @@ function normalize(d){
     if(!g.vehiclePeriods[p])  g.vehiclePeriods[p]={amount:null,remark:''};
     if(!g.handlingPeriods[p]) g.handlingPeriods[p]={amount:null,remark:''};
   });
-  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; if(g.guidePeriods[t].ptyPerNight===undefined) g.guidePeriods[t].ptyPerNight=null; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
+  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
+
+  /* 차량: 지역 조합별 요금 열(그룹). 예전의 단일 vehiclePeriods는 첫 그룹으로 이관한다. */
+  if(!Array.isArray(g.vehicleGroups) || !g.vehicleGroups.length){
+    g.vehicleGroups=[{ id:'vg1', label:'방콕 / 파타야 / 방콕&파타야',
+      periods: JSON.parse(JSON.stringify(g.vehiclePeriods||{})) }];
+  }
+  g.vehicleGroups.forEach((grp,i)=>{
+    if(!grp.id) grp.id='vg'+(i+1)+Math.random().toString(36).slice(2,5);
+    if(!grp.periods) grp.periods={};
+    PERIODS.forEach(p=>{ if(!grp.periods[p]) grp.periods[p]={amount:null,remark:''}; });
+  });
+  if(!Array.isArray(g.vehicleNotes)) g.vehicleNotes=DEFAULT.vehicleNotes.slice();
+  if(!Array.isArray(g.transfers))    g.transfers=JSON.parse(JSON.stringify(DEFAULT.transfers));
   if(!g.regions) g.regions={};
   Object.values(g.regions).forEach(r=>{
     (r.courses||[]).forEach(c=>{
@@ -476,18 +499,123 @@ function periodTable(title,desc,dataObj){
   });
   tbl.appendChild(tb); c.appendChild(tbl); return c;
 }
+/* ── 차량 요금: 지역 조합별 열 + 안내문구 + 수송밴 ── */
+function vehicleCard(){
+  const c=card('🚐 차량 요금 (12인승 밴 1대 기준)','지역 조합마다 열을 하나씩 둡니다. 요금이 없는 칸은 비워두거나 X를 입력하세요.');
+
+  // 안내 문구
+  c.appendChild(el('div','mini','· 안내 문구 (견적서에 함께 표시)'));
+  const nbox=el('div');
+  const drawNotes=()=>{
+    nbox.innerHTML='';
+    (G.vehicleNotes||[]).forEach((t,i)=>{
+      const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;';
+      const inp=document.createElement('input'); inp.type='text'; inp.value=t;
+      inp.style.cssText='flex:1;font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
+      inp.oninput=()=>{ G.vehicleNotes[i]=inp.value; _touch(); };
+      const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
+      x.onclick=()=>{ G.vehicleNotes.splice(i,1); _touch(); drawNotes(); };
+      row.appendChild(inp); row.appendChild(x); nbox.appendChild(row);
+    });
+    const add=el('button','btn ghost sm','＋ 문구 추가');
+    add.onclick=()=>{ (G.vehicleNotes=G.vehicleNotes||[]).push(''); _touch(); drawNotes(); };
+    nbox.appendChild(add);
+  };
+  drawNotes(); c.appendChild(nbox);
+
+  // 지역 조합별 기간 요금표
+  c.appendChild(el('div','mini','· 기간별 요금'));
+  const wrap=el('div','gtwrap');
+  const tbl=document.createElement('table'); tbl.className='gt'; tbl.style.minWidth='auto';
+  wrap.appendChild(tbl); c.appendChild(wrap);
+  const drawTable=()=>{
+    const gs=G.vehicleGroups||[];
+    let head='<thead><tr><th style="min-width:110px;">기간</th>';
+    gs.forEach((grp,gi)=>{
+      head+=`<th style="min-width:150px;"><div style="display:flex;align-items:center;gap:4px;justify-content:center;">
+        <span data-vg-name="${gi}" style="cursor:pointer;text-decoration:underline dotted;" title="이름 수정">${escapeHtml(grp.label||'(이름없음)')}</span>
+        <a data-vg-del="${gi}" style="color:var(--danger);cursor:pointer;font-weight:800;" title="이 열 삭제">✕</a>
+      </div></th>`;
+    });
+    head+='<th style="min-width:56px;"><a id="vgAdd" style="color:var(--fairway);cursor:pointer;font-weight:800;" title="지역 조합 추가">＋</a></th></tr></thead>';
+    let body='<tbody>';
+    PERIODS.forEach(p=>{
+      body+=`<tr><td class="pname" style="font-weight:700;white-space:nowrap;">${p}</td>`;
+      gs.forEach((grp,gi)=>{ body+=`<td><input type="text" class="n" data-vg="${gi}" data-vp="${escapeAttr(p)}" placeholder="X = 불가"></td>`; });
+      body+='<td></td></tr>';
+    });
+    body+='</tbody>';
+    tbl.innerHTML=head+body;
+    // 값 채우기 + 이벤트
+    tbl.querySelectorAll('input[data-vg]').forEach(inp=>{
+      const gi=+inp.dataset.vg, p=inp.dataset.vp;
+      const cell=(gs[gi].periods[p]=gs[gi].periods[p]||{amount:null,remark:''});
+      inp.value = cell.na ? 'X' : (cell.amount==null?'':cell.amount);
+      inp.oninput=()=>{
+        const v=inp.value.trim();
+        if(v.toUpperCase()==='X'){ cell.amount=null; cell.na=true; }
+        else { cell.na=false; cell.amount = v===''?null:Number(v.replace(/,/g,'')); }
+        _touch();
+      };
+    });
+    tbl.querySelectorAll('[data-vg-name]').forEach(sp=>{
+      sp.onclick=()=>{ const gi=+sp.dataset.vgName;
+        const nv=prompt('지역 조합 이름 (예: 방콕&후아힌)', gs[gi].label||'');
+        if(nv===null) return; gs[gi].label=nv.trim(); _touch(); drawTable(); };
+    });
+    tbl.querySelectorAll('[data-vg-del]').forEach(a=>{
+      a.onclick=()=>{ const gi=+a.dataset.vgDel;
+        if(gs.length<=1){ gToast('마지막 열은 지울 수 없습니다'); return; }
+        if(!confirm(`'${gs[gi].label||''}' 열을 삭제할까요?\n입력된 요금이 함께 사라집니다.`)) return;
+        gs.splice(gi,1); _touch(); drawTable(); };
+    });
+    const addBtn=tbl.querySelector('#vgAdd');
+    if(addBtn) addBtn.onclick=()=>{
+      const nv=prompt('추가할 지역 조합 이름 (예: 방콕&칸차나부리)','');
+      if(nv===null) return;
+      const periods={}; PERIODS.forEach(p=>periods[p]={amount:null,remark:''});
+      gs.push({ id:'vg'+Date.now().toString(36), label:nv.trim()||'새 조합', periods });
+      _touch(); drawTable();
+    };
+  };
+  drawTable();
+
+  // 수송밴 등 단건 요금
+  c.appendChild(el('div','mini','· 수송밴 (기간과 무관한 단건 요금)'));
+  const tbox=el('div');
+  const drawTransfers=()=>{
+    tbox.innerHTML='';
+    (G.transfers||[]).forEach((t,i)=>{
+      const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;';
+      const nm=document.createElement('input'); nm.type='text'; nm.value=t.label||''; nm.placeholder='구간명';
+      nm.style.cssText='flex:1;font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
+      nm.oninput=()=>{ t.label=nm.value; _touch(); };
+      const am=document.createElement('input'); am.type='text'; am.className='n'; am.value=(t.amount==null?'':t.amount); am.placeholder='금액';
+      am.style.cssText='width:110px;text-align:right;font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
+      am.oninput=()=>{ const v=am.value.trim(); t.amount = v===''?null:Number(v.replace(/,/g,'')); _touch(); };
+      const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
+      x.onclick=()=>{ G.transfers.splice(i,1); _touch(); drawTransfers(); };
+      row.appendChild(nm); row.appendChild(am); row.appendChild(x); tbox.appendChild(row);
+    });
+    const add=el('button','btn ghost sm','＋ 구간 추가');
+    add.onclick=()=>{ (G.transfers=G.transfers||[]).push({label:'',amount:null}); _touch(); drawTransfers(); };
+    tbox.appendChild(add);
+  };
+  drawTransfers(); c.appendChild(tbox);
+  return c;
+}
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
 // 구분(한국/로컬) × 기간 × [방콕,파타야,비고] (가이드)
 function guideTable(){
-  const c=card('🧑‍🏫 가이드 요금','한국인·로컬 가이드별 방콕 기본요금(기간별) + 파타야 1박당 추가. 파타야 요금 = 방콕 기본 + (파타야 박당 추가 × 파타야 숙박수).');
+  const c=card('🧑‍🏫 가이드 요금','구분별 기간 요금. 지역과 무관하게 이 금액을 그대로 사용합니다.');
   GUIDE_TYPES.forEach(type=>{
     const T=(G.guidePeriods[type]=G.guidePeriods[type]||{});
     c.appendChild(el('div','mini','· '+type));
-    const prow=el('div','row'); prow.style.margin='4px 0 8px';
-    prow.appendChild(field('파타야 1박당 추가(밧)',numInput(T,'ptyPerNight',{nullable:true,ph:'예: 600'})));
-    c.appendChild(prow);
     const tbl=document.createElement('table'); tbl.className='ptable';
     const thead=document.createElement('thead'); const hr=document.createElement('tr');
-    ['기간','방콕 기본(THB)','비고'].forEach(h=>hr.appendChild(thEl(h)));
+    ['기간','금액(THB)','비고'].forEach(h=>hr.appendChild(thEl(h)));
     thead.appendChild(hr); tbl.appendChild(thead);
     const tb=document.createElement('tbody');
     GUIDE_PERIODS.forEach(p=>{
@@ -508,8 +636,8 @@ function guideTable(){
 function render(){
   const root=document.getElementById('editor'); root.innerHTML='';
 
-  // 1) 차량 요금 (기간별)
-  root.appendChild(periodTable('🚐 차량 요금 (12인승 밴 1대 기준)','기간별 요금. "풀"은 풀데이(종일) 기준입니다.',G.vehiclePeriods));
+  // 1) 차량 요금 (지역 조합별 열 + 안내문구 + 수송밴)
+  root.appendChild(vehicleCard());
   // 2) 핸들링 차지 (기간별)
   root.appendChild(periodTable('🧳 핸들링 차지 (1인 기준)','기간별 핸들링 요금.',G.handlingPeriods));
   // 3) 가이드 (구분·지역·기간별)
@@ -770,8 +898,16 @@ async function downloadGolfXlsx(){
     _gxSheet(wb,'숙소',['지역','숙소명','1박요금','메모'],
       HR.map(h=>[h.region||'',h.name||'',_gxNum(h.perNight),h.note||'']));
 
-    _gxSheet(wb,'차량요금',['기간','금액(THB)','비고'],
-      PERIODS.map(p=>[p,_gxNum((G.vehiclePeriods[p]||{}).amount),(G.vehiclePeriods[p]||{}).remark||'']));
+    // 차량: 지역 조합마다 열 하나
+    const vgs=G.vehicleGroups||[];
+    _gxSheet(wb,'차량요금',['기간'].concat(vgs.map(v=>v.label||'조합')),
+      PERIODS.map(p=>[p].concat(vgs.map(v=>{
+        const cell=(v.periods||{})[p]||{};
+        return cell.na ? 'X' : _gxNum(cell.amount);
+      }))));
+    _gxSheet(wb,'수송밴',['구간','금액(THB)'],
+      (G.transfers||[]).map(t=>[t.label||'',_gxNum(t.amount)]));
+    _gxSheet(wb,'차량 안내문구',['문구'],(G.vehicleNotes||[]).filter(Boolean).map(t=>[t]));
 
     _gxSheet(wb,'핸들링차지',['기간','금액(THB)','비고'],
       PERIODS.map(p=>[p,_gxNum((G.handlingPeriods[p]||{}).amount),(G.handlingPeriods[p]||{}).remark||'']));
@@ -779,9 +915,9 @@ async function downloadGolfXlsx(){
     const grows=[];
     GUIDE_TYPES.forEach(t=>{
       const T=G.guidePeriods[t]||{};
-      GUIDE_PERIODS.forEach(p=>grows.push([t,p,_gxNum((T[p]||{}).bkk),_gxNum(T.ptyPerNight),(T[p]||{}).remark||'']));
+      GUIDE_PERIODS.forEach(p=>grows.push([t,p,_gxNum((T[p]||{}).bkk),(T[p]||{}).remark||'']));
     });
-    _gxSheet(wb,'가이드요금',['구분','기간','방콕 기본(THB)','파타야 1박당 추가','비고'],grows);
+    _gxSheet(wb,'가이드요금',['구분','기간','금액(THB)','비고'],grows);
 
     _gxSheet(wb,'공휴일',['날짜'],(G.holidays||[]).filter(Boolean).map(d=>[d]));
     _gxSheet(wb,'기타',['항목','값'],[['밴 1대당 최대 인원(명)',_gxNum(G.paxPerVan)]]);

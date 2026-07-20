@@ -115,11 +115,16 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
   </div>
 
   <div class="card">
-    <h2>3. 숙소 · 가이드 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">(선택)</span></h2>
+    <h2>3. 차량 · 숙소 · 가이드 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">(선택)</span></h2>
+    <div class="grid g3" style="margin-bottom:8px;">
+      <div class="f"><label>차량 요금 기준</label><select id="vehGroup"></select></div>
+      <div class="f" style="grid-column:span 2;"><label>수송밴 <span style="font-weight:400;color:var(--muted)">(선택)</span></label>
+        <div id="transferWrap" class="chips" style="padding-top:0;"></div></div>
+    </div>
     <div class="grid g3">
       <div id="hotelWrap" style="display:contents"></div>
       <div class="f"><label>가이드</label><select id="guide">
-        <option value="none">노가이드</option>
+        <option value="none">가이드 없이</option>
         <option value="한국인가이드">한국인 가이드</option>
         <option value="로컬가이드">로컬 가이드(한국어 가능)</option>
       </select></div>
@@ -135,6 +140,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     </table>
     <div class="perp" id="perp"></div>
   </section>
+  <div class="hint" id="vehNotes"></div>
   <div class="hint">※ 표시 금액은 THB 기준, 항공료 미포함. 태국 공휴일·토·일은 주말 요금 적용.</div>
 </div>
 
@@ -237,7 +243,7 @@ function renderRegions(){
       <input type="number" min="0" max="14" value="${+r.nights||0}" data-reg-n="${i}"><small>박</small>
       <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
 }
-function refreshAll(){ renderRegions(); syncTripSelect(); renderHotels(); buildDays(); calc(); }
+function refreshAll(){ renderRegions(); syncTripSelect(); renderVehicleUI(); renderHotels(); buildDays(); calc(); }
 
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
@@ -294,6 +300,25 @@ function fillHoles(i){
   if(c){ const has9=(c.s||[]).some(s=>s.g9); if(has9){ opts.push('<option value="27">27홀</option>'); opts.push('<option value="9">9홀</option>'); } }
   sel.innerHTML=opts.join(''); sel.value=st.holes||'18';
 }
+// 차량 요금 기준(지역 조합) · 수송밴 · 안내문구
+let transferPick={};   // {구간명: true}
+function renderVehicleUI(){
+  const sel=$('#vehGroup');
+  const groups=P.vehicleGroups||[];
+  const cur=sel.value;
+  sel.innerHTML=groups.map((g,i)=>`<option value="${i}">${g.label||'조합'+(i+1)}</option>`).join('')
+    || '<option value="">등록된 차량요금 없음</option>';
+  if(cur && groups[+cur]) sel.value=cur;
+  const tw=$('#transferWrap');
+  const list=(P.transfers||[]).filter(t=>t&&t.label&&t.amount);
+  tw.innerHTML=list.length
+    ? list.map(t=>`<button type="button" class="chip${transferPick[t.label]?' on':''}" data-tr="${t.label}">${t.label} · ${won(t.amount)}</button>`).join('')
+    : '<span class="hint" style="margin:0;">등록된 수송밴 없음</span>';
+  const nt=$('#vehNotes');
+  const notes=(P.vehicleNotes||[]).filter(Boolean);
+  nt.innerHTML=notes.length?notes.map(t=>'※ '+t).join('<br>'):'';
+  nt.style.display=notes.length?'':'none';
+}
 // 숙소는 「고른 지역 중 1박 이상인 곳」만 칸을 만든다
 function renderHotels(){
   const H=P.hotels||{};
@@ -314,7 +339,6 @@ function calc(){
   const pax=Math.max(1,+$('#pax').value||1);
   const nights=totalNights();
   const rooms=Math.ceil(pax/2);
-  const nP=(ROUTE.find(r=>r.region==='파타야')||{}).nights||0;   // 가이드 파타야 박당 추가용
   $('#paxInfo').textContent=ROUTE.length
     ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${nights+1}일`
     : `${pax}명 · 지역을 선택하세요`;
@@ -335,9 +359,11 @@ function calc(){
     if(unit==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
     lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(unit)} × ${pax}명`,v:unit*pax});
   });
-  // 2) 차량 (기간값 + 1박추가 확장)
-  const vt=tierValue(P.vehiclePeriods||{},nights,'amount');
-  if(vt){ const vans=Math.ceil(pax/7); lines.push({t:'차량 (12인승 밴)',s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
+  // 2) 차량 (선택한 지역 조합의 기간값 + 1박추가 확장)
+  const vgIdx=+($('#vehGroup').value||0);
+  const vGroup=(P.vehicleGroups||[])[vgIdx];
+  const vt=tierValue((vGroup&&vGroup.periods)||{},nights,'amount');
+  if(vt){ const vans=Math.ceil(pax/7); lines.push({t:`차량 (12인승 밴)${vGroup&&vGroup.label?' · '+vGroup.label:''}`,s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
   else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
   // 3) 핸들링
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
@@ -349,8 +375,7 @@ function calc(){
     const G=(P.guidePeriods||{})[gt];
     const gv=G?tierValue(G,nights,'bkk'):null;
     if(gv){
-      const pty=(G.ptyPerNight||0)*nP;
-      lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`기본 ${won(gv.value)}${gv.extra?` (+1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}${nP?` + 파타야 ${won(G.ptyPerNight||0)}×${nP}박`:''}`,v:gv.value+pty});
+      lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
   }
   // 5) 숙소 — 고른 지역별로
@@ -361,6 +386,11 @@ function calc(){
     if(idx===undefined||idx==='') return;
     const h=(H[r.region]||[])[+idx]; if(!h) return;
     lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${won(h.perNight)} × ${nn}박 × ${rooms}실`,v:h.perNight*nn*rooms});
+  });
+  // 6) 수송밴 (선택한 구간)
+  (P.transfers||[]).forEach(t=>{
+    if(!t||!t.label||!t.amount||!transferPick[t.label]) return;
+    lines.push({t:'수송밴 · '+t.label,s:`${won(t.amount)} × 1대`,v:t.amount});
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
   $('#lines').innerHTML=lines.map(l=>`<tr><td>${l.t}<span class="sub ${l.warn?'warn':''}">${l.s}</span></td><td class="n">${won(l.v)}</td></tr>`).join('')||`<tr><td colspan="2" style="opacity:.6">라운딩할 날을 체크하면 견적이 나옵니다.</td></tr>`;
@@ -375,6 +405,8 @@ document.addEventListener('click',e=>{
   if(pick){ toggleRegion(pick.dataset.regPick); return; }
   const del=e.target.closest('[data-reg-del]');
   if(del){ const i=+del.dataset.regDel; const r=ROUTE[i]; if(r) delete hotelPick[r.region]; ROUTE.splice(i,1); refreshAll(); return; }
+  const tr=e.target.closest('[data-tr]');
+  if(tr){ const k=tr.dataset.tr; transferPick[k]=!transferPick[k]; tr.classList.toggle('on',!!transferPick[k]); calc(); return; }
 });
 // 지역별 박수 입력
 document.addEventListener('input',e=>{
@@ -390,6 +422,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='startDate'){ buildDays(); calc(); return; }
+  if(t.id==='vehGroup'){ calc(); return; }
   if(t.id==='tripSel'){ applyTripToRoute(+t.value||0); refreshAll(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
@@ -410,7 +443,13 @@ async function loadPricing(){
     if(row&&row.data){ const d=row.data; P={
       holidays:(d.holidays&&d.holidays.includes('2026-05-04'))?d.holidays:DEFAULT_PRICING.holidays,
       hotels:DEFAULT_PRICING.hotels,
-      handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{}
+      handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{},
+      // 차량: 지역 조합별 요금 열. 예전 데이터(단일 vehiclePeriods)만 있으면 한 열로 취급.
+      vehicleGroups:(Array.isArray(d.vehicleGroups)&&d.vehicleGroups.length)
+        ? d.vehicleGroups
+        : [{id:'vg1',label:'기본',periods:d.vehiclePeriods||{}}],
+      vehicleNotes:Array.isArray(d.vehicleNotes)?d.vehicleNotes:[],
+      transfers:Array.isArray(d.transfers)?d.transfers:[]
     };
       // 저장된 골프장(새 구조)이 있으면 반영
       if(d.regions){ const fs=Object.values(d.regions)[0]?.courses?.[0]?.seasons?.[0];
