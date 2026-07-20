@@ -95,7 +95,8 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-item.proc-NEW{color:#e0483f;font-weight:700;}
 .cal-item.proc-H-AMEND,.cal-item.proc-G-AMEND,.cal-item.proc-E-AMEND{color:#1e88e5;font-weight:700;}
 .cal-item.status-hold{border-color:#f59f2b;background:#ffe8cc;color:#8a5410;}
-.cal-item.status-cancel{border-color:#9aa1af;background:#f0f1f4;color:#8890a0;text-decoration:line-through;}
+/* 취소팀은 회색 블럭 없이 흰 바탕 — 취소선+연한 글씨로만 구분한다 */
+.cal-item.status-cancel{border-color:transparent;background:transparent;color:#8890a0;text-decoration:line-through;}
 .rlist tr.row-hold td{background:#fff4e6;}
 .rlist tr.row-cancel td{color:#9aa1af;text-decoration:line-through;}
 .cal-more{font-size:10px;color:#8892a0;padding:1px 5px;cursor:pointer;}
