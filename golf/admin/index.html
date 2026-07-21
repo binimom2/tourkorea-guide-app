@@ -757,7 +757,8 @@ function render(){
     {key:'guide',   label:'🧑‍🏫 가이드 요금',  node:guideTable()},
     {key:'holiday', label:'📅 공휴일',       node:holidayCard()},
     {key:'etc',     label:'⚙️ 기타',         node:etcCard()},
-    {key:'golf',    label:'🗺️ 골프장 · 숙소', node:golfSection()},
+    {key:'golf',    label:'⛳ 골프장',       node:golfSection()},
+    {key:'hotel',   label:'🏨 호텔',         node:hotelSection()},
   ];
 
   const c=card('💰 요금표 관리','종류를 누르면 창이 열립니다. 창을 닫지 않고 상단 탭으로 바로 옮겨 다닐 수 있습니다.');
@@ -807,9 +808,10 @@ function renderRateModal(){
   const cur=_rateSections.find(s=>s.key===_rateTab);
   if(!cur) return;
   body.appendChild(cur.node);   // 옮겨 붙이는 것이라 입력값·이벤트가 그대로 유지된다
-  /* 골프장·숙소 표는 tbody를 id로 찾아 채우는 구조라, 창에 붙인 «뒤에» 그려야 한다.
+  /* 골프장·호텔 표는 tbody를 id로 찾아 채우는 구조라, 창에 붙인 «뒤에» 그려야 한다.
      (창 밖에 있는 동안에는 못 찾아서 빈 표가 된다. 지역 코드가 바뀐 경우도 여기서 반영된다) */
-  if(cur.key==='golf'){ renderGolfBody(); renderHotelBody(); }
+  if(cur.key==='golf')  renderGolfBody();
+  if(cur.key==='hotel') renderHotelBody();
 }
 function card(title,desc){ const c=el('div','card'); c.appendChild(el('h2',null,title)); if(desc)c.appendChild(el('p','desc',desc)); return c; }
 function tierCard(title,desc,obj){
@@ -882,9 +884,9 @@ function numCell(obj,key,nullable){
 function txtCell(obj,key,cls){ const i=document.createElement('input'); i.type='text'; if(cls)i.className=cls; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;_touch();}; return i; }
 function dateCell(obj,key){ const i=document.createElement('input'); i.type='date'; i.className='cdate'; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;_touch();}; return i; }
 function tdw(node){ const td=document.createElement('td'); td.appendChild(node); return td; }
+/* 골프장과 숙소는 입력 시점이 달라 탭을 따로 둔다(예전엔 한 화면에 붙어 있었다) */
 function golfSection(){
-  const c=card('🗺️ 골프장 · 숙소','한 줄에 골프장 하나(시즌별). 좌우로 스크롤하며 입력하세요. 같은 골프장에 시즌이 2개면 같은 이름으로 2줄 넣으면 됩니다. 빈 칸은 "요금 없음".');
-  c.appendChild(el('div','mini','⛳ 골프장'));
+  const c=card('⛳ 골프장','한 줄에 골프장 하나(시즌별). 좌우로 스크롤하며 입력하세요. 같은 골프장에 시즌이 2개면 같은 이름으로 2줄 넣으면 됩니다. 빈 칸은 "요금 없음".');
   // 골프장이 20개가 넘어 스크롤로 찾기 번거롭다 — 이름·지역·시즌으로 걸러본다(원본은 안 건드림)
   const fbar=el('div'); fbar.style.cssText='display:flex;gap:8px;align-items:center;margin:2px 0 8px;flex-wrap:wrap';
   const fin=document.createElement('input'); fin.type='text'; fin.id='gtFilter'; fin.placeholder='🔎 골프장명·지역·시즌으로 찾기';
@@ -901,14 +903,16 @@ function golfSection(){
     _gtFilter=''; const fi=document.getElementById('gtFilter'); if(fi) fi.value='';   // 새 줄이 필터에 가려지지 않게
     _touch(); renderGolfBody(); };
   c.appendChild(addC);
-  c.appendChild(el('div','mini','🏨 숙소'));
+  return c;
+}
+function hotelSection(){
+  const c=card('🏨 호텔','한 줄에 숙소 하나. 1박 요금 기준입니다.');
   const hwrap=el('div','gtwrap'); const htbl=document.createElement('table'); htbl.className='gt'; htbl.style.minWidth='620px';
   htbl.innerHTML='<thead><tr>'+['지역','숙소명','1박요금','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="htbody"></tbody>';
   hwrap.appendChild(htbl); c.appendChild(hwrap);
-  const addH=el('button','btn ghost sm','＋ 숙소 줄 추가'); addH.style.marginTop='9px';
+  const addH=el('button','btn ghost sm','＋ 호텔 줄 추가'); addH.style.marginTop='9px';
   addH.onclick=()=>{ HR.push({region:'방콕',name:'',perNight:0,note:'2인 1실 기준 1박'}); _touch(); renderHotelBody(); };
   c.appendChild(addH);
-  setTimeout(()=>{ renderGolfBody(); renderHotelBody(); },0);
   return c;
 }
 let _gtFilter='';
@@ -1149,7 +1153,8 @@ function renderCodes(){
   c.appendChild(cats);
   pane.appendChild(c);
   // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
-  if(document.getElementById('gtbody')){ renderGolfBody(); renderHotelBody(); }
+  // 두 함수는 자기 표가 화면에 없으면 알아서 건너뛴다(골프장·호텔 탭이 따로라 각각 검사)
+  renderGolfBody(); renderHotelBody();
 }
 
 /* 종류를 누르면 그 종류만 팝업 창으로 열어 편집한다 */
@@ -1201,7 +1206,8 @@ function renderCodeList(){
   });
   c.appendChild(body);
   // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
-  if(document.getElementById('gtbody')){ renderGolfBody(); renderHotelBody(); }
+  // 두 함수는 자기 표가 화면에 없으면 알아서 건너뛴다(골프장·호텔 탭이 따로라 각각 검사)
+  renderGolfBody(); renderHotelBody();
 }
 async function addCode(){
   const ic=document.getElementById('gc-code'), il=document.getElementById('gc-label');
