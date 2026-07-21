@@ -644,28 +644,35 @@ function vehicleCard(){
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 function escapeAttr(s){ return escapeHtml(s); }
 
-// 구분(한국/로컬) × 기간 × [방콕,파타야,비고] (가이드)
+/* 가이드 요금: 기간이 두 구분 공통이므로 표 하나에 나란히 둔다.
+   (예전엔 구분마다 표가 따로 있어 같은 기간을 두 번 훑어야 했다)
+   비고는 기간당 한 칸만 쓰되 저장 구조는 그대로 둔다 — 두 구분 모두에 같은 값을 넣는다.
+   (엑셀 내려받기가 구분별 비고를 읽기 때문. 견적 페이지는 금액만 쓴다) */
 function guideTable(){
-  const c=card('🧑‍🏫 가이드 요금','구분별 기간 요금. 지역과 무관하게 이 금액을 그대로 사용합니다.');
-  GUIDE_TYPES.forEach(type=>{
-    const T=(G.guidePeriods[type]=G.guidePeriods[type]||{});
-    c.appendChild(el('div','mini','· '+type));
-    const tbl=document.createElement('table'); tbl.className='ptable';
-    const thead=document.createElement('thead'); const hr=document.createElement('tr');
-    ['기간','금액(THB)','비고'].forEach(h=>hr.appendChild(thEl(h)));
-    thead.appendChild(hr); tbl.appendChild(thead);
-    const tb=document.createElement('tbody');
-    GUIDE_PERIODS.forEach(p=>{
-      if(!T[p]) T[p]={bkk:null,remark:''};
-      const o=T[p];
-      const tr=document.createElement('tr');
-      const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
-      const tB=document.createElement('td'); const b=numInput(o,'bkk'); b.className='pin'; tB.appendChild(b); tr.appendChild(tB);
-      const tR=document.createElement('td'); const r=txtInput(o,'remark',{ph:'비고'}); r.className='pin'; tR.appendChild(r); tr.appendChild(tR);
-      tb.appendChild(tr);
+  const c=card('🧑‍🏫 가이드 요금','기간은 두 구분 공통입니다. 지역과 무관하게 이 금액을 그대로 사용합니다.');
+  const ORDER=['로컬가이드','한국인가이드'];
+  ORDER.forEach(t=>{ G.guidePeriods[t]=G.guidePeriods[t]||{}; });
+  const tbl=document.createElement('table'); tbl.className='ptable';
+  const thead=document.createElement('thead'); const hr=document.createElement('tr');
+  ['기간','로컬가이드','한국가이드','비고'].forEach(h=>hr.appendChild(thEl(h)));
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tb=document.createElement('tbody');
+  GUIDE_PERIODS.forEach(p=>{
+    const cells=ORDER.map(t=>{ const T=G.guidePeriods[t]; if(!T[p]) T[p]={bkk:null,remark:''}; return T[p]; });
+    const tr=document.createElement('tr');
+    const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
+    cells.forEach(o=>{
+      const td=document.createElement('td'); td.style.width='24%';
+      const b=numInput(o,'bkk'); b.className='pin'; td.appendChild(b); tr.appendChild(td);
     });
-    tbl.appendChild(tb); c.appendChild(tbl);
+    const tR=document.createElement('td');
+    const r=document.createElement('input'); r.type='text'; r.className='pin'; r.placeholder='비고';
+    r.value=(cells.find(o=>o.remark)||{}).remark||'';
+    r.oninput=()=>{ cells.forEach(o=>{ o.remark=r.value; }); _touch(); };
+    tR.appendChild(r); tr.appendChild(tR);
+    tb.appendChild(tr);
   });
+  tbl.appendChild(tb); c.appendChild(tbl);
   return c;
 }
 
