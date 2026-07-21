@@ -140,7 +140,9 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span class="who" id="who"></span>
       <button class="link" onclick="downloadGolfXlsx()" id="gxlsBtn">📥 엑셀</button>
-      <button class="link" onclick="showData()">🔍 데이터 보기</button>
+      <!-- 🔍 데이터 보기: 평소 볼 일이 없어 버튼만 숨김.
+           확인이 필요하면 이 줄을 되살리거나 브라우저 콘솔에서 showData() 호출
+           (모달·복사 기능은 그대로 남겨 둠) -->
       <button class="link" onclick="openGBak()">🗄 백업복원</button>
       <a href="/golf/" target="_blank">⛳ 견적 페이지</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
