@@ -129,11 +129,9 @@ table.rlist tr{cursor:pointer;}
 #costTable .num{text-align:center;}
 /* 가운데정렬 칸(기간·금액 등)은 좌우 여백을 줄여 폭을 좁게 */
 #costTable th.num,#costTable td.num{padding-left:6px;padding-right:6px;}
-/* 그린피 합계 4칸(주중18·주말18·주중27·주말27)은 같은 폭으로 맞춘다 */
-#costTable th.cost-sum-col,#costTable td.cost-sum-col{width:84px;min-width:84px;max-width:84px;}
-/* 비고: 가장 긴 줄에 맞춰 칸이 끝없이 넓어지면 짧은 줄 오른쪽에 큰 공백이 생긴다.
-   긴 낱말(숫자 나열 등)이 안 쪼개져 칸을 밀어내던 것도 함께 잡는다. */
-#costTable .remark-col{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;min-width:170px;max-width:290px;}
+/* 비고: 가장 긴 줄에 맞춰 칸이 끝없이 넓어지면 짧은 줄 오른쪽에 큰 공백이 생긴다
+   → 상한을 두고 넘치면 줄바꿈(내용은 pre-wrap이라 다 보인다) */
+#costTable .remark-col{white-space:pre-wrap;min-width:180px;max-width:330px;}
 /* 수정/상세보기/삭제 칸: 내용 폭에 딱 맞게 줄여 비고와의 간격을 좁힌다 */
 #costTable th:last-child,#costTable td:last-child{width:1%;white-space:nowrap;padding-left:6px;padding-right:10px;}
 #costTable td:last-child .row-actions{gap:6px;}
