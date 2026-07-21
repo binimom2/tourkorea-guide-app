@@ -3728,13 +3728,16 @@ function renderStats(){
     return `<div class="grp"><span class="grp-name">${escapeHtml(d)}(${total})</span><span class="chip">${parts}</span></div>`;
   }).join('');
 }
-// 날짜 필터 기본값: 이번달 1일~말일 (이미 값이 있으면 유지)
+/* 날짜 필터 기본값: 이번달 1일 ~ «다음달» 말일 (이미 값이 있으면 유지).
+   달력이 두 달을 함께 보여주므로 필터도 두 달을 덮어야 한다.
+   한 달만 덮으면 아래쪽 다음 달이 필터에 걸려 통째로 비어 보인다. */
 function setDefaultMonthRange(){
   const f=document.getElementById('f-from'), t=document.getElementById('f-to');
   if(f.value||t.value) return;
   const now=new Date(), y=now.getFullYear(), m=now.getMonth(), p=n=>String(n).padStart(2,'0');
+  const ny=m===11?y+1:y, nm=(m+1)%12;
   f.value=`${y}-${p(m+1)}-01`;
-  t.value=`${y}-${p(m+1)}-${p(new Date(y,m+1,0).getDate())}`;
+  t.value=`${ny}-${p(nm+1)}-${p(new Date(ny,nm+1,0).getDate())}`;
 }
 
 /* ══════════════════════════ CALENDAR ══════════════════════════ */
