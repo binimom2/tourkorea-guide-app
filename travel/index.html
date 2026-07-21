@@ -73,9 +73,10 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-head h2{font-size:18px;font-weight:800;color:#161f38;}
 .cal-nav{background:#fff;border:1px solid #dfe3ea;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#3457d5;}
 .cal-grid{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(20,30,60,0.05);}
-/* 두 달을 위아래로 — 각 달마다 제목과 요일 머리글을 따로 둔다 */
-.cal-month+.cal-month{margin-top:18px;}
-.cal-mtitle{font-size:13.5px;font-weight:800;color:#1f4a85;margin:0 2px 7px;}
+/* 두 달을 위아래로 — 각 달을 자기 제목을 단 독립된 덩어리로 보여준다 */
+.cal-month+.cal-month{margin-top:26px;}
+.cal-mtitle{font-size:15.5px;font-weight:800;color:#1f4a85;margin:0 2px 8px;display:flex;align-items:center;gap:8px;}
+.cal-mtitle::after{content:'';flex:1;height:1px;background:#e3e7ee;}
 .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);background:#f4f6fa;border-bottom:1px solid #e3e7ee;}
 .cal-dow div{padding:9px;text-align:center;font-size:11.5px;font-weight:800;color:#8892a0;}
 .cal-dow div:first-child{color:#e0483f;}
@@ -3818,8 +3819,8 @@ function calMonthHtml(y,m,byDate,todayStr){
 function renderCalendar(){
   if(calY==null){const t=new Date();calY=t.getFullYear();calM=t.getMonth();}
   const ny=calM===11?calY+1:calY, nm=(calM+1)%12;
-  document.getElementById('calTitle').textContent =
-    (ny===calY)?`${calY}년 ${calM+1}월 ~ ${nm+1}월`:`${calY}년 ${calM+1}월 ~ ${ny}년 ${nm+1}월`;
+  // 위쪽 제목은 기준 달만. 각 달은 자기 표 위에 따로 제목을 단다(7월 표 / 8월 표).
+  document.getElementById('calTitle').textContent=`${calY}년 ${calM+1}월`;
   const byDate={};
   getFiltered().forEach(r=>{ (byDate[r.datein]=byDate[r.datein]||[]).push(r); });
   const _t=new Date();
