@@ -187,7 +187,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
   <div style="background:#fff;border-radius:14px;max-width:1100px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
       <b style="font-size:15px">💰 요금표 관리</b>
-      <button class="btn sm" onclick="closeRate()">닫기</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="rateMsg" style="font-size:12px;color:var(--muted)"></span>
+        <button class="btn sm" id="rateSaveBtn" onclick="saveFromRate()" style="background:var(--marigold);color:#3a2600;border-color:var(--marigold);font-weight:800">💾 저장</button>
+        <button class="btn ghost sm" onclick="closeRate()">닫기</button>
+      </div>
     </div>
     <div id="rateTabs" class="rtabs"></div>
     <div id="rateBody" style="padding:16px 18px;overflow:auto"></div>
@@ -498,6 +502,7 @@ function _touch(){
   _dirty=true;
   const m=document.getElementById('saveMsg');
   if(m) m.textContent='✏ 저장하지 않은 변경이 있습니다. 저장을 눌러주세요.';
+  updateRateMsg();   // 요금표 창이 열려 있으면 그쪽에도 표시
 }
 window.addEventListener('beforeunload',e=>{ if(_dirty){ e.preventDefault(); e.returnValue=''; } });
 
@@ -725,8 +730,23 @@ function openRate(key){
   _rateTab=key;
   document.getElementById('rateModal').classList.remove('hidden');
   renderRateModal();
+  updateRateMsg();
 }
 function closeRate(){ document.getElementById('rateModal').classList.add('hidden'); }
+/* 창이 열려 있는 동안엔 화면 아래 저장 바가 창에 가려 눌리지 않는다.
+   → 창 안에서도 바로 저장할 수 있게 한다. (닫기만으로는 저장되지 않는다) */
+async function saveFromRate(){
+  const b=document.getElementById('rateSaveBtn');
+  if(b){ b.disabled=true; b.textContent='저장 중...'; }
+  await saveAll();
+  if(b){ b.disabled=false; b.textContent='💾 저장'; }
+  gToast(_dirty?'⚠ 저장하지 않았습니다':'✅ 저장 완료 — 견적 페이지에 반영됩니다');
+  updateRateMsg();
+}
+function updateRateMsg(){
+  const m=document.getElementById('rateMsg');
+  if(m) m.textContent=_dirty?'✏ 저장 안 됨':'';
+}
 function renderRateModal(){
   const tabs=document.getElementById('rateTabs'); tabs.innerHTML='';
   _rateSections.forEach(s=>{
