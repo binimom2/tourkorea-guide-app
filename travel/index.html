@@ -182,8 +182,10 @@ table.subtbl tr:last-child td{border-bottom:none;}
 /* 확정(CFM=OK) 전에는 연한 분홍 — OK를 찍으면 흰색이 된다 (호텔·골프·가이드·차량·쇼) */
 table.subtbl tr.sub-pending td{background:#fdeef1;}
 table.subtbl tr.subtbl-edit-row td{background:#f7f9fd;max-width:none;white-space:normal;}
-/* PAYING/REMARK 등 긴 내용 칸: 180px 제한 해제 + 줄바꿈 허용해 최대한 넓게 */
-table.subtbl th.col-wide,table.subtbl td.col-wide{max-width:none;white-space:normal;word-break:break-word;}
+/* PAYING/REMARK 등 긴 내용 칸: 180px 제한 해제 + 줄바꿈 허용.
+   내용이 길면 2줄 이상이 되더라도 «잘리지 않고 전부» 보여야 한다
+   (기본 td의 overflow:hidden / text-overflow:ellipsis를 여기서 확실히 푼다). */
+table.subtbl th.col-wide,table.subtbl td.col-wide{max-width:none;white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip;}
 /* CFM 처럼 체크(OK)만 들어가는 칸: 폭 최소화 + 가운데 */
 table.subtbl th.col-chk,table.subtbl td.col-chk{width:36px;min-width:36px;max-width:36px;text-align:center;padding-left:3px;padding-right:3px;}
 table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px;font-size:11px;font-family:inherit;border:1px solid #dfe3ea;border-radius:5px;box-sizing:border-box;}
