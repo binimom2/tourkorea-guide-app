@@ -610,6 +610,12 @@ function vehicleCard(){
     };
   };
   drawTable();
+  /* 표 머리의 ＋ 는 작아서 잘 안 보인다 — 다른 항목들처럼 이름이 붙은 버튼을 하나 더 둔다.
+     (문구 추가·구간 추가와 같은 자리·같은 모양) */
+  const addVg=el('button','btn ghost sm','＋ 지역 조합 추가');
+  addVg.style.marginTop='6px';
+  addVg.onclick=()=>{ const b=tbl.querySelector('#vgAdd'); if(b) b.onclick(); };
+  c.appendChild(addVg);
 
   // 수송밴 등 단건 요금
   c.appendChild(el('div','mini','· 수송밴 (기간과 무관한 단건 요금)'));
