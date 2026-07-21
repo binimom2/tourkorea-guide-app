@@ -4642,9 +4642,13 @@ async function saveReservation(){
     workingRes.updatedBy=currentUser?currentUser.id:'';
     const idx=reservations.findIndex(r=>r.id===editingId);
     reservations[idx]=workingRes;
-    await saveData();
-    renderSubsections();
-    renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
+    const din=workingRes.datein, dout=workingRes.dateout;   // 창을 닫으면 workingRes가 비워지므로 먼저 확보
+    const ok=await saveData();
+    // 저장이 취소·실패했으면 내용을 잃지 않도록 창을 그대로 열어둔다
+    if(!ok){ renderSubsections(); renderFilters(); renderAll(); return; }
+    // 저장하면 창을 닫는다 — 달력에서 팀 현황만 확인하고 저장하는 흐름이 대부분
+    closeReservation();
+    renderFilters();focusCalOnDate(din,dout);renderAll();
     showToast('✅ 저장되었습니다 (Saved)');
   }
 }
