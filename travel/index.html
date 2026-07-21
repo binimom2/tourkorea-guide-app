@@ -78,7 +78,7 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-dow div:first-child{color:#e0483f;}
 .cal-dow div:last-child{color:#3457d5;}
 .cal-body{display:grid;grid-template-columns:repeat(7,1fr);}
-.cal-cell{min-height:104px;border-right:1px solid #eef0f5;border-bottom:1px solid #eef0f5;padding:6px 6px;position:relative;cursor:pointer;transition:background .12s;}
+.cal-cell{min-height:118px;border-right:1px solid #eef0f5;border-bottom:1px solid #eef0f5;padding:6px 6px;position:relative;cursor:pointer;transition:background .12s;}
 .cal-cell:hover{background:#f7f9fd;}
 .cal-cell.out{background:#fafbfc;cursor:default;}
 .cal-cell.out:hover{background:#fafbfc;}
@@ -89,8 +89,11 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-daynum.today{font-size:14px;font-weight:900;color:#111827;}
 .cal-cell:nth-child(7n+1) .cal-daynum.today{color:#c0271d;}
 .cal-cell:nth-child(7n) .cal-daynum.today{color:#1d3fb8;}
-.cal-item{font-size:11.5px;padding:2px 4px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;color:#20304f;}
-.cal-item:hover{filter:brightness(0.97);}
+/* 팀 줄: 글자를 키우고 위아래 여백을 넓혀 클릭 대상을 크게 —
+   줄이 얇아서 조금만 빗나가도 셀이 눌려 새 예약 창이 열리곤 했다. */
+.cal-item{font-size:12.5px;padding:3px 6px;border-radius:4px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;color:#20304f;}
+/* 호버 표시가 brightness(0.97)이라 사실상 안 보였다 → 즉시 뚜렷하게 */
+.cal-item:hover{background:#e3ecff;box-shadow:inset 0 0 0 2px #3457d5;color:#12264d;}
 /* 달력 진행상태 색: 뉴부킹=빨강, 어멘드 3종=파랑 — 단 아래 홀드/취소 상태가 있으면 그쪽 색이 우선 */
 .cal-item.proc-NEW{color:#e0483f;font-weight:700;}
 .cal-item.proc-H-AMEND,.cal-item.proc-G-AMEND,.cal-item.proc-E-AMEND{color:#1e88e5;font-weight:700;}
@@ -99,7 +102,8 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-item.status-cancel{border-color:transparent;background:transparent;color:#8890a0;text-decoration:line-through;}
 .rlist tr.row-hold td{background:#fff4e6;}
 .rlist tr.row-cancel td{color:#9aa1af;text-decoration:line-through;}
-.cal-more{font-size:10px;color:#8892a0;padding:1px 5px;cursor:pointer;}
+.cal-more{font-size:11px;color:#8892a0;padding:2px 5px;cursor:pointer;border-radius:4px;}
+.cal-more:hover{background:#e3ecff;color:#1f4a85;}
 
 /* ── LIST TABLE ── */
 .list-wrap{background:#fff;border-radius:12px;overflow:auto;box-shadow:0 2px 10px rgba(20,30,60,0.05);}
@@ -342,7 +346,7 @@ table.subtbl input.numcell{text-align:center;}
   .rmodal-body{grid-template-columns:1fr;overflow-y:auto;}
   .rmodal-side{border-right:none;border-bottom:1px solid #e8eaf0;height:auto;overflow-y:visible;}
   .rmodal-main{height:auto;overflow-y:visible;}
-  .cal-cell{min-height:76px;}
+  .cal-cell{min-height:88px;}
   .stats{display:none;}
 }
 </style>
@@ -3748,6 +3752,32 @@ function calMove(delta){
   setFilterToCalMonth();
   renderAll(); // 통계바도 같이 갱신
 }
+/* 달력 셀을 누르면 그 날짜로 새 예약이 만들어진다(새 예약을 만드는 유일한 방법).
+   그런데 팀 줄이 얇아 줄과 줄 사이를 살짝 누르면 의도치 않게 새 예약 창이 열렸다.
+   → 팀 줄이 놓인 구간(첫 줄 위 ~ 마지막 줄 아래 몇 px) 안을 눌렀으면 가장 가까운 팀을 연다.
+     그 아래 빈 공간은 종전대로 새 예약 만들기로 남겨 둔다. */
+function calCellClick(e,dateStr){
+  const cell=e.currentTarget;
+  const items=[...cell.querySelectorAll('.cal-item,.cal-more')];
+  if(items.length){
+    const y=e.clientY;
+    const top=items[0].getBoundingClientRect().top;
+    const bottom=items[items.length-1].getBoundingClientRect().bottom;
+    if(y>=top-2&&y<=bottom+4){       // 줄 사이 여백을 눌러도 팀으로 인식
+      let best=null,bestGap=Infinity;
+      items.forEach(el=>{
+        const r=el.getBoundingClientRect();
+        const gap=(y<r.top)?(r.top-y):(y>r.bottom?(y-r.bottom):0);
+        if(gap<bestGap){ bestGap=gap; best=el; }
+      });
+      if(best){
+        if(best.classList.contains('cal-more')){ openDayList(dateStr); return; }
+        if(best.dataset.resId){ openReservation(best.dataset.resId); return; }
+      }
+    }
+  }
+  openReservation(null,dateStr);
+}
 function renderCalendar(){
   if(calY==null){const t=new Date();calY=t.getFullYear();calM=t.getMonth();}
   document.getElementById('calTitle').textContent=`${calY}년 ${calM+1}월`;
@@ -3767,9 +3797,9 @@ function renderCalendar(){
     const items=byDate[dateStr]||[];
     const shown=items.slice(0,3);
     const more=items.length-shown.length;
-    html+=`<div class="cal-cell" onclick="openReservation(null,'${dateStr}')">
+    html+=`<div class="cal-cell" onclick="calCellClick(event,'${dateStr}')">
       <div class="cal-daynum${dateStr===todayStr?' today':''}">${d}</div>
-      ${shown.map(r=>`<div class="cal-item status-${(r.status||'NORMAL').toLowerCase()} proc-${r.proc||''}" onclick="event.stopPropagation();openReservation('${r.id}')">${escapeHtml(summaryLine(r))}</div>`).join('')}
+      ${shown.map(r=>`<div class="cal-item status-${(r.status||'NORMAL').toLowerCase()} proc-${r.proc||''}" data-res-id="${escapeAttr(r.id)}" onclick="event.stopPropagation();openReservation('${r.id}')">${escapeHtml(summaryLine(r))}</div>`).join('')}
       ${more>0?`<div class="cal-more" onclick="event.stopPropagation();openDayList('${dateStr}')">+${more}건 더보기</div>`:''}
     </div>`;
   }
