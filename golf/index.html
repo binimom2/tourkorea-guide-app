@@ -25,6 +25,24 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .f label{font-size:11px;font-weight:700;color:var(--muted)}
 .f input,.f select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
 .f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
+/* 기본 정보(출발일자·인원수·일정)는 가장 자주 만지는 칸이라 크게 */
+#startDate,#pax,#tripSel{font-size:15px;padding:11px 12px}
+/* 일정 옆 '오전 출발' 체크 */
+.amdep{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer;padding:0 2px}
+.amdep input{width:16px;height:16px;cursor:pointer}
+/* 견적 결과: 1인 요금 × 인원수 = 총액 */
+.sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 2px}
+.sum-k{font-size:13px;opacity:.85}
+.sum-v{font-size:19px;font-weight:800;letter-spacing:.2px}
+.sum-v em{font-style:normal;font-size:12px;font-weight:700;opacity:.7;margin-left:2px}
+.sum-krw{text-align:right;font-size:13.5px;font-weight:700;opacity:.75;padding:0 2px 6px}
+.sum-mul{border-top:1px dashed rgba(255,255,255,.25)}
+.sum-mul .sum-v{font-size:15px}
+.sum-total{border-top:2px solid var(--marigold);margin-top:4px;padding-top:12px}
+.sum-total .sum-k{font-size:15px;font-weight:800;opacity:1}
+.sum-total .sum-v{font-size:26px;color:var(--marigold)}
+.sum-empty{opacity:.6;padding:10px 2px;font-size:13px}
+.sum-warn{margin-top:10px;font-size:12.5px;font-weight:700;color:#ffcf8a}
 .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
 /* 지역 선택 — 가는 순서대로 클릭, 고른 것만 아래에 펼쳐 박수 입력 */
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding-top:3px}
@@ -99,7 +117,14 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     <div class="grid g3">
       <div class="f"><label>출발 일자</label><input type="date" id="startDate"></div>
       <div class="f"><label>인원수</label><input type="number" id="pax" min="1" value="4"></div>
-      <div class="f"><label>일정</label><select id="tripSel"></select></div>
+      <div class="f"><label>일정</label>
+        <div style="display:flex;gap:8px;align-items:stretch">
+          <select id="tripSel" style="flex:1;min-width:0"></select>
+          <label class="amdep" title="오전 출발이면 첫날부터 라운딩·차량·가이드를 온종일 씁니다">
+            <input type="checkbox" id="amDep"> 오전 출발
+          </label>
+        </div>
+      </div>
     </div>
     <div class="f" style="margin-top:8px">
       <label>지역 선택 <span style="font-weight:400;color:var(--muted)">가시는 순서대로 클릭하세요</span></label>
@@ -132,11 +157,8 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 
   <section class="card res">
     <h2>견적 결과</h2>
-    <table>
-      <thead><tr><th>항목</th><th class="n">금액 (THB)</th></tr></thead>
-      <tbody id="lines"></tbody>
-      <tfoot><tr><td>총 합계</td><td class="n" id="total">0</td></tr></tfoot>
-    </table>
+    <!-- 상세 내역 없이 «1인 요금 × 인원수 = 총액»만 보여준다 -->
+    <div id="sumBox"></div>
     <div class="perp" id="perp"></div>
   </section>
   <div class="hint" id="vehNotes"></div>
@@ -191,19 +213,27 @@ function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from
 function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
 /* 기간 요금 확장: 입력된 최고 기간을 기준으로 초과 박수만큼 "1박추가시" 금액을 더함
    예) 핸들링이 2박3일까지만 있으면 3박 = 2박3일 + 1박추가시×1 */
-function tierValue(obj, N, key){
-  const order=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];  // 풀 제외한 기준 기간
-  const oneMore=((obj||{})['1박추가시']||{})[key]||0;
-  let base=null, bn=0;
-  order.forEach(([nm,pn])=>{ const v=((obj||{})[nm]||{})[key]; if(v!=null&&v>0&&pn<=N){ base=v; bn=pn; } });
-  if(base===null){ for(const [nm,pn] of order){ const v=((obj||{})[nm]||{})[key]; if(v!=null&&v>0){ base=v; bn=pn; break; } } }
-  if(base===null) return null;
-  return { value: base + oneMore*Math.max(0,N-bn), base, bn, oneMore, extra:Math.max(0,N-bn) };
+/* 오전 출발(full=true)이면 첫날부터 온종일 쓰므로 '풀' 요금표를 쓴다.
+   밤 비행기면 첫날은 이동뿐이라 일반 요금표를 쓴다.
+   '풀' 요금이 입력돼 있지 않으면 일반 요금으로 되돌아간다(견적이 비지 않게). */
+function tierValue(obj, N, key, full){
+  const NORMAL=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];
+  const FULL  =[['풀1박2일',1],['풀2박3일',2],['풀3박4일',3]];
+  const pick=order=>{
+    const oneMore=((obj||{})['1박추가시']||{})[key]||0;
+    let base=null, bn=0;
+    order.forEach(([nm,pn])=>{ const v=((obj||{})[nm]||{})[key]; if(v!=null&&v>0&&pn<=N){ base=v; bn=pn; } });
+    if(base===null){ for(const [nm,pn] of order){ const v=((obj||{})[nm]||{})[key]; if(v!=null&&v>0){ base=v; bn=pn; break; } } }
+    if(base===null) return null;
+    return { value: base + oneMore*Math.max(0,N-bn), base, bn, oneMore, extra:Math.max(0,N-bn) };
+  };
+  return full ? (pick(FULL)||pick(NORMAL)) : pick(NORMAL);
 }
 
 /* ── 지역 선택(가는 순서) ──
    REGIONS = 관리자 코드관리('지역')에서 오는 목록. ROUTE = 클릭한 순서 = 실제 여행 순서. */
 let REGIONS=[];
+let FX_RATE=0;             // 1밧당 원화 (코드관리 '환율'에서 읽음, 0이면 한화 표기 안 함)
 let ROUTE=[];              // [{region, nights}]
 let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
 const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카오야이','아유타야'];
@@ -246,15 +276,17 @@ function refreshAll(){ renderRegions(); syncTripSelect(); renderVehicleUI(); ren
 
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
-// 지역 k는 그 지역 박수만큼의 날을 차지하고, 마지막 지역이 체크아웃 날(+1일)까지 갖는다
+function amDepOn(){ const c=$('#amDep'); return !!(c&&c.checked); }
+/* 라운딩은 «그 전날 밤 묵은 지역»에서 한다.
+   방콕 1박 + 파타야 2박이면 2일차(출발일+1) 아침엔 아직 방콕이므로 방콕 골프장이다.
+   (예전에는 지역이 하루 먼저 넘어가 2일차가 파타야로 잡혔다) */
 function regionForDay(i){
-  let acc=0;
-  for(let k=0;k<ROUTE.length;k++){
-    const span=(+ROUTE[k].nights||0)+(k===ROUTE.length-1?1:0);
-    if(i<acc+span) return ROUTE[k].region;
-    acc+=span;
-  }
-  return ROUTE.length?ROUTE[ROUTE.length-1].region:'';
+  if(!ROUTE.length) return '';
+  const nights=[];
+  ROUTE.forEach(r=>{ for(let k=0;k<(+r.nights||0);k++) nights.push(r.region); });
+  if(!nights.length) return ROUTE[0].region;          // 당일 일정
+  const idx=Math.min(Math.max(i-1,0), nights.length-1);
+  return nights[idx];
 }
 function regionOptionsHtml(sel){
   const opts=REGIONS.slice(); if(sel&&!opts.includes(sel)) opts.push(sel);
@@ -272,10 +304,12 @@ function buildDays(){
     const region=regionForDay(i);
     const st={date:ds, region, round:false, course:'', holes:'18'};
     const st_i=dayState.push(st)-1;
+    /* 1일차는 밤 비행기면 라운딩을 못 한다 — '오전 출발'을 체크했을 때만 열어준다 */
+    const lock = (i===0 && !amDepOn());
     const row=document.createElement('div'); row.className='day off'; row.dataset.i=st_i;
     row.innerHTML=`
       <div class="dlabel">${ds.slice(5).replace('-','/')} <small>${['일','월','화','수','목','금','토'][d.getDay()]}요일 ${we?'<span class="badge we">주말/휴일</span>':'<span class="badge">주중</span>'}</small></div>
-      <label class="rchk"><input type="checkbox" data-r="${st_i}"> 라운딩</label>
+      <label class="rchk" ${lock?'style="opacity:.45" title="오전 출발을 체크하면 1일차도 라운딩할 수 있습니다"':''}><input type="checkbox" data-r="${st_i}"${lock?' disabled':''}> 라운딩</label>
       <select class="reg" data-reg="${st_i}">${regionOptionsHtml(region)}</select>
       <select class="course" data-c="${st_i}" disabled></select>
       <select class="holes" data-h="${st_i}" disabled></select>`;
@@ -361,7 +395,8 @@ function calc(){
   // 2) 차량 (선택한 지역 조합의 기간값 + 1박추가 확장)
   const vgIdx=+($('#vehGroup').value||0);
   const vGroup=(P.vehicleGroups||[])[vgIdx];
-  const vt=tierValue((vGroup&&vGroup.periods)||{},nights,'amount');
+  const amDep=!!($('#amDep')&&$('#amDep').checked);   // 오전 출발 = 첫날부터 온종일
+  const vt=tierValue((vGroup&&vGroup.periods)||{},nights,'amount',amDep);
   if(vt){ const vans=Math.ceil(pax/7); lines.push({t:`차량 (12인승 밴)${vGroup&&vGroup.label?' · '+vGroup.label:''}`,s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
   else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
   // 3) 핸들링
@@ -372,7 +407,7 @@ function calc(){
   const gt=$('#guide').value;
   if(gt!=='none'){
     const G=(P.guidePeriods||{})[gt];
-    const gv=G?tierValue(G,nights,'bkk'):null;
+    const gv=G?tierValue(G,nights,'bkk',amDep):null;   // 가이드도 오전 출발이면 풀 요금
     if(gv){
       // 이름은 관리자에 등록된 종류를 그대로 쓴다(종류를 추가해도 견적서에 그 이름으로 나온다)
       lines.push({t:gt,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
@@ -393,9 +428,23 @@ function calc(){
     lines.push({t:'수송밴 · '+t.label,s:`${won(t.amount)} × 1대`,v:t.amount});
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
-  $('#lines').innerHTML=lines.map(l=>`<tr><td>${l.t}<span class="sub ${l.warn?'warn':''}">${l.s}</span></td><td class="n">${won(l.v)}</td></tr>`).join('')||`<tr><td colspan="2" style="opacity:.6">라운딩할 날을 체크하면 견적이 나옵니다.</td></tr>`;
-  $('#total').textContent=won(total);
-  $('#perp').textContent=`1인당 약 ${won(total/pax)} THB`;
+  const per=Math.round(total/pax);
+  const box=$('#sumBox');
+  if(!lines.length){
+    box.innerHTML='<div class="sum-empty">라운딩할 날을 체크하면 견적이 나옵니다.</div>';
+    $('#perp').textContent='';
+    return;
+  }
+  // 요금이 등록되지 않은 항목이 있으면 합계가 실제와 달라지므로 반드시 알린다
+  const miss=lines.filter(l=>l.warn).map(l=>l.t);
+  const krw=(FX_RATE>0)?`<div class="sum-krw">약 ${won(Math.round(per*FX_RATE))} 원</div>`:'';
+  box.innerHTML=
+    `<div class="sum-row"><span class="sum-k">1인 요금</span><span class="sum-v">${won(per)} <em>THB</em></span></div>`
+    +krw
+    +`<div class="sum-row sum-mul"><span class="sum-k">인원수</span><span class="sum-v">× ${pax}명</span></div>`
+    +`<div class="sum-row sum-total"><span class="sum-k">총액</span><span class="sum-v">${won(total)} <em>THB</em></span></div>`
+    +(miss.length?`<div class="sum-warn">⚠ 요금이 등록되지 않은 항목이 있습니다 — ${miss.join(', ')}</div>`:'');
+  $('#perp').textContent='';
 }
 
 /* ── 이벤트 ── */
@@ -422,6 +471,24 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='startDate'){ buildDays(); calc(); return; }
+  /* 오전 출발: 1일차 라운딩 칸을 열고 닫는다(차량·가이드는 calc에서 풀 요금으로 바뀜).
+     이미 체크해 둔 다른 날 라운딩이 날아가지 않도록 1일차만 손댄다. */
+  if(t.id==='amDep'){
+    const on=t.checked;
+    const c0=document.querySelector('[data-r="0"]');
+    if(c0){
+      c0.disabled=!on;
+      const lb=c0.closest('.rchk');
+      if(lb){ lb.style.opacity=on?'':'.45'; lb.title=on?'':'오전 출발을 체크하면 1일차도 라운딩할 수 있습니다'; }
+      if(!on&&c0.checked){           // 끄면 1일차 라운딩은 해제
+        c0.checked=false; if(dayState[0]) dayState[0].round=false;
+        const row=c0.closest('.day'); if(row) row.classList.add('off');
+        const cs=document.querySelector('[data-c="0"]'), hs=document.querySelector('[data-h="0"]');
+        if(cs) cs.disabled=true; if(hs) hs.disabled=true;
+      }
+    }
+    calc(); return;
+  }
   if(t.id==='vehGroup'){ calc(); return; }
   if(t.id==='tripSel'){ applyTripToRoute(+t.value||0); refreshAll(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
@@ -472,9 +539,15 @@ async function loadPricing(){
 async function loadRegionCodes(){
   try{
     const {data:row,error}=await sb.from('guide_data').select('data').eq('data_key','golf_codes').maybeSingle();
-    if(!error&&row&&row.data&&Array.isArray(row.data.region)){
-      const l=row.data.region.filter(r=>r.active!==false).map(r=>r.label).filter(Boolean);
-      if(l.length){ REGIONS=l; return; }
+    if(!error&&row&&row.data){
+      /* 환율: 코드관리 '환율'의 «사용중»인 첫 항목 라벨을 1밧당 원화로 읽는다.
+         값이 없으면 한화 표기를 생략한다(잘못된 환율로 안내하지 않도록). */
+      const fx=(row.data.fx||[]).find(x=>x&&x.active!==false&&parseFloat(x.label)>0);
+      FX_RATE=fx?parseFloat(fx.label):0;
+      if(Array.isArray(row.data.region)){
+        const l=row.data.region.filter(r=>r.active!==false).map(r=>r.label).filter(Boolean);
+        if(l.length){ REGIONS=l; return; }
+      }
     }
   }catch(e){}
   REGIONS=REGION_FALLBACK.slice();

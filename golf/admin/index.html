@@ -1100,7 +1100,10 @@ async function downloadGolfXlsx(){
 /* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
 const GOLF_CODE_CATS=[
   {key:'region',label:'지역'},{key:'club',label:'골프장'},{key:'hotel',label:'호텔'},
-  {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'},{key:'handling',label:'핸들링차지'}
+  {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'},{key:'handling',label:'핸들링차지'},
+  /* 환율: 코드=통화(예: KRW), 라벨=1밧당 원화(예: 39.5).
+     견적 페이지에서 «사용중»인 첫 항목의 라벨을 숫자로 읽어 1인 요금을 한화로 함께 보여준다. */
+  {key:'fx',label:'환율'}
 ];
 let GC={}, gcTab='region', gcEdit=null;
 function gToast(msg){
