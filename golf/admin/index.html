@@ -418,6 +418,17 @@ function normalize(d){
     g.vehicleGroups=[{ id:'vg1', label:'방콕 / 파타야 / 방콕&파타야',
       periods: JSON.parse(JSON.stringify(g.vehiclePeriods||{})) }];
   }
+  /* 실제로 쓰는 지역 조합 열을 1회성으로 채워 넣는다(요청 조합).
+     이미 있는 이름은 건드리지 않고, 없는 것만 빈 열로 추가한다.
+     지운 열이 다시 살아나지 않도록 한 번 실행하면 표시를 남긴다. */
+  if(!g.vgSeed2){
+    ['방콕 / 후아힌','방콕 / 칸차나부리','방콕 / 후아힌 / 파타야'].forEach((label,i)=>{
+      if(g.vehicleGroups.some(x=>(x.label||'').trim()===label)) return;
+      const periods={}; PERIODS.forEach(p=>periods[p]={amount:null,remark:''});
+      g.vehicleGroups.push({ id:'vgs2_'+i, label, periods });
+    });
+    g.vgSeed2=true;
+  }
   g.vehicleGroups.forEach((grp,i)=>{
     if(!grp.id) grp.id='vg'+(i+1)+Math.random().toString(36).slice(2,5);
     if(!grp.periods) grp.periods={};
