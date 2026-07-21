@@ -37,6 +37,16 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px}
 .card h2{margin:0 0 4px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
 .card .desc{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+/* 요금 섹션이 세로로 길게 이어져 스크롤이 길어진다
+   → 평소엔 제목만 보이게 접어두고, 제목을 누르면 그 자리에서 펼쳐 입력한다 */
+#editor .card>h2{cursor:pointer;user-select:none}
+#editor .card>h2:hover{color:var(--fairway)}
+#editor .card>h2 .cc-arrow{margin-left:auto;font-size:11px;color:var(--muted);transition:transform .15s}
+#editor .card.open>h2 .cc-arrow{transform:rotate(90deg)}
+#editor .card>.card-body{display:none}
+#editor .card.open>.card-body{display:block}
+#editor .card:not(.open){padding-bottom:16px}
+#editor .card:not(.open)>h2{margin-bottom:0}
 .grid{display:grid;gap:12px}
 .f{display:flex;flex-direction:column;gap:4px}
 .f label{font-size:11.5px;font-weight:700;color:var(--muted)}
@@ -663,8 +673,30 @@ function render(){
   oc.appendChild(orow); root.appendChild(oc);
   // 6) 골프장 · 숙소 (가로 표)
   root.appendChild(golfSection());
+
+  makeCardsCollapsible(root);   // 전부 접어두고 제목 클릭으로 펼치게
 }
 function card(title,desc){ const c=el('div','card'); c.appendChild(el('h2',null,title)); if(desc)c.appendChild(el('p','desc',desc)); return c; }
+/* 각 섹션을 「제목만 보이는 접힌 상태」로 만들고, 제목을 누르면 그 자리에서 펼친다.
+   섹션 만드는 코드는 손대지 않고, 다 만들어진 뒤에 제목만 남기고 나머지를 본문으로 감싼다. */
+const _openCards=new Set();   // 펼쳐 둔 섹션(다시 그려도 그대로 유지)
+function makeCardsCollapsible(root){
+  root.querySelectorAll('.card').forEach(c=>{
+    const h=c.querySelector(':scope>h2');
+    if(!h||c.dataset.cc) return;
+    c.dataset.cc='1';
+    const title=(h.textContent||'').trim();
+    const body=el('div','card-body');
+    [...c.childNodes].forEach(n=>{ if(n!==h) body.appendChild(n); });   // 설명·표·입력칸 전부 본문으로
+    c.appendChild(body);
+    h.appendChild(el('span','cc-arrow','▶'));
+    if(_openCards.has(title)) c.classList.add('open');
+    h.onclick=()=>{
+      c.classList.toggle('open');
+      if(c.classList.contains('open')) _openCards.add(title); else _openCards.delete(title);
+    };
+  });
+}
 function tierCard(title,desc,obj){
   const c=card(title,desc);
   const t=el('div','tiers');
