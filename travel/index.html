@@ -2339,8 +2339,8 @@ const SUBSECTIONS=[
     {k:'nights',label:'N/S',type:'number',fw:40},
     {k:'sgl',label:'SGL',type:'number',fw:40},{k:'twn',label:'TWN',type:'number',fw:40},{k:'dbl',label:'DBL',type:'number',fw:40},{k:'trp',label:'TRP',type:'number',fw:40},{k:'gd',label:'G/D',type:'number',fw:40},
     {k:'cfm',label:'CFM',type:'checkbox',cls:'col-chk'},
-    {k:'paying',label:'PAYING',type:'text',fw:280,cls:'col-wide'},
-    {k:'remark',label:'REMARK',type:'text',fw:340,cls:'col-wide'},
+    {k:'paying',label:'PAYING',type:'text',fw:280,fwMin:100,cls:'col-wide'},
+    {k:'remark',label:'REMARK',type:'text',fw:340,fwMin:150,cls:'col-wide'},
   ]},
   {key:'golfs',label:'GOLF',fields:[
     {k:'date',label:'DATE',type:'date',fw:108},
@@ -2349,7 +2349,7 @@ const SUBSECTIONS=[
     {k:'pax',label:'PAX',type:'number',fw:40},
     {k:'teeup',label:'TEE TIME',type:'text',fw:70},
     {k:'cfm',label:'CFM',type:'checkbox'},
-    {k:'remark',label:'REMARK',type:'text',fw:340,cls:'col-wide'},   // 호텔 PAYING처럼 전문이 다 보이게
+    {k:'remark',label:'REMARK',type:'text',fw:340,fwMin:150,cls:'col-wide'},   // 호텔 PAYING처럼 전문이 다 보이게
   ]},
   {key:'guides',label:'GUIDES',reorderable:true,fields:[
     {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:200},
@@ -4116,6 +4116,7 @@ function renderSubsections(){
       <button class="btn btn-ghost" onclick="openDirections()">🖨 프린트</button>
     </div>
   `;
+  applyAutoGrow();   // 편집행의 PAYING/REMARK를 현재 내용 길이에 맞춰 줄여 놓는다
 }
 function goToAssignments(){
   const el=document.getElementById('assignSection');
@@ -4183,7 +4184,8 @@ function subsecHtml(sec){
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
   const isEditingHere=subEditKey===sec.key;
   const hasCfm=sec.fields.some(f=>f.k==='cfm');   // CFM 칸이 있는 섹션만 확정 여부로 색을 준다
-  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row" onfocusout="handleSubRowFocusOut(event,'${sec.key}',${idx})">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k],sec.key,idx===-1)}</td>`).join('')}
+  // Enter로도 저장 — Save 버튼이 맨 오른쪽이라 칸이 넓어지면 가로 스크롤을 해야 눌렸다
+  const editRowHtml=(idx)=>`<tr class="subtbl-edit-row" onkeydown="if(event.key==='Enter'){event.preventDefault();saveSubRowInline('${sec.key}',${idx});}" onfocusout="handleSubRowFocusOut(event,'${sec.key}',${idx})">${cols.map(c=>`<td>${renderSubFieldInput(c,idx===-1?'':(rows[idx]||{})[c.k],sec.key,idx===-1)}</td>`).join('')}
       <td><div class="row-actions"><a class="act-edit" onclick="saveSubRowInline('${sec.key}',${idx})">Save</a><a class="act-del" onclick="cancelSubRowInline()">Cancel</a></div></td>
     </tr>`;
   return `
@@ -4192,10 +4194,10 @@ function subsecHtml(sec){
       <h3>${sec.label}</h3><span class="cnt">(${rows.length})</span>
       <button class="subsec-add" onclick="editSubRow('${sec.key}',-1)">＋</button>
     </div>
-    <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th${c.cls?` class="${c.cls}"`:''}${c.fw?` style="width:${c.fw}px;"`:''}>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
+    <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th${c.cls?` class="${c.cls}"`:''}${c.fwMin?` style="min-width:${c.fwMin}px;max-width:${c.fw}px;"`:(c.fw?` style="width:${c.fw}px;"`:'')}>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
-    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr${(hasCfm&&row.cfm!=='OK')?' class="sub-pending"':''}>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
+    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr${(hasCfm&&row.cfm!=='OK')?' class="sub-pending"':''}>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}${c.fwMin?` style="max-width:${c.fw}px;"`:''}>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
       <td><div class="row-actions">${sec.reorderable?`<a class="act-move" onclick="moveSubRow('${sec.key}',${i},-1)"${i===0?' style="visibility:hidden;"':''}>▲</a><a class="act-move" onclick="moveSubRow('${sec.key}',${i},1)"${i===rows.length-1?' style="visibility:hidden;"':''}>▼</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a>${PAYING_SYNC[sec.key]?`<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})">฿</a>`:''}</div></td>
     </tr>`).join('')}
     ${(!rows.length&&!isEditingHere)?`<tr class="subtbl-empty-row"><td colspan="${cols.length+1}">-</td></tr>`:''}
@@ -4319,6 +4321,12 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
   const isNum=f.type==='number';
   const typeAttr=isNum?'text':f.type;
   const extra=isNum?' inputmode="numeric" class="numcell"':(f.type==='date'?' lang="en"':'');
+  // fwMin이 있으면 그 폭에서 시작해 입력한 만큼만 fw까지 늘어난다(PAYING·REMARK)
+  if(f.fw&&f.fwMin){
+    return `<input type="${typeAttr}"${extra} class="ag-input" id="${id}" value="${escapeAttr(val)}"`
+      +` data-ag-min="${f.fwMin}" data-ag-max="${f.fw}" oninput="autoGrowInput(this)"`
+      +` style="min-width:0;width:${f.fwMin}px;box-sizing:border-box;"/>`;
+  }
   if(f.fw){
     return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}" style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`;
   }
@@ -4367,6 +4375,36 @@ function filterFlightOptions(baseId,airlineCode,dirType){
 function editSubRow(sectionKey,index){ subEditKey=sectionKey; subEditIndex=index; renderSubsections(); }
 function cancelSubRowInline(){ subEditKey=null; subEditIndex=null; renderSubsections(); }
 // 편집행 밖으로 포커스가 나가면(다른 칸/버튼 클릭 등) SAVE를 누르지 않아도 자동 저장
+/* ── 입력칸 자동 늘어남 ──
+   PAYING·REMARK를 넓게 고정해 두니 편집행이 화면 밖까지 밀려서,
+   저장을 누르려면 매번 가로 스크롤바를 옮겨야 했다.
+   → 기본은 좁게 두고 「입력한 내용만큼만」 늘어나게 한다(최대 폭은 종전 그대로). */
+let _agRuler=null;
+function _agTextWidth(el){
+  if(!_agRuler){
+    _agRuler=document.createElement('span');
+    _agRuler.style.cssText='position:absolute;left:-9999px;top:-9999px;white-space:pre;visibility:hidden;';
+    document.body.appendChild(_agRuler);
+  }
+  const cs=getComputedStyle(el);
+  _agRuler.style.fontFamily=cs.fontFamily;
+  _agRuler.style.fontSize=cs.fontSize;
+  _agRuler.style.fontWeight=cs.fontWeight;
+  _agRuler.style.letterSpacing=cs.letterSpacing;
+  _agRuler.textContent=el.value||'';
+  const pad=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)
+           +(parseFloat(cs.borderLeftWidth)||0)+(parseFloat(cs.borderRightWidth)||0);
+  return _agRuler.offsetWidth+pad+10;   // 커서 여유
+}
+function autoGrowInput(el){
+  if(!el) return;
+  const min=parseFloat(el.dataset.agMin)||90;
+  const max=parseFloat(el.dataset.agMax)||min;
+  el.style.width=Math.round(Math.min(max,Math.max(min,_agTextWidth(el))))+'px';
+}
+function applyAutoGrow(){
+  document.querySelectorAll('#subsecHost input.ag-input').forEach(autoGrowInput);
+}
 function handleSubRowFocusOut(e,sectionKey,index){
   const rowEl=e.currentTarget;
   setTimeout(()=>{
