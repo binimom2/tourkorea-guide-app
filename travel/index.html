@@ -129,12 +129,7 @@ table.rlist tr{cursor:pointer;}
 #costTable .num{text-align:center;}
 /* 가운데정렬 칸(기간·금액 등)은 좌우 여백을 줄여 폭을 좁게 */
 #costTable th.num,#costTable td.num{padding-left:6px;padding-right:6px;}
-/* 비고: 가장 긴 줄에 맞춰 칸이 끝없이 넓어지면 짧은 줄 오른쪽에 큰 공백이 생긴다
-   → 상한을 두고 넘치면 줄바꿈(내용은 pre-wrap이라 다 보인다) */
-#costTable .remark-col{white-space:pre-wrap;min-width:180px;max-width:330px;}
-/* 수정/상세보기/삭제 칸: 내용 폭에 딱 맞게 줄여 비고와의 간격을 좁힌다 */
-#costTable th:last-child,#costTable td:last-child{width:1%;white-space:nowrap;padding-left:6px;padding-right:10px;}
-#costTable td:last-child .row-actions{gap:6px;}
+#costTable .remark-col{white-space:pre-wrap;min-width:180px;}
 /* 최종수정 — 별도 칸 대신 수정/상세보기/삭제 아래에 작게(날짜·시각·아이디) */
 #costTable .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.4;text-align:right;margin-top:5px;}
 #costTable .cost-upd .cost-upd-by{color:#6b7484;font-weight:700;}
