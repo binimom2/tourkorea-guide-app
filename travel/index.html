@@ -265,6 +265,16 @@ table.subtbl input.numcell{text-align:center;}
 #codeModal #codeListBody .code-row,#codeModal #vendorListBody .code-row{margin-bottom:0;}
 #codeModal #codeListBody .code-row.edit-row,#codeModal #vendorListBody .code-row.edit-row{grid-column:1/-1;}
 #codeModal .code-row .tag{color:#1c6b3f;background:#d7f0e0;}
+/* 항공편 스케줄: 좌(방콕행)·우(귀국편) 2열 + 항공사별 그룹 */
+.flight-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+.flight-col{min-width:0;}
+.flight-col-head{font-size:13px;font-weight:800;padding:7px 11px;border-radius:8px;margin-bottom:8px;display:flex;align-items:baseline;gap:8px;}
+.flight-col-head span{font-size:11px;font-weight:600;opacity:.85;}
+.flight-col-head.in{color:#1c5fb8;background:#e8f1ff;}
+.flight-col-head.out{color:#b8641c;background:#fff1e2;}
+.flight-air-head{font-size:12px;font-weight:800;color:#3457d5;margin:7px 0 1px;padding-left:2px;}
+.flight-air-head span{font-weight:600;color:#8a90a0;font-size:10.5px;}
+@media(max-width:720px){.flight-2col{grid-template-columns:1fr;}}
 .cust-card{border:1px solid #e8eaf0;border-radius:10px;padding:9px 12px;margin-bottom:7px;}
 .cust-card.inactive{opacity:0.55;}
 .cust-card-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0;}
@@ -2009,11 +2019,15 @@ function renderVendorList(){
       <span style="font-size:12px;font-weight:700;color:#6b7484;">✈ 항공사 구분</span>
       <select onchange="flightAirlineFilter=this.value;vendorEditIndex=null;renderVendorList();syncFlightAddAirline();" style="flex:0 0 auto;padding:6px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#1f4a85;font-weight:700;">${filterOpts}</select>
     </div>`;
-    // 정렬: 항공사 → 방향(도착 X→BKK 먼저, 출발 BKK→X 나중) → 편명
-    const dirRank=v=>String(v.direction||'').endsWith('-BKK')?0:1; // 도착=0, 출발=1
-    let sorted=[...list].sort((a,b)=>(a.airline||'').localeCompare(b.airline||'')||dirRank(a)-dirRank(b)||(a.flightNo||'').localeCompare(b.flightNo||''));
-    if(flightAirlineFilter) sorted=sorted.filter(v=>v.airline===flightAirlineFilter);
-    const rowsHtml=sorted.length?sorted.map(v=>{
+    // 좌/우 2열 분리: 좌=방콕행(한국→방콕, 방향이 '-BKK'로 끝남), 우=귀국편(방콕→한국, 'BKK-'로 시작)
+    const isInbound=v=>String(v.direction||'').endsWith('-BKK'); // 한국→방콕(방콕 도착)
+    const byAir=(a,b)=>(a.airline||'').localeCompare(b.airline||'')||(a.flightNo||'').localeCompare(b.flightNo||'');
+    let base=[...list];
+    if(flightAirlineFilter) base=base.filter(v=>v.airline===flightAirlineFilter);
+    const inbound=base.filter(isInbound).sort(byAir);
+    const outbound=base.filter(v=>!isInbound(v)).sort(byAir);
+    // 한 편 렌더(표시/편집 공용) — 편집 중이면 편집폼, 아니면 표시행
+    const renderRow=v=>{
       const i=list.indexOf(v);
       const active=v.active!==false;
       if(i===vendorEditIndex){
@@ -2033,14 +2047,35 @@ function renderVendorList(){
       }
       return `
       <div class="code-row${active?'':' inactive'}">
-        <span class="tag">${escapeHtml(v.airline||'')}</span>
-        <span class="lbl">${escapeHtml(v.flightNo)} · ${FLIGHT_DIRECTIONS[v.direction]||v.direction} · ${escapeHtml(v.dep)}→${escapeHtml(v.arr)}</span>
-        <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleVendorActive(${i})">${active?'🟢 사용':'⚪ 미사용'}</a>
+        <span class="lbl" style="flex:1;"><b style="color:#1f4a85;">${escapeHtml(v.flightNo)}</b> · ${escapeHtml(padTime(v.dep))}→${escapeHtml(padTime(v.arr))}</span>
+        <a class="code-active-toggle ${active?'on':'off'}" onclick="toggleVendorActive(${i})" title="${active?'사용중':'미사용'}">${active?'🟢':'⚪'}</a>
         <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editVendorItem(${i})">✏ 수정</a>
         <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delVendorItem(${i})">삭제</a>
       </div>`;
-    }).join(''):`<div class="subtbl-empty">${list.length?'해당 항공사의 항공편이 없습니다':'등록된 항공편이 없습니다'}</div>`;
-    document.getElementById('vendorListBody').innerHTML=(list.length?filterBar:'')+rowsHtml;
+    };
+    // 항공사별 그룹 헤더를 끼워 한 열을 렌더(편수가 많아도 항공사 단위로 훑기 쉽게)
+    const renderCol=arr=>{
+      if(!arr.length) return `<div class="subtbl-empty" style="margin:6px 0;">${list.length?'해당 항공편이 없습니다':'등록된 항공편이 없습니다'}</div>`;
+      let html='',curAir=null;
+      arr.forEach(v=>{
+        if(v.airline!==curAir){ curAir=v.airline; html+=`<div class="flight-air-head">✈ ${escapeHtml(curAir||'(미지정)')}${nameOf(curAir)?` <span>${escapeHtml(nameOf(curAir))}</span>`:''}</div>`; }
+        html+=renderRow(v);
+      });
+      return `<div style="display:flex;flex-direction:column;gap:5px;">${html}</div>`;
+    };
+    document.getElementById('vendorListBody').innerHTML=`<div style="grid-column:1/-1;">
+      ${list.length?filterBar:''}
+      <div class="flight-2col">
+        <div class="flight-col">
+          <div class="flight-col-head in">🛬 방콕행 <span>한국 → 방콕 · ${inbound.length}편</span></div>
+          ${renderCol(inbound)}
+        </div>
+        <div class="flight-col">
+          <div class="flight-col-head out">🛫 귀국편 <span>방콕 → 한국 · ${outbound.length}편</span></div>
+          ${renderCol(outbound)}
+        </div>
+      </div>
+    </div>`;
     return;
   }
   const isGuide=vendorModalTab==='GUIDE';
