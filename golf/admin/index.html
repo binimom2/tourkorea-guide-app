@@ -732,7 +732,12 @@ function openRate(key){
   renderRateModal();
   updateRateMsg();
 }
-function closeRate(){ document.getElementById('rateModal').classList.add('hidden'); }
+/* 저장하지 않은 채 창을 닫고 새로고침해 입력이 날아간 사고가 있었다.
+   닫기 전에 반드시 한 번 확인받는다. */
+function closeRate(){
+  if(_dirty && !confirm('⚠ 아직 저장하지 않은 변경이 있습니다.\n\n[취소]를 눌러 창에 머문 뒤 💾 저장을 눌러주세요.\n[확인]을 누르면 창만 닫습니다 — 값은 남아 있지만,\n저장하지 않고 새로고침하면 사라집니다.')) return;
+  document.getElementById('rateModal').classList.add('hidden');
+}
 /* 창이 열려 있는 동안엔 화면 아래 저장 바가 창에 가려 눌리지 않는다.
    → 창 안에서도 바로 저장할 수 있게 한다. (닫기만으로는 저장되지 않는다) */
 async function saveFromRate(){
