@@ -37,6 +37,13 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px}
 .card h2{margin:0 0 4px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
 .card .desc{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+/* 요금표 관리 창의 상단 탭 — 창을 닫지 않고 종류를 옮겨 다닌다 */
+.rtabs{display:flex;gap:6px;flex-wrap:wrap;padding:11px 18px;border-bottom:1px solid var(--line);background:var(--paper)}
+.rtabs .rtab{font:inherit;font-size:12.5px;font-weight:700;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);cursor:pointer;white-space:nowrap}
+.rtabs .rtab:hover{background:var(--sand)}
+.rtabs .rtab.on{background:var(--fairway);color:#fff;border-color:var(--fairway)}
+/* 창 안에서는 카드 테두리를 없애 내용만 보이게 */
+#rateBody .card{border:none;padding:0;margin:0}
 .grid{display:grid;gap:12px}
 .f{display:flex;flex-direction:column;gap:4px}
 .f label{font-size:11.5px;font-weight:700;color:var(--muted)}
@@ -172,6 +179,18 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       <button class="btn sm" onclick="closeCodeCat()">닫기</button>
     </div>
     <div id="codeCatBody" style="padding:16px 18px;overflow:auto"></div>
+  </div>
+</div>
+
+<!-- 요금표 관리: 창 하나에 상단 탭으로 종류를 바꾼다(여행수배서 코드관리와 같은 방식) -->
+<div id="rateModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px" onmousedown="if(event.target===this)closeRate()">
+  <div style="background:#fff;border-radius:14px;max-width:1100px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
+      <b style="font-size:15px">💰 요금표 관리</b>
+      <button class="btn sm" onclick="closeRate()">닫기</button>
+    </div>
+    <div id="rateTabs" class="rtabs"></div>
+    <div id="rateBody" style="padding:16px 18px;overflow:auto"></div>
   </div>
 </div>
 
@@ -645,24 +664,59 @@ function guideTable(){
 }
 
 /* ══════════ 렌더 ══════════ */
+/* 요금표는 종류가 6가지라 한 화면에 다 펼치면 세로로 길어진다.
+   → 페이지엔 종류 버튼만 두고, 누르면 창이 열린다.
+     창 안에서는 상단 탭으로 종류를 옮겨 다닌다(여행수배서 코드관리와 같은 방식). */
+let _rateSections=[], _rateTab='';
 function render(){
   const root=document.getElementById('editor'); root.innerHTML='';
 
-  // 1) 차량 요금 (지역 조합별 열 + 안내문구 + 수송밴)
-  root.appendChild(vehicleCard());
-  // 2) 핸들링 차지 (기간별)
-  root.appendChild(periodTable('🧳 핸들링 차지 (1인 기준)','기간별 핸들링 요금.',G.handlingPeriods));
-  // 3) 가이드 (구분·지역·기간별)
-  root.appendChild(guideTable());
-  // 4) 공휴일
-  root.appendChild(holidayCard());
-  // 5) 기타
-  const oc=card('⚙️ 기타','');
-  const orow=el('div','row');
-  orow.appendChild(field('밴 1대당 최대 인원(명)',numInput(G,'paxPerVan')));
-  oc.appendChild(orow); root.appendChild(oc);
-  // 6) 골프장 · 숙소 (가로 표)
-  root.appendChild(golfSection());
+  const etcCard=()=>{
+    const oc=card('⚙️ 기타','');
+    const orow=el('div','row');
+    orow.appendChild(field('밴 1대당 최대 인원(명)',numInput(G,'paxPerVan')));
+    oc.appendChild(orow); return oc;
+  };
+  // 만들어만 두고 화면에는 붙이지 않는다 — 선택한 것만 창 안으로 옮겨 보여준다
+  _rateSections=[
+    {key:'vehicle', label:'🚐 차량 요금',    node:vehicleCard()},
+    {key:'handling',label:'🧳 핸들링 차지',  node:periodTable('🧳 핸들링 차지 (1인 기준)','기간별 핸들링 요금.',G.handlingPeriods)},
+    {key:'guide',   label:'🧑‍🏫 가이드 요금',  node:guideTable()},
+    {key:'holiday', label:'📅 공휴일',       node:holidayCard()},
+    {key:'etc',     label:'⚙️ 기타',         node:etcCard()},
+    {key:'golf',    label:'🗺️ 골프장 · 숙소', node:golfSection()},
+  ];
+
+  const c=card('💰 요금표 관리','종류를 누르면 창이 열립니다. 창을 닫지 않고 상단 탭으로 바로 옮겨 다닐 수 있습니다.');
+  const cats=el('div','ccats');
+  _rateSections.forEach(s=>{
+    const b=el('button','ccat',s.label);
+    b.onclick=()=>openRate(s.key);
+    cats.appendChild(b);
+  });
+  c.appendChild(cats);
+  root.appendChild(c);
+}
+function openRate(key){
+  _rateTab=key;
+  document.getElementById('rateModal').classList.remove('hidden');
+  renderRateModal();
+}
+function closeRate(){ document.getElementById('rateModal').classList.add('hidden'); }
+function renderRateModal(){
+  const tabs=document.getElementById('rateTabs'); tabs.innerHTML='';
+  _rateSections.forEach(s=>{
+    const b=el('button','rtab'+(s.key===_rateTab?' on':''),s.label);
+    b.onclick=()=>{ _rateTab=s.key; renderRateModal(); };
+    tabs.appendChild(b);
+  });
+  const body=document.getElementById('rateBody'); body.innerHTML='';
+  const cur=_rateSections.find(s=>s.key===_rateTab);
+  if(!cur) return;
+  body.appendChild(cur.node);   // 옮겨 붙이는 것이라 입력값·이벤트가 그대로 유지된다
+  /* 골프장·숙소 표는 tbody를 id로 찾아 채우는 구조라, 창에 붙인 «뒤에» 그려야 한다.
+     (창 밖에 있는 동안에는 못 찾아서 빈 표가 된다. 지역 코드가 바뀐 경우도 여기서 반영된다) */
+  if(cur.key==='golf'){ renderGolfBody(); renderHotelBody(); }
 }
 function card(title,desc){ const c=el('div','card'); c.appendChild(el('h2',null,title)); if(desc)c.appendChild(el('p','desc',desc)); return c; }
 function tierCard(title,desc,obj){
