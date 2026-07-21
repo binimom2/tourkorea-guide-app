@@ -415,7 +415,16 @@ function normalize(d){
     if(!g.vehiclePeriods[p])  g.vehiclePeriods[p]={amount:null,remark:''};
     if(!g.handlingPeriods[p]) g.handlingPeriods[p]={amount:null,remark:''};
   });
-  GUIDE_TYPES.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
+  /* 가이드 종류는 관리자에서 추가·이름변경·삭제할 수 있다(차량의 지역 조합과 같은 방식).
+     예전 데이터는 저장돼 있던 종류를 그대로 쓰되, 화면 순서는 로컬 → 한국인으로 맞춘다. */
+  if(!Array.isArray(g.guideTypes) || !g.guideTypes.length){
+    const found=Object.keys(g.guidePeriods||{});
+    const pref=['로컬가이드','한국인가이드'];
+    g.guideTypes = found.length
+      ? [...pref.filter(t=>found.includes(t)), ...found.filter(t=>!pref.includes(t))]
+      : pref.slice();
+  }
+  g.guideTypes.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
 
   /* 차량: 지역 조합별 요금 열(그룹). 예전의 단일 vehiclePeriods는 첫 그룹으로 이관한다. */
   if(!Array.isArray(g.vehicleGroups) || !g.vehicleGroups.length){
@@ -665,30 +674,65 @@ function escapeAttr(s){ return escapeHtml(s); }
    비고는 기간당 한 칸만 쓰되 저장 구조는 그대로 둔다 — 두 구분 모두에 같은 값을 넣는다.
    (엑셀 내려받기가 구분별 비고를 읽기 때문. 견적 페이지는 금액만 쓴다) */
 function guideTable(){
-  const c=card('🧑‍🏫 가이드 요금','기간은 두 구분 공통입니다. 지역과 무관하게 이 금액을 그대로 사용합니다.');
-  const ORDER=['로컬가이드','한국인가이드'];
-  ORDER.forEach(t=>{ G.guidePeriods[t]=G.guidePeriods[t]||{}; });
-  const tbl=document.createElement('table'); tbl.className='ptable';
-  const thead=document.createElement('thead'); const hr=document.createElement('tr');
-  ['기간','로컬가이드','한국가이드','비고'].forEach(h=>hr.appendChild(thEl(h)));
-  thead.appendChild(hr); tbl.appendChild(thead);
-  const tb=document.createElement('tbody');
-  GUIDE_PERIODS.forEach(p=>{
-    const cells=ORDER.map(t=>{ const T=G.guidePeriods[t]; if(!T[p]) T[p]={bkk:null,remark:''}; return T[p]; });
-    const tr=document.createElement('tr');
-    const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
-    cells.forEach(o=>{
-      const td=document.createElement('td'); td.style.width='24%';
-      const b=numInput(o,'bkk'); b.className='pin'; td.appendChild(b); tr.appendChild(td);
+  const c=card('🧑‍🏫 가이드 요금','기간은 모든 종류 공통입니다. 이름을 누르면 수정, ✕로 삭제, 아래 버튼으로 종류를 추가합니다.');
+  const wrap=el('div'); c.appendChild(wrap);
+  const draw=()=>{
+    const types=G.guideTypes;
+    wrap.innerHTML='';
+    const tbl=document.createElement('table'); tbl.className='ptable';
+    const thead=document.createElement('thead'); const hr=document.createElement('tr');
+    hr.appendChild(thEl('기간'));
+    types.forEach((t,i)=>{
+      const th=document.createElement('th');
+      const nm=el('span',null,t);
+      nm.style.cssText='cursor:pointer;text-decoration:underline dotted;'; nm.title='이름 수정';
+      nm.onclick=()=>{
+        const nv=prompt('가이드 종류 이름 (예: 영어가이드)', t);
+        if(nv===null) return;
+        const nn=nv.trim(); if(!nn||nn===t) return;
+        if(types.includes(nn)){ gToast('⚠ 이미 있는 이름입니다'); return; }
+        G.guidePeriods[nn]=G.guidePeriods[t]; delete G.guidePeriods[t];   // 입력해 둔 금액을 그대로 옮긴다
+        types[i]=nn; _touch(); draw();
+      };
+      const x=el('a',null,'✕');
+      x.style.cssText='color:var(--danger);cursor:pointer;font-weight:800;margin-left:6px;'; x.title='이 종류 삭제';
+      x.onclick=()=>{
+        if(types.length<=1){ gToast('마지막 종류는 지울 수 없습니다'); return; }
+        if(!confirm(`'${t}' 종류를 삭제할까요?\n입력된 요금이 함께 사라집니다.`)) return;
+        delete G.guidePeriods[t]; types.splice(i,1); _touch(); draw();
+      };
+      th.appendChild(nm); th.appendChild(x); hr.appendChild(th);
     });
-    const tR=document.createElement('td');
-    const r=document.createElement('input'); r.type='text'; r.className='pin'; r.placeholder='비고';
-    r.value=(cells.find(o=>o.remark)||{}).remark||'';
-    r.oninput=()=>{ cells.forEach(o=>{ o.remark=r.value; }); _touch(); };
-    tR.appendChild(r); tr.appendChild(tR);
-    tb.appendChild(tr);
-  });
-  tbl.appendChild(tb); c.appendChild(tbl);
+    hr.appendChild(thEl('비고'));
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb=document.createElement('tbody');
+    GUIDE_PERIODS.forEach(p=>{
+      const cells=types.map(t=>{ const T=(G.guidePeriods[t]=G.guidePeriods[t]||{}); if(!T[p]) T[p]={bkk:null,remark:''}; return T[p]; });
+      const tr=document.createElement('tr');
+      const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
+      cells.forEach(o=>{ const td=document.createElement('td'); const b=numInput(o,'bkk'); b.className='pin'; td.appendChild(b); tr.appendChild(td); });
+      // 비고는 기간당 한 칸 — 모든 종류에 같은 값을 넣어 기존 저장 구조를 유지한다
+      const tR=document.createElement('td');
+      const r=document.createElement('input'); r.type='text'; r.className='pin'; r.placeholder='비고';
+      r.value=(cells.find(o=>o.remark)||{}).remark||'';
+      r.oninput=()=>{ cells.forEach(o=>{ o.remark=r.value; }); _touch(); };
+      tR.appendChild(r); tr.appendChild(tR);
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb); wrap.appendChild(tbl);
+    const add=el('button','btn ghost sm','＋ 가이드 종류 추가');
+    add.style.marginTop='6px';
+    add.onclick=()=>{
+      const nv=prompt('추가할 가이드 종류 이름 (예: 영어가이드)','');
+      if(nv===null) return;
+      const nn=nv.trim()||'새 가이드';
+      if(types.includes(nn)){ gToast('⚠ 이미 있는 이름입니다'); return; }
+      const T={}; GUIDE_PERIODS.forEach(p=>T[p]={bkk:null,remark:''});
+      G.guidePeriods[nn]=T; types.push(nn); _touch(); draw();
+    };
+    wrap.appendChild(add);
+  };
+  draw();
   return c;
 }
 
@@ -1028,7 +1072,7 @@ async function downloadGolfXlsx(){
       PERIODS.map(p=>[p,_gxNum((G.handlingPeriods[p]||{}).amount),(G.handlingPeriods[p]||{}).remark||'']));
 
     const grows=[];
-    GUIDE_TYPES.forEach(t=>{
+    (G.guideTypes||GUIDE_TYPES).forEach(t=>{   // 관리자에서 추가한 종류까지 내려받기에 포함
       const T=G.guidePeriods[t]||{};
       GUIDE_PERIODS.forEach(p=>grows.push([t,p,_gxNum((T[p]||{}).bkk),(T[p]||{}).remark||'']));
     });

@@ -123,10 +123,9 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     </div>
     <div class="grid g3">
       <div id="hotelWrap" style="display:contents"></div>
+      <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
       <div class="f"><label>가이드</label><select id="guide">
         <option value="none">가이드 없이</option>
-        <option value="한국인가이드">한국인 가이드</option>
-        <option value="로컬가이드">로컬 가이드(한국어 가능)</option>
       </select></div>
     </div>
   </div>
@@ -375,7 +374,8 @@ function calc(){
     const G=(P.guidePeriods||{})[gt];
     const gv=G?tierValue(G,nights,'bkk'):null;
     if(gv){
-      lines.push({t:(gt==='한국인가이드'?'한국인 가이드':'로컬 가이드'),s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
+      // 이름은 관리자에 등록된 종류를 그대로 쓴다(종류를 추가해도 견적서에 그 이름으로 나온다)
+      lines.push({t:gt,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
   }
   // 5) 숙소 — 고른 지역별로
@@ -444,6 +444,8 @@ async function loadPricing(){
       holidays:(d.holidays&&d.holidays.includes('2026-05-04'))?d.holidays:DEFAULT_PRICING.holidays,
       hotels:DEFAULT_PRICING.hotels,
       handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{},
+      // 가이드 종류는 관리자에서 추가·삭제할 수 있다(없으면 저장된 요금의 종류를 그대로 씀)
+      guideTypes:(Array.isArray(d.guideTypes)&&d.guideTypes.length)?d.guideTypes:Object.keys(d.guidePeriods||{}),
       // 차량: 지역 조합별 요금 열. 예전 데이터(단일 vehiclePeriods)만 있으면 한 열로 취급.
       vehicleGroups:(Array.isArray(d.vehicleGroups)&&d.vehicleGroups.length)
         ? d.vehicleGroups
@@ -477,9 +479,21 @@ async function loadRegionCodes(){
   }catch(e){}
   REGIONS=REGION_FALLBACK.slice();
 }
+/* 가이드 선택지는 관리자 요금표에 등록된 종류를 그대로 쓴다.
+   (예전엔 HTML에 두 개가 박혀 있어 관리자에서 종류를 추가해도 여기 안 나왔다) */
+function buildGuideOptions(){
+  const sel=$('#guide'); if(!sel) return;
+  const cur=sel.value;
+  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  sel.innerHTML='<option value="none">가이드 없이</option>'+
+    types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
+}
 function startApp(user){
   if(user&&isAdmin(user)) document.getElementById('adminLink').style.display='';
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
+  buildGuideOptions();
   buildTripOptions();
   window._ready=true;
   refreshAll();
