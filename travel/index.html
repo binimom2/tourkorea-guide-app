@@ -3058,7 +3058,11 @@ async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 function renderHotelTable(){
   const COLS=['호텔명','지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
   const CEN=['지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스'];
-  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
+  /* 앞쪽 칸은 폭을 정해 좁히고, 비고에는 폭을 주지 않아 남는 공간을 전부 가져가게 한다.
+     (칸마다 직접 지정 — td:last-child 같은 위치 기준은 시즌이 여러 줄인 항목에서
+      비고가 마지막 칸이 되어 버려 표가 깨진다) */
+  const W={'호텔명':120,'지역':62,'시즌':62,'기간':142,'룸타입 구분':112,'트윈/싱글':86,'엑스트라':96,'조이너스':78};
+  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}"${W[l]?` style="width:${W[l]}px;"`:''}>${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
   let list=getHotels().map((h,idx)=>({h,idx}));
@@ -3370,7 +3374,9 @@ async function saveAttrs(arr){ await saveCostRows('attraction',arr); }
 function renderAttrTable(){
   const COLS=['구분','관광지명','지역','기간','성인요금','어린이요금','비고'];
   const CEN=['지역','기간','성인요금','어린이요금'];
-  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
+  // 호텔 표와 같은 방식 — 앞쪽 칸 폭을 정하고 비고에는 폭을 주지 않아 남는 공간을 가져가게
+  const W={'구분':72,'관광지명':150,'지역':62,'기간':142,'성인요금':200,'어린이요금':200};
+  document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}"${W[l]?` style="width:${W[l]}px;"`:''}>${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const catEl=document.getElementById('cf-category');
   const cat=(catEl&&catEl.value||'').trim();
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
