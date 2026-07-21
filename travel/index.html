@@ -73,10 +73,9 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-head h2{font-size:18px;font-weight:800;color:#161f38;}
 .cal-nav{background:#fff;border:1px solid #dfe3ea;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#3457d5;}
 .cal-grid{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(20,30,60,0.05);}
-/* 두 달을 위아래로 — 각 달을 자기 제목을 단 독립된 덩어리로 보여준다 */
-.cal-month+.cal-month{margin-top:26px;}
-.cal-mtitle{font-size:15.5px;font-weight:800;color:#1f4a85;margin:0 2px 8px;display:flex;align-items:center;gap:8px;}
-.cal-mtitle::after{content:'';flex:1;height:1px;background:#e3e7ee;}
+/* 두 달을 위아래로 — 아래 달 제목도 상단 제목과 같은 모양(가운데 정렬)으로 */
+.cal-month+.cal-month{margin-top:24px;}
+.cal-mtitle{font-size:18px;font-weight:800;color:#161f38;text-align:center;margin:0 0 14px;}
 .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);background:#f4f6fa;border-bottom:1px solid #e3e7ee;}
 .cal-dow div{padding:9px;text-align:center;font-size:11.5px;font-weight:800;color:#8892a0;}
 .cal-dow div:first-child{color:#e0483f;}
@@ -3787,7 +3786,7 @@ function calCellClick(e,dateStr){
   openReservation(null,dateStr);
 }
 // 한 달치 달력 한 덩어리(제목 + 요일 머리글 + 날짜칸)를 만들어 반환
-function calMonthHtml(y,m,byDate,todayStr){
+function calMonthHtml(y,m,byDate,todayStr,showTitle){
   const p=n=>String(n).padStart(2,'0');
   const startDow=new Date(y,m,1).getDay();
   const daysInMonth=new Date(y,m+1,0).getDate();
@@ -3807,7 +3806,7 @@ function calMonthHtml(y,m,byDate,todayStr){
   const trail=(7-((startDow+daysInMonth)%7))%7;
   for(let i=0;i<trail;i++) cells+=`<div class="cal-cell out"></div>`;
   return `<div class="cal-month">
-    <div class="cal-mtitle">${y}년 ${m+1}월</div>
+    ${showTitle?`<div class="cal-mtitle">${y}년 ${m+1}월</div>`:''}
     <div class="cal-grid">
       <div class="cal-dow"><div>일(SUN)</div><div>월(MON)</div><div>화(TUE)</div><div>수(WED)</div><div>목(THU)</div><div>금(FRI)</div><div>토(SAT)</div></div>
       <div class="cal-body">${cells}</div>
@@ -3825,8 +3824,9 @@ function renderCalendar(){
   getFiltered().forEach(r=>{ (byDate[r.datein]=byDate[r.datein]||[]).push(r); });
   const _t=new Date();
   const todayStr=`${_t.getFullYear()}-${String(_t.getMonth()+1).padStart(2,'0')}-${String(_t.getDate()).padStart(2,'0')}`;
+  // 첫 달은 위쪽 제목(◀ 이전달 2026년 7월 다음달 ▶)이 대신하므로 표 제목을 달지 않는다
   document.getElementById('calMonths').innerHTML =
-    calMonthHtml(calY,calM,byDate,todayStr)+calMonthHtml(ny,nm,byDate,todayStr);
+    calMonthHtml(calY,calM,byDate,todayStr,false)+calMonthHtml(ny,nm,byDate,todayStr,true);
 }
 // 팀 인원(성인+아동): FLIGHTS 각 행의 adt+chd 합산(예약 최상위 값이 비어있는 경우가 많아 항공행에서 계산)
 function resPax(r){
