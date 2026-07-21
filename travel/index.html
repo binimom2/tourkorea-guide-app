@@ -826,9 +826,31 @@ function applyProcColor(){
 
 /* 저장은 전부 sbSaveSafe를 거친다 — 통째 덮어쓰기로 남의 작업이 사라지는 사고를 막기 위해.
    (2026-07-15 골프 66행 소멸, 2026-07-20 예약 7/29~31 소멸) */
-async function sbSave(key,data){
-  return await sbSaveSafe(key,data);
+async function sbSave(key,data,opts){
+  return await sbSaveSafe(key,data,opts||TRV_SAVE_OPTS[key]);
 }
+/* 키별 병합 기준. 원가서(골프·호텔·관광지)는 항목에 id가 없어서 이름으로 구분하는데,
+   이름만으로는 지역이 다른 동명 업체를 못 가른다 → 「이름|지역」을 기준으로 쓴다.
+   이게 있어야 「같은 골프장을 동시에 고쳤을 때만」 경고가 뜬다(그 외는 조용히 병합). */
+const _nameRegionKey=it=>{
+  const n=String((it&&it.name)||'').trim();
+  return n?n+'|'+String((it&&it.region)||'').trim():'';
+};
+const _nameLabel=it=>{
+  const n=String((it&&it.name)||'').trim()||'(이름없음)';
+  const r=String((it&&it.region)||'').trim();
+  return r?`${n} (${r})`:n;
+};
+// 관광지는 이름·지역이 같아도 구분(관광/식당/맛사지…)이 다를 수 있어 구분까지 넣는다
+const _attrKey=it=>{
+  const k=_nameRegionKey(it);
+  return k?String((it&&it.category)||'')+'|'+k:'';
+};
+const TRV_SAVE_OPTS={
+  trv_cost_golf:{keyFn:_nameRegionKey,labelFn:_nameLabel},
+  trv_cost_hotel:{keyFn:_nameRegionKey,labelFn:_nameLabel},
+  trv_cost_attraction:{keyFn:_attrKey,labelFn:_nameLabel},
+};
 /* 불러오기에 실패한 키. 실패하면 _sbBase(병합 기준)가 안 잡히는데, 이때 localStorage에는
    지난번 접속 때의 낡은 값이 그대로 남아 있다. 그걸 모르고 저장하면 예전처럼 통째 덮어쓰기가
    된다 → 저장 쪽에서 이 상태를 반드시 감지해야 한다. (2026-07-20 7/30·31 재소멸 원인) */
@@ -870,33 +892,51 @@ async function sbSaveRaw(key,data){
    덮어쓰기 직전 서버본을 백업해 되돌릴 수 있게 한다. */
 
 const _sbBase={};   // data_key → 마지막으로 서버와 맞춰진 값(JSON 문자열). 「내가 뭘 바꿨나」의 기준.
-function _sbSnap(v){ try{ return JSON.stringify(v===undefined?null:v); }catch(e){ return null; } }
+/* 「내용이 같은가」를 볼 때 쓰는 표준형 JSON — 객체의 키 순서를 정렬해서 맞춘다.
+   저장·조회를 거치며 키 순서만 바뀌어도 글자 비교가 어긋나
+   아무도 안 고쳤는데 「다른 사람이 변경했습니다」가 뜨던 오탐의 원인이었다. */
+function _canon(v){
+  if(Array.isArray(v)) return v.map(_canon);
+  if(v&&typeof v==='object'){
+    const o={}; Object.keys(v).sort().forEach(k=>{ o[k]=_canon(v[k]); }); return o;
+  }
+  return v;
+}
+function _sbSnap(v){ try{ return JSON.stringify(_canon(v===undefined?null:v)); }catch(e){ return null; } }
 
-// 항목을 구분할 고유키 필드를 자동으로 찾는다(세 배열 모두에서 값이 있고 중복이 없어야 함).
+// 항목을 구분할 고유키. 비교 대상 배열 전부에서 값이 있고 중복이 없어야 병합 기준으로 쓸 수 있다.
 const _KEY_CANDIDATES=['id','code','name'];
-function _pickKeyField(arrs){
-  return _KEY_CANDIDATES.find(f=>arrs.every(a=>{
+function _validKey(arrs,kf){
+  return arrs.every(a=>{
     if(!Array.isArray(a)) return false;
     const seen=new Set();
     return a.every(it=>{
       if(!it||typeof it!=='object') return false;
-      const v=it[f]; if(v===undefined||v===null||v==='') return false;
+      let v; try{ v=kf(it); }catch(e){ return false; }
+      if(v===undefined||v===null||v==='') return false;
       const s=String(v); if(seen.has(s)) return false;   // 중복이 있으면 병합 기준으로 못 씀
       seen.add(s); return true;
     });
-  }))||null;
+  });
 }
-function _byKey(arr,f){ const m=new Map(); arr.forEach(it=>m.set(String(it[f]),it)); return m; }
+/* 병합 기준 키를 고른다. 호출측이 지정한 키(opts.keyFn)가 쓸 만하면 그것을 우선 쓰고,
+   아니면 id·code·name 순으로 찾는다. 못 고르면 null = 항목별 병합 불가(통째 확인). */
+function _pickKeyFn(arrs,customKf){
+  if(customKf&&_validKey(arrs,customKf)) return customKf;
+  const f=_KEY_CANDIDATES.find(fl=>_validKey(arrs,it=>it[fl]));
+  return f?(it=>it[f]):null;
+}
+function _byKey(arr,kf){ const m=new Map(); arr.forEach(it=>m.set(String(kf(it)),it)); return m; }
 
 // base(내가 본 서버) / mine(내 화면) / server(현재 서버) → 서버 위에 내 변경분만 얹은 결과
-function _mergeByKey(base,mine,server,f){
-  const bM=_byKey(base,f), cM=_byKey(mine,f);
+function _mergeByKey(base,mine,server,kf){
+  const bM=_byKey(base,kf), cM=_byKey(mine,kf);
   const ups=[]; const dels=new Set();
-  cM.forEach((it,k)=>{ const b=bM.get(k); if(!b||JSON.stringify(b)!==JSON.stringify(it)) ups.push(it); });
+  cM.forEach((it,k)=>{ const b=bM.get(k); if(!b||_sbSnap(b)!==_sbSnap(it)) ups.push(it); });
   bM.forEach((b,k)=>{ if(!cM.has(k)) dels.add(k); });
-  const out=server.filter(it=>!dels.has(String(it[f])));
-  const pos=new Map(); out.forEach((it,i)=>pos.set(String(it[f]),i));
-  ups.forEach(it=>{ const k=String(it[f]);
+  const out=server.filter(it=>!dels.has(String(kf(it))));
+  const pos=new Map(); out.forEach((it,i)=>pos.set(String(kf(it)),i));
+  ups.forEach(it=>{ const k=String(kf(it));
     if(pos.has(k)) out[pos.get(k)]=it; else { pos.set(k,out.length); out.push(it); } });
   return {out,ups,bM};
 }
@@ -963,15 +1003,15 @@ async function sbSaveSafe(key,data,opts){
      이때 통째로 저장하면 서버에만 있는 항목이 전부 지워진다 → 절대 지우지 않고,
      내 항목을 서버 위에 「더하기만」 한다. 삭제는 새로고침 후 다시 하도록 안내. */
   if(baseStr==null && Array.isArray(server) && Array.isArray(data)){
-    const f=_pickKeyField([data,server]);
+    const f=_pickKeyFn([data,server],opts.keyFn);
     if(f){
       const sM=_byKey(server,f);
       const out2=server.slice();
-      const pos=new Map(); out2.forEach((it,i)=>pos.set(String(it[f]),i));
+      const pos=new Map(); out2.forEach((it,i)=>pos.set(String(f(it)),i));
       let added=0;
-      data.forEach(it=>{ const k=String(it[f]);
+      data.forEach(it=>{ const k=String(f(it));
         if(pos.has(k)){ out2[pos.get(k)]=it; } else { pos.set(k,out2.length); out2.push(it); added++; } });
-      const dropped=server.length-data.filter(it=>sM.has(String(it[f]))).length;
+      const dropped=server.length-data.filter(it=>sM.has(String(f(it)))).length;
       out=out2;
       if(dropped>0) showToast('⚠ 최신 목록을 못 받은 상태라 삭제는 반영하지 않았습니다. 새로고침 후 다시 해주세요. (Deletions were not applied because the latest list could not be loaded. Please refresh and retry.)');
       try{ await pushBackup(key,server); }catch(e){}
@@ -989,13 +1029,13 @@ async function sbSaveSafe(key,data,opts){
   // 내가 마지막으로 본 서버 상태와 지금 서버가 다르다 = 그 사이 누군가 바꿨다
   if(baseStr!=null && srvStr!==baseStr){
     const base=JSON.parse(baseStr);
-    const f=(Array.isArray(base)&&Array.isArray(data)&&Array.isArray(server))?_pickKeyField([base,data,server]):null;
+    const f=(Array.isArray(base)&&Array.isArray(data)&&Array.isArray(server))?_pickKeyFn([base,data,server],opts.keyFn):null;
     if(f){
       const {out:merged,ups,bM}=_mergeByKey(base,data,server,f);
       // 내가 고친 항목을 남도 고쳤는지 확인(자동 병합으로 남의 수정을 조용히 지우지 않도록)
       const sM=_byKey(server,f);
-      const clash=ups.filter(it=>{ const k=String(it[f]); const b=bM.get(k), s=sM.get(k);
-        return b&&s&&JSON.stringify(b)!==JSON.stringify(s); });
+      const clash=ups.filter(it=>{ const k=String(f(it)); const b=bM.get(k), s=sM.get(k);
+        return b&&s&&_sbSnap(b)!==_sbSnap(s); });
       if(clash.length){
         const names=clash.slice(0,10).map(it=>'· '+(opts.labelFn?opts.labelFn(it):(it.name||it.code||it.id))).join('\n');
         const more=clash.length>10?`\n… 외 ${clash.length-10}건`:'';
@@ -1023,9 +1063,9 @@ async function sbSaveSafe(key,data,opts){
      사라지는 일은 없어야 한다. 정상 작업은 한 번에 1건만 지운다(삭제 버튼).
      2건 이상 사라지면 무엇이 사라지는지 보여주고 반드시 확인받는다. */
   if(Array.isArray(server)&&Array.isArray(out)){
-    const kf=_pickKeyField([server,out]);
+    const kf=_pickKeyFn([server,out],opts.keyFn);
     let gone=[];
-    if(kf){ const keep=new Set(out.map(it=>String(it[kf]))); gone=server.filter(it=>!keep.has(String(it[kf]))); }
+    if(kf){ const keep=new Set(out.map(it=>String(kf(it)))); gone=server.filter(it=>!keep.has(String(kf(it)))); }
     else if(out.length<server.length) gone=server.slice(out.length);
     if(gone.length>=2){
       const nm=it=>(opts.labelFn?opts.labelFn(it):(it&&(it.name||it.code||it.id)))||'(이름없음)';
