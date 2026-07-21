@@ -4169,7 +4169,7 @@ function subsecHtml(sec){
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
     ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr${(hasCfm&&row.cfm!=='OK')?' class="sub-pending"':''}>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
-      <td><div class="row-actions">${sec.reorderable?`<a class="act-move" onclick="moveSubRow('${sec.key}',${i},-1)"${i===0?' style="visibility:hidden;"':''}>▲</a><a class="act-move" onclick="moveSubRow('${sec.key}',${i},1)"${i===rows.length-1?' style="visibility:hidden;"':''}>▼</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a>${PAYING_SYNC[sec.key]?(()=>{const n=_getPayings(row).length;return `<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})"${n?' style="color:#1f4a85;font-weight:800;"':''} title="${n?`지불 ${n}건 · 합계 ฿${(_payTotal(row)).toLocaleString('en-US')}`:'지불 입력'}">฿${n?`(${n})`:''}</a>`;})():''}</div></td>
+      <td><div class="row-actions">${sec.reorderable?`<a class="act-move" onclick="moveSubRow('${sec.key}',${i},-1)"${i===0?' style="visibility:hidden;"':''}>▲</a><a class="act-move" onclick="moveSubRow('${sec.key}',${i},1)"${i===rows.length-1?' style="visibility:hidden;"':''}>▼</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a>${PAYING_SYNC[sec.key]?`<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})">฿</a>`:''}</div></td>
     </tr>`).join('')}
     ${(!rows.length&&!isEditingHere)?`<tr class="subtbl-empty-row"><td colspan="${cols.length+1}">-</td></tr>`:''}
     </tbody>
