@@ -130,8 +130,8 @@ table.rlist tr{cursor:pointer;}
 /* 가운데정렬 칸(기간·금액 등)은 좌우 여백을 줄여 폭을 좁게 */
 #costTable th.num,#costTable td.num{padding-left:6px;padding-right:6px;}
 #costTable .remark-col{white-space:pre-wrap;min-width:180px;}
-/* 최종수정 칸 — 직원 여러 명이 같이 고치므로 언제·누가 고쳤는지 표 오른쪽에 표시 */
-#costTable .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.35;}
+/* 최종수정 — 별도 칸 대신 수정/상세보기/삭제 아래에 작게(날짜·시각·아이디) */
+#costTable .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.4;text-align:right;margin-top:5px;}
 #costTable .cost-upd .cost-upd-by{color:#6b7484;font-weight:700;}
 /* 원가서 골프장: 골프장별 번갈아 배색(구분용) + 성수기 줄 연한 초록. 합계칸(노랑)은 그대로 유지 */
 .rlist tr.golf-grp-1 td:not(.cost-sum-col){background:#f4f7fc;}
@@ -2721,23 +2721,22 @@ async function showCostUpdated(){
     } else el.textContent='';
   }catch(e){ el.textContent=''; }
 }
-/* 원가서는 직원 여러 명이 함께 고친다 — 항목마다 '언제·누가' 고쳤는지 남겨 표 오른쪽 끝에 보여준다.
-   (표 전체 기준인 아래 '최종 업데이트'만으로는 어느 항목을 누가 고쳤는지 알 수 없었다) */
+/* 원가서는 직원 여러 명이 함께 고친다 — 항목마다 '언제·누가' 고쳤는지 남긴다.
+   별도 칸을 만들면 표가 어색해져서, 수정/상세보기/삭제 바로 아래에 작게 붙인다. */
 function stampCostRow(o){
   if(!o) return o;
   o.updatedAt=new Date().toISOString();
   o.updatedBy=currentUser?currentUser.id:'';
   return o;
 }
-function costUpdCell(o,rowspan){
-  const by=(o&&o.updatedBy)||'';
-  let dt='';
-  if(o&&o.updatedAt){
-    const d=new Date(o.updatedAt);
-    if(!isNaN(d)){ const p=n=>String(n).padStart(2,'0'); dt=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
-  }
-  const inner=dt?`${escapeHtml(dt)}${by?`<br><span class="cost-upd-by">${escapeHtml(by)}</span>`:''}`:'-';
-  return `<td rowspan="${rowspan}" class="num cost-upd" style="vertical-align:middle;">${inner}</td>`;
+function costUpdNote(o){
+  if(!o||!o.updatedAt) return '';
+  const d=new Date(o.updatedAt);
+  if(isNaN(d)) return '';
+  const p=n=>String(n).padStart(2,'0');
+  const dt=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const by=o.updatedBy||'';
+  return `<div class="cost-upd">${escapeHtml(dt)}${by?`<br><span class="cost-upd-by">${escapeHtml(by)}</span>`:''}</div>`;
 }
 /* 시즌 필터 — 고른 시즌의 줄만 남기고, 그 시즌이 없는 항목은 숨김.
    원본 데이터는 건드리지 않고 복사본으로만 걸러서 수정/삭제는 원래 항목에 정상 적용됨 */
@@ -2795,7 +2794,7 @@ function sortByRegionName(list,getRegion,getName){
 function renderGolfTable(){
   const SUMS=['주중18홀 합','주말18홀 합','주중27홀 합','주말27홀 합'];
   const MONEY=['18홀(주중)','18홀(주말)','캐디피','전동카'];   // 헤더를 짧게 → 칸 폭 축소
-  const COLS=['골프장명','지역','시즌','기간'].concat(MONEY).concat(SUMS).concat(['비고','최종수정']);
+  const COLS=['골프장명','지역','시즌','기간'].concat(MONEY).concat(SUMS).concat(['비고']);
   const CEN=['지역','시즌','기간'].concat(MONEY).concat(SUMS);   // 가운데 정렬 칸
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>{
     const isSum=SUMS.indexOf(l)>=0;
@@ -2832,8 +2831,7 @@ function renderGolfTable(){
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum27we(s)))}</td>`;
       if(si===0){
         html+=`<td rowspan="${n}" class="remark-col" style="vertical-align:middle;">${c.remark?renderRemark(c.remark):'-'}</td>`
-             +costUpdCell(c,n)
-             +`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div></td>`;
+             +`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div>${costUpdNote(c)}</td>`;
       }
       html+='</tr>';
     });
@@ -3058,7 +3056,7 @@ function getHotels(){ return normHotelSeasons(migrateHotel(getCostRows('hotel'))
 async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 
 function renderHotelTable(){
-  const COLS=['호텔명','지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스','비고','최종수정'];
+  const COLS=['호텔명','지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
   const CEN=['지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스'];
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
@@ -3102,8 +3100,7 @@ function renderHotelTable(){
           html+=`<td class="remark-col">${rm.remark?renderRemark(rm.remark):'-'}</td>`;
         }
         if(rowNo===0){
-          html+=costUpdCell(h,total)
-               +`<td rowspan="${total}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div></td>`;
+          html+=`<td rowspan="${total}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div>${costUpdNote(h)}</td>`;
         }
         html+='</tr>';
         rowNo++;
@@ -3371,7 +3368,7 @@ function getAttrs(){ return normAttrSeasons(migrateAttr(getCostRows('attraction'
 async function saveAttrs(arr){ await saveCostRows('attraction',arr); }
 
 function renderAttrTable(){
-  const COLS=['구분','관광지명','지역','기간','성인요금','어린이요금','비고','최종수정'];
+  const COLS=['구분','관광지명','지역','기간','성인요금','어린이요금','비고'];
   const CEN=['지역','기간','성인요금','어린이요금'];
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}">${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const catEl=document.getElementById('cf-category');
@@ -3402,8 +3399,7 @@ function renderAttrTable(){
            +`<td class="num">${escapeHtml(fmtMoney(s.adult))}</td><td class="num">${escapeHtml(fmtMoney(s.child))}</td>`
            +`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
       if(si===0){
-        html+=costUpdCell(a,n)
-             +`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openAttrEditor(${idx})">수정</a><a class="act-edit" onclick="openAttrDetail(${idx})">상세보기</a><a class="act-del" onclick="delAttr(${idx})">삭제</a></div></td>`;
+        html+=`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openAttrEditor(${idx})">수정</a><a class="act-edit" onclick="openAttrDetail(${idx})">상세보기</a><a class="act-del" onclick="delAttr(${idx})">삭제</a></div>${costUpdNote(a)}</td>`;
       }
       html+='</tr>';
     });
