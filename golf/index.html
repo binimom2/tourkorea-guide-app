@@ -591,8 +591,12 @@ function calc(){
   // 요금이 등록되지 않은 항목이 있으면 합계가 실제와 달라지므로 반드시 알린다
   const miss=lines.filter(l=>l.warn).map(l=>l.t);
   // 환율은 코드관리 '환율'에서 읽는다(1밧당 원화). 없으면 한화를 아예 적지 않는다.
-  const krwPer=(FX_RATE>0)?`<div class="sum-krw">${won(krwUp(per*FX_RATE))} 원</div>`:'';
-  const krwTot=(FX_RATE>0)?`<div class="sum-krw" style="opacity:1;color:var(--fairway)">${won(krwUp(total*FX_RATE))} 원</div>`:'';
+  /* 한화는 «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이다.
+     총액을 환산해서 올리면 1인 요금 × 인원수와 맞지 않아 손님이 계산을 못 맞춘다. */
+  const perKrw=(FX_RATE>0)?krwUp(per*FX_RATE):0;
+  const totKrw=perKrw*pax;
+  const krwPer=perKrw?`<div class="sum-krw">${won(perKrw)} 원</div>`:'';
+  const krwTot=perKrw?`<div class="sum-krw" style="opacity:1;color:var(--fairway)">${won(totKrw)} 원</div>`:'';
   box.innerHTML=
     `<div class="sum-row"><span class="sum-k">1인 요금</span><span class="sum-v">${won(per)} <em>THB</em></span></div>`
     +krwPer
@@ -697,11 +701,27 @@ function buildQuoteHtml(mode){
       </table>
     </div>`;
 
-  /* 손님용은 한화가 주인공이다 — 밧 금액 아래에 원화를 크게 붙인다.
-     환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. 없으면 원화를 아예 적지 않는다. */
-  const kPer=(FX_RATE>0)?won(krwUp(LAST.per*FX_RATE)):'';
-  const kTot=(FX_RATE>0)?won(krwUp(LAST.total*FX_RATE)):'';
-  const krwLine=(v,big)=>v?`<div style="text-align:right;font-size:${big?18:13}px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:${big?4:2}px">${v} 원</div>`:'';
+  /* 손님용 견적서에는 밧을 한 글자도 적지 않는다 — 전부 원화다.
+     «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이라, 손님이 직접 곱해도 딱 맞는다.
+     환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. */
+  const perKrw=(FX_RATE>0)?krwUp(LAST.per*FX_RATE):0;
+  const totKrw=perKrw*pax;
+  const moneyRow=(k,v,opt)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;${(opt&&opt.top)||''}">
+      <span style="font-size:${(opt&&opt.big)?15:13}px;${(opt&&opt.big)?'font-weight:800':'opacity:.85'}">${k}</span>
+      <span style="font-size:${(opt&&opt.big)?27:20}px;font-weight:800;${(opt&&opt.big)?'color:#E8A33D':''}">${v}</span>
+    </div>`;
+  const DASH='border-top:1px dashed rgba(255,255,255,.25);margin-top:8px;padding-top:8px;';
+  const RULE='border-top:2px solid #E8A33D;margin-top:9px;padding-top:11px;';
+  const sub=t=>`<div style="text-align:right;font-size:13px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:2px">${t}</div>`;
+  const moneyBox=(mode==='internal')
+    ? moneyRow('1인 요금',`${won(LAST.per)} <span style="font-size:12px;opacity:.7">THB</span>`)
+      +(perKrw?sub(`${won(perKrw)} 원`):'')
+      +moneyRow('인원수',`× ${pax}명`,{top:DASH})
+      +moneyRow('총액',`${won(LAST.total)} <span style="font-size:13px">THB</span>`,{top:RULE,big:1})
+      +(perKrw?sub(`한화 ${won(totKrw)} 원`):'')
+    : moneyRow('1인 요금',`${won(perKrw)} <span style="font-size:12px;opacity:.7">원</span>`)
+      +moneyRow('인원수',`× ${pax}명`,{top:DASH})
+      +moneyRow('총액',`${won(totKrw)} <span style="font-size:13px">원</span>`,{top:RULE,big:1});
 
   return `<div style="width:760px;box-sizing:border-box;background:#fff;padding:30px 32px 26px;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:#15211C;line-height:1.5">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px">
@@ -756,25 +776,13 @@ function buildQuoteHtml(mode){
     ${detail}
 
     <div style="margin-top:18px;background:#123A2B;color:#E9DFC8;border-radius:10px;padding:16px 18px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <span style="font-size:13px;opacity:.85">1인 요금</span>
-        <span style="font-size:20px;font-weight:800">${won(LAST.per)} <span style="font-size:12px;opacity:.7">THB</span></span>
-      </div>
-      ${krwLine(kPer,false)}
-      <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed rgba(255,255,255,.25);margin-top:8px;padding-top:8px">
-        <span style="font-size:13px;opacity:.85">인원수</span>
-        <span style="font-size:15px;font-weight:800">× ${pax}명</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid #E8A33D;margin-top:9px;padding-top:11px">
-        <span style="font-size:15px;font-weight:800">총액</span>
-        <span style="font-size:27px;font-weight:800;color:#E8A33D">${won(LAST.total)} <span style="font-size:13px">THB</span></span>
-      </div>
-      ${krwLine(kTot,true)}
+      ${moneyBox}
     </div>
 
     <div style="margin-top:14px;font-size:11px;color:#5E6F66;line-height:1.7">
-      ${FX_RATE>0?`※ 한화는 1밧 = ${FX_RATE} 원으로 환산해 천원 단위로 올림한 금액입니다.<br>`:''}
-      ※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>
+      ${mode==='internal'
+        ? `${FX_RATE>0?`※ 한화는 1밧 = ${FX_RATE} 원으로 환산해 1인 요금을 천원 단위로 올린 뒤 인원수를 곱한 금액입니다.<br>`:''}※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>`
+        : `※ 표시 금액은 원화 기준이며 항공료는 포함되지 않습니다.<br>`}
       ※ 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
       ※ 골프장 사정과 환율 변동에 따라 금액이 달라질 수 있습니다.
     </div>
@@ -793,9 +801,11 @@ function loadCanvasLib(){
 async function downloadQuote(mode){
   if(!LAST||!LAST.lines.length){ alert('먼저 라운딩할 날을 체크해 주세요. 견적이 있어야 견적서를 만들 수 있습니다.'); return; }
   if(!$('#startDate').value){ alert('출발 일자를 먼저 골라주세요.'); return; }
-  // 손님용은 한화로 보여주는 게 목적이라, 환율이 없으면 먼저 알린다
-  if(mode!=='internal'&&!(FX_RATE>0)&&
-     !confirm('환율이 등록되어 있지 않아 한화가 표시되지 않습니다.\n코드·요금 관리 > 코드관리 > 환율에 1밧당 원화를 등록해 주세요.\n\n이대로 만들까요?')) return;
+  // 손님용은 금액이 전부 원화라, 환율이 없으면 만들 수 없다(0원짜리 견적서가 나가면 안 된다)
+  if(mode!=='internal'&&!(FX_RATE>0)){
+    alert('환율이 등록되어 있지 않아 손님용 견적서를 만들 수 없습니다.\n\n코드·요금 관리 > 코드관리 > 환율에 1밧당 원화(예: 46)를 등록해 주세요.');
+    return;
+  }
   const btn=$(mode==='internal'?'#dlInternal':'#dlCustomer');
   const label=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='만드는 중…'; }
