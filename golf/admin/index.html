@@ -1130,7 +1130,11 @@ async function loadCodes(){
   GOLF_CODE_CATS.forEach(c=>{ if(!Array.isArray(GC[c.key])) GC[c.key]=[]; });
   // 시딩은 gSaveSafe를 직접 부른다 — saveCodes()는 실패 시 loadCodes()를 다시 부르므로
   // 여기서 쓰면 「시딩 → 저장 실패 → 재로드 → 다시 시딩」 무한 루프가 된다.
-  if(!GC.region.length){ GC.region=REGION_SEED.map(r=>Object.assign({},r)); await gSaveSafe('golf_codes',GC); }
+  let seeded=false;
+  if(!GC.region.length){ GC.region=REGION_SEED.map(r=>Object.assign({},r)); seeded=true; }
+  // 환율은 견적서 한화 표기에 꼭 필요하다 — 비어 있으면 현재 적용가(1밧=46원)로 시작한다
+  if(!GC.fx.length){ GC.fx=[{code:'KRW',label:'46'}]; seeded=true; }
+  if(seeded) await gSaveSafe('golf_codes',GC);
   renderCodes();
 }
 // 사용중인 지역 이름 목록(코드관리에서 관리). 요금표·견적 양쪽이 이걸 쓴다.
@@ -1175,9 +1179,16 @@ function renderCodeList(){
   const cat=GOLF_CODE_CATS.find(x=>x.key===gcTab)||{label:gcTab};
   document.getElementById('codeCatTitle').textContent='🏷 '+cat.label;
   const c=document.getElementById('codeCatBody'); c.innerHTML='';
+  /* 환율은 「코드=통화 / 라벨=이름」이 아니라 「통화 / 1밧당 원화」다.
+     일반 코드 입력칸을 그대로 쓰면 뭘 적어야 하는지 알 수 없어서 칸을 따로 안내한다. */
+  const isFx=(gcTab==='fx');
+  if(isFx) c.appendChild(el('p','desc','1밧이 몇 원인지 적어주세요(예: 46). 「사용중」인 첫 항목을 견적서 한화 표기에 씁니다.'));
   const add=el('div','caddrow');
-  const ic=document.createElement('input'); ic.className='wcode'; ic.id='gc-code'; ic.placeholder='코드 (예: TKB)';
-  const il=document.createElement('input'); il.className='wlabel'; il.id='gc-label'; il.placeholder='라벨 (예: 방콕)';
+  const ic=document.createElement('input'); ic.className='wcode'; ic.id='gc-code';
+  const il=document.createElement('input'); il.className='wlabel'; il.id='gc-label';
+  ic.placeholder=isFx?'통화 (예: KRW)':'코드 (예: TKB)';
+  il.placeholder=isFx?'1밧당 원화 (예: 46)':'라벨 (예: 방콕)';
+  if(isFx){ ic.value='KRW'; il.setAttribute('inputmode','decimal'); }
   const ab=el('button','btn','＋ 추가'); ab.onclick=addCode;
   ic.onkeydown=il.onkeydown=e=>{ if(e.key==='Enter') addCode(); };
   add.appendChild(ic); add.appendChild(il); add.appendChild(ab); c.appendChild(add);
@@ -1194,12 +1205,13 @@ function renderCodeList(){
       const ec=document.createElement('input'); ec.value=it.code; ec.style.cssText='flex:0 0 130px;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px';
       const elb=document.createElement('input'); elb.value=it.label; elb.style.cssText='flex:1;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px';
       const sv=el('a',null,'저장'); sv.style.color='var(--fairway)';
-      sv.onclick=async()=>{ const nc=ec.value.trim().toUpperCase(), nl=elb.value.trim(); if(!nc||!nl){ gToast('⚠ 코드와 라벨을 입력하세요'); return; } if(list.some((x,xi)=>xi!==i&&x.code===nc)){ gToast('⚠ 이미 있는 코드'); return; } it.code=nc; it.label=nl; await saveCodes(); gcEdit=null; renderCodeList(); gToast('✅ 수정됨'); };
+      if(isFx) elb.setAttribute('inputmode','decimal');
+      sv.onclick=async()=>{ const nc=ec.value.trim().toUpperCase(), nl=elb.value.trim(); if(!nc||!nl){ gToast('⚠ 코드와 라벨을 입력하세요'); return; } if(isFx&&!(parseFloat(nl)>0)){ gToast('⚠ 1밧당 원화를 숫자로 적어주세요 (예: 46)'); return; } if(list.some((x,xi)=>xi!==i&&x.code===nc)){ gToast('⚠ 이미 있는 코드'); return; } it.code=nc; it.label=nl; await saveCodes(); gcEdit=null; renderCodeList(); gToast('✅ 수정됨'); };
       const cx=el('a',null,'취소'); cx.style.color='var(--muted)'; cx.onclick=()=>{ gcEdit=null; renderCodeList(); };
       row.appendChild(ec); row.appendChild(elb); row.appendChild(sv); row.appendChild(cx);
     } else {
       row.appendChild(el('span','tag',it.code));
-      row.appendChild(el('span','lbl',it.label));
+      row.appendChild(el('span','lbl',isFx?`1밧 = ${it.label} 원`:it.label));
       const tg=el('a',null,active?'🟢 사용':'⚪ 미사용'); tg.style.color=active?'var(--fairway)':'var(--muted)'; tg.onclick=()=>toggleCode(i);
       const ed=el('a',null,'✏ 수정'); ed.style.color='#0369a1'; ed.onclick=()=>{ gcEdit=i; renderCodeList(); };
       const dl=el('a',null,'삭제'); dl.style.color='#c0492f'; dl.onclick=()=>delCode(i);
@@ -1216,6 +1228,7 @@ async function addCode(){
   const ic=document.getElementById('gc-code'), il=document.getElementById('gc-label');
   const code=(ic.value||'').trim().toUpperCase(), label=(il.value||'').trim();
   if(!code||!label){ gToast('⚠ 코드와 라벨을 입력하세요'); return; }
+  if(gcTab==='fx'&&!(parseFloat(label)>0)){ gToast('⚠ 1밧당 원화를 숫자로 적어주세요 (예: 46)'); return; }
   GC[gcTab]=GC[gcTab]||[];
   if(GC[gcTab].find(x=>x.code===code)){ gToast('⚠ 이미 있는 코드'); return; }
   GC[gcTab].push({ code, label }); await saveCodes(); ic.value=''; il.value=''; renderCodeList(); ic.focus(); gToast('✅ 추가됨');

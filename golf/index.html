@@ -290,6 +290,9 @@ let P = DEFAULT_PRICING;   // 요금 데이터(공휴일·가이드·핸들링·
 const $=s=>document.querySelector(s);
 const won=n=>Math.round(n).toLocaleString('en-US');
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+/* 한화는 백원 단위를 남기지 않는다 — 천원 단위로 무조건 올림.
+   583,200원 → 584,000원. 손님에게 나가는 금액이라 내리지 않고 항상 올린다. */
+const krwUp=n=>Math.ceil(n/1000)*1000;
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
@@ -588,8 +591,8 @@ function calc(){
   // 요금이 등록되지 않은 항목이 있으면 합계가 실제와 달라지므로 반드시 알린다
   const miss=lines.filter(l=>l.warn).map(l=>l.t);
   // 환율은 코드관리 '환율'에서 읽는다(1밧당 원화). 없으면 한화를 아예 적지 않는다.
-  const krwPer=(FX_RATE>0)?`<div class="sum-krw">약 ${won(Math.round(per*FX_RATE))} 원</div>`:'';
-  const krwTot=(FX_RATE>0)?`<div class="sum-krw" style="opacity:1;color:var(--fairway)">약 ${won(Math.round(total*FX_RATE))} 원</div>`:'';
+  const krwPer=(FX_RATE>0)?`<div class="sum-krw">${won(krwUp(per*FX_RATE))} 원</div>`:'';
+  const krwTot=(FX_RATE>0)?`<div class="sum-krw" style="opacity:1;color:var(--fairway)">${won(krwUp(total*FX_RATE))} 원</div>`:'';
   box.innerHTML=
     `<div class="sum-row"><span class="sum-k">1인 요금</span><span class="sum-v">${won(per)} <em>THB</em></span></div>`
     +krwPer
@@ -696,9 +699,9 @@ function buildQuoteHtml(mode){
 
   /* 손님용은 한화가 주인공이다 — 밧 금액 아래에 원화를 크게 붙인다.
      환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. 없으면 원화를 아예 적지 않는다. */
-  const kPer=(FX_RATE>0)?won(Math.round(LAST.per*FX_RATE)):'';
-  const kTot=(FX_RATE>0)?won(Math.round(LAST.total*FX_RATE)):'';
-  const krwLine=(v,big)=>v?`<div style="text-align:right;font-size:${big?18:13}px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:${big?4:2}px">약 ${v} 원</div>`:'';
+  const kPer=(FX_RATE>0)?won(krwUp(LAST.per*FX_RATE)):'';
+  const kTot=(FX_RATE>0)?won(krwUp(LAST.total*FX_RATE)):'';
+  const krwLine=(v,big)=>v?`<div style="text-align:right;font-size:${big?18:13}px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:${big?4:2}px">${v} 원</div>`:'';
 
   return `<div style="width:760px;box-sizing:border-box;background:#fff;padding:30px 32px 26px;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:#15211C;line-height:1.5">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px">
@@ -770,7 +773,7 @@ function buildQuoteHtml(mode){
     </div>
 
     <div style="margin-top:14px;font-size:11px;color:#5E6F66;line-height:1.7">
-      ${FX_RATE>0?`※ 한화는 1밧 = ${FX_RATE} 원 기준으로 환산한 참고 금액입니다.<br>`:''}
+      ${FX_RATE>0?`※ 한화는 1밧 = ${FX_RATE} 원으로 환산해 천원 단위로 올림한 금액입니다.<br>`:''}
       ※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>
       ※ 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
       ※ 골프장 사정과 환율 변동에 따라 금액이 달라질 수 있습니다.
