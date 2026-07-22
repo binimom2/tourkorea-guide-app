@@ -973,11 +973,13 @@ async function loadGolfRoles(){
     GROLE_MAP=(row&&row.data&&typeof row.data==='object'&&!Array.isArray(row.data))?row.data:{};
   }catch(e){ GROLE_MAP={}; }
 }
+/* 골프는 별개 사이트다 — 명단에 올린 사람만 들어온다.
+   명단에 없으면 로그인은 되어도 골프 화면은 열리지 않는다(빈 문자열). */
 function golfRoleOf(u){
   const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
   if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
   const r=GROLE_MAP[id];
-  return (r==='admin'||r==='manager')?r:'agent';
+  return (r==='admin'||r==='manager'||r==='agent')?r:'';
 }
 const GROLE_LABEL={admin:'어드민',manager:'매니저',agent:'에이전트'};
 async function loadPricing(){
@@ -1042,9 +1044,22 @@ function buildGuideOptions(){
 }
 function startApp(user){
   GROLE=golfRoleOf(user);
+  const wb=document.getElementById('whoBadge');
+  // 골프 명단에 없는 사람 — 로그인은 됐지만 이 사이트는 쓸 수 없다
+  if(!GROLE){
+    $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
+    document.getElementById('golfApp').innerHTML=
+      `<header class="head"><div><div class="eyebrow">THAILAND GOLF</div><h1>골프 견적 내기</h1></div>
+        <div class="top"><span class="who">${loginIdOf(user)||''}</span>
+        <button class="link" onclick="doLogout()">로그아웃</button></div></header>
+       <div class="card" style="text-align:center;padding:36px 20px">
+         <h2 style="font-size:16px">골프 이용 권한이 없습니다</h2>
+         <p class="hint" style="margin-top:8px;line-height:1.8">골프 견적은 명단에 등록된 직원만 사용할 수 있습니다.<br>관리자에게 등록을 요청해 주세요.</p>
+       </div>`;
+    return;
+  }
   // 코드·요금 관리는 어드민과 매니저만. 에이전트는 견적 화면만 쓴다.
   if(GROLE==='admin'||GROLE==='manager') document.getElementById('adminLink').style.display='';
-  const wb=document.getElementById('whoBadge');
   if(wb) wb.textContent=`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
   buildGuideOptions();
