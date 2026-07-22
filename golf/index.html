@@ -81,7 +81,6 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .sum-k{font-size:13px;opacity:.85}
 .sum-v{font-size:19px;font-weight:800;letter-spacing:.2px}
 .sum-v em{font-style:normal;font-size:12px;font-weight:700;opacity:.7;margin-left:2px}
-.sum-krw{text-align:right;font-size:13.5px;font-weight:700;opacity:.8;padding:0 2px 6px}
 .sum-mul{border-top:1px dashed rgba(18,58,43,.25)}
 .sum-mul .sum-v{font-size:15px}
 .sum-total{border-top:2px solid var(--marigold);margin-top:4px;padding-top:12px}
@@ -590,21 +589,20 @@ function calc(){
   }
   // 요금이 등록되지 않은 항목이 있으면 합계가 실제와 달라지므로 반드시 알린다
   const miss=lines.filter(l=>l.warn).map(l=>l.t);
-  // 환율은 코드관리 '환율'에서 읽는다(1밧당 원화). 없으면 한화를 아예 적지 않는다.
-  /* 한화는 «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이다.
-     총액을 환산해서 올리면 1인 요금 × 인원수와 맞지 않아 손님이 계산을 못 맞춘다. */
+  /* 이 화면은 손님에게 그대로 보여주는 면이라 밧을 적지 않는다 — 전부 원화다.
+     한화는 «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이다. 총액을 환산해서
+     올리면 1인 요금 × 인원수와 맞지 않아 손님이 직접 곱했을 때 어긋난다.
+     환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. 등록 전에는 어쩔 수 없이
+     밧으로 보여주고 크게 경고한다 — 금액이 아예 안 보이면 상담을 못 하니까. */
   const perKrw=(FX_RATE>0)?krwUp(per*FX_RATE):0;
   const totKrw=perKrw*pax;
-  const krwPer=perKrw?`<div class="sum-krw">${won(perKrw)} 원</div>`:'';
-  const krwTot=perKrw?`<div class="sum-krw" style="opacity:1;color:var(--fairway)">${won(totKrw)} 원</div>`:'';
+  const cur=perKrw?'원':'THB';
   box.innerHTML=
-    `<div class="sum-row"><span class="sum-k">1인 요금</span><span class="sum-v">${won(per)} <em>THB</em></span></div>`
-    +krwPer
+    `<div class="sum-row"><span class="sum-k">1인 요금</span><span class="sum-v">${won(perKrw||per)} <em>${cur}</em></span></div>`
     +`<div class="sum-row sum-mul"><span class="sum-k">인원수</span><span class="sum-v">× ${pax}명</span></div>`
-    +`<div class="sum-row sum-total"><span class="sum-k">총액</span><span class="sum-v">${won(total)} <em>THB</em></span></div>`
-    +krwTot
+    +`<div class="sum-row sum-total"><span class="sum-k">총액</span><span class="sum-v">${won(totKrw||total)} <em>${cur}</em></span></div>`
     +(miss.length?`<div class="sum-warn">⚠ 요금이 등록되지 않은 항목이 있습니다 — ${miss.join(', ')}</div>`:'')
-    +(FX_RATE>0?'':`<div class="sum-warn">⚠ 환율이 등록되지 않아 한화가 표시되지 않습니다 — 코드·요금 관리 &gt; 코드관리 &gt; 환율</div>`);
+    +(perKrw?'':`<div class="sum-warn">⚠ 환율이 등록되지 않아 밧으로 표시 중입니다 — 코드·요금 관리 &gt; 코드관리 &gt; 환율에 1밧당 원화를 등록하세요</div>`);
   $('#perp').textContent='';
 }
 
