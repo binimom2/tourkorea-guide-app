@@ -662,8 +662,10 @@ table.subtbl input.numcell{text-align:center;}
           <button class="btn btn-save" id="baht-submit" onclick="saveBahtEntry()">추가</button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;border-top:1px solid #e8eaf0;padding-top:11px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-top:14px;border-top:1px solid #e8eaf0;padding-top:11px;">
+        <span style="flex:1;font-size:10.5px;color:#8a90a0;line-height:1.5;">＋추가는 아래 목록에만 넣습니다.<br><b style="color:#1f4a85;">저장</b>을 눌러야 서버에 기록됩니다.</span>
         <button class="btn" onclick="closeBahtModal()" style="background:#eef0f5;color:#5a6274;">닫기</button>
+        <button class="btn btn-save" id="baht-persist" onclick="saveBahtAndPersist()">저장</button>
       </div>
     </div>
   </div>
@@ -4652,21 +4654,75 @@ function _writePayings(row,pays){
   row.payings=pays;
   delete row.payingAmt; delete row.payingMemo; delete row.payingDate;
 }
-function closeBahtModal(){
+/* 금액을 써놓고 [추가]를 안 누른 채 닫으면 그대로 사라진다 — 한 번 물어본다.
+   force=true면 묻지 않는다(프로그램이 스스로 닫을 때). */
+function closeBahtModal(force){
+  if(!force&&_bahtCtx){
+    const amt=parseFloat((document.getElementById('baht-amt').value||'').trim())||0;
+    if(amt>0&&!confirm(`입력하신 ฿${amt.toLocaleString('en-US')}을(를) 아직 [추가]하지 않았습니다.\n이대로 닫으면 사라집니다.\n\n닫을까요?`)) return;
+  }
   document.getElementById('bahtModal').classList.remove('open');
   _bahtCtx=null;
 }
-// '추가' 또는 '수정 저장' — 모달은 닫지 않는다(연달아 여러 건 넣을 수 있게)
-function saveBahtEntry(){
+/* '저장' — 입력칸에 남은 금액이 있으면 먼저 넣고, 예약을 서버에 실제로 기록한다.
+   창은 그대로 열어둔다(이어서 다른 회차·다른 업체 지불도 넣을 수 있게). */
+async function saveBahtAndPersist(){
   if(!_bahtCtx) return;
+  const amtRaw=(document.getElementById('baht-amt').value||'').trim();
+  if(amtRaw&&!saveBahtEntry()) return;   // 금액이 잘못돼 못 넣었으면 저장도 멈춘다
+  const btn=document.getElementById('baht-persist');
+  const label=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='저장 중…'; }
+  try{
+    // 아직 만들어지지 않은 신규 예약이면 예약 생성 저장을 그대로 탄다
+    if(modalMode==='create') await saveReservation();
+    else await persistWorkingRes();
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent=label||'저장'; }
+  }
+}
+/* 예약창을 닫지 않고 지금 예약만 서버에 저장한다. 예약창의 Save와 같은 내용을 쓰되,
+   창을 열어두기 때문에 저장 뒤 목록이 바뀌면 열린 예약이 그 항목을 계속 가리키도록 맞춘다. */
+async function persistWorkingRes(){
+  if(!workingRes) return false;
+  syncFormToRes();
+  if(!workingRes.datein){ showToast('⚠ 체크인 날짜를 입력해주세요 (Please enter the check-in date)'); return false; }
+  if(!workingRes.name){ showToast('⚠ 예약명을 입력해주세요 (Please enter the reservation name)'); return false; }
+  const idx=reservations.findIndex(r=>r.id===editingId);
+  if(idx<0){ showToast('❌ 저장할 예약을 찾지 못했습니다 — 예약창의 [Save]를 눌러주세요'); return false; }
+  workingRes.updatedAt=new Date().toISOString();
+  workingRes.updatedBy=currentUser?currentUser.id:'';
+  reservations[idx]=workingRes;
+  const ok=await saveData();
+  // 저장이 취소·실패해도 입력한 내용은 화면에 그대로 남겨둔다
+  if(!ok){ renderSubsections(); renderFilters(); renderAll(); return false; }
+  /* saveData가 서버와 병합한 목록으로 갈아끼우므로, 내 예약이 남의 수정본으로 바뀌었는지 확인한다.
+     바뀌었다면 화면을 그 내용으로 맞춰야 이후 편집이 최신본 위에서 이뤄진다. */
+  const j=reservations.findIndex(r=>r.id===editingId);
+  if(j>=0&&reservations[j]!==workingRes){
+    const ctx=_bahtCtx;
+    showToast('ℹ 다른 사람이 먼저 수정한 내용이 있어 화면을 최신본으로 맞췄습니다');
+    openReservation(editingId);
+    if(ctx&&(workingRes[ctx.sectionKey]||[])[ctx.index]) promptVendorBaht(ctx.sectionKey,ctx.index);
+    else closeBahtModal(true);
+    return true;
+  }
+  renderSubsections(); renderFilters(); renderAll();
+  showToast('✅ 저장되었습니다 (Saved)');
+  return true;
+}
+/* '추가' 또는 '수정 저장' — 모달은 닫지 않는다(연달아 여러 건 넣을 수 있게).
+   넣었으면 true, 금액이 잘못돼 못 넣었으면 false를 준다. */
+function saveBahtEntry(){
+  if(!_bahtCtx) return false;
   const {sectionKey,index,editPayId}=_bahtCtx;
   const row=(workingRes[sectionKey]||[])[index];
-  if(!row){ closeBahtModal(); return; }
+  if(!row){ closeBahtModal(true); return false; }
   const amtRaw=(document.getElementById('baht-amt').value||'').trim();
   const memo=(document.getElementById('baht-memo').value||'').trim();
   // 비워도 오늘(입력일)로 확정 — 입출금 DATE가 비는 일이 없게
   const date=(document.getElementById('baht-date').value||'').trim()||_todayStr();
-  if(!(parseFloat(amtRaw)>0)){ alert('금액을 입력해 주세요. (삭제는 목록의 [삭제]를 눌러주세요)'); return; }
+  if(!(parseFloat(amtRaw)>0)){ alert('금액을 입력해 주세요. (삭제는 목록의 [삭제]를 눌러주세요)'); return false; }
   if(!row._id) row._id=(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   const pays=_getPayings(row).slice();
   if(editPayId){
@@ -4681,6 +4737,7 @@ function saveBahtEntry(){
   renderBahtList();
   renderSubsections();
   const el=document.getElementById('baht-amt'); if(el) el.focus();
+  return true;
 }
 /* 호텔/골프/가이드/차량/공연의 지불을 DEPOSITS에 반영(출금이라 음수).
    지불 1건 = 입출금 1줄. 지운 지불에 딸린 입출금 줄도 같이 없앤다. */
