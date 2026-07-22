@@ -1033,12 +1033,14 @@
             $
             <input type="text" id="rateUSD" inputmode="decimal" placeholder="00.00" value="0"
               style="width:66px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;background:#fff;"
+              onfocus="if(this.value==='0')this.value=''" onblur="if(this.value===''){this.value='0';onBaseRateChange();}"
               oninput="onBaseRateChange()">
           </label>
           <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#856404;">
             ₩
             <input type="text" id="rateKRW" inputmode="decimal" placeholder="0.0000" value="0"
               style="width:74px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;background:#fff;"
+              onfocus="if(this.value==='0')this.value=''" onblur="if(this.value===''){this.value='0';onBaseRateChange();}"
               oninput="onBaseRateChange()">
           </label>
           <button type="button" id="btn-fetch-rate" onclick="fetchAutoRate()"
@@ -1346,8 +1348,8 @@
           <h3 style="font-size:15px;">📄 가이드 정산서</h3>
           <div class="settle-rate-row base-rate-row" style="margin:0;border:none;padding:0;background:none;">
             <span class="settle-rate-label">기준환율</span>
-            <label class="settle-rate-item">$ <input type="text" id="inc-rateUSD" class="settle-rate-input" inputmode="decimal" value="0" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/달러</span></label>
-            <label class="settle-rate-item">₩ <input type="text" id="inc-rateKRW" class="settle-rate-input" inputmode="decimal" value="0" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/원</span></label>
+            <label class="settle-rate-item">$ <input type="text" id="inc-rateUSD" class="settle-rate-input" inputmode="decimal" value="0" placeholder="00.00" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value===''){this.value='0';onIncBaseRateChange();}" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/달러</span></label>
+            <label class="settle-rate-item">₩ <input type="text" id="inc-rateKRW" class="settle-rate-input" inputmode="decimal" value="0" placeholder="0.0000" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value===''){this.value='0';onIncBaseRateChange();}" oninput="onIncBaseRateChange()"> <span class="settle-rate-unit">฿/원</span></label>
           </div>
         </div>
 
