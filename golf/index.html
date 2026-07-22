@@ -25,11 +25,22 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .f label{font-size:11px;font-weight:700;color:var(--muted)}
 .f input,.f select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
 .f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
-/* 기본 정보(출발일자·인원수·일정)는 가장 자주 만지는 칸이라 크게 */
-#startDate,#pax,#tripSel{font-size:15px;padding:11px 12px}
-/* 일정 옆 '오전 출발' 체크 */
+/* 기본 정보(출발일자·인원수·박수)는 가장 자주 만지는 칸이라 크게 */
+#startDate,#pax,#nights,#daysOut{font-size:15px;padding:11px 12px}
+/* 숫자칸 옆 단위(명·박·일) — 무엇을 적는 칸인지 바로 보이게 */
+.unit{display:flex;align-items:center;gap:6px}
+.unit input{flex:1;min-width:0;text-align:right}
+.unit span{font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap}
+/* 일수는 박수+1로 자동 — 직접 못 고친다 */
+#daysOut{background:rgba(18,58,43,.06);color:var(--muted);cursor:default}
+/* 오전 출발 / 오전 출국 체크 */
+.opts{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px}
 .amdep{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer;padding:0 2px}
 .amdep input{width:16px;height:16px;cursor:pointer}
+/* '숙소도 원하시나요?'처럼 체크해야 칸이 열리는 섹션 제목 */
+.askh{display:flex;align-items:center;gap:7px}
+.askh input{width:17px;height:17px;cursor:pointer;margin:0}
+.askh label{cursor:pointer}
 /* 견적 결과: 1인 요금 × 인원수 = 총액 */
 .sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 2px}
 .sum-k{font-size:13px;opacity:.85}
@@ -115,43 +126,60 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
   <div class="card">
     <h2>1. 기본 정보</h2>
     <div class="grid g3">
-      <div class="f"><label>출발 일자</label><input type="date" id="startDate"></div>
-      <div class="f"><label>인원수</label><input type="number" id="pax" min="1" value="4"></div>
-      <div class="f"><label>일정</label>
-        <div style="display:flex;gap:8px;align-items:stretch">
-          <select id="tripSel" style="flex:1;min-width:0"></select>
-          <label class="amdep" title="오전 출발이면 첫날부터 라운딩·차량·가이드를 온종일 씁니다">
-            <input type="checkbox" id="amDep"> 오전 출발
-          </label>
+      <div class="f"><label>며칠에 출발하시나요?</label><input type="date" id="startDate"></div>
+      <div class="f"><label>몇 명인가요?</label>
+        <div class="unit"><input type="number" id="pax" min="1" value="4"><span>명</span></div>
+      </div>
+      <!-- 박수만 적으면 일수는 자동(박수+1). 빈 칸은 0을 미리 넣지 않는다 — 숫자를 찍을 때 밀린다 -->
+      <div class="f"><label>며칠간 머무르시나요?</label>
+        <div class="unit">
+          <input type="number" id="nights" min="0" max="14" inputmode="numeric"><span>박</span>
+          <input type="text" id="daysOut" readonly tabindex="-1"><span>일</span>
         </div>
       </div>
     </div>
-    <div class="f" style="margin-top:8px">
-      <label>지역 선택 <span style="font-weight:400;color:var(--muted)">가시는 순서대로 클릭하세요</span></label>
-      <div class="chips" id="regChips"></div>
-      <div class="picked" id="regPicked"></div>
-      <div class="hint" id="paxInfo"></div>
+    <div class="opts">
+      <label class="amdep" title="한국에서 오전에 출발하면 첫날부터 라운딩·차량·가이드를 온종일 씁니다">
+        <input type="checkbox" id="amDep"> 한국에서 오전 출발
+      </label>
+      <label class="amdep" title="태국에서 오전에 출국하면 마지막 날은 라운딩을 할 수 없습니다">
+        <input type="checkbox" id="amRet"> 태국에서 오전 출국
+      </label>
     </div>
   </div>
 
   <div class="card">
-    <h2>2. 날짜별 라운딩 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">라운딩할 날만 체크 · 그린피+캐디+전동카 포함</span></h2>
+    <h2>2. 머무르실 곳 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">가시는 순서대로 클릭하세요</span></h2>
+    <div class="chips" id="regChips"></div>
+    <div class="picked" id="regPicked"></div>
+    <div class="hint" id="paxInfo"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="askh"><input type="checkbox" id="useHotel"><label for="useHotel">3. 숙소도 원하시나요?</label></h2>
+    <div class="grid g3" id="hotelWrap" style="display:none"></div>
+    <div class="hint" id="hotelHint" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2>4. 라운딩하실 날만 선택 후 골프장을 고르세요 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">그린피+캐디+전동카 포함</span></h2>
     <div id="days"></div>
   </div>
 
   <div class="card">
-    <h2>3. 차량 · 숙소 · 가이드 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">(선택)</span></h2>
-    <div class="grid g3" style="margin-bottom:8px;">
+    <h2>5. 차량 선택</h2>
+    <div class="grid g3">
       <div class="f"><label>차량 요금 기준</label><select id="vehGroup"></select></div>
       <div class="f" style="grid-column:span 2;"><label>수송밴 <span style="font-weight:400;color:var(--muted)">(선택)</span></label>
         <div id="transferWrap" class="chips" style="padding-top:0;"></div></div>
     </div>
-    <div class="grid g3">
-      <div id="hotelWrap" style="display:contents"></div>
-      <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
-      <div class="f"><label>가이드</label><select id="guide">
-        <option value="none">가이드 없이</option>
-      </select></div>
+  </div>
+
+  <div class="card">
+    <h2 class="askh"><input type="checkbox" id="useGuide"><label for="useGuide">6. 가이드 원하시나요?</label></h2>
+    <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
+    <div class="f" id="guideWrap" style="display:none;max-width:320px">
+      <label>가이드 종류</label><select id="guide"></select>
     </div>
   </div>
 
@@ -238,15 +266,22 @@ let ROUTE=[];              // [{region, nights}]
 let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
 const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카오야이','아유타야'];
 
-function totalNights(){ return ROUTE.reduce((a,r)=>a+(+r.nights||0),0); }
-function tripLabel(n){ return n>0?`${n}박 ${n+1}일`:'당일'; }
-function buildTripOptions(){
-  const s=$('#tripSel');
-  s.innerHTML=Array.from({length:15},(_,n)=>`<option value="${n}">${tripLabel(n)}</option>`).join('');
+/* 총 박수. 지역을 고르기 전에도 적을 수 있어야 해서 따로 들고 있다가,
+   첫 지역을 고르는 순간 그 지역 박수로 넘겨준다(예전엔 지역이 없으면 일정이 안 바뀌었다). */
+let tripNights=0;
+function totalNights(){ return ROUTE.length?ROUTE.reduce((a,r)=>a+(+r.nights||0),0):tripNights; }
+// 숫자칸에 0을 미리 넣지 않는다 — 0이 남아 있으면 숫자를 찍을 때 앞뒤로 밀린다
+function numval(n){ return (+n>0)?String(+n):''; }
+function syncTripInput(){
+  if(ROUTE.length) tripNights=ROUTE.reduce((a,r)=>a+(+r.nights||0),0);
+  const n=totalNights();
+  const el=$('#nights');
+  if(el&&document.activeElement!==el) el.value=numval(n);   // 입력 중이면 건드리지 않는다
+  const d=$('#daysOut'); if(d) d.value=n>0?String(n+1):'';
 }
-function syncTripSelect(){ $('#tripSel').value=String(totalNights()); }
-// 일정을 직접 고치면 뒤쪽 지역 박수를 늘리거나(추가) 뒤에서부터 깎아서(감소) 합을 맞춘다
+// 박수를 직접 고치면 뒤쪽 지역 박수를 늘리거나(추가) 뒤에서부터 깎아서(감소) 합을 맞춘다
 function applyTripToRoute(n){
+  tripNights=n;
   if(!ROUTE.length) return;
   let d=n-totalNights();
   if(d>0){ const last=ROUTE[ROUTE.length-1]; last.nights=(+last.nights||0)+d; return; }
@@ -258,7 +293,8 @@ function applyTripToRoute(n){
 function toggleRegion(name){
   const i=ROUTE.findIndex(r=>r.region===name);
   if(i>=0){ ROUTE.splice(i,1); delete hotelPick[name]; }
-  else ROUTE.push({region:name,nights:0});   // 박수는 사용자가 직접 입력(일정이 멋대로 늘지 않게)
+  // 첫 지역이면 위에 적어둔 총 박수를 그대로 준다. 두 번째부터는 0박으로 두고 직접 나눠 적는다.
+  else ROUTE.push({region:name,nights:ROUTE.length?0:tripNights});
   refreshAll();
 }
 function renderRegions(){
@@ -269,14 +305,26 @@ function renderRegions(){
   }).join('');
   $('#regPicked').innerHTML=ROUTE.map((r,i)=>
     `<span class="pick"><span class="seq">${i+1}</span>${r.region}
-      <input type="number" min="0" max="14" value="${+r.nights||0}" data-reg-n="${i}"><small>박</small>
+      <input type="number" min="0" max="14" value="${numval(r.nights)}" data-reg-n="${i}"><small>박</small>
       <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
 }
-function refreshAll(){ renderRegions(); syncTripSelect(); renderVehicleUI(); renderHotels(); buildDays(); calc(); }
+function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); calc(); }
 
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
 function amDepOn(){ const c=$('#amDep'); return !!(c&&c.checked); }
+function amRetOn(){ const c=$('#amRet'); return !!(c&&c.checked); }
+function useHotelOn(){ const c=$('#useHotel'); return !!(c&&c.checked); }
+function useGuideOn(){ const c=$('#useGuide'); return !!(c&&c.checked); }
+const LOCK_FIRST='한국에서 오전 출발을 체크하면 1일차도 라운딩할 수 있습니다';
+const LOCK_LAST='태국에서 오전 출국이면 마지막 날은 라운딩할 수 없습니다';
+/* 라운딩을 못 하는 날인지 — 1일차는 밤 비행기면 못 하고(오전 출발 체크 시 열림),
+   마지막 날은 오전에 출국하면 못 한다(당일치기는 1일차 규칙만 본다). */
+function dayLocked(i,days){
+  if(i===0&&!amDepOn()) return LOCK_FIRST;
+  if(days>1&&i===days-1&&amRetOn()) return LOCK_LAST;
+  return '';
+}
 /* 라운딩은 «그 전날 밤 묵은 지역»에서 한다.
    방콕 1박 + 파타야 2박이면 2일차(출발일+1) 아침엔 아직 방콕이므로 방콕 골프장이다.
    (예전에는 지역이 하루 먼저 넘어가 2일차가 파타야로 잡혔다) */
@@ -304,17 +352,37 @@ function buildDays(){
     const region=regionForDay(i);
     const st={date:ds, region, round:false, course:'', holes:'18'};
     const st_i=dayState.push(st)-1;
-    /* 1일차는 밤 비행기면 라운딩을 못 한다 — '오전 출발'을 체크했을 때만 열어준다 */
-    const lock = (i===0 && !amDepOn());
+    const lock=dayLocked(i,days);
     const row=document.createElement('div'); row.className='day off'; row.dataset.i=st_i;
     row.innerHTML=`
       <div class="dlabel">${ds.slice(5).replace('-','/')} <small>${['일','월','화','수','목','금','토'][d.getDay()]}요일 ${we?'<span class="badge we">주말/휴일</span>':'<span class="badge">주중</span>'}</small></div>
-      <label class="rchk" ${lock?'style="opacity:.45" title="오전 출발을 체크하면 1일차도 라운딩할 수 있습니다"':''}><input type="checkbox" data-r="${st_i}"${lock?' disabled':''}> 라운딩</label>
+      <label class="rchk" ${lock?`style="opacity:.45" title="${lock}"`:''}><input type="checkbox" data-r="${st_i}"${lock?' disabled':''}> 라운딩</label>
       <select class="reg" data-reg="${st_i}">${regionOptionsHtml(region)}</select>
       <select class="course" data-c="${st_i}" disabled></select>
       <select class="holes" data-h="${st_i}" disabled></select>`;
     wrap.appendChild(row);
     fillCourses(st_i);
+  }
+}
+/* 체크박스를 켜고 끌 때 해당 날짜의 라운딩 칸만 열고 닫는다.
+   buildDays로 다시 그리면 다른 날에 체크해 둔 라운딩이 날아간다. */
+function setDayLock(i,msg){
+  const c=document.querySelector(`[data-r="${i}"]`); if(!c) return;
+  c.disabled=!!msg;
+  const lb=c.closest('.rchk');
+  if(lb){ lb.style.opacity=msg?'.45':''; lb.title=msg||''; }
+  if(msg&&c.checked){                       // 잠기면 그날 라운딩은 해제
+    c.checked=false; if(dayState[i]) dayState[i].round=false;
+    const row=c.closest('.day'); if(row) row.classList.add('off');
+    const cs=document.querySelector(`[data-c="${i}"]`), hs=document.querySelector(`[data-h="${i}"]`);
+    if(cs) cs.disabled=true; if(hs) hs.disabled=true;
+  }
+}
+function refreshDayLocks(){
+  const days=dayState.length; if(!days) return;
+  for(let i=0;i<days;i++){
+    const msg=dayLocked(i,days);
+    if(i===0||i===days-1) setDayLock(i,msg);   // 잠금 대상은 첫날·마지막날뿐
   }
 }
 function fillCourses(i){
@@ -352,11 +420,20 @@ function renderVehicleUI(){
   nt.innerHTML=notes.length?notes.map(t=>'※ '+t).join('<br>'):'';
   nt.style.display=notes.length?'':'none';
 }
-// 숙소는 「고른 지역 중 1박 이상인 곳」만 칸을 만든다
+// 숙소는 「숙소도 원하시나요?」를 체크했을 때, 고른 지역 중 1박 이상인 곳만 칸을 만든다
 function renderHotels(){
   const H=P.hotels||{};
-  const wrap=$('#hotelWrap'); wrap.innerHTML='';
-  ROUTE.filter(r=>(+r.nights||0)>0).forEach(r=>{
+  const wrap=$('#hotelWrap'), hint=$('#hotelHint');
+  wrap.innerHTML='';
+  const on=useHotelOn();
+  wrap.style.display=on?'':'none';
+  const stay=ROUTE.filter(r=>(+r.nights||0)>0);
+  if(hint){
+    const msg=(on&&!stay.length)?'2번에서 머무르실 곳과 박수를 먼저 적어주세요.':'';
+    hint.textContent=msg; hint.style.display=msg?'':'none';
+  }
+  if(!on) return;
+  stay.forEach(r=>{
     const list=H[r.region]||[];
     const f=document.createElement('div'); f.className='f';
     const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.region])===String(idx)?' selected':''}>${h.name} · ${won(h.perNight)} THB/박</option>`).join('');
@@ -403,9 +480,9 @@ function calc(){
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
   if(ht) lines.push({t:'핸들링 차지',s:`${won(ht.value)}${ht.extra?` (기본 ${won(ht.base)} +1박추가 ${won(ht.oneMore)}×${ht.extra})`:''} × ${pax}명`,v:ht.value*pax});
   else lines.push({t:'핸들링',s:'요금 미입력',v:0,warn:1});
-  // 4) 가이드 (기간값 + 1박추가 확장 + 파타야 박당)
-  const gt=$('#guide').value;
-  if(gt!=='none'){
+  // 4) 가이드 (기간값 + 1박추가 확장 + 파타야 박당) — '가이드 원하시나요?'를 체크했을 때만
+  const gt=useGuideOn()?$('#guide').value:'';
+  if(gt){
     const G=(P.guidePeriods||{})[gt];
     const gv=G?tierValue(G,nights,'bkk',amDep):null;   // 가이드도 오전 출발이면 풀 요금
     if(gv){
@@ -413,9 +490,9 @@ function calc(){
       lines.push({t:gt,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
   }
-  // 5) 숙소 — 고른 지역별로
+  // 5) 숙소 — '숙소도 원하시나요?'를 체크했을 때, 고른 지역별로
   const H=P.hotels||{};
-  ROUTE.forEach(r=>{
+  if(useHotelOn()) ROUTE.forEach(r=>{
     const nn=+r.nights||0; if(!nn) return;
     const idx=hotelPick[r.region];
     if(idx===undefined||idx==='') return;
@@ -457,13 +534,18 @@ document.addEventListener('click',e=>{
   const tr=e.target.closest('[data-tr]');
   if(tr){ const k=tr.dataset.tr; transferPick[k]=!transferPick[k]; tr.classList.toggle('on',!!transferPick[k]); calc(); return; }
 });
-// 지역별 박수 입력
+// 총 박수 / 지역별 박수 입력
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.id==='nights'){
+    applyTripToRoute(Math.max(0,Math.min(14,+t.value||0)));
+    refreshAll();   // 입력 중인 칸은 syncTripInput이 건드리지 않는다
+    return;
+  }
   if(t.dataset.regN!==undefined){
     const i=+t.dataset.regN; if(!ROUTE[i]) return;
     ROUTE[i].nights=Math.max(0,+t.value||0);
-    syncTripSelect(); renderHotels(); buildDays(); calc();   // 칩은 다시 안 그림(입력 포커스 유지)
+    syncTripInput(); renderHotels(); buildDays(); calc();   // 칩은 다시 안 그림(입력 포커스 유지)
     return;
   }
   if(t.id==='pax') calc();
@@ -471,26 +553,13 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='startDate'){ buildDays(); calc(); return; }
-  /* 오전 출발: 1일차 라운딩 칸을 열고 닫는다(차량·가이드는 calc에서 풀 요금으로 바뀜).
-     이미 체크해 둔 다른 날 라운딩이 날아가지 않도록 1일차만 손댄다. */
-  if(t.id==='amDep'){
-    const on=t.checked;
-    const c0=document.querySelector('[data-r="0"]');
-    if(c0){
-      c0.disabled=!on;
-      const lb=c0.closest('.rchk');
-      if(lb){ lb.style.opacity=on?'':'.45'; lb.title=on?'':'오전 출발을 체크하면 1일차도 라운딩할 수 있습니다'; }
-      if(!on&&c0.checked){           // 끄면 1일차 라운딩은 해제
-        c0.checked=false; if(dayState[0]) dayState[0].round=false;
-        const row=c0.closest('.day'); if(row) row.classList.add('off');
-        const cs=document.querySelector('[data-c="0"]'), hs=document.querySelector('[data-h="0"]');
-        if(cs) cs.disabled=true; if(hs) hs.disabled=true;
-      }
-    }
-    calc(); return;
-  }
+  /* 오전 출발/오전 출국: 1일차·마지막날 라운딩 칸만 열고 닫는다
+     (차량·가이드는 calc에서 풀 요금으로 바뀜). 다시 그리면 이미 체크해 둔
+     다른 날 라운딩이 날아가므로 해당 칸만 손댄다. */
+  if(t.id==='amDep'||t.id==='amRet'){ refreshDayLocks(); calc(); return; }
+  if(t.id==='useHotel'){ renderHotels(); calc(); return; }
+  if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; calc(); return; }
   if(t.id==='vehGroup'){ calc(); return; }
-  if(t.id==='tripSel'){ applyTripToRoute(+t.value||0); refreshAll(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
   if(t.dataset.reg!==undefined){ const i=+t.dataset.reg; dayState[i].region=t.value; dayState[i].course=''; fillCourses(i); }
@@ -559,15 +628,16 @@ function buildGuideOptions(){
   const cur=sel.value;
   const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-  sel.innerHTML='<option value="none">가이드 없이</option>'+
-    types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  // '가이드 없이'는 6번 체크박스가 대신하므로 종류만 담는다
+  sel.innerHTML=types.length
+    ? types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')
+    : '<option value="">등록된 가이드 요금 없음</option>';
   if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
 }
 function startApp(user){
   if(user&&isAdmin(user)) document.getElementById('adminLink').style.display='';
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
   buildGuideOptions();
-  buildTripOptions();
   window._ready=true;
   refreshAll();
   $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
