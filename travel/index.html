@@ -641,10 +641,8 @@ table.subtbl input.numcell{text-align:center;}
     <div class="smodal-hd"><span>฿ 금액 입력</span><button onclick="closeBahtModal()">✕</button></div>
     <div class="smodal-body">
       <div id="baht-title" style="font-size:12.5px;font-weight:700;color:#1f4a85;margin-bottom:10px;"></div>
-      <!-- 이미 넣은 지불 목록 (디파짓·잔금, 전도금 1회·2회… 처럼 여러 건 가능) -->
-      <div id="baht-list" style="margin-bottom:12px;"></div>
-      <div style="border-top:1px solid #e8eaf0;padding-top:11px;">
-        <div id="baht-form-title" style="font-size:12px;font-weight:800;color:#1f4a85;margin-bottom:8px;">＋ 지불 추가</div>
+      <!-- 넣은 지불 목록은 띄우지 않는다. 확인·수정·삭제는 아래 DEPOSITS 표에서 한다. -->
+      <div>
         <div class="f-row">
           <label>금액 (THB)</label>
           <input type="text" id="baht-amt" inputmode="numeric" placeholder="예: 80000" onkeydown="if(event.key==='Enter')document.getElementById('baht-memo').focus()"/>
@@ -658,12 +656,11 @@ table.subtbl input.numcell{text-align:center;}
           <input type="text" id="baht-memo" placeholder="입출금 REMARK란에 표시됩니다" onkeydown="if(event.key==='Enter')saveBahtEntry()"/>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-          <button class="btn" id="baht-cancel-edit" onclick="cancelBahtEdit()" style="display:none;background:#eef0f5;color:#5a6274;">수정 취소</button>
           <button class="btn btn-save" id="baht-submit" onclick="saveBahtEntry()">추가</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:14px;border-top:1px solid #e8eaf0;padding-top:11px;">
-        <span style="flex:1;font-size:10.5px;color:#8a90a0;line-height:1.5;">＋추가는 아래 목록에만 넣습니다.<br><b style="color:#1f4a85;">저장</b>을 눌러야 서버에 기록됩니다.</span>
+        <span style="flex:1;font-size:10.5px;color:#8a90a0;line-height:1.5;">여러 건이면 <b style="color:#1f4a85;">추가</b>를 반복하고,<br>마지막에 <b style="color:#1f4a85;">저장</b>을 누르면 기록되고 닫힙니다.</span>
         <button class="btn" onclick="closeBahtModal()" style="background:#eef0f5;color:#5a6274;">닫기</button>
         <button class="btn btn-save" id="baht-persist" onclick="saveBahtAndPersist()">저장</button>
       </div>
@@ -4565,89 +4562,24 @@ function _payTotal(row){ return _getPayings(row).reduce((s,p)=>s+(parseFloat(p.a
 function promptVendorBaht(sectionKey,index){
   const row=(workingRes[sectionKey]||[])[index];
   if(!row) return;
-  _bahtCtx={sectionKey,index,editPayId:null};
+  _bahtCtx={sectionKey,index};
   const cfg=PAYING_SYNC[sectionKey]||{};
   const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
   const who=row[cfg.nameField]||'';
   document.getElementById('baht-title').textContent=`${sec?sec.label:sectionKey}${who?' · '+who:''}`;
-  renderBahtList();
+  /* 이 업체의 지불을 입출금과 한 번 맞춘다. 예전에 입출금 줄만 지워서 업체 쪽에만 남아 있던
+     지불이 DEPOSITS에 다시 나타나므로, 잘못 넣은 건을 거기서 [Del]로 지울 수 있다. */
+  if(row._id){ syncVendorDeposit(sectionKey,row); renderSubsections(); }
   resetBahtForm();
   document.getElementById('bahtModal').classList.add('open');
   setTimeout(()=>{ const el=document.getElementById('baht-amt'); if(el){ el.focus(); el.select(); } },40);
 }
-// 입력칸을 '추가' 상태로 되돌린다(날짜는 오늘)
+// 입력칸을 비운다(날짜는 오늘) — 연달아 다음 건을 넣을 수 있게
 function resetBahtForm(){
-  if(_bahtCtx) _bahtCtx.editPayId=null;
   document.getElementById('baht-amt').value='';
   document.getElementById('baht-memo').value='';
   document.getElementById('baht-date').value=_todayStr();
   document.getElementById('baht-date-hint').textContent='오늘(입력일)';
-  document.getElementById('baht-form-title').textContent='＋ 지불 추가';
-  document.getElementById('baht-submit').textContent='추가';
-  document.getElementById('baht-cancel-edit').style.display='none';
-}
-function cancelBahtEdit(){ resetBahtForm(); renderBahtList(); }
-function renderBahtList(){
-  const host=document.getElementById('baht-list');
-  if(!host||!_bahtCtx) return;
-  const {sectionKey,index}=_bahtCtx;
-  const row=(workingRes[sectionKey]||[])[index];
-  const pays=row?_getPayings(row):[];
-  if(!pays.length){
-    host.innerHTML='<div style="font-size:11.5px;color:#a8afbc;padding:10px 0;text-align:center;">아직 등록된 지불이 없습니다</div>';
-    return;
-  }
-  const num=n=>(Number(n)||0).toLocaleString('en-US');
-  const rows=pays.map((p,i)=>{
-    const editing=_bahtCtx.editPayId&&_bahtCtx.editPayId===(p.id||'__legacy__');
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;margin-bottom:5px;background:${editing?'#fff6e0':'#f5f7fb'};">
-      <span style="font-size:10.5px;font-weight:800;color:#8a90a0;min-width:30px;">${i+1}회</span>
-      <span style="font-size:11px;color:#6b7484;min-width:74px;">${escapeHtml(p.date||'')}</span>
-      <span style="font-size:12.5px;font-weight:800;color:#1f4a85;flex:1;text-align:right;">฿${num(p.amt)}</span>
-      <span style="font-size:11px;color:#7a8296;flex:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeAttr(p.memo||'')}">${escapeHtml(p.memo||'')}</span>
-      <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editBahtPay(${i})">수정</a>
-      <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delBahtPay(${i})">삭제</a>
-    </div>`;
-  }).join('');
-  host.innerHTML=rows+`<div style="display:flex;justify-content:flex-end;gap:8px;padding:6px 9px 0;border-top:1px dashed #dfe3ea;margin-top:2px;">
-    <span style="font-size:11px;color:#8a90a0;font-weight:700;">합계 ${pays.length}건</span>
-    <span style="font-size:12.5px;font-weight:800;color:#c0392b;">฿${num(_payTotal(row))}</span>
-  </div>`;
-}
-// 목록에서 '수정' — 입력칸에 그 건을 올리고 폼을 수정 모드로 바꾼다
-function editBahtPay(i){
-  if(!_bahtCtx) return;
-  const {sectionKey,index}=_bahtCtx;
-  const row=(workingRes[sectionKey]||[])[index];
-  const p=row?_getPayings(row)[i]:null;
-  if(!p) return;
-  _bahtCtx.editPayId=p.id||'__legacy__';   // 예전 데이터는 id가 빈 값이라 표시용 대체키를 쓴다
-  document.getElementById('baht-amt').value=p.amt||'';
-  document.getElementById('baht-memo').value=p.memo||'';
-  document.getElementById('baht-date').value=p.date||_todayStr();
-  document.getElementById('baht-date-hint').textContent='';
-  document.getElementById('baht-form-title').textContent=`✏ ${i+1}회차 지불 수정`;
-  document.getElementById('baht-submit').textContent='수정 저장';
-  document.getElementById('baht-cancel-edit').style.display='';
-  renderBahtList();
-  const el=document.getElementById('baht-amt'); if(el){ el.focus(); el.select(); }
-}
-function delBahtPay(i){
-  if(!_bahtCtx) return;
-  const {sectionKey,index}=_bahtCtx;
-  const row=(workingRes[sectionKey]||[])[index];
-  if(!row) return;
-  const pays=_getPayings(row).slice();
-  const p=pays[i];
-  if(!p) return;
-  const num=n=>(Number(n)||0).toLocaleString('en-US');
-  if(!confirm(`${i+1}회차 지불 ฿${num(p.amt)}${p.memo?' ('+p.memo+')':''} 을(를) 삭제합니다.\n연동된 입출금 항목도 함께 지워집니다.\n\n진행할까요?`)) return;
-  pays.splice(i,1);
-  _writePayings(row,pays);
-  syncVendorDeposit(sectionKey,row);
-  resetBahtForm();
-  renderBahtList();
-  renderSubsections();
 }
 // 배열로 확정 저장하고, 예전 단일 필드는 헷갈리지 않게 정리한다
 function _writePayings(row,pays){
@@ -4664,8 +4596,7 @@ function closeBahtModal(force){
   document.getElementById('bahtModal').classList.remove('open');
   _bahtCtx=null;
 }
-/* '저장' — 입력칸에 남은 금액이 있으면 먼저 넣고, 예약을 서버에 실제로 기록한다.
-   창은 그대로 열어둔다(이어서 다른 회차·다른 업체 지불도 넣을 수 있게). */
+/* '저장' — 입력칸에 남은 금액이 있으면 먼저 넣고, 예약을 서버에 기록한 뒤 이 창을 닫는다. */
 async function saveBahtAndPersist(){
   if(!_bahtCtx) return;
   const amtRaw=(document.getElementById('baht-amt').value||'').trim();
@@ -4673,13 +4604,16 @@ async function saveBahtAndPersist(){
   const btn=document.getElementById('baht-persist');
   const label=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='저장 중…'; }
+  let ok=false;
   try{
     // 아직 만들어지지 않은 신규 예약이면 예약 생성 저장을 그대로 탄다
-    if(modalMode==='create') await saveReservation();
-    else await persistWorkingRes();
+    if(modalMode==='create'){ await saveReservation(); ok=true; }
+    else ok=await persistWorkingRes();
   } finally {
     if(btn){ btn.disabled=false; btn.textContent=label||'저장'; }
   }
+  // 저장에 실패했으면(연결 끊김·검증 실패) 입력한 내용을 잃지 않게 창을 열어둔다
+  if(ok) closeBahtModal(true);
 }
 /* 예약창을 닫지 않고 지금 예약만 서버에 저장한다. 예약창의 Save와 같은 내용을 쓰되,
    창을 열어두기 때문에 저장 뒤 목록이 바뀌면 열린 예약이 그 항목을 계속 가리키도록 맞춘다. */
@@ -4700,42 +4634,37 @@ async function persistWorkingRes(){
      바뀌었다면 화면을 그 내용으로 맞춰야 이후 편집이 최신본 위에서 이뤄진다. */
   const j=reservations.findIndex(r=>r.id===editingId);
   if(j>=0&&reservations[j]!==workingRes){
-    const ctx=_bahtCtx;
-    showToast('ℹ 다른 사람이 먼저 수정한 내용이 있어 화면을 최신본으로 맞췄습니다');
+    closeBahtModal(true);
     openReservation(editingId);
-    if(ctx&&(workingRes[ctx.sectionKey]||[])[ctx.index]) promptVendorBaht(ctx.sectionKey,ctx.index);
-    else closeBahtModal(true);
+    showToast('ℹ 다른 사람이 먼저 수정한 내용이 있어 화면을 최신본으로 맞췄습니다');
     return true;
   }
   renderSubsections(); renderFilters(); renderAll();
   showToast('✅ 저장되었습니다 (Saved)');
   return true;
 }
-/* '추가' 또는 '수정 저장' — 모달은 닫지 않는다(연달아 여러 건 넣을 수 있게).
-   넣었으면 true, 금액이 잘못돼 못 넣었으면 false를 준다. */
+/* '추가' — 지불 1건을 넣고 입력칸을 비운다. 창은 닫지 않는다(연달아 여러 건 넣을 수 있게).
+   넣었으면 true, 금액이 잘못돼 못 넣었으면 false를 준다.
+   잘못 넣은 건의 수정·삭제는 아래 DEPOSITS 표에서 한다(여기엔 목록을 두지 않는다). */
 function saveBahtEntry(){
   if(!_bahtCtx) return false;
-  const {sectionKey,index,editPayId}=_bahtCtx;
+  const {sectionKey,index}=_bahtCtx;
   const row=(workingRes[sectionKey]||[])[index];
   if(!row){ closeBahtModal(true); return false; }
   const amtRaw=(document.getElementById('baht-amt').value||'').trim();
   const memo=(document.getElementById('baht-memo').value||'').trim();
   // 비워도 오늘(입력일)로 확정 — 입출금 DATE가 비는 일이 없게
   const date=(document.getElementById('baht-date').value||'').trim()||_todayStr();
-  if(!(parseFloat(amtRaw)>0)){ alert('금액을 입력해 주세요. (삭제는 목록의 [삭제]를 눌러주세요)'); return false; }
+  if(!(parseFloat(amtRaw)>0)){ alert('금액을 입력해 주세요. (지운 지불은 아래 DEPOSITS 표에서 [Del] 하세요)'); return false; }
   if(!row._id) row._id=(sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   const pays=_getPayings(row).slice();
-  if(editPayId){
-    const i=pays.findIndex(p=>(p.id||'__legacy__')===editPayId);
-    if(i>=0) pays[i]=Object.assign({},pays[i],{amt:amtRaw,memo,date});
-  }else{
-    pays.push({id:_newPayId(),amt:amtRaw,memo,date});
-  }
+  pays.push({id:_newPayId(),amt:amtRaw,memo,date});
   _writePayings(row,pays);
   syncVendorDeposit(sectionKey,row);
   resetBahtForm();
-  renderBahtList();
   renderSubsections();
+  const num=n=>(Number(n)||0).toLocaleString('en-US');
+  showToast(`＋ ฿${num(amtRaw)} 추가 — 이 업체 합계 ${pays.length}건 ฿${num(_payTotal(row))}`);
   const el=document.getElementById('baht-amt'); if(el) el.focus();
   return true;
 }
@@ -4974,9 +4903,31 @@ function onVendorPick(vendorKey,name,phoneFieldId){
 function closeSubEditor(){
   document.getElementById('sov').classList.remove('open');
 }
+/* 입출금 줄을 지웠을 때, 그 줄을 만들어낸 업체 쪽 지불(payings)도 같이 지운다.
+   이걸 안 하면 업체 줄엔 금액이 그대로 남아 있고, 다음에 그 업체 지불을 건드리는 순간
+   syncVendorDeposit이 지운 입출금 줄을 그대로 다시 만들어낸다(삭제가 되살아남). */
+function unlinkPayingByDeposit(dep){
+  const lid=dep&&dep.linkedRowId;
+  if(!lid) return false;
+  const s=String(lid), h=s.indexOf('#');
+  const rowId=h>=0?s.slice(0,h):s;
+  const payId=h>=0?s.slice(h+1):'';      // 예전 1건짜리 데이터는 payId가 빈 값
+  for(const key of Object.keys(PAYING_SYNC)){
+    const row=(workingRes[key]||[]).find(r=>r&&r._id===rowId);
+    if(!row) continue;
+    const pays=_getPayings(row);
+    const left=pays.filter(p=>(p.id||'')!==payId);
+    if(left.length===pays.length) return false;
+    _writePayings(row,left);
+    return true;
+  }
+  return false;
+}
 function delSubRow(sectionKey,index){
   const removed=workingRes[sectionKey][index];
   workingRes[sectionKey].splice(index,1);
+  // 입출금(DEPOSITS/WITHDRAWALS)에서 지운 줄이 업체 지불에서 온 것이면 그 지불도 함께 지운다
+  if((sectionKey==='deposits'||sectionKey==='withdrawals')&&removed&&removed.linkedRowId) unlinkPayingByDeposit(removed);
   // 그 줄에 딸린 지불(여러 건일 수 있음)의 입출금 항목을 모두 지운다
   if(PAYING_SYNC[sectionKey]&&removed&&removed._id&&workingRes.deposits){
     const dArr=workingRes.deposits;
