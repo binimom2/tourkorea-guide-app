@@ -90,6 +90,11 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .res tfoot td{border-top:2px solid var(--marigold);padding-top:9px;font-weight:800;font-size:17px}
 .res tfoot td.n{font-size:21px;color:var(--marigold)}
 .perp{padding-top:7px;font-size:12.5px;opacity:.8}
+/* 견적서 내려받기 버튼 */
+.dlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(233,223,200,.2)}
+.dlbtn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--marigold);background:var(--marigold);color:#3a2400;cursor:pointer}
+.dlbtn.ghost{background:transparent;color:var(--sand);border-color:rgba(233,223,200,.4)}
+.dlbtn:disabled{opacity:.55;cursor:default}
 .warn{color:#ffcaa8}
 /* 로그인 */
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
@@ -188,7 +193,13 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     <!-- 상세 내역 없이 «1인 요금 × 인원수 = 총액»만 보여준다 -->
     <div id="sumBox"></div>
     <div class="perp" id="perp"></div>
+    <div class="dlrow">
+      <button type="button" class="dlbtn" id="dlCustomer" onclick="downloadQuote('customer')">📷 손님용 견적서</button>
+      <button type="button" class="dlbtn ghost" id="dlInternal" onclick="downloadQuote('internal')">📷 내부용 견적서</button>
+    </div>
   </section>
+  <!-- 견적서 그림을 뜨기 위한 자리. 화면 밖에 두고 캡처만 한다. -->
+  <div id="quoteHost" aria-hidden="true" style="position:absolute;left:-10000px;top:0;"></div>
   <div class="hint" id="vehNotes"></div>
   <div class="hint">※ 표시 금액은 THB 기준, 항공료 미포함. 태국 공휴일·토·일은 주말 요금 적용.</div>
 </div>
@@ -263,6 +274,7 @@ function tierValue(obj, N, key, full){
 let REGIONS=[];
 let FX_RATE=0;             // 1밧당 원화 (코드관리 '환율'에서 읽음, 0이면 한화 표기 안 함)
 let ROUTE=[];              // [{region, nights}]
+let LAST=null;             // 마지막 계산 결과 {lines,total,per,pax,nights} — 견적서가 이걸 쓴다
 let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
 const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카오야이','아유타야'];
 
@@ -506,6 +518,7 @@ function calc(){
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
   const per=Math.round(total/pax);
+  LAST={lines,total,per,pax,nights};   // 견적서 내려받기가 이 값을 그대로 쓴다
   const box=$('#sumBox');
   if(!lines.length){
     box.innerHTML='<div class="sum-empty">라운딩할 날을 체크하면 견적이 나옵니다.</div>';
@@ -522,6 +535,170 @@ function calc(){
     +`<div class="sum-row sum-total"><span class="sum-k">총액</span><span class="sum-v">${won(total)} <em>THB</em></span></div>`
     +(miss.length?`<div class="sum-warn">⚠ 요금이 등록되지 않은 항목이 있습니다 — ${miss.join(', ')}</div>`:'');
   $('#perp').textContent='';
+}
+
+/* ══════════════════════════ 견적서 그림 내려받기 ══════════════════════════ */
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const WDAY=['일','월','화','수','목','금','토'];
+function fmtDay(ds){ const d=new Date(ds+'T00:00:00'); return `${ds.slice(5).replace('-','/')} (${WDAY[d.getDay()]})`; }
+
+/* 견적서에 적을 '포함 사항' — 실제로 담긴 항목만 손님 말로 바꿔 적는다 */
+function quoteIncludes(){
+  const out=[];
+  const rounds=dayState.filter(s=>s.round&&s.course).length;
+  if(rounds) out.push(`골프 ${rounds}회 — 그린피 · 캐디피 · 전동카트 포함`);
+  const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
+  out.push(`차량 (12인승 밴)${vg&&vg.label?' · '+vg.label:''} — 전 일정 이용`);
+  out.push('핸들링 차지');
+  if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
+  if(useHotelOn()){
+    ROUTE.forEach(r=>{
+      const nn=+r.nights||0, idx=hotelPick[r.region];
+      if(!nn||idx===undefined||idx==='') return;
+      const h=((P.hotels||{})[r.region]||[])[+idx];
+      if(h) out.push(`숙소 · ${r.region} ${h.name} ${nn}박`);
+    });
+  }
+  (P.transfers||[]).forEach(t=>{ if(t&&t.label&&transferPick[t.label]) out.push('수송밴 · '+t.label); });
+  return out;
+}
+/* 견적서 한 장을 만든다. mode='customer'면 금액은 1인 요금·총액만,
+   'internal'이면 항목별 금액까지 적는다. html2canvas가 그대로 찍으므로
+   색은 변수 말고 실제 값으로 쓴다. */
+function buildQuoteHtml(mode){
+  const start=$('#startDate').value;
+  const n=LAST.nights, pax=LAST.pax;
+  const route=ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-';
+  const end=(()=>{ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); })();
+  const flight=[amDepOn()?'한국 오전 출발':'한국 야간 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · ');
+
+  const days=dayState.map(st=>{
+    const d=new Date(st.date+'T00:00:00');
+    const we=isWeekend(d)||isHoliday(st.date);
+    const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'<span style="color:#9aa4a0">라운딩 없음</span>';
+    return `<tr>
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;font-weight:700">${fmtDay(st.date)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${we?'주말/휴일':'주중'}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${esc(st.region)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8">${play}</td>
+    </tr>`;
+  }).join('');
+
+  const detail=(mode!=='internal')?'':`
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">항목별 금액 <span style="font-weight:600;color:#c0492f">· 내부 검토용</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        ${LAST.lines.map(l=>`<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #e7e3d8">${esc(l.t)}${l.warn?' <span style="color:#c0492f;font-weight:700">⚠</span>':''}
+            <span style="display:block;color:#7c867f;font-size:10.5px;margin-top:1px">${esc(l.s)}</span></td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e7e3d8;text-align:right;white-space:nowrap;font-weight:700">${won(l.v)}</td>
+        </tr>`).join('')}
+      </table>
+    </div>`;
+
+  const krw=(FX_RATE>0)?`<div style="text-align:right;font-size:12.5px;color:#5E6F66;margin-top:3px">약 ${won(Math.round(LAST.per*FX_RATE))} 원 / 1인</div>`:'';
+
+  return `<div style="width:760px;box-sizing:border-box;background:#fff;padding:30px 32px 26px;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:#15211C;line-height:1.5">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px">
+      <div>
+        <div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700">THAILAND GOLF</div>
+        <div style="font-size:25px;font-weight:800;letter-spacing:-.03em;margin-top:2px">골프 견적서</div>
+      </div>
+      <div style="text-align:right;font-size:11.5px;color:#5E6F66">
+        발행일 ${iso(new Date())}${mode==='internal'?'<br><b style="color:#c0492f">내부용 (손님 전달 금지)</b>':''}
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px">
+      <tr>
+        <td style="width:78px;padding:6px 0;color:#5E6F66;font-weight:700">일정</td>
+        <td style="padding:6px 0;font-weight:700">${esc(start)} ~ ${esc(end)} <span style="color:#5E6F66;font-weight:600">(${n}박 ${n+1}일)</span></td>
+        <td style="width:70px;padding:6px 0;color:#5E6F66;font-weight:700">인원</td>
+        <td style="padding:6px 0;font-weight:700">${pax}명</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0;color:#5E6F66;font-weight:700">동선</td>
+        <td style="padding:6px 0;font-weight:700">${esc(route)}</td>
+        <td style="padding:6px 0;color:#5E6F66;font-weight:700">항공</td>
+        <td style="padding:6px 0;font-weight:700">${esc(flight)}</td>
+      </tr>
+    </table>
+
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">일정표</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#F7F3E9">
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">날짜</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">구분</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">지역</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>
+        </tr></thead>
+        <tbody>${days}</tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">포함 사항</div>
+      <div style="font-size:12.5px;color:#2b3a33">
+        ${quoteIncludes().map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
+      </div>
+    </div>
+    ${detail}
+
+    <div style="margin-top:18px;background:#123A2B;color:#E9DFC8;border-radius:10px;padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:13px;opacity:.85">1인 요금</span>
+        <span style="font-size:20px;font-weight:800">${won(LAST.per)} <span style="font-size:12px;opacity:.7">THB</span></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed rgba(255,255,255,.25);margin-top:8px;padding-top:8px">
+        <span style="font-size:13px;opacity:.85">인원수</span>
+        <span style="font-size:15px;font-weight:800">× ${pax}명</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid #E8A33D;margin-top:9px;padding-top:11px">
+        <span style="font-size:15px;font-weight:800">총액</span>
+        <span style="font-size:27px;font-weight:800;color:#E8A33D">${won(LAST.total)} <span style="font-size:13px">THB</span></span>
+      </div>
+    </div>
+    ${krw}
+
+    <div style="margin-top:14px;font-size:11px;color:#5E6F66;line-height:1.7">
+      ※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>
+      ※ 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
+      ※ 골프장 사정과 환율 변동에 따라 금액이 달라질 수 있습니다.
+    </div>
+  </div>`;
+}
+// html2canvas는 쓸 때만 불러온다(첫 화면이 느려지지 않게)
+function loadCanvasLib(){
+  if(window.html2canvas) return Promise.resolve();
+  return new Promise((ok,ng)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    s.onload=()=>ok(); s.onerror=()=>ng(new Error('lib'));
+    document.head.appendChild(s);
+  });
+}
+async function downloadQuote(mode){
+  if(!LAST||!LAST.lines.length){ alert('먼저 라운딩할 날을 체크해 주세요. 견적이 있어야 견적서를 만들 수 있습니다.'); return; }
+  if(!$('#startDate').value){ alert('출발 일자를 먼저 골라주세요.'); return; }
+  const btn=$(mode==='internal'?'#dlInternal':'#dlCustomer');
+  const label=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='만드는 중…'; }
+  const host=$('#quoteHost');
+  try{
+    await loadCanvasLib();
+    host.innerHTML=buildQuoteHtml(mode);
+    const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const name=`골프견적_${$('#startDate').value.replace(/-/g,'')}_${LAST.pax}명${mode==='internal'?'_내부용':''}.png`;
+    const url=canvas.toDataURL('image/png');
+    const a=document.createElement('a'); a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){
+    alert('견적서를 만들지 못했습니다. 인터넷 연결을 확인하고 다시 눌러주세요.');
+  }finally{
+    host.innerHTML='';
+    if(btn){ btn.disabled=false; btn.textContent=label||'📷 견적서'; }
+  }
 }
 
 /* ── 이벤트 ── */
