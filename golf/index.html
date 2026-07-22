@@ -25,12 +25,45 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .f label{font-size:11px;font-weight:700;color:var(--muted)}
 .f input,.f select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
 .f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
-/* 기본 정보(출발일자·인원수·박수)는 가장 자주 만지는 칸이라 크게 */
-#startDate,#pax,#nights,#daysOut{font-size:15px;padding:11px 12px}
+/* 기본 정보는 가장 자주 만지는 칸이라 크게. 대신 날짜·인원·박수는 좁혀서
+   팀명이 남는 폭을 다 쓰게 하고, 5칸이 한 줄에 여유 있게 들어가도록 했다. */
+#startDate,#pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
+.basic{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.fx-date{flex:0 0 156px}
+.fx-team{flex:1 1 170px;min-width:140px}
+.fx-pax{flex:0 0 96px}
+.fx-stay{flex:0 0 172px}
+.fx-stay .unit input{flex:0 0 54px}
 /* 숫자칸 옆 단위(명·박·일) — 무엇을 적는 칸인지 바로 보이게 */
 .unit{display:flex;align-items:center;gap:6px}
 .unit input{flex:1;min-width:0;text-align:right}
 .unit span{font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap}
+/* 다 채운 칸은 한 줄로 접힌다 — 화면이 넘치지 않게. 다시 만지면 펴진다. */
+.step .steph{display:flex;align-items:center;gap:8px}
+.sublab{font-weight:400;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.csum{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .18s ease}
+.step.folded .csum{opacity:1}
+.cedit{display:none;font-size:11px;font-weight:700;color:var(--fairway);border:1px solid var(--line);border-radius:999px;padding:2px 9px;cursor:pointer;white-space:nowrap}
+.step.folded .cedit{display:inline-block}
+.step .cbody{overflow:hidden;max-height:1400px;opacity:1;transition:max-height .26s ease,opacity .18s ease}
+.step.folded .cbody{max-height:0;opacity:0;pointer-events:none}
+.step.folded h2{margin-bottom:0}
+@media(prefers-reduced-motion:reduce){.step .cbody,.csum{transition:none}}
+/* 차량·가이드는 한 줄에 나란히 */
+.row2{display:grid;gap:7px;margin-bottom:7px}
+.row2 .card{margin-bottom:0}
+@media(min-width:640px){.row2{grid-template-columns:1fr 1fr}}
+/* 견적번호 — 견적서를 뽑으면 부여된다 */
+.qno{font-size:10.5px;font-weight:800;color:#3a2400;background:var(--marigold);border-radius:5px;padding:2px 7px;letter-spacing:.02em}
+.qno:empty{display:none}
+/* 숙소 한 줄 = 지역 · 호텔 · 박수 · 룸타입 · 실수 */
+.hrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:4px;background:var(--paper)}
+.hrow .hreg{font-weight:700;font-size:13px;min-width:64px;white-space:nowrap}
+.hrow select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.hrow .hsel{flex:1;min-width:150px}
+.hrow input{width:52px;font:inherit;font-size:12.5px;text-align:right;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.hrow small{font-weight:600;color:var(--muted);font-size:11.5px}
+.hrow .hrooms{font-size:12px;font-weight:800;color:var(--fairway);white-space:nowrap;min-width:34px;text-align:right}
 /* 일수는 박수+1로 자동 — 직접 못 고친다 */
 #daysOut{background:rgba(18,58,43,.06);color:var(--muted);cursor:default}
 /* 오전 출발 / 오전 출국 체크 */
@@ -128,63 +161,71 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     </div>
   </header>
 
-  <div class="card">
-    <h2>1. 기본 정보</h2>
-    <div class="grid g3">
-      <div class="f"><label>며칠에 출발하시나요?</label><input type="date" id="startDate"></div>
-      <div class="f"><label>몇 명인가요?</label>
-        <div class="unit"><input type="number" id="pax" min="1" value="4"><span>명</span></div>
-      </div>
-      <!-- 박수만 적으면 일수는 자동(박수+1). 빈 칸은 0을 미리 넣지 않는다 — 숫자를 찍을 때 밀린다 -->
-      <div class="f"><label>며칠간 머무르시나요?</label>
-        <div class="unit">
-          <input type="number" id="nights" min="0" max="14" inputmode="numeric"><span>박</span>
-          <input type="text" id="daysOut" readonly tabindex="-1"><span>일</span>
+  <div class="card step" id="s1">
+    <h2 class="steph">1. 기본 정보<span class="qno" id="qnoTag"></span><span class="csum" id="sum1"></span><span class="cedit">수정</span></h2>
+    <div class="cbody">
+      <!-- 날짜·인원·박수는 좁게, 팀명은 남는 폭을 다 쓰게 -->
+      <div class="basic">
+        <div class="f fx-date"><label>며칠에 출발하시나요?</label><input type="date" id="startDate"></div>
+        <div class="f fx-team"><label>팀명</label><input type="text" id="teamName" autocomplete="off" placeholder="예: 홍길동 팀"></div>
+        <div class="f fx-pax"><label>몇 명인가요?</label>
+          <div class="unit"><input type="number" id="pax" min="1" value="4"><span>명</span></div>
+        </div>
+        <!-- 박수만 적으면 일수는 자동(박수+1). 빈 칸은 0을 미리 넣지 않는다 — 숫자를 찍을 때 밀린다 -->
+        <div class="f fx-stay"><label>며칠간 머무르시나요?</label>
+          <div class="unit">
+            <input type="number" id="nights" min="0" max="14" inputmode="numeric"><span>박</span>
+            <input type="text" id="daysOut" readonly tabindex="-1"><span>일</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="opts">
-      <label class="amdep" title="한국에서 오전에 출발하면 첫날부터 라운딩·차량·가이드를 온종일 씁니다">
-        <input type="checkbox" id="amDep"> 한국에서 오전 출발
-      </label>
-      <label class="amdep" title="태국에서 오전에 출국하면 마지막 날은 라운딩을 할 수 없습니다">
-        <input type="checkbox" id="amRet"> 태국에서 오전 출국
-      </label>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>2. 머무르실 곳 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">가시는 순서대로 클릭하세요</span></h2>
-    <div class="chips" id="regChips"></div>
-    <div class="picked" id="regPicked"></div>
-    <div class="hint" id="paxInfo"></div>
-  </div>
-
-  <div class="card">
-    <h2 class="askh"><input type="checkbox" id="useHotel"><label for="useHotel">3. 숙소도 원하시나요?</label></h2>
-    <div class="grid g3" id="hotelWrap" style="display:none"></div>
-    <div class="hint" id="hotelHint" style="display:none"></div>
-  </div>
-
-  <div class="card">
-    <h2>4. 라운딩하실 날만 선택 후 골프장을 고르세요 <span style="font-weight:400;font-size:11.5px;color:var(--muted)">그린피+캐디+전동카 포함</span></h2>
-    <div id="days"></div>
-  </div>
-
-  <div class="card">
-    <h2>5. 차량 선택</h2>
-    <div class="grid g3">
-      <div class="f"><label>차량 요금 기준</label><select id="vehGroup"></select></div>
-      <div class="f" style="grid-column:span 2;"><label>수송밴 <span style="font-weight:400;color:var(--muted)">(선택)</span></label>
-        <div id="transferWrap" class="chips" style="padding-top:0;"></div></div>
+      <div class="opts">
+        <label class="amdep" title="한국에서 오전에 출발하면 첫날부터 라운딩·차량·가이드를 온종일 씁니다">
+          <input type="checkbox" id="amDep"> 한국에서 오전 출발
+        </label>
+        <label class="amdep" title="태국에서 오전에 출국하면 마지막 날은 라운딩을 할 수 없습니다">
+          <input type="checkbox" id="amRet"> 태국에서 오전 출국
+        </label>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2 class="askh"><input type="checkbox" id="useGuide"><label for="useGuide">6. 가이드 원하시나요?</label></h2>
-    <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
-    <div class="f" id="guideWrap" style="display:none;max-width:320px">
-      <label>가이드 종류</label><select id="guide"></select>
+  <div class="card step" id="s2">
+    <h2 class="steph">2. 머무르실 곳 <span class="sublab">가시는 순서대로 클릭하세요</span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
+    <div class="cbody">
+      <div class="chips" id="regChips"></div>
+      <div class="picked" id="regPicked"></div>
+      <div class="hint" id="paxInfo"></div>
+    </div>
+  </div>
+
+  <div class="card step" id="s3">
+    <h2 class="steph askh"><input type="checkbox" id="useHotel"><label for="useHotel">3. 숙소도 원하시나요?</label><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
+    <div class="cbody">
+      <div id="hotelWrap" style="display:none"></div>
+      <div class="hint" id="hotelHint" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="card step" id="s4">
+    <h2 class="steph">4. 라운딩하실 날만 선택 후 골프장을 고르세요 <span class="sublab">그린피+캐디+전동카 포함</span><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
+    <div class="cbody"><div id="days"></div></div>
+  </div>
+
+  <div class="row2">
+    <div class="card step" id="s5">
+      <h2 class="steph">5. 차량 선택<span class="csum" id="sum5"></span><span class="cedit">수정</span></h2>
+      <div class="cbody">
+        <div class="f"><label>차량 요금 기준</label><select id="vehGroup"></select></div>
+      </div>
+    </div>
+
+    <div class="card step" id="s6">
+      <h2 class="steph askh"><input type="checkbox" id="useGuide"><label for="useGuide">6. 가이드 원하시나요?</label><span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
+      <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
+      <div class="cbody">
+        <div class="f" id="guideWrap" style="display:none"><label>가이드 종류</label><select id="guide"></select></div>
+      </div>
     </div>
   </div>
 
@@ -276,6 +317,8 @@ let FX_RATE=0;             // 1밧당 원화 (코드관리 '환율'에서 읽음
 let ROUTE=[];              // [{region, nights}]
 let LAST=null;             // 마지막 계산 결과 {lines,total,per,pax,nights} — 견적서가 이걸 쓴다
 let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
+let hotelNights={};        // {지역명: 박수} — 비어 있으면 그 지역 박수를 그대로 쓴다
+let hotelRoom={};          // {지역명: 'twin'|'single'|'triple'}
 const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카오야이','아유타야'];
 
 /* 총 박수. 지역을 고르기 전에도 적을 수 있어야 해서 따로 들고 있다가,
@@ -304,7 +347,7 @@ function applyTripToRoute(n){
 }
 function toggleRegion(name){
   const i=ROUTE.findIndex(r=>r.region===name);
-  if(i>=0){ ROUTE.splice(i,1); delete hotelPick[name]; }
+  if(i>=0){ ROUTE.splice(i,1); delete hotelPick[name]; delete hotelNights[name]; delete hotelRoom[name]; }
   // 첫 지역이면 위에 적어둔 총 박수를 그대로 준다. 두 번째부터는 0박으로 두고 직접 나눠 적는다.
   else ROUTE.push({region:name,nights:ROUTE.length?0:tripNights});
   refreshAll();
@@ -413,8 +456,7 @@ function fillHoles(i){
   if(c){ const has9=(c.s||[]).some(s=>s.g9); if(has9){ opts.push('<option value="27">27홀</option>'); opts.push('<option value="9">9홀</option>'); } }
   sel.innerHTML=opts.join(''); sel.value=st.holes||'18';
 }
-// 차량 요금 기준(지역 조합) · 수송밴 · 안내문구
-let transferPick={};   // {구간명: true}
+// 차량 요금 기준(지역 조합) · 안내문구 — 수송밴은 화면에서 뺐다(차량 요금 안으로 넣을 예정)
 function renderVehicleUI(){
   const sel=$('#vehGroup');
   const groups=P.vehicleGroups||[];
@@ -422,15 +464,19 @@ function renderVehicleUI(){
   sel.innerHTML=groups.map((g,i)=>`<option value="${i}">${g.label||'조합'+(i+1)}</option>`).join('')
     || '<option value="">등록된 차량요금 없음</option>';
   if(cur && groups[+cur]) sel.value=cur;
-  const tw=$('#transferWrap');
-  const list=(P.transfers||[]).filter(t=>t&&t.label&&t.amount);
-  tw.innerHTML=list.length
-    ? list.map(t=>`<button type="button" class="chip${transferPick[t.label]?' on':''}" data-tr="${t.label}">${t.label} · ${won(t.amount)}</button>`).join('')
-    : '<span class="hint" style="margin:0;">등록된 수송밴 없음</span>';
   const nt=$('#vehNotes');
   const notes=(P.vehicleNotes||[]).filter(Boolean);
   nt.innerHTML=notes.length?notes.map(t=>'※ '+t).join('<br>'):'';
   nt.style.display=notes.length?'':'none';
+}
+/* 숙소 — 룸타입에 따라 실수가 달라진다. 4명이면 트윈은 2실이지만 싱글은 4실이다. */
+const ROOM_TYPES=[['twin','트윈 (2인 1실)'],['single','싱글 (1인 1실)'],['triple','트리플 (3인 1실)']];
+const ROOM_SHORT={twin:'트윈',single:'싱글',triple:'트리플'};
+function roomCount(pax,rt){ return rt==='single'?pax:(rt==='triple'?Math.ceil(pax/3):Math.ceil(pax/2)); }
+// 박수는 지역 박수를 그대로 쓰되, 손으로 고쳤으면 고친 값을 쓴다
+function hotelNightsOf(r){
+  const v=hotelNights[r.region];
+  return (v===undefined||v==='')?(+r.nights||0):Math.max(0,+v||0);
 }
 // 숙소는 「숙소도 원하시나요?」를 체크했을 때, 고른 지역 중 1박 이상인 곳만 칸을 만든다
 function renderHotels(){
@@ -445,13 +491,25 @@ function renderHotels(){
     hint.textContent=msg; hint.style.display=msg?'':'none';
   }
   if(!on) return;
+  const pax=Math.max(1,+$('#pax').value||1);
   stay.forEach(r=>{
     const list=H[r.region]||[];
-    const f=document.createElement('div'); f.className='f';
+    const rt=hotelRoom[r.region]||'twin';
+    const row=document.createElement('div'); row.className='hrow';
     const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.region])===String(idx)?' selected':''}>${h.name} · ${won(h.perNight)} THB/박</option>`).join('');
-    f.innerHTML=`<label>${r.region} 숙소 <span style="font-weight:400;color:var(--muted)">${r.nights}박</span></label>`+
-      `<select data-hotel="${r.region}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`;
-    wrap.appendChild(f);
+    row.innerHTML=`<span class="hreg">${r.region}</span>`+
+      `<select class="hsel" data-hotel="${r.region}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`+
+      `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.region}"><small>박</small>`+
+      `<select data-hroom="${r.region}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
+      `<span class="hrooms" data-hrooms="${r.region}">${roomCount(pax,rt)}실</span>`;
+    wrap.appendChild(row);
+  });
+}
+// 인원수·룸타입이 바뀌면 실수 표시만 다시 맞춘다(칸을 다시 그리면 입력 포커스가 날아간다)
+function updateRoomTags(pax){
+  document.querySelectorAll('[data-hrooms]').forEach(el=>{
+    const reg=el.dataset.hrooms;
+    el.textContent=roomCount(pax,hotelRoom[reg]||'twin')+'실';
   });
 }
 
@@ -460,7 +518,8 @@ function calc(){
   if(!window._ready) return;
   const pax=Math.max(1,+$('#pax').value||1);
   const nights=totalNights();
-  const rooms=Math.ceil(pax/2);
+  updateRoomTags(pax);
+  renderStepSummaries();   // 접힌 칸에 보이는 한 줄 요약을 늘 최신으로
   $('#paxInfo').textContent=ROUTE.length
     ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${nights+1}일`
     : `${pax}명 · 지역을 선택하세요`;
@@ -502,19 +561,17 @@ function calc(){
       lines.push({t:gt,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
   }
-  // 5) 숙소 — '숙소도 원하시나요?'를 체크했을 때, 고른 지역별로
+  // 5) 숙소 — '숙소도 원하시나요?'를 체크했을 때, 고른 지역별로. 실수는 룸타입에 따라 달라진다.
   const H=P.hotels||{};
   if(useHotelOn()) ROUTE.forEach(r=>{
-    const nn=+r.nights||0; if(!nn) return;
+    if(!(+r.nights||0)) return;
     const idx=hotelPick[r.region];
     if(idx===undefined||idx==='') return;
     const h=(H[r.region]||[])[+idx]; if(!h) return;
-    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${won(h.perNight)} × ${nn}박 × ${rooms}실`,v:h.perNight*nn*rooms});
-  });
-  // 6) 수송밴 (선택한 구간)
-  (P.transfers||[]).forEach(t=>{
-    if(!t||!t.label||!t.amount||!transferPick[t.label]) return;
-    lines.push({t:'수송밴 · '+t.label,s:`${won(t.amount)} × 1대`,v:t.amount});
+    const nn=hotelNightsOf(r); if(!nn) return;
+    const rt=hotelRoom[r.region]||'twin';
+    const rms=roomCount(pax,rt);
+    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 × ${won(h.perNight)}`,v:h.perNight*nn*rms});
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
   const per=Math.round(total/pax);
@@ -542,31 +599,65 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;'
 const WDAY=['일','월','화','수','목','금','토'];
 function fmtDay(ds){ const d=new Date(ds+'T00:00:00'); return `${ds.slice(5).replace('-','/')} (${WDAY[d.getDay()]})`; }
 
-/* 견적서에 적을 '포함 사항' — 실제로 담긴 항목만 손님 말로 바꿔 적는다 */
-function quoteIncludes(){
+/* 견적서에 적을 '포함 사항' — 실제로 담긴 항목만 손님 말로 바꿔 적는다.
+   핸들링 차지는 손님용에 적지 않는다(금액에는 그대로 들어간다). */
+function quoteIncludes(mode){
   const out=[];
   const rounds=dayState.filter(s=>s.round&&s.course).length;
   if(rounds) out.push(`골프 ${rounds}회 — 그린피 · 캐디피 · 전동카트 포함`);
   const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
   out.push(`차량 (12인승 밴)${vg&&vg.label?' · '+vg.label:''} — 전 일정 이용`);
-  out.push('핸들링 차지');
+  if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
   if(useHotelOn()){
+    const pax=Math.max(1,+$('#pax').value||1);
     ROUTE.forEach(r=>{
-      const nn=+r.nights||0, idx=hotelPick[r.region];
-      if(!nn||idx===undefined||idx==='') return;
-      const h=((P.hotels||{})[r.region]||[])[+idx];
-      if(h) out.push(`숙소 · ${r.region} ${h.name} ${nn}박`);
+      const idx=hotelPick[r.region];
+      if(!(+r.nights||0)||idx===undefined||idx==='') return;
+      const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
+      const rt=hotelRoom[r.region]||'twin';
+      out.push(`숙소 · ${r.region} ${h.name} ${hotelNightsOf(r)}박 (${ROOM_SHORT[rt]} ${roomCount(pax,rt)}실)`);
     });
   }
-  (P.transfers||[]).forEach(t=>{ if(t&&t.label&&transferPick[t.label]) out.push('수송밴 · '+t.label); });
   return out;
+}
+/* 견적번호 — 출발일자 + 순번. 예) 20260805-G001
+   순번은 서버(guide_data / golf_quote_seq)에 모아 둬서 직원 여러 명이 같은 날짜로
+   견적을 내도 겹치지 않게 한다. 서버를 못 쓰면 이 컴퓨터 기준으로 임시 번호를 준다. */
+let QUOTE_NO='', QUOTE_NO_FOR='';
+function showQuoteNo(){ const el=$('#qnoTag'); if(el) el.textContent=QUOTE_NO||''; }
+async function nextQuoteSeq(date){
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_quote_seq').maybeSingle();
+    const map=(row&&row.data&&typeof row.data==='object'&&!Array.isArray(row.data))?row.data:{};
+    const next=(+map[date]||0)+1;
+    map[date]=next;   // 읽어온 내용 위에 이 날짜만 더한다(남의 번호를 지우지 않게)
+    const {error}=await sb.from('guide_data').upsert({data_key:'golf_quote_seq',data:map,updated_at:new Date().toISOString()});
+    if(error) throw error;
+    return next;
+  }catch(e){
+    const k='golf_quote_seq_local';
+    let map={}; try{ map=JSON.parse(localStorage.getItem(k)||'{}'); }catch(_){}
+    const next=(+map[date]||0)+1; map[date]=next;
+    try{ localStorage.setItem(k,JSON.stringify(map)); }catch(_){}
+    return next;
+  }
+}
+async function ensureQuoteNo(){
+  const date=($('#startDate').value||'').replace(/-/g,'');
+  if(!date) return '';
+  if(QUOTE_NO&&QUOTE_NO_FOR===date) return QUOTE_NO;   // 같은 출발일자면 번호를 다시 뽑지 않는다
+  const seq=await nextQuoteSeq(date);
+  QUOTE_NO=`${date}-G${String(seq).padStart(3,'0')}`; QUOTE_NO_FOR=date;
+  showQuoteNo();
+  return QUOTE_NO;
 }
 /* 견적서 한 장을 만든다. mode='customer'면 금액은 1인 요금·총액만,
    'internal'이면 항목별 금액까지 적는다. html2canvas가 그대로 찍으므로
    색은 변수 말고 실제 값으로 쓴다. */
 function buildQuoteHtml(mode){
   const start=$('#startDate').value;
+  const team=($('#teamName').value||'').trim();
   const n=LAST.nights, pax=LAST.pax;
   const route=ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-';
   const end=(()=>{ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); })();
@@ -605,11 +696,16 @@ function buildQuoteHtml(mode){
         <div style="font-size:25px;font-weight:800;letter-spacing:-.03em;margin-top:2px">골프 견적서</div>
       </div>
       <div style="text-align:right;font-size:11.5px;color:#5E6F66">
+        ${QUOTE_NO?`<div style="font-size:13px;font-weight:800;color:#15211C;letter-spacing:.02em">${esc(QUOTE_NO)}</div>`:''}
         발행일 ${iso(new Date())}${mode==='internal'?'<br><b style="color:#c0492f">내부용 (손님 전달 금지)</b>':''}
       </div>
     </div>
 
     <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px">
+      <tr>
+        <td style="width:78px;padding:6px 0;color:#5E6F66;font-weight:700">팀명</td>
+        <td style="padding:6px 0;font-weight:700" colspan="3">${esc(team||'-')}</td>
+      </tr>
       <tr>
         <td style="width:78px;padding:6px 0;color:#5E6F66;font-weight:700">일정</td>
         <td style="padding:6px 0;font-weight:700">${esc(start)} ~ ${esc(end)} <span style="color:#5E6F66;font-weight:600">(${n}박 ${n+1}일)</span></td>
@@ -640,7 +736,7 @@ function buildQuoteHtml(mode){
     <div style="margin-top:16px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
-        ${quoteIncludes().map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
+        ${quoteIncludes(mode).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
       </div>
     </div>
     ${detail}
@@ -686,10 +782,12 @@ async function downloadQuote(mode){
   if(btn){ btn.disabled=true; btn.textContent='만드는 중…'; }
   const host=$('#quoteHost');
   try{
+    await ensureQuoteNo();          // 견적이 완성됐으니 번호를 부여한다
     await loadCanvasLib();
     host.innerHTML=buildQuoteHtml(mode);
     const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    const name=`골프견적_${$('#startDate').value.replace(/-/g,'')}_${LAST.pax}명${mode==='internal'?'_내부용':''}.png`;
+    const team=($('#teamName').value||'').trim().replace(/[\\/:*?"<>|]/g,'');
+    const name=`${QUOTE_NO||'골프견적'}${team?'_'+team:''}_${LAST.pax}명${mode==='internal'?'_내부용':''}.png`;
     const url=canvas.toDataURL('image/png');
     const a=document.createElement('a'); a.href=url; a.download=name;
     document.body.appendChild(a); a.click(); a.remove();
@@ -701,15 +799,93 @@ async function downloadQuote(mode){
   }
 }
 
+/* ══════════════════════════ 단계 접기 ══════════════════════════
+   칸 크기는 손님에게 보여주기 좋은 크기 그대로 두되, 다 채운 칸은 한 줄로 접어서
+   화면이 넘치지 않게 한다. 다른 칸을 만지는 순간 접히고, 제목줄이나 [수정]을 누르면 펴진다. */
+const STEPS=['s1','s2','s3','s4','s5','s6'];
+function stepDone(id){
+  switch(id){
+    case 's1': return !!$('#startDate').value && (+$('#pax').value>0);
+    case 's2': return ROUTE.length>0;
+    case 's3': {
+      if(!useHotelOn()) return true;
+      const stay=ROUTE.filter(r=>(+r.nights||0)>0);
+      return stay.length>0 && stay.every(r=>hotelPick[r.region]!==undefined);
+    }
+    case 's4': return dayState.some(st=>st.round&&st.course);
+    case 's5': return true;
+    case 's6': return !useGuideOn() || !!$('#guide').value;
+  }
+  return false;
+}
+function stepSummary(id){
+  const pax=Math.max(1,+$('#pax').value||1);
+  const n=totalNights();
+  switch(id){
+    case 's1': {
+      const team=($('#teamName').value||'').trim();
+      const mark=[amDepOn()?'오전출발':'', amRetOn()?'오전출국':''].filter(Boolean).join(' · ');
+      return [$('#startDate').value, team, `${pax}명`, `${n}박 ${n+1}일`, mark].filter(Boolean).join(' · ');
+    }
+    case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
+    case 's3': {
+      if(!useHotelOn()) return '숙소 없이';
+      const out=[];
+      ROUTE.forEach(r=>{
+        const idx=hotelPick[r.region];
+        if(!(+r.nights||0)||idx===undefined||idx==='') return;
+        const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
+        const rt=hotelRoom[r.region]||'twin';
+        out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${ROOM_SHORT[rt]}${roomCount(pax,rt)}실`);
+      });
+      return out.join(' · ')||'숙소 미선택';
+    }
+    case 's4': {
+      const done=dayState.filter(st=>st.round&&st.course);
+      return done.length?`${done.length}회 · ${done.map(st=>st.course).join(', ')}`:'';
+    }
+    case 's5': { const sel=$('#vehGroup'); return (sel&&sel.selectedOptions[0])?sel.selectedOptions[0].textContent:''; }
+    case 's6': return useGuideOn()?($('#guide').value||''):'가이드 없이';
+  }
+  return '';
+}
+function renderStepSummaries(){
+  STEPS.forEach(id=>{ const el=$('#sum'+id.slice(1)); if(el) el.textContent=stepSummary(id); });
+}
+/* 지금 만지고 있는 칸만 펴 두고, 다 채운 나머지는 접는다.
+   아직 덜 채운 칸은 접지 않는다 — 뭘 더 해야 하는지 보여야 하니까. */
+/* 한 번도 안 만져 본 칸은 접지 않는다 — 숙소·가이드처럼 기본값이 '없이'인 칸이
+   손님에게 묻기도 전에 접혀 버리면 물어볼 항목이 있는 줄도 모르게 된다. */
+const touched=new Set();
+function autoFold(activeId){
+  renderStepSummaries();
+  STEPS.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.classList.toggle('folded', id!==activeId && touched.has(id) && stepDone(id));
+  });
+}
+document.addEventListener('focusin',e=>{
+  const st=e.target.closest('.step');
+  if(st) touched.add(st.id);
+  autoFold(st?st.id:null);   // 견적 결과 쪽을 만지면(st 없음) 위 칸들이 전부 접힌다
+});
+
 /* ── 이벤트 ── */
-// 지역 칩 클릭 / 빼기
+// 지역 칩 클릭 / 빼기 / 접힌 칸 펴기
 document.addEventListener('click',e=>{
+  const ed=e.target.closest('.cedit,.steph');
+  if(ed&&!e.target.closest('input,label,select,button')){
+    const st=ed.closest('.step');
+    if(st){ touched.add(st.id); autoFold(st.classList.contains('folded')?st.id:null); return; }
+  }
   const pick=e.target.closest('[data-reg-pick]');
   if(pick){ toggleRegion(pick.dataset.regPick); return; }
   const del=e.target.closest('[data-reg-del]');
-  if(del){ const i=+del.dataset.regDel; const r=ROUTE[i]; if(r) delete hotelPick[r.region]; ROUTE.splice(i,1); refreshAll(); return; }
-  const tr=e.target.closest('[data-tr]');
-  if(tr){ const k=tr.dataset.tr; transferPick[k]=!transferPick[k]; tr.classList.toggle('on',!!transferPick[k]); calc(); return; }
+  if(del){
+    const i=+del.dataset.regDel; const r=ROUTE[i];
+    if(r){ delete hotelPick[r.region]; delete hotelNights[r.region]; delete hotelRoom[r.region]; }
+    ROUTE.splice(i,1); refreshAll(); return;
+  }
 });
 // 총 박수 / 지역별 박수 입력
 document.addEventListener('input',e=>{
@@ -725,7 +901,9 @@ document.addEventListener('input',e=>{
     syncTripInput(); renderHotels(); buildDays(); calc();   // 칩은 다시 안 그림(입력 포커스 유지)
     return;
   }
-  if(t.id==='pax') calc();
+  // 숙소 박수는 손으로 고친 값을 그대로 기억한다(지역 박수와 달라도 된다)
+  if(t.dataset.hn!==undefined){ hotelNights[t.dataset.hn]=t.value; calc(); return; }
+  if(t.id==='pax'||t.id==='teamName') calc();
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -734,10 +912,12 @@ document.addEventListener('change',e=>{
      (차량·가이드는 calc에서 풀 요금으로 바뀜). 다시 그리면 이미 체크해 둔
      다른 날 라운딩이 날아가므로 해당 칸만 손댄다. */
   if(t.id==='amDep'||t.id==='amRet'){ refreshDayLocks(); calc(); return; }
-  if(t.id==='useHotel'){ renderHotels(); calc(); return; }
-  if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; calc(); return; }
+  // 접힌 채로 체크만 하면 고를 칸이 안 보이므로, 그 칸을 펴 준다
+  if(t.id==='useHotel'){ renderHotels(); autoFold('s3'); calc(); return; }
+  if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; autoFold('s6'); calc(); return; }
   if(t.id==='vehGroup'){ calc(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
+  if(t.dataset.hroom!==undefined){ hotelRoom[t.dataset.hroom]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
   if(t.dataset.reg!==undefined){ const i=+t.dataset.reg; dayState[i].region=t.value; dayState[i].course=''; fillCourses(i); }
   if(t.dataset.c!==undefined){ const i=+t.dataset.c; dayState[i].course=t.value; fillHoles(i); }
