@@ -31,10 +31,10 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 #startDate,#pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
 .basic{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
 .fx-date{flex:0 0 156px}
-.fx-team{flex:1 1 170px;min-width:140px}
-.fx-pax{flex:0 0 96px}
-.fx-stay{flex:0 0 172px}
-.fx-stay .unit input{flex:0 0 54px}
+.fx-team{flex:1 1 180px;max-width:290px}
+.fx-pax,.fx-stay{flex:0 0 auto}
+/* 명·박·일 세 칸은 같은 너비로 */
+.fx-pax .unit input,.fx-stay .unit input{flex:0 0 66px}
 /* 숫자칸 옆 단위(명·박·일) — 무엇을 적는 칸인지 바로 보이게 */
 .unit{display:flex;align-items:center;gap:6px}
 .unit input{flex:1;min-width:0;text-align:right}
