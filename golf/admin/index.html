@@ -151,6 +151,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
            확인이 필요하면 이 줄을 되살리거나 브라우저 콘솔에서 showData() 호출
            (모달·복사 기능은 그대로 남겨 둠) -->
       <button class="link" onclick="openGBak()">🗄 백업복원</button>
+      <button class="link" id="accBtn" style="display:none" onclick="openAccModal()">👤 계정관리</button>
       <a href="/golf/" target="_blank">⛳ 견적 페이지</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
@@ -169,6 +170,21 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       </div>
     </div>
     <pre id="dataView" style="margin:0;padding:16px 18px;overflow:auto;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all;color:var(--ink)"></pre>
+  </div>
+</div>
+
+<!-- 계정관리: 골프에서의 권한만 지정한다. 계정 추가·삭제는 예약관리 쪽 계정관리에서 한다. -->
+<div id="accModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px" onmousedown="if(event.target===this)closeAccModal()">
+  <div style="background:#fff;border-radius:14px;max-width:620px;width:100%;max-height:86vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
+      <b style="font-size:15px">👤 계정관리 <span style="font-weight:600;font-size:12px;color:var(--muted)">골프에서의 권한</span></b>
+      <button class="btn sm" onclick="closeAccModal()">닫기</button>
+    </div>
+    <div style="padding:14px 18px 0;font-size:12px;color:var(--muted);line-height:1.7">
+      <b style="color:var(--fairway)">어드민</b> 모두 · <b style="color:var(--fairway)">매니저</b> 견적 + 코드·요금 관리 · <b style="color:var(--fairway)">에이전트</b> 견적 화면만<br>
+      새 계정 만들기·삭제는 <b>예약관리 &gt; 계정관리</b>에서 합니다. 여기서는 골프 권한만 정합니다.
+    </div>
+    <div id="accBody" style="padding:14px 18px;overflow:auto"></div>
   </div>
 </div>
 
@@ -333,7 +349,7 @@ async function gPushBackup(key,val){
   meta.unshift({ slot, at:new Date().toISOString(), by:(currentUser&&currentUser.id)||'', sig });
   await gsSaveRaw(_gbakMetaKey(key),meta.slice(0,GBAK_SLOTS));
 }
-const GKEY_LABEL={ golf_pricing:'요금표', golf_codes:'코드' };
+const GKEY_LABEL={ golf_pricing:'요금표', golf_codes:'코드', golf_roles:'골프 권한' };
 async function gSaveSafe(key,data){
   let server=null;
   try{ server=await gsLoadRaw(key); }
@@ -346,6 +362,29 @@ async function gSaveSafe(key,data){
   if(!await gsSaveRaw(key,data)){ gToast('❌ 서버 저장 실패'); return false; }
   _gBase[key]=_gSnap(data);
   return true;
+}
+
+/* ══════════ 골프 권한 3단계 (골프에서만 쓴다) ══════════
+   admin   : 모두 — 견적 · 코드/요금 관리 · 계정관리
+   manager : 견적 · 코드/요금 관리 (계정관리만 안 보임)
+   agent   : 견적 화면만 — 이 페이지엔 못 들어온다
+   권한표는 guide_data/golf_roles에 {아이디:권한}으로 둔다. 목록에 없으면 agent다.
+   예약관리 쪽 전체 관리자(user_metadata.role==='admin')는 골프에서도 무조건 admin. */
+const GROLE_LABEL={admin:'어드민',manager:'매니저',agent:'에이전트'};
+let GROLE='agent', GROLE_MAP={};
+function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.login_name||'').toLowerCase(); }
+async function loadGolfRoles(){
+  try{
+    const raw=await gsLoadRaw('golf_roles');
+    GROLE_MAP=(raw&&typeof raw==='object'&&!Array.isArray(raw))?raw:{};
+    _gBase['golf_roles']=_gSnap(raw);   // 저장할 때 남의 변경을 덮지 않도록 기준값을 잡아둔다
+  }catch(e){ GROLE_MAP={}; }
+}
+function golfRoleOf(u){
+  const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
+  if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
+  const r=GROLE_MAP[id];
+  return (r==='admin'||r==='manager')?r:'agent';
 }
 
 /* ══════════ 인증 ══════════ */
@@ -382,21 +421,26 @@ async function doLogin(){
 }
 async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
 
-function afterAuth(user){
+async function afterAuth(user){
   const info=roleOf(user);
   currentUser=info;
-  if(info.role!=='admin'){
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('editor').innerHTML=
-      '<div class="noauth"><h2>접근 권한 없음</h2><p style="color:var(--muted)">이 페이지는 <b>관리자(admin)</b>만 사용할 수 있습니다.<br>현재 권한: '+info.role+'</p><button class="btn ghost" onclick="doLogout()" style="margin-top:14px">다른 계정으로 로그인</button></div>';
-    document.getElementById('who').textContent=(info.name||'')+' · '+info.role;
-    return;
-  }
+  await loadGolfRoles();
+  GROLE=golfRoleOf(user);
+  GUSER_ID=loginIdOf(user);
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  document.getElementById('who').textContent=(info.name||'')+' · '+GROLE_LABEL[GROLE];
+  // 에이전트는 견적 화면만 쓴다 — 이 페이지는 열리지 않는다
+  if(GROLE==='agent'){
+    document.getElementById('editor').innerHTML=
+      '<div class="noauth"><h2>접근 권한 없음</h2><p style="color:var(--muted)">코드·요금 관리는 <b>어드민·매니저</b>만 사용할 수 있습니다.<br>현재 권한: 에이전트 (견적 화면만)</p>'
+      +'<div style="margin-top:14px;display:flex;gap:8px;justify-content:center"><a class="btn" href="/golf/">⛳ 견적 화면으로</a>'
+      +'<button class="btn ghost" onclick="doLogout()">다른 계정으로 로그인</button></div></div>';
+    return;
+  }
   document.getElementById('savebar').classList.remove('hidden');
-  document.getElementById('who').textContent=(info.name||'')+' · admin';
+  // 계정관리(골프 권한 지정)는 어드민만
+  if(GROLE==='admin') document.getElementById('accBtn').style.display='';
   // 코드를 먼저 불러와야 요금표의 지역 선택칸이 코드 목록으로 채워진다
   loadCodes().then(loadPricing);
 }
@@ -1096,6 +1140,54 @@ async function downloadGolfXlsx(){
   }catch(e){ gToast('❌ 다운로드 실패: '+(e&&e.message||e)); }
   finally{ if(btn){ btn.disabled=false; btn.textContent=old; } }
 }
+
+/* ══════════ 계정관리 — 골프에서의 권한만 정한다 ══════════
+   직원 목록은 로그인 매핑표(login_directory)의 아이디를 그대로 쓴다.
+   권한은 golf_roles에 따로 저장해서 예약관리·가이드정산서 권한은 건드리지 않는다.
+   기본값(목록에 없음)이 에이전트라, 에이전트는 아예 적어두지 않는다. */
+let GUSER_ID='';
+function openAccModal(){ document.getElementById('accModal').classList.remove('hidden'); renderAccList(); }
+function closeAccModal(){ document.getElementById('accModal').classList.add('hidden'); }
+async function renderAccList(){
+  const host=document.getElementById('accBody');
+  host.innerHTML='<p style="font-size:12.5px;color:var(--muted);margin:0">불러오는 중…</p>';
+  let ids=[];
+  try{
+    const dir=await gsLoadRaw('login_directory');
+    if(dir&&typeof dir==='object'&&!Array.isArray(dir)) ids=Object.keys(dir);
+  }catch(e){}
+  await loadGolfRoles();
+  if(!ids.length){ host.innerHTML='<p style="font-size:12.5px;color:var(--muted);margin:0">계정 목록을 불러오지 못했습니다. 새로고침 후 다시 열어주세요.</p>'; return; }
+  ids.sort((a,b)=>a.localeCompare(b,'ko'));
+  host.innerHTML=ids.map(id=>{
+    const fixed=ELEVATED_ADMIN_IDS.includes(id);
+    const r=fixed?'admin':((GROLE_MAP[id]==='admin'||GROLE_MAP[id]==='manager')?GROLE_MAP[id]:'agent');
+    const me=(id===GUSER_ID)?' <span style="font-size:10.5px;color:var(--muted)">(나)</span>':'';
+    const right=fixed
+      ? '<span style="font-size:11.5px;color:var(--muted);white-space:nowrap">고정 관리자</span>'
+      : `<select data-grole="${id}" style="font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fff">
+           <option value="agent"${r==='agent'?' selected':''}>에이전트 — 견적만</option>
+           <option value="manager"${r==='manager'?' selected':''}>매니저 — 견적·코드/요금</option>
+           <option value="admin"${r==='admin'?' selected':''}>어드민 — 모두</option>
+         </select>`;
+    return `<div class="crow"><span class="tag">${id}</span><span class="lbl">${GROLE_LABEL[r]}${me}</span>${right}</div>`;
+  }).join('');
+}
+async function setGolfRole(id,role){
+  const had=Object.prototype.hasOwnProperty.call(GROLE_MAP,id), prev=GROLE_MAP[id];
+  if(role==='agent') delete GROLE_MAP[id]; else GROLE_MAP[id]=role;   // 기본값이 에이전트라 적지 않는다
+  if(!await gSaveSafe('golf_roles',GROLE_MAP)){
+    if(had) GROLE_MAP[id]=prev; else delete GROLE_MAP[id];            // 저장 실패 — 화면을 서버와 맞춰 되돌린다
+    renderAccList(); return;
+  }
+  gToast('✅ '+id+' → '+GROLE_LABEL[role]);
+  if(id===GUSER_ID&&role!=='admin') alert('내 권한을 낮췄습니다.\n새로고침하면 이 화면에 못 들어올 수 있습니다.');
+  renderAccList();
+}
+document.addEventListener('change',e=>{
+  const s=e.target.closest('[data-grole]');
+  if(s) setGolfRole(s.dataset.grole,s.value);
+});
 
 /* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
 const GOLF_CODE_CATS=[

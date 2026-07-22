@@ -17,6 +17,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .eyebrow{font-size:10px;letter-spacing:.2em;color:var(--muted);font-weight:600}
 .head h1{margin:1px 0 0;font-size:clamp(18px,2.6vw,22px);font-weight:800;letter-spacing:-.03em}
 .head a,.head button.link{background:none;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:700;color:var(--fairway);text-decoration:none;cursor:pointer}
+.who{font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap}
 .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px 10px;margin-bottom:7px}
 .card h2{margin:0 0 6px;font-size:13.5px;font-weight:800}
 .grid{display:grid;gap:8px}
@@ -157,6 +158,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
       <h1>골프 견적 내기</h1>
     </div>
     <div class="top">
+      <span class="who" id="whoBadge"></span>
       <a href="/golf/admin/" id="adminLink" style="display:none;background:var(--fairway);color:var(--sand)">🔧 코드·요금 관리</a>
       <a href="/travel/">← 예약관리</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
@@ -957,7 +959,27 @@ const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-auth',persistSession:true,autoRefreshToken:true}});
 const ELEVATED_ADMIN_IDS=['lds1207'];
-function isAdmin(u){ const m=(u&&u.user_metadata)||{}; const id=(m.acc_id||m.login_name||'').toLowerCase(); return m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id); }
+/* ── 골프 권한 3단계 (골프에서만 쓴다) ─────────────────────────────
+   admin   : 모두 — 견적 · 코드/요금 관리 · 계정관리
+   manager : 견적 · 코드/요금 관리 (계정관리만 안 보임)
+   agent   : 견적 화면만
+   권한표는 guide_data/golf_roles에 {아이디:권한}으로 둔다. 목록에 없으면 agent다.
+   예약관리 쪽 전체 관리자(user_metadata.role==='admin')는 골프에서도 무조건 admin. */
+let GROLE='agent', GROLE_MAP={};
+function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.login_name||'').toLowerCase(); }
+async function loadGolfRoles(){
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_roles').maybeSingle();
+    GROLE_MAP=(row&&row.data&&typeof row.data==='object'&&!Array.isArray(row.data))?row.data:{};
+  }catch(e){ GROLE_MAP={}; }
+}
+function golfRoleOf(u){
+  const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
+  if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
+  const r=GROLE_MAP[id];
+  return (r==='admin'||r==='manager')?r:'agent';
+}
+const GROLE_LABEL={admin:'어드민',manager:'매니저',agent:'에이전트'};
 async function loadPricing(){
   try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_pricing').single();
     if(row&&row.data){ const d=row.data; P={
@@ -1019,7 +1041,11 @@ function buildGuideOptions(){
   if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
 }
 function startApp(user){
-  if(user&&isAdmin(user)) document.getElementById('adminLink').style.display='';
+  GROLE=golfRoleOf(user);
+  // 코드·요금 관리는 어드민과 매니저만. 에이전트는 견적 화면만 쓴다.
+  if(GROLE==='admin'||GROLE==='manager') document.getElementById('adminLink').style.display='';
+  const wb=document.getElementById('whoBadge');
+  if(wb) wb.textContent=`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
   buildGuideOptions();
   window._ready=true;
@@ -1028,9 +1054,9 @@ function startApp(user){
 }
 async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single(); if(row&&row.data){const k=(typed||'').toLowerCase(); if(row.data[k])return row.data[k];} }catch(e){} return null; }
 async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
-  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); await loadRegionCodes(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
+  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
 async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
-(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); await loadRegionCodes(); startApp(session.user); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
+(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(session.user); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
 </script>
 </body>
 </html>
