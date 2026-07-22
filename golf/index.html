@@ -41,12 +41,14 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 /* 다 채운 칸은 한 줄로 접힌다 — 화면이 넘치지 않게. 다시 만지면 펴진다. */
 .step .steph{display:flex;align-items:center;gap:8px}
 .sublab{font-weight:400;font-size:11.5px;color:var(--muted);white-space:nowrap}
-.csum{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .18s ease}
+.csum{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .18s ease}
 .step.folded .csum{opacity:1}
-.cedit{display:none;font-size:11px;font-weight:700;color:var(--fairway);border:1px solid var(--line);border-radius:999px;padding:2px 9px;cursor:pointer;white-space:nowrap}
+.cedit{display:none;font-size:11.5px;font-weight:700;color:var(--fairway);border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer;white-space:nowrap}
 .step.folded .cedit{display:inline-block}
 .step .cbody{overflow:hidden;max-height:1400px;opacity:1;transition:max-height .26s ease,opacity .18s ease}
 .step.folded .cbody{max-height:0;opacity:0;pointer-events:none}
+/* 접힌 줄도 손으로 누르기 좋게 조금 넉넉히 */
+.step.folded{padding:14px 13px}
 .step.folded h2{margin-bottom:0}
 @media(prefers-reduced-motion:reduce){.step .cbody,.csum{transition:none}}
 /* 차량·가이드는 한 줄에 나란히 */
@@ -57,13 +59,13 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .qno{font-size:10.5px;font-weight:800;color:#3a2400;background:var(--marigold);border-radius:5px;padding:2px 7px;letter-spacing:.02em}
 .qno:empty{display:none}
 /* 숙소 한 줄 = 지역 · 호텔 · 박수 · 룸타입 · 실수 */
-.hrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:4px;background:var(--paper)}
-.hrow .hreg{font-weight:700;font-size:13px;min-width:64px;white-space:nowrap}
-.hrow select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:#fff}
-.hrow .hsel{flex:1;min-width:150px}
-.hrow input{width:52px;font:inherit;font-size:12.5px;text-align:right;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
-.hrow small{font-weight:600;color:var(--muted);font-size:11.5px}
-.hrow .hrooms{font-size:12px;font-weight:800;color:var(--fairway);white-space:nowrap;min-width:34px;text-align:right}
+.hrow{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper)}
+.hrow .hreg{font-weight:700;font-size:15px;min-width:70px;white-space:nowrap}
+.hrow select{font:inherit;font-size:15px;padding:10px 11px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.hrow .hsel{flex:1;min-width:190px}
+.hrow input{width:64px;font:inherit;font-size:15px;text-align:right;padding:10px 9px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.hrow small{font-weight:600;color:var(--muted);font-size:13px}
+.hrow .hrooms{font-size:14px;font-weight:800;color:var(--fairway);white-space:nowrap;min-width:40px;text-align:right}
 /* 일수는 박수+1로 자동 — 직접 못 고친다 */
 #daysOut{background:rgba(18,58,43,.06);color:var(--muted);cursor:default}
 /* 오전 출발 / 오전 출국 체크 */
@@ -79,56 +81,57 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .sum-k{font-size:13px;opacity:.85}
 .sum-v{font-size:19px;font-weight:800;letter-spacing:.2px}
 .sum-v em{font-style:normal;font-size:12px;font-weight:700;opacity:.7;margin-left:2px}
-.sum-krw{text-align:right;font-size:13.5px;font-weight:700;opacity:.75;padding:0 2px 6px}
-.sum-mul{border-top:1px dashed rgba(255,255,255,.25)}
+.sum-krw{text-align:right;font-size:13.5px;font-weight:700;opacity:.8;padding:0 2px 6px}
+.sum-mul{border-top:1px dashed rgba(18,58,43,.25)}
 .sum-mul .sum-v{font-size:15px}
 .sum-total{border-top:2px solid var(--marigold);margin-top:4px;padding-top:12px}
 .sum-total .sum-k{font-size:15px;font-weight:800;opacity:1}
-.sum-total .sum-v{font-size:26px;color:var(--marigold)}
+.sum-total .sum-v{font-size:26px;color:var(--fairway)}
 .sum-empty{opacity:.6;padding:10px 2px;font-size:13px}
-.sum-warn{margin-top:10px;font-size:12.5px;font-weight:700;color:#ffcf8a}
+.sum-warn{margin-top:10px;font-size:12.5px;font-weight:700;color:#a8410f}
 .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
 /* 지역 선택 — 가는 순서대로 클릭, 고른 것만 아래에 펼쳐 박수 입력 */
-.chips{display:flex;flex-wrap:wrap;gap:6px;padding-top:3px}
-.chip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 13px;font:inherit;font-size:13px;font-weight:700;color:var(--fairway);cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding-top:3px}
+.chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:9px 17px;font:inherit;font-size:15px;font-weight:700;color:var(--fairway);cursor:pointer}
 .chip:hover{border-color:var(--fairway)}
 .chip.on{background:var(--fairway);color:var(--sand);border-color:var(--fairway)}
-.chip .seq{width:16px;height:16px;border-radius:50%;background:var(--marigold);color:#3a2400;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.picked{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.chip .seq{width:19px;height:19px;border-radius:50%;background:var(--marigold);color:#3a2400;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.picked{display:flex;flex-wrap:wrap;gap:9px;margin-top:9px}
 .picked:empty{display:none}
-.pick{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 8px;font-size:13px;font-weight:700;color:var(--fairway)}
-.pick .seq{width:17px;height:17px;border-radius:50%;background:var(--fairway);color:var(--sand);font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.pick input{width:50px;font:inherit;font-size:13px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
-.pick .x{color:var(--danger);cursor:pointer;font-weight:800;padding-left:2px}
-.pick small{font-weight:600;color:var(--muted)}
+.pick{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:15px;font-weight:700;color:var(--fairway)}
+.pick .seq{width:20px;height:20px;border-radius:50%;background:var(--fairway);color:var(--sand);font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.pick input{width:64px;font:inherit;font-size:15px;text-align:right;padding:9px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper)}
+.pick .x{color:var(--danger);cursor:pointer;font-weight:800;padding-left:2px;font-size:15px}
+.pick small{font-weight:600;color:var(--muted);font-size:13px}
 /* 날짜별 라운딩 — 한 줄에 한 날짜(날짜·요일·구분을 한 줄로 붙여 높이를 줄임) */
-.day{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:4px;background:var(--paper)}
-.day .dlabel{font-weight:700;font-size:13px;min-width:152px;display:flex;align-items:center;gap:6px;white-space:nowrap}
-.day .dlabel small{font-weight:600;font-size:11px;color:var(--muted)}
-.day .rchk{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;white-space:nowrap}
-.day select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:#fff}
-.day .reg{width:78px}.day .course{flex:1;min-width:130px}.day .holes{width:78px}
+.day{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper)}
+.day .dlabel{font-weight:700;font-size:15px;min-width:172px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.day .dlabel small{font-weight:600;font-size:12px;color:var(--muted)}
+.day .rchk{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;white-space:nowrap}
+.day .rchk input{width:17px;height:17px;cursor:pointer}
+.day select{font:inherit;font-size:15px;padding:10px 11px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.day .reg{width:96px}.day .course{flex:1;min-width:180px}.day .holes{width:96px}
 .day.off{opacity:.55}
 .badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--sand);color:var(--fairway)}
 .badge.we{background:#f6dcae;color:#7a4a00}
-/* 결과 */
-.card.res{background:var(--fairway);color:var(--sand);border:0}
-.card.res h2{color:var(--sand)}
+/* 결과 — 옅은 그린 바탕이라 글자·선은 진한 색으로 둔다 */
+.card.res{background:#E4EEE5;color:var(--ink);border:1px solid rgba(18,58,43,.22)}
+.card.res h2{color:var(--fairway)}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 .res th,.res td{padding:3.5px 4px;text-align:left}
 .res thead th{font-size:10px;letter-spacing:.14em;opacity:.6;font-weight:600}
-.res tbody tr{border-top:1px solid rgba(233,223,200,.14)}
+.res tbody tr{border-top:1px solid rgba(18,58,43,.14)}
 .res td.n{text-align:right;font-family:var(--num);white-space:nowrap}
 .res td .sub{display:block;font-size:11px;opacity:.6;margin-top:1px}
 .res tfoot td{border-top:2px solid var(--marigold);padding-top:9px;font-weight:800;font-size:17px}
-.res tfoot td.n{font-size:21px;color:var(--marigold)}
+.res tfoot td.n{font-size:21px;color:var(--fairway)}
 .perp{padding-top:7px;font-size:12.5px;opacity:.8}
 /* 견적서 내려받기 버튼 */
-.dlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(233,223,200,.2)}
-.dlbtn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--marigold);background:var(--marigold);color:#3a2400;cursor:pointer}
-.dlbtn.ghost{background:transparent;color:var(--sand);border-color:rgba(233,223,200,.4)}
+.dlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(18,58,43,.18)}
+.dlbtn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--fairway);background:var(--fairway);color:var(--sand);cursor:pointer}
+.dlbtn.ghost{background:transparent;color:var(--fairway);border-color:rgba(18,58,43,.3)}
 .dlbtn:disabled{opacity:.55;cursor:default}
-.warn{color:#ffcaa8}
+.warn{color:#a8410f}
 /* 로그인 */
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
@@ -584,13 +587,17 @@ function calc(){
   }
   // 요금이 등록되지 않은 항목이 있으면 합계가 실제와 달라지므로 반드시 알린다
   const miss=lines.filter(l=>l.warn).map(l=>l.t);
-  const krw=(FX_RATE>0)?`<div class="sum-krw">약 ${won(Math.round(per*FX_RATE))} 원</div>`:'';
+  // 환율은 코드관리 '환율'에서 읽는다(1밧당 원화). 없으면 한화를 아예 적지 않는다.
+  const krwPer=(FX_RATE>0)?`<div class="sum-krw">약 ${won(Math.round(per*FX_RATE))} 원</div>`:'';
+  const krwTot=(FX_RATE>0)?`<div class="sum-krw" style="opacity:1;color:var(--fairway)">약 ${won(Math.round(total*FX_RATE))} 원</div>`:'';
   box.innerHTML=
     `<div class="sum-row"><span class="sum-k">1인 요금</span><span class="sum-v">${won(per)} <em>THB</em></span></div>`
-    +krw
+    +krwPer
     +`<div class="sum-row sum-mul"><span class="sum-k">인원수</span><span class="sum-v">× ${pax}명</span></div>`
     +`<div class="sum-row sum-total"><span class="sum-k">총액</span><span class="sum-v">${won(total)} <em>THB</em></span></div>`
-    +(miss.length?`<div class="sum-warn">⚠ 요금이 등록되지 않은 항목이 있습니다 — ${miss.join(', ')}</div>`:'');
+    +krwTot
+    +(miss.length?`<div class="sum-warn">⚠ 요금이 등록되지 않은 항목이 있습니다 — ${miss.join(', ')}</div>`:'')
+    +(FX_RATE>0?'':`<div class="sum-warn">⚠ 환율이 등록되지 않아 한화가 표시되지 않습니다 — 코드·요금 관리 &gt; 코드관리 &gt; 환율</div>`);
   $('#perp').textContent='';
 }
 
@@ -687,7 +694,11 @@ function buildQuoteHtml(mode){
       </table>
     </div>`;
 
-  const krw=(FX_RATE>0)?`<div style="text-align:right;font-size:12.5px;color:#5E6F66;margin-top:3px">약 ${won(Math.round(LAST.per*FX_RATE))} 원 / 1인</div>`:'';
+  /* 손님용은 한화가 주인공이다 — 밧 금액 아래에 원화를 크게 붙인다.
+     환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. 없으면 원화를 아예 적지 않는다. */
+  const kPer=(FX_RATE>0)?won(Math.round(LAST.per*FX_RATE)):'';
+  const kTot=(FX_RATE>0)?won(Math.round(LAST.total*FX_RATE)):'';
+  const krwLine=(v,big)=>v?`<div style="text-align:right;font-size:${big?18:13}px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:${big?4:2}px">약 ${v} 원</div>`:'';
 
   return `<div style="width:760px;box-sizing:border-box;background:#fff;padding:30px 32px 26px;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:#15211C;line-height:1.5">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px">
@@ -746,6 +757,7 @@ function buildQuoteHtml(mode){
         <span style="font-size:13px;opacity:.85">1인 요금</span>
         <span style="font-size:20px;font-weight:800">${won(LAST.per)} <span style="font-size:12px;opacity:.7">THB</span></span>
       </div>
+      ${krwLine(kPer,false)}
       <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed rgba(255,255,255,.25);margin-top:8px;padding-top:8px">
         <span style="font-size:13px;opacity:.85">인원수</span>
         <span style="font-size:15px;font-weight:800">× ${pax}명</span>
@@ -754,10 +766,11 @@ function buildQuoteHtml(mode){
         <span style="font-size:15px;font-weight:800">총액</span>
         <span style="font-size:27px;font-weight:800;color:#E8A33D">${won(LAST.total)} <span style="font-size:13px">THB</span></span>
       </div>
+      ${krwLine(kTot,true)}
     </div>
-    ${krw}
 
     <div style="margin-top:14px;font-size:11px;color:#5E6F66;line-height:1.7">
+      ${FX_RATE>0?`※ 한화는 1밧 = ${FX_RATE} 원 기준으로 환산한 참고 금액입니다.<br>`:''}
       ※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>
       ※ 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
       ※ 골프장 사정과 환율 변동에 따라 금액이 달라질 수 있습니다.
@@ -777,6 +790,9 @@ function loadCanvasLib(){
 async function downloadQuote(mode){
   if(!LAST||!LAST.lines.length){ alert('먼저 라운딩할 날을 체크해 주세요. 견적이 있어야 견적서를 만들 수 있습니다.'); return; }
   if(!$('#startDate').value){ alert('출발 일자를 먼저 골라주세요.'); return; }
+  // 손님용은 한화로 보여주는 게 목적이라, 환율이 없으면 먼저 알린다
+  if(mode!=='internal'&&!(FX_RATE>0)&&
+     !confirm('환율이 등록되어 있지 않아 한화가 표시되지 않습니다.\n코드·요금 관리 > 코드관리 > 환율에 1밧당 원화를 등록해 주세요.\n\n이대로 만들까요?')) return;
   const btn=$(mode==='internal'?'#dlInternal':'#dlCustomer');
   const label=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='만드는 중…'; }
