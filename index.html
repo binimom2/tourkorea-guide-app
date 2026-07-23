@@ -1918,6 +1918,8 @@ async function loadAppSettings() {
     if (d) { appSettings = Object.assign(appSettings, d); localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); }
     else { const r = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(r) appSettings = Object.assign(appSettings, r); }
   } catch(e) {}
+  // 구버전 평면 배열이면 분류 구조로 승격하고 그 결과를 즉시 저장
+  try { if (normalizeEventContents()) await saveAppSettings(); } catch(e) {}
 }
 async function saveAppSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
@@ -1925,11 +1927,47 @@ async function saveAppSettings() {
   syncEventContentsList();
 }
 
+// ── 행사내용: 분류(식사/맛사지/관광지/기타…) + 분류별 항목 구조 ──
+// 저장 형태: [{name:'식사', items:['조식','중식']}, ...]
+// 구버전은 평면 문자열 배열이었으므로 로드 시 승격한다.
+const DEFAULT_EVENT_GROUPS = ['식사','맛사지','관광지','기타'];
+function cfgEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// 반환값 true = "옮길 실데이터가 있어서 승격했다" → 이때만 저장한다.
+// 빈 값/로드실패로 기본 분류만 채운 경우에 저장하면,
+// Supabase 로드가 실패한 세션이 기존 설정을 빈 값으로 덮어쓴다.
+function normalizeEventContents() {
+  const raw = appSettings.eventContents;
+  if (!Array.isArray(raw)) {
+    appSettings.eventContents = DEFAULT_EVENT_GROUPS.map(n=>({name:n, items:[]}));
+    return false;
+  }
+  // 이미 분류 구조 — 형식만 보정
+  if (raw.some(g => g && typeof g === 'object' && !Array.isArray(g))) {
+    raw.forEach(g=>{
+      if (!g || typeof g !== 'object') return;
+      g.name = String(g.name||'').trim() || '기타';
+      if (!Array.isArray(g.items)) g.items = [];
+      g.items = g.items.filter(v=>typeof v==='string' && v.trim());
+    });
+    appSettings.eventContents = raw.filter(g=>g && typeof g==='object' && !Array.isArray(g));
+    return false;
+  }
+  // 구버전 평면 배열 → 항목은 하나도 잃지 않고 '기타'로 옮긴다
+  const legacy = raw.filter(v=>typeof v==='string' && v.trim());
+  appSettings.eventContents = DEFAULT_EVENT_GROUPS.map(n=>({
+    name:n, items: n==='기타' ? legacy : []
+  }));
+  return legacy.length > 0;
+}
+
 function syncEventContentsList() {
   const dl = document.getElementById('eventContents-list');
   if (!dl) return;
+  normalizeEventContents();
+  // datalist는 optgroup을 지원하지 않으므로 label에 분류명을 실어 구분을 보여준다
   dl.innerHTML = (appSettings.eventContents||[])
-    .map(v=>`<option value="${v.replace(/"/g,'&quot;')}">`)
+    .flatMap(g => (g.items||[]).map(v=>`<option value="${cfgEsc(v)}" label="${cfgEsc(g.name)}">`))
     .join('');
 }
 async function loadSubmissions() {
@@ -4423,6 +4461,7 @@ function switchCfgTab(tab) {
 
 function renderCfgBody() {
   const body = document.getElementById('cfgBody');
+  if (currentCfgTab === 'eventContents') return renderCfgEventContents(body);
   const labels = {categories:'구분',products:'상품명',eventContents:'행사내용'};
   const items = appSettings[currentCfgTab] || [];
   const rows = items.map((v,i)=>`
@@ -4441,6 +4480,147 @@ function renderCfgBody() {
       <input id="cfgNewItem" placeholder="새 ${labels[currentCfgTab]} 추가">
       <button class="cfg-add-btn" onclick="addCfgItem()">추가</button>
     </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+//  행사내용 설정: 분류별 관리 (분류 자체도 ＋로 추가/삭제/정렬)
+// ══════════════════════════════════════════════════════
+function renderCfgEventContents(body) {
+  normalizeEventContents();
+  const groups = appSettings.eventContents;
+
+  const blocks = groups.map((g,gi)=>{
+    const items = g.items || [];
+    const rows = items.map((v,ii)=>`
+      <div class="cfg-list-item">
+        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+          <button class="ord-btn" ${ii===0?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},-1)" title="위로">▲</button>
+          <button class="ord-btn" ${ii===items.length-1?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},1)" title="아래로">▼</button>
+        </div>
+        <input id="cfg-gi-${gi}-${ii}" value="${cfgEsc(v)}" readonly>
+        <button class="edit-btn" onclick="startEditCfgGroupItem(${gi},${ii})">수정</button>
+        <button class="del-btn" onclick="removeCfgGroupItem(${gi},${ii})">삭제</button>
+      </div>`).join('');
+
+    return `
+      <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border);">
+          <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+            <button class="ord-btn" ${gi===0?'disabled':''} onclick="moveCfgGroup(${gi},-1)" title="위로">▲</button>
+            <button class="ord-btn" ${gi===groups.length-1?'disabled':''} onclick="moveCfgGroup(${gi},1)" title="아래로">▼</button>
+          </div>
+          <input id="cfg-grp-${gi}" value="${cfgEsc(g.name)}" readonly
+                 style="flex:1;min-width:0;font-weight:800;background:transparent;border:1px solid transparent;">
+          <span style="font-size:11px;color:var(--text-sub);white-space:nowrap;">${items.length}개</span>
+          <button class="edit-btn" onclick="startEditCfgGroup(${gi})">이름수정</button>
+          <button class="del-btn" onclick="removeCfgGroup(${gi})">분류삭제</button>
+        </div>
+        <div style="padding:8px 10px;">
+          ${rows || '<p style="color:#aaa;font-size:12px;margin:2px 0 8px;">항목이 없습니다.</p>'}
+          <div class="cfg-add-row">
+            <input id="cfgNewItem-${gi}" placeholder="${cfgEsc(g.name)} 항목 추가"
+                   onkeydown="if(event.key==='Enter')addCfgGroupItem(${gi})">
+            <button class="cfg-add-btn" onclick="addCfgGroupItem(${gi})">추가</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    ${blocks || '<p style="color:#aaa;font-size:13px;padding:8px 0;">분류가 없습니다.</p>'}
+    <div class="cfg-add-row" style="border-top:2px solid var(--border);padding-top:12px;margin-top:4px;">
+      <input id="cfgNewGroup" placeholder="새 분류 추가 (예: 쇼핑)"
+             onkeydown="if(event.key==='Enter')addCfgGroup()">
+      <button class="cfg-add-btn" onclick="addCfgGroup()">＋ 분류 추가</button>
+    </div>`;
+}
+
+function addCfgGroup() {
+  const inp = document.getElementById('cfgNewGroup');
+  const v = (inp.value||'').trim();
+  if (!v) return;
+  if (appSettings.eventContents.some(g=>g.name===v)) { alert('같은 이름의 분류가 이미 있습니다.'); return; }
+  appSettings.eventContents.push({name:v, items:[]});
+  inp.value='';
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
+}
+
+function removeCfgGroup(gi) {
+  const g = appSettings.eventContents[gi];
+  if (!g) return;
+  const n = (g.items||[]).length;
+  if (!confirm(`'${g.name}' 분류를 삭제합니다.` + (n ? `\n안에 있는 항목 ${n}개도 함께 삭제됩니다.` : ''))) return;
+  appSettings.eventContents.splice(gi,1);
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
+}
+
+function moveCfgGroup(gi, dir) {
+  const arr = appSettings.eventContents;
+  const j = gi + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[gi], arr[j]] = [arr[j], arr[gi]];
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
+}
+
+function startEditCfgGroup(gi) {
+  const inp = document.getElementById('cfg-grp-' + gi);
+  if (!inp) return;
+  inp.readOnly = false;
+  inp.style.background = '#fff';
+  inp.style.borderColor = 'var(--primary)';
+  inp.focus(); inp.select();
+  inp.onblur = () => {
+    const v = inp.value.trim();
+    if (v) appSettings.eventContents[gi].name = v;
+    saveAppSettings();
+    renderCfgEventContents(document.getElementById('cfgBody'));
+  };
+  inp.onkeydown = (e) => { if (e.key === 'Enter') inp.blur(); };
+}
+
+function addCfgGroupItem(gi) {
+  const inp = document.getElementById('cfgNewItem-' + gi);
+  const v = (inp.value||'').trim();
+  if (!v) return;
+  appSettings.eventContents[gi].items.push(v);
+  inp.value='';
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
+  const again = document.getElementById('cfgNewItem-' + gi);
+  if (again) again.focus();   // 연속 입력
+}
+
+function removeCfgGroupItem(gi, ii) {
+  appSettings.eventContents[gi].items.splice(ii,1);
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
+}
+
+function moveCfgGroupItem(gi, ii, dir) {
+  const arr = appSettings.eventContents[gi].items;
+  const j = ii + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[ii], arr[j]] = [arr[j], arr[ii]];
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
+}
+
+function startEditCfgGroupItem(gi, ii) {
+  const inp = document.getElementById(`cfg-gi-${gi}-${ii}`);
+  if (!inp) return;
+  inp.readOnly = false;
+  inp.focus(); inp.select();
+  inp.onblur = () => {
+    const v = inp.value.trim();
+    if (v) appSettings.eventContents[gi].items[ii] = v;
+    else appSettings.eventContents[gi].items.splice(ii,1);
+    saveAppSettings();
+    renderCfgEventContents(document.getElementById('cfgBody'));
+  };
+  inp.onkeydown = (e) => { if (e.key === 'Enter') inp.blur(); };
 }
 
 let _cfgSaveTimer;
