@@ -159,6 +159,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     </div>
     <div class="top">
       <span class="who" id="whoBadge"></span>
+      <a onclick="newQuote()" style="cursor:pointer;">🆕 새 견적</a>
       <a href="/golf/admin/" id="adminLink" style="display:none;background:var(--fairway);color:var(--sand)">🔧 코드·요금 관리</a>
       <a href="/travel/">← 예약관리</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
@@ -399,6 +400,39 @@ function renderRegions(){
       <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
 }
 function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); calc(); }
+
+/* 새 견적 내기 — 입력을 전부 비운다.
+   견적번호도 비워야 다음 견적서에서 새 번호를 받는다(안 비우면 앞 팀 번호로 덮어써 보관된다).
+   보관된 견적(golf_quotes)은 건드리지 않는다. */
+function newQuote(){
+  if(!confirm('새 견적을 시작합니다.\n지금 입력한 내용은 지워집니다.')) return;
+  const tn=$('#teamName'); if(tn) tn.value='';
+  // 출발일은 처음 켤 때처럼 2주 뒤로 — 빈 칸이면 달력이 이번 달로 열려 매번 넘겨야 한다
+  const sd=$('#startDate'); if(sd){ const d0=new Date(); d0.setDate(d0.getDate()+14); sd.value=iso(d0); }
+  const px=$('#pax'); if(px) px.value='';
+  const ng=$('#nights'); if(ng) ng.value='';
+  ['amDep','amRet','useHotel','useGuide','noVeh'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
+  const gw=$('#guideWrap'); if(gw) gw.style.display='none';
+  const vg=$('#vehGroup'); if(vg) vg.value='0';
+  const vf=vg&&vg.closest('.f'); if(vf) vf.style.display='';
+  const vp=$('#vehPickWrap'); if(vp) vp.style.display='none';
+  const vt=$('#vehPickToggle'); if(vt) vt.textContent='요금 기준 직접 고르기';
+  const va=$('#vehAuto'); if(va) va.textContent='';
+
+  ROUTE.length=0;
+  Object.keys(hotelPick).forEach(k=>delete hotelPick[k]);
+  Object.keys(hotelNights).forEach(k=>delete hotelNights[k]);
+  Object.keys(hotelRoom).forEach(k=>delete hotelRoom[k]);
+  dayState.length=0;
+  tripNights=0;
+  LAST=null;
+  QUOTE_NO=''; QUOTE_NO_FOR=''; showQuoteNo();
+
+  touched.clear();                                  // 접힘 상태도 처음처럼
+  STEPS.forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('folded'); });
+  refreshAll();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
