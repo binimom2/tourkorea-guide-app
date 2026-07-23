@@ -684,8 +684,13 @@ function quoteIncludes(mode){
   if(rounds) out.push(`골프 ${rounds}회 — 그린피 · 캐디피 · 전동카트 포함`);
   if(useVehOn()){
     const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
+    const pax=Math.max(1,+$('#pax').value||1);
+    const cap=vehMaxPax(vg), vans=Math.ceil(pax/cap);
+    /* 12인승인데 7명 기준으로 대수를 잡으면 손님이 «왜 8명에 2대냐»고 묻는다.
+       인승보다 탑승 기준이 적을 때만 이유를 적어 둔다. */
+    const why=(vg&&vg.seats&&cap<vg.seats)?` (수화물·골프백 적재로 1대 ${cap}명 기준)`:'';
     // 손님용에는 표시명만. 요금기준 라벨(내부 메모 포함)은 내부용에만 붙인다.
-    out.push(`차량 ${vehName(vg)} — 전 일정 이용${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
+    out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} — 전 일정 이용${why}${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
   }
   if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
