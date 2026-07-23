@@ -2351,7 +2351,7 @@ const SUBSECTIONS=[
   {key:'golfs',label:'GOLF',fields:[
     {k:'date',label:'DATE',type:'date',fw:108},
     {k:'club',label:'CLUB',type:'text',vendorKey:'CLUB',fw:200},
-    {k:'hole',label:'HOLE',type:'number',fw:40},
+    {k:'hole',label:'HOLE',type:'select',options:['18','27','36'],fw:64},
     {k:'pax',label:'PAX',type:'number',fw:40},
     {k:'teeup',label:'TEE TIME',type:'text',fw:70},
     {k:'cfm',label:'CFM',type:'checkbox'},
@@ -4364,7 +4364,9 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
   if(f.type==='select'){
     const hasMatch=f.options.includes(val);
     const curOpt=(val&&!hasMatch)?`<option value="${escapeAttr(val)}" selected>${escapeHtml(val)} (기존값)</option>`:'';
-    return `<select id="${id}">${curOpt}${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+    // fw가 있으면 표 컬럼 폭에 맞춘다(HOLE처럼 좁은 칸이 넘치지 않게)
+    const fwStyle=f.fw?` style="width:${f.fw}px;min-width:${f.fw}px;box-sizing:border-box;"`:'';
+    return `<select id="${id}"${fwStyle}>${curOpt}${f.options.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
   }
   if(f.fixed){
     return `<input type="text" id="${id}" value="${escapeAttr(val||f.fixed)}" readonly style="background:#f4f6fa;color:#6b7484;"/>`;
