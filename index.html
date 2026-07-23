@@ -303,6 +303,8 @@
   /* manager/guide/organizer: 회사정산서 숨김 */
   body.role-op .settle-admin-card,
   body.role-guide .settle-admin-card { display:none !important; }
+  /* 가이드 로그인 시 숨김: 기준환율 입력·환율 변환 결과 금액 (합계금액만 노출) */
+  body.role-guide .guide-hide { display:none !important; }
   .settle-rate-row { display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:8px; }
   .settle-rate-label { font-size:11px;font-weight:700;color:var(--text-sub);white-space:nowrap; }
   .settle-rate-item { display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700; }
@@ -1073,7 +1075,8 @@
       <!-- 기준환율 입력 (정산서 1번 인센티브와 공유) -->
       <div class="section-header" style="flex-wrap:wrap;gap:6px;">
         <h3>옵션내역</h3>
-        <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+        <!-- 가이드에게는 숨김. 입력칸은 DOM에 남겨둬야 함 (저장·정산서 동기화가 id로 참조) -->
+        <div class="guide-hide" style="display:flex;align-items:center;gap:8px;margin-left:auto;">
           <span style="font-size:11px;font-weight:700;color:var(--text-sub);white-space:nowrap;">기준환율</span>
           <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#1a6b8a;">
             $
@@ -1120,24 +1123,24 @@
             <div style="font-size:10px;font-weight:700;color:#6366f1;margin-bottom:3px;">฿ 입금</div>
             <div class="tot-item" id="opt-sum-thb" style="font-size:14px;font-weight:800;color:#3730a3;">—</div>
           </div>
-          <!-- = -->
-          <span style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
+          <!-- = --><!-- 아래 환율 환산 계산식은 가이드에게 숨김 (통화별 합계금액만 노출) -->
+          <span class="guide-hide" style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
           <!-- ฿ 환산총액 -->
-          <div style="flex:1;min-width:80px;background:#fff;border:1.5px solid #99f6e4;border-radius:10px;padding:7px 10px;">
+          <div class="guide-hide" style="flex:1;min-width:80px;background:#fff;border:1.5px solid #99f6e4;border-radius:10px;padding:7px 10px;">
             <div style="font-size:10px;font-weight:700;color:#1a6b8a;margin-bottom:3px;">฿ 환산총액</div>
             <div class="tot-item" id="opt-converted-total" style="font-size:14px;font-weight:800;color:#1a6b8a;">—</div>
           </div>
           <!-- - -->
-          <span style="font-size:18px;font-weight:300;color:#94a3b8;">−</span>
+          <span class="guide-hide" style="font-size:18px;font-weight:300;color:#94a3b8;">−</span>
           <!-- ฿ 옵션원가총액 -->
           <div style="flex:1;min-width:80px;background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:7px 10px;">
             <div style="font-size:10px;font-weight:700;color:#E05252;margin-bottom:3px;">฿ 옵션원가총액</div>
             <div class="tot-item" id="opt-tot-cost" style="font-size:14px;font-weight:800;color:#E05252;">—</div>
           </div>
           <!-- = -->
-          <span style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
+          <span class="guide-hide" style="font-size:18px;font-weight:300;color:#94a3b8;">=</span>
           <!-- 옵션 수익금 -->
-          <div style="flex:1;min-width:80px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
+          <div class="guide-hide" style="flex:1;min-width:80px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
             <div style="font-size:10px;font-weight:700;color:var(--success);margin-bottom:3px;">옵션 수익금</div>
             <div class="tot-item" id="opt-profit-total" style="font-size:14px;font-weight:900;color:var(--success);">—</div>
           </div>
@@ -1184,8 +1187,8 @@
             <div style="font-size:10px;font-weight:700;color:#6366f1;margin-bottom:3px;">฿ 기가팁</div>
             <div class="tot-item" id="gigatip-sum-thb" style="font-size:14px;font-weight:800;color:#3730a3;">—</div>
           </div>
-          <!-- TC정산금 (฿ 환산) -->
-          <div style="flex:1;min-width:100px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
+          <!-- TC정산금 (฿ 환산) — 환율 환산값이라 가이드에게는 숨김 -->
+          <div class="guide-hide" style="flex:1;min-width:100px;background:#f0fdf4;border:1.5px solid #28A87A;border-radius:10px;padding:7px 10px;">
             <div style="font-size:10px;font-weight:700;color:var(--success);margin-bottom:3px;">TC정산금 (฿ 환산)</div>
             <div class="tot-item" id="gigatip-tc-total" style="font-size:14px;font-weight:900;color:var(--success);">—</div>
           </div>
