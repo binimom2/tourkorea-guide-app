@@ -236,8 +236,8 @@
   .shopping-cat-header h4 { font-size:12px; font-weight:700; color:var(--text); }
   .cat-commission { font-size:11px; color:var(--success); font-weight:700; }
   .shop-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  /* 샵명 / 구분 / D/C% / 판매액(฿) / COM / 커미션 / KB% / KB COM / 삭제 */
-  .shop-row { display:grid; grid-template-columns:110px 72px 50px 82px 50px 78px 50px 78px 28px; gap:4px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--surface2); width:max-content; min-width:100%; }
+  /* 샵명 / 구분 / D/C% / 판매액(฿) / COM / 커미션 / KB% / KB COM / 외상체크 / 삭제 */
+  .shop-row { display:grid; grid-template-columns:110px 72px 50px 82px 50px 78px 50px 78px 78px 28px; gap:4px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--surface2); width:max-content; min-width:100%; }
   .shop-row:last-child { border-bottom:none; }
   .shop-row input, .shop-row select { border:1px solid var(--border); border-radius:6px; padding:6px 5px; font-size:11px; font-family:inherit; background:var(--surface2); width:100%; box-sizing:border-box; }
   .shop-row input:focus, .shop-row select:focus { outline:none; border-color:var(--primary); background:#fff; }
@@ -245,12 +245,15 @@
   .shop-row .readonly-calc { background:#e8f4e8 !important; font-weight:700; color:var(--success); pointer-events:none; }
   .shop-row .readonly-kb   { background:#FEF3E7 !important; font-weight:700; color:var(--accent);  pointer-events:none; }
   .shop-row select option[value="회사보고"] { color:#c0392b; font-weight:700; }
-  .shop-headers { display:grid; grid-template-columns:110px 72px 50px 82px 50px 78px 50px 78px 28px; gap:4px; padding:4px 10px; background:#f0f0f0; width:max-content; min-width:100%; }
+  .shop-headers { display:grid; grid-template-columns:110px 72px 50px 82px 50px 78px 50px 78px 78px 28px; gap:4px; padding:4px 10px; background:#f0f0f0; width:max-content; min-width:100%; }
+  .shop-row .credit-input { background:#FFF7ED !important; font-weight:700; color:#B45309; }
   .shop-headers span { font-size:10px; color:var(--text-sub); font-weight:700; letter-spacing:0.5px; }
   /* KB 컬럼 숨김 (Manager/Guide용) */
   .hide-kb .shop-row     { grid-template-columns:110px 72px 50px 82px 50px 78px 28px !important; }
   .hide-kb .shop-headers { grid-template-columns:110px 72px 50px 82px 50px 78px 28px !important; }
   .hide-kb .kb-col { display:none !important; }
+  /* KB·외상 합계 줄: 어드민만 (total-row는 flex라 .admin-only의 display:block과 충돌) */
+  body:not(.role-admin) .shop-admin-total { display:none !important; }
   .section-total-badge { background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; }
 
   /* ── SUMMARY ── */
@@ -559,10 +562,10 @@
     body.print-guide .shop-headers {
       grid-template-columns:120px 78px 54px 90px 54px 84px 20px !important;
     }
-    /* 회사 출력: KB컬럼 포함 9열 한 줄 */
+    /* 회사 출력: KB·외상 포함 10열 한 줄 */
     body.print-admin .shop-row,
     body.print-admin .shop-headers {
-      grid-template-columns:70px 54px 40px 50px 46px 60px 32px 54px 0px !important;
+      grid-template-columns:66px 50px 36px 48px 42px 56px 30px 50px 50px 0px !important;
       min-width:unset !important; width:100% !important;
       gap:2px !important; font-size:10px !important;
     }
@@ -881,12 +884,19 @@
 
     /* 쇼핑 테이블 - 가로 스크롤 */
     .shop-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* 가이드·매니저(KB 숨김): 7열 */
     .shop-row,
     .shop-headers {
       min-width: 500px;
       grid-template-columns: 85px 58px 40px 68px 40px 64px 24px !important;
       gap: 4px;
       padding: 4px 8px;
+    }
+    /* 어드민(KB·외상 노출): 10열 — 가로 스크롤로 본다 */
+    .shopping-category:not(.hide-kb) .shop-row,
+    .shopping-category:not(.hide-kb) .shop-headers {
+      min-width: 720px;
+      grid-template-columns: 85px 58px 40px 68px 40px 64px 40px 64px 64px 24px !important;
     }
     .shop-row input { font-size: 14px !important; padding: 6px 4px !important; }
     .shop-row select { font-size: 12px !important; padding: 6px 3px !important; }
@@ -1254,7 +1264,7 @@
         </div>
         <div class="shop-scroll">
           <div class="shop-headers">
-            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span></span>
+            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span class="kb-col">외상체크</span><span></span>
           </div>
           <div id="jewell-list"></div>
         </div>
@@ -1269,7 +1279,7 @@
         </div>
         <div class="shop-scroll">
           <div class="shop-headers">
-            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span></span>
+            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span class="kb-col">외상체크</span><span></span>
           </div>
           <div id="latex-list"></div>
         </div>
@@ -1284,7 +1294,7 @@
         </div>
         <div class="shop-scroll">
           <div class="shop-headers">
-            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span></span>
+            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span class="kb-col">외상체크</span><span></span>
           </div>
           <div id="beomrung-list"></div>
         </div>
@@ -1299,7 +1309,7 @@
         </div>
         <div class="shop-scroll">
           <div class="shop-headers">
-            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span></span>
+            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span class="kb-col">외상체크</span><span></span>
           </div>
           <div id="taiko-list"></div>
         </div>
@@ -1314,7 +1324,7 @@
         </div>
         <div class="shop-scroll">
           <div class="shop-headers">
-            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span></span>
+            <span>샵명</span><span>구분</span><span>D/C%</span><span>판매액(฿)</span><span>COM</span><span>커미션(฿)</span><span class="kb-col">KB%</span><span class="kb-col">KB COM(฿)</span><span class="kb-col">외상체크</span><span></span>
           </div>
           <div id="herb-list"></div>
         </div>
@@ -1322,6 +1332,10 @@
       </div>
 
       <div class="total-row"><span>쇼핑 커미션 합계</span><span id="shop-total">฿0</span></div>
+      <!-- KB·외상 합계는 어드민만. .admin-only는 JS가 display를 block으로 덮어써
+           flex 레이아웃이 깨지므로, role 클래스 기반 CSS로 숨긴다. -->
+      <div class="total-row shop-admin-total"><span>KB COM 합계</span><span id="shop-kb-total">฿0</span></div>
+      <div class="total-row shop-admin-total"><span>외상 합계</span><span id="shop-credit-total">฿0</span></div>
     </div>
   </div>
 
@@ -2329,7 +2343,7 @@ function initData() {
   ['jewell','latex','beomrung','taiko','herb'].forEach(k => {
     const defDc = k === 'herb' ? 0 : '';
     const defCom = k === 'herb' ? 50 : '';
-    state.shopping[k] = [{ id:uid(), name:'', type:'', dc:defDc, sale:'', com:defCom, commission:0, kbPct:getDefaultKbPct(k,''), kbCom:0 }];
+    state.shopping[k] = [{ id:uid(), name:'', type:'', dc:defDc, sale:'', com:defCom, commission:0, kbPct:getDefaultKbPct(k,''), kbCom:0, credit:'' }];
   });
   // 일차 패널 정리
   document.querySelectorAll('.day-panel').forEach(p => p.remove());
@@ -3134,6 +3148,20 @@ function renderShop(key) {
     inKBCom.dataset.role='kbcom';
     inKBCom.value = row.kbCom ? fmtNum(row.kbCom) : '';
 
+    // 외상체크 (฿, Admin만 노출) — 외상 판매액을 직접 적어두는 칸. 커미션 계산에는 안 들어간다.
+    const inCredit = document.createElement('input');
+    inCredit.type='text'; inCredit.inputMode='numeric'; inCredit.placeholder='외상';
+    inCredit.className='credit-input kb-col';
+    inCredit.dataset.role='credit';
+    inCredit.value = row.credit ? fmtNum(row.credit) : '';
+    inCredit.addEventListener('input', e=>{
+      const raw = e.target.value.replace(/,/g,'').replace(/[^0-9.]/g,'');
+      row.credit = raw;
+      e.target.value = raw ? fmtNum(raw) : '';
+      calcShopTotal();
+      scheduleSave();
+    });
+
     // 삭제
     const btnDel = document.createElement('button');
     btnDel.className='btn-delete'; btnDel.textContent='✕';
@@ -3147,6 +3175,7 @@ function renderShop(key) {
     div.appendChild(inCommission);
     div.appendChild(inKBPct);
     div.appendChild(inKBCom);
+    div.appendChild(inCredit);
     div.appendChild(btnDel);
     list.appendChild(div);
   });
@@ -3253,7 +3282,7 @@ function addShopRow(key) {
   const defKb = getDefaultKbPct(key, '');
   const defDc = key === 'herb' ? 0 : '';
   const defCom = key === 'herb' ? 50 : '';
-  state.shopping[key].push({id:uid(),name:SHOP_NAMES[key]||'',type:'',dc:defDc,sale:'',com:defCom,commission:0,kbPct:defKb,kbCom:0});
+  state.shopping[key].push({id:uid(),name:SHOP_NAMES[key]||'',type:'',dc:defDc,sale:'',com:defCom,commission:0,kbPct:defKb,kbCom:0,credit:''});
   renderShop(key);
   scheduleSave();
 }
@@ -3272,10 +3301,19 @@ function calcShopCat(key) {
   calcShopTotal();
 }
 function calcShopTotal() {
-  const total=Object.values(state.shopping).reduce((s,arr)=>s+arr.reduce((ss,r)=>ss+(parseFloat((r.commission||'').toString().replace(/,/g,''))||0),0),0);
-  const el=document.getElementById('shop-total');
+  const sumBy = f => Object.values(state.shopping).reduce(
+    (s,arr)=>s+arr.reduce((ss,r)=>ss+(parseFloat((f(r)||'').toString().replace(/,/g,''))||0),0), 0);
+  const total  = sumBy(r=>r.commission);
+  const kbTot  = sumBy(r=>r.kbCom);
+  const crTot  = sumBy(r=>r.credit);
+  const put = (id, v, prefix) => {
+    const el=document.getElementById(id);
+    if(el){ el.textContent=(prefix||'')+fmtTHB(v); el.style.color = v<0 ? '#c0392b' : ''; }
+  };
+  put('shop-total', total);
+  put('shop-kb-total', kbTot);
+  put('shop-credit-total', crTot);
   const badge=document.getElementById('shop-total-badge');
-  if(el){ el.textContent=fmtTHB(total); el.style.color=total<0?'#c0392b':''; }
   if(badge){ badge.textContent='커미션: '+fmtTHB(total); badge.style.color=total<0?'#c0392b':''; }
 }
 
@@ -3807,7 +3845,7 @@ function confirmReset(){
   // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
   state.optionCurrency = 'THB';
   SHOP_KEYS.forEach(k=>{
-    state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:getDefaultKbPct(k,''),kbCom:0}];
+    state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:getDefaultKbPct(k,''),kbCom:0,credit:''}];
     // 체크박스 해제 + 패널 숨김
     const chk = document.getElementById('chk-'+k);
     if(chk){ chk.checked=false; }
