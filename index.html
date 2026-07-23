@@ -1708,6 +1708,16 @@
       </div>
     </div>
 
+    <!-- 회사 정산서 코멘트 (Admin 전용, 한 줄) — 회사 정산서 출력에만 찍힌다 -->
+    <div class="summary-card settle-admin-card admin-only" id="admin-note-block" style="margin-bottom:10px;">
+      <div style="padding:10px 12px;">
+        <label for="st-admin-note" style="display:block;font-size:11px;font-weight:700;color:#c0392b;margin-bottom:5px;">메모</label>
+        <input type="text" id="st-admin-note" maxlength="200" placeholder="한 줄 메모"
+               style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fff;"
+               oninput="scheduleSave()">
+      </div>
+    </div>
+
     <div id="bottomPrintBtns" style="display:flex;gap:8px;margin-bottom:10px;">
       <button class="btn-print" style="flex:1;" onclick="printGuide()">🖨 가이드 정산서 출력</button>
       <button class="btn-print admin-only" id="btnPrintAdmin" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
@@ -3877,6 +3887,7 @@ const SAVE_FIELD_IDS = [
   'st-land1','st-land2','st-land3',
   'st-adm-exp2',                        // st-adm-exp1은 자동계산
   'inc-adm-land-krw',
+  'st-admin-note',                      // 회사 정산서 코멘트 (한 줄)
 ];
 
 const SHOP_KEYS = ['jewell','latex','beomrung','taiko','herb'];
