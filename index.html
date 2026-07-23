@@ -1965,9 +1965,14 @@ function syncEventContentsList() {
   const dl = document.getElementById('eventContents-list');
   if (!dl) return;
   normalizeEventContents();
-  // datalist는 optgroup을 지원하지 않으므로 label에 분류명을 실어 구분을 보여준다
+  // datalist는 optgroup을 지원하지 않으므로 label에 분류명을 실어 구분을 보여준다.
+  // 같은 문구가 두 분류에 들어 있으면 자동완성에 똑같은 줄이 두 번 뜨므로
+  // 값 기준으로 한 번만 남긴다 (앞선 분류가 우선).
+  const seen = new Set();
   dl.innerHTML = (appSettings.eventContents||[])
-    .flatMap(g => (g.items||[]).map(v=>`<option value="${cfgEsc(v)}" label="${cfgEsc(g.name)}">`))
+    .flatMap(g => (g.items||[]).map(v=>({v, g:g.name})))
+    .filter(o => { const k=o.v.trim(); if(seen.has(k)) return false; seen.add(k); return true; })
+    .map(o => `<option value="${cfgEsc(o.v)}" label="${cfgEsc(o.g)}">`)
     .join('');
 }
 async function loadSubmissions() {
@@ -4498,6 +4503,10 @@ function renderCfgEventContents(body) {
           <button class="ord-btn" ${ii===items.length-1?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},1)" title="아래로">▼</button>
         </div>
         <input id="cfg-gi-${gi}-${ii}" value="${cfgEsc(v)}" readonly>
+        <select title="분류 이동" onchange="moveCfgItemToGroup(${gi},${ii},this.value)"
+                style="flex-shrink:0;max-width:88px;border:1px solid var(--border);border-radius:6px;padding:5px 2px;font-size:11px;font-family:inherit;background:#fff;">
+          ${groups.map(t=>`<option value="${cfgEsc(t.name)}"${t.name===g.name?' selected':''}>${cfgEsc(t.name)}</option>`).join('')}
+        </select>
         <button class="edit-btn" onclick="startEditCfgGroupItem(${gi},${ii})">수정</button>
         <button class="del-btn" onclick="removeCfgGroupItem(${gi},${ii})">삭제</button>
       </div>`).join('');
@@ -4585,12 +4594,33 @@ function addCfgGroupItem(gi) {
   const inp = document.getElementById('cfgNewItem-' + gi);
   const v = (inp.value||'').trim();
   if (!v) return;
+  // 같은 문구가 다른 분류에 이미 있으면 자동완성에 중복으로 뜨므로 미리 막는다
+  const dup = appSettings.eventContents.find(g=>(g.items||[]).some(x=>x.trim()===v));
+  if (dup) {
+    alert(dup === appSettings.eventContents[gi]
+      ? `'${v}' 은(는) 이 분류에 이미 있습니다.`
+      : `'${v}' 은(는) '${dup.name}' 분류에 이미 있습니다.`);
+    return;
+  }
   appSettings.eventContents[gi].items.push(v);
   inp.value='';
   saveAppSettings();
   renderCfgEventContents(document.getElementById('cfgBody'));
   const again = document.getElementById('cfgNewItem-' + gi);
   if (again) again.focus();   // 연속 입력
+}
+
+// 항목을 다른 분류로 옮긴다 (기존 항목이 '기타'에 모여 있으므로 정리 수단이 필요)
+function moveCfgItemToGroup(gi, ii, targetName) {
+  const arr = appSettings.eventContents;
+  const from = arr[gi];
+  if (!from) return;
+  const to = arr.find(g=>g.name === targetName);
+  if (!to || to === from) { renderCfgEventContents(document.getElementById('cfgBody')); return; }
+  const moved = from.items.splice(ii,1)[0];
+  if (moved != null) to.items.push(moved);
+  saveAppSettings();
+  renderCfgEventContents(document.getElementById('cfgBody'));
 }
 
 function removeCfgGroupItem(gi, ii) {
