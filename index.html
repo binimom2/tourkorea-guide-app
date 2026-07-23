@@ -4549,57 +4549,93 @@ function renderCfgBody() {
 // ══════════════════════════════════════════════════════
 //  행사내용 설정: 분류별 관리 (분류 자체도 ＋로 추가/삭제/정렬)
 // ══════════════════════════════════════════════════════
+// 분류를 세로로 다 펼치면 화면이 너무 길어져서, 가로 탭으로 두고
+// 선택한 분류의 항목만 보여준다. ＋ 로 분류를 늘린다.
+let currentEventGroup = 0;
+let _cfgAddingGroup = false;
+
+function selectCfgGroup(gi) {
+  currentEventGroup = gi;
+  _cfgAddingGroup = false;
+  renderCfgEventContents(document.getElementById('cfgBody'));
+}
+function toggleAddCfgGroup() {
+  _cfgAddingGroup = !_cfgAddingGroup;
+  renderCfgEventContents(document.getElementById('cfgBody'));
+  const inp = document.getElementById('cfgNewGroup');
+  if (inp) inp.focus();
+}
+
 function renderCfgEventContents(body) {
   normalizeEventContents();
   const groups = appSettings.eventContents;
+  if (currentEventGroup >= groups.length) currentEventGroup = Math.max(0, groups.length-1);
+  const gi = currentEventGroup;
+  const g  = groups[gi];
 
-  const blocks = groups.map((g,gi)=>{
-    const items = g.items || [];
-    const rows = items.map((v,ii)=>`
-      <div class="cfg-list-item">
-        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
-          <button class="ord-btn" ${ii===0?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},-1)" title="위로">▲</button>
-          <button class="ord-btn" ${ii===items.length-1?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},1)" title="아래로">▼</button>
-        </div>
-        <input id="cfg-gi-${gi}-${ii}" value="${cfgEsc(v)}" readonly>
-        <select title="분류 이동" onchange="moveCfgItemToGroup(${gi},${ii},this.value)"
-                style="flex-shrink:0;max-width:88px;border:1px solid var(--border);border-radius:6px;padding:5px 2px;font-size:11px;font-family:inherit;background:#fff;">
-          ${groups.map(t=>`<option value="${cfgEsc(t.name)}"${t.name===g.name?' selected':''}>${cfgEsc(t.name)}</option>`).join('')}
-        </select>
-        <button class="edit-btn" onclick="startEditCfgGroupItem(${gi},${ii})">수정</button>
-        <button class="del-btn" onclick="removeCfgGroupItem(${gi},${ii})">삭제</button>
-      </div>`).join('');
-
-    return `
-      <div style="border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border);">
-          <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
-            <button class="ord-btn" ${gi===0?'disabled':''} onclick="moveCfgGroup(${gi},-1)" title="위로">▲</button>
-            <button class="ord-btn" ${gi===groups.length-1?'disabled':''} onclick="moveCfgGroup(${gi},1)" title="아래로">▼</button>
-          </div>
-          <input id="cfg-grp-${gi}" value="${cfgEsc(g.name)}" readonly
-                 style="flex:1;min-width:0;font-weight:800;background:transparent;border:1px solid transparent;">
-          <span style="font-size:11px;color:var(--text-sub);white-space:nowrap;">${items.length}개</span>
-          <button class="edit-btn" onclick="startEditCfgGroup(${gi})">이름수정</button>
-          <button class="del-btn" onclick="removeCfgGroup(${gi})">분류삭제</button>
-        </div>
-        <div style="padding:8px 10px;">
-          ${rows || '<p style="color:#aaa;font-size:12px;margin:2px 0 8px;">항목이 없습니다.</p>'}
-          <div class="cfg-add-row">
-            <input id="cfgNewItem-${gi}" placeholder="${cfgEsc(g.name)} 항목 추가"
-                   onkeydown="if(event.key==='Enter')addCfgGroupItem(${gi})">
-            <button class="cfg-add-btn" onclick="addCfgGroupItem(${gi})">추가</button>
-          </div>
-        </div>
-      </div>`;
+  // ── 가로 분류 탭 ──
+  const chips = groups.map((t,i)=>{
+    const on = i===gi;
+    return `<button onclick="selectCfgGroup(${i})" style="
+      flex-shrink:0;border:1.5px solid ${on?'var(--primary)':'var(--border)'};
+      background:${on?'var(--primary)':'#fff'};color:${on?'#fff':'var(--text-sub)'};
+      border-radius:16px;padding:5px 12px;font-size:12px;font-weight:700;
+      font-family:inherit;cursor:pointer;white-space:nowrap;">
+      ${cfgEsc(t.name)} <span style="opacity:.75;font-weight:600;">${(t.items||[]).length}</span>
+    </button>`;
   }).join('');
 
+  const addGroupUI = _cfgAddingGroup
+    ? `<span style="display:inline-flex;gap:4px;align-items:center;flex-shrink:0;">
+         <input id="cfgNewGroup" placeholder="새 분류명" onkeydown="if(event.key==='Enter')addCfgGroup()"
+                style="width:110px;border:1.5px solid var(--primary);border-radius:16px;padding:5px 10px;font-size:12px;font-family:inherit;">
+         <button class="cfg-add-btn" style="padding:5px 10px;font-size:12px;" onclick="addCfgGroup()">추가</button>
+         <button class="ord-btn" onclick="toggleAddCfgGroup()" title="취소">✕</button>
+       </span>`
+    : `<button onclick="toggleAddCfgGroup()" title="분류 추가" style="
+         flex-shrink:0;border:1.5px dashed var(--primary);background:#fff;color:var(--primary);
+         border-radius:16px;padding:5px 12px;font-size:13px;font-weight:800;
+         font-family:inherit;cursor:pointer;">＋</button>`;
+
+  if (!g) {
+    body.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">${addGroupUI}</div>
+      <p style="color:#aaa;font-size:13px;padding:8px 0;">분류가 없습니다. ＋로 추가하세요.</p>`;
+    return;
+  }
+
+  const items = g.items || [];
+  const rows = items.map((v,ii)=>`
+    <div class="cfg-list-item">
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+        <button class="ord-btn" ${ii===0?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},-1)" title="위로">▲</button>
+        <button class="ord-btn" ${ii===items.length-1?'disabled':''} onclick="moveCfgGroupItem(${gi},${ii},1)" title="아래로">▼</button>
+      </div>
+      <input id="cfg-gi-${gi}-${ii}" value="${cfgEsc(v)}" readonly>
+      <select title="분류 이동" onchange="moveCfgItemToGroup(${gi},${ii},this.value)"
+              style="flex-shrink:0;max-width:88px;border:1px solid var(--border);border-radius:6px;padding:5px 2px;font-size:11px;font-family:inherit;background:#fff;">
+        ${groups.map(t=>`<option value="${cfgEsc(t.name)}"${t.name===g.name?' selected':''}>${cfgEsc(t.name)}</option>`).join('')}
+      </select>
+      <button class="edit-btn" onclick="startEditCfgGroupItem(${gi},${ii})">수정</button>
+      <button class="del-btn" onclick="removeCfgGroupItem(${gi},${ii})">삭제</button>
+    </div>`).join('');
+
   body.innerHTML = `
-    ${blocks || '<p style="color:#aaa;font-size:13px;padding:8px 0;">분류가 없습니다.</p>'}
-    <div class="cfg-add-row" style="border-top:2px solid var(--border);padding-top:12px;margin-top:4px;">
-      <input id="cfgNewGroup" placeholder="새 분류 추가 (예: 쇼핑)"
-             onkeydown="if(event.key==='Enter')addCfgGroup()">
-      <button class="cfg-add-btn" onclick="addCfgGroup()">＋ 분류 추가</button>
+    <div style="display:flex;gap:6px;overflow-x:auto;align-items:center;padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid var(--border);">
+      ${chips}${addGroupUI}
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+      <button class="ord-btn" ${gi===0?'disabled':''} onclick="moveCfgGroup(${gi},-1)" title="앞으로">◀</button>
+      <button class="ord-btn" ${gi===groups.length-1?'disabled':''} onclick="moveCfgGroup(${gi},1)" title="뒤로">▶</button>
+      <input id="cfg-grp-${gi}" value="${cfgEsc(g.name)}" readonly
+             style="flex:1;min-width:0;font-weight:800;background:transparent;border:1px solid transparent;">
+      <button class="edit-btn" onclick="startEditCfgGroup(${gi})">이름수정</button>
+      <button class="del-btn" onclick="removeCfgGroup(${gi})">분류삭제</button>
+    </div>
+    ${rows || '<p style="color:#aaa;font-size:12px;margin:2px 0 8px;">항목이 없습니다.</p>'}
+    <div class="cfg-add-row">
+      <input id="cfgNewItem-${gi}" placeholder="${cfgEsc(g.name)} 항목 추가"
+             onkeydown="if(event.key==='Enter')addCfgGroupItem(${gi})">
+      <button class="cfg-add-btn" onclick="addCfgGroupItem(${gi})">추가</button>
     </div>`;
 }
 
@@ -4611,6 +4647,9 @@ function addCfgGroup() {
   appSettings.eventContents.push({name:v, items:[]});
   inp.value='';
   saveAppSettings();
+  // 새로 만든 분류를 바로 열어준다 (항목을 이어서 넣는 흐름)
+  currentEventGroup = appSettings.eventContents.length - 1;
+  _cfgAddingGroup = false;
   renderCfgEventContents(document.getElementById('cfgBody'));
 }
 
@@ -4621,6 +4660,7 @@ function removeCfgGroup(gi) {
   if (!confirm(`'${g.name}' 분류를 삭제합니다.` + (n ? `\n안에 있는 항목 ${n}개도 함께 삭제됩니다.` : ''))) return;
   appSettings.eventContents.splice(gi,1);
   saveAppSettings();
+  currentEventGroup = Math.max(0, Math.min(gi, appSettings.eventContents.length-1));
   renderCfgEventContents(document.getElementById('cfgBody'));
 }
 
@@ -4630,6 +4670,7 @@ function moveCfgGroup(gi, dir) {
   if (j < 0 || j >= arr.length) return;
   [arr[gi], arr[j]] = [arr[j], arr[gi]];
   saveAppSettings();
+  currentEventGroup = j;   // 옮긴 분류를 계속 보고 있게
   renderCfgEventContents(document.getElementById('cfgBody'));
 }
 
