@@ -221,8 +221,17 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
       <h2 class="steph">5. 차량<span class="csum" id="sum5"></span><span class="cedit">수정</span></h2>
       <!-- 차량은 기본 포함. 필요 없을 때만 빼도록 체크를 둔다(대부분 쓰기 때문). -->
       <div class="cbody">
-        <div class="f"><label>차량 요금 기준</label><select id="vehGroup"></select>
-          <div class="hint" id="vehAuto" style="color:#2e7d32;margin-top:4px;"></div></div>
+        <!-- 요금 기준(지역 조합)은 내부 정보라 손님 앞에서 펼쳐 두지 않는다.
+             평소에는 차량명만 보이고, 직접 골라야 할 때만 편다. -->
+        <div class="f">
+          <label>차량</label>
+          <div id="vehShown" style="font-weight:700;font-size:15px;padding:2px 0;">12인승 밴</div>
+          <div class="hint" id="vehAuto" style="color:#2e7d32;margin-top:2px;"></div>
+          <a id="vehPickToggle" style="display:inline-block;margin-top:4px;font-size:12px;color:#5E6F66;text-decoration:underline dotted;cursor:pointer;">요금 기준 직접 고르기</a>
+          <div id="vehPickWrap" style="display:none;margin-top:5px;">
+            <select id="vehGroup"></select>
+          </div>
+        </div>
         <label for="noVeh" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="noVeh"> 차량이 필요 없습니다
         </label>
@@ -413,6 +422,12 @@ function vehName(g){
   // 표시명에 이미 «12인승»이 들어 있으면 뒤에 또 붙이지 않는다
   return (g.seats && nm.indexOf(g.seats+'인승')<0) ? `${nm} (${g.seats}인승)` : nm;
 }
+// 접힌 상태에서 보이는 차량명. 지역 조합은 여기에 절대 적지 않는다.
+function syncVehShown(){
+  const el=$('#vehShown'); if(!el) return;
+  const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
+  el.textContent=vehName(g);
+}
 // 한 대에 몇 명까지 태우는지. 관리에서 안 넣었으면 기존 동작(7명)을 유지한다.
 function vehMaxPax(g){ const n=+(g&&g.maxPax); return n>0?n:7; }
 /* 고른 지역과 요금 열의 «적용 지역 조합»이 같으면 그 열을 자동으로 고른다.
@@ -432,6 +447,7 @@ function autoPickVehicleGroup(){
   } else if(hit<0){
     const tag=$('#vehAuto'); if(tag) tag.textContent='';
   }
+  syncVehShown();
 }
 const LOCK_FIRST='한국에서 오전 출발을 체크하면 1일차도 라운딩할 수 있습니다';
 const LOCK_LAST='태국에서 오전 출국이면 마지막 날은 라운딩할 수 없습니다';
@@ -523,11 +539,14 @@ function renderVehicleUI(){
   const sel=$('#vehGroup');
   const groups=P.vehicleGroups||[];
   const cur=sel.value;
-  // 직원이 고르는 칸이라 요금기준 라벨도 같이 보여준다(손님 견적서에는 표시명만 나간다)
+  /* 펼쳤을 때만 보이는 칸이라 요금기준(지역 조합)을 같이 적는다 —
+     직접 골라야 할 때 구분할 방법이 이것뿐이다. 평소엔 이 칸 자체가 접혀 있고,
+     손님 견적서에는 표시명만 나간다. */
   sel.innerHTML=groups.map((g,i)=>{
     const combos=(g.combos||[]).map(c=>c.join('+')).join(' / ');
     return `<option value="${i}">${vehName(g)}${combos?' — '+combos:(g.label?' — '+g.label:'')}</option>`;
   }).join('') || '<option value="">등록된 차량요금 없음</option>';
+  syncVehShown();
   if(cur && groups[+cur]) sel.value=cur;
   const nt=$('#vehNotes');
   const notes=(P.vehicleNotes||[]).filter(Boolean);
@@ -1087,6 +1106,16 @@ document.addEventListener('focusin',e=>{
 /* ── 이벤트 ── */
 // 지역 칩 클릭 / 빼기 / 접힌 칸 펴기
 document.addEventListener('click',e=>{
+  // 요금 기준(지역 조합)은 눌렀을 때만 편다 — 손님 앞에서 펼쳐 두지 않는다.
+  // 아래 .steph 접기 처리보다 먼저 잡아야 카드가 같이 접히지 않는다.
+  if(e.target.id==='vehPickToggle'){
+    const w=$('#vehPickWrap'); if(!w) return;
+    const open=w.style.display==='none';
+    w.style.display=open?'':'none';
+    e.target.textContent=open?'요금 기준 접기':'요금 기준 직접 고르기';
+    e.stopPropagation();
+    return;
+  }
   const ed=e.target.closest('.cedit,.steph');
   if(ed&&!e.target.closest('input,label,select,button')){
     const st=ed.closest('.step');
@@ -1130,7 +1159,7 @@ document.addEventListener('change',e=>{
   if(t.id==='useHotel'){ renderHotels(); autoFold('s3'); calc(); return; }
   if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; autoFold('s6'); calc(); return; }
   // 직원이 직접 고르면 자동 적용 안내는 지운다(직접 고른 값이 우선)
-  if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; calc(); return; }
+  if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; syncVehShown(); calc(); return; }
   if(t.id==='noVeh'){ const w=$('#vehGroup'); if(w) w.closest('.f').style.display=t.checked?'none':''; autoFold('s5'); calc(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
   if(t.dataset.hroom!==undefined){ hotelRoom[t.dataset.hroom]=t.value; calc(); return; }
