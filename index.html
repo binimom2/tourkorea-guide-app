@@ -753,7 +753,10 @@
 
     .field-group { margin-bottom: 2px; }
     .field-group label { font-size: 10px; }
-    /* iOS 자동 줌 방지: 16px 유지, 패딩만 축소 */
+    /* 기본정보는 2컬럼이라 칸이 넓다 → 읽기 편한 16px 유지.
+       좁은 표(옵션·기가팁·쇼핑·행사비)는 글자가 잘려서 14px로 낮췄다.
+       그쪽이 16px 미만이 된 이상 iOS 포커스 확대는 어차피 발생하므로,
+       여기서 16px를 지킨다고 확대가 막히지는 않는다 — 순전히 가독성 때문. */
     .field-group input,
     .field-group select { font-size: 16px; padding: 5px 8px; }
 
@@ -764,7 +767,7 @@
     /* 인원 입력 행 */
     .pax-row { flex-wrap: wrap; gap: 4px; }
     .pax-item { font-size: 11px; }
-    .pax-item input { width: 46px; font-size: 16px; padding: 4px 4px; }
+    .pax-item input { width: 46px; font-size: 14px; padding: 4px 4px; }
 
     /* 섹션 카드 */
     .section-card { border-radius: 8px; margin-bottom: 6px; }
@@ -792,10 +795,10 @@
       gap: 4px 4px;
       padding: 6px 8px;
     }
-    .expense-row > select           { grid-area: cat; font-size: 16px !important; padding: 5px 3px !important; }
-    .expense-row > input:nth-child(2){ grid-area: det; font-size: 16px !important; padding: 5px 8px !important; } /* 내용 */
-    .expense-row > input:nth-child(3){ grid-area: pax; font-size: 16px !important; padding: 5px 3px !important; text-align: right; }
-    .expense-row > input:nth-child(4){ grid-area: amt; font-size: 16px !important; padding: 5px 3px !important; text-align: right; }
+    .expense-row > select           { grid-area: cat; font-size: 13px !important; padding: 5px 3px !important; }
+    .expense-row > input:nth-child(2){ grid-area: det; font-size: 14px !important; padding: 5px 8px !important; } /* 내용 */
+    .expense-row > input:nth-child(3){ grid-area: pax; font-size: 14px !important; padding: 5px 3px !important; text-align: right; }
+    .expense-row > input:nth-child(4){ grid-area: amt; font-size: 14px !important; padding: 5px 3px !important; text-align: right; }
     .expense-row > .btn-insert      { display: none !important; }
     .expense-row > .btn-delete      { grid-area: del; width: 100%; height: 100%; }
 
@@ -859,9 +862,10 @@
     #gigatip-list .option-row-grid > :nth-child(6) { grid-area: total; }
     #gigatip-list .option-row-grid > :nth-child(7) { grid-area: del; }
 
-    /* iOS 포커스 자동확대 방지: 입력칸 16px 유지 */
-    .option-row-grid input { font-size: 16px !important; padding: 7px 5px !important; }
-    .option-row-grid select { font-size: 13px !important; padding: 7px 2px !important; }
+    /* 글자 14px. 16px면 iOS 포커스 자동확대는 막지만 좁은 칸에서 숫자가 잘려
+       입력이 더 불편하다 — 확대 대신 가독 폭을 택했다. */
+    .option-row-grid input { font-size: 14px !important; padding: 7px 5px !important; }
+    .option-row-grid select { font-size: 12px !important; padding: 7px 2px !important; }
     .option-row-grid .btn-delete { width: 100%; height: 100%; min-height: 34px; }
 
     /* 옵션 요약 카드 */
@@ -877,13 +881,12 @@
       gap: 4px;
       padding: 4px 8px;
     }
-    .shop-row input,
-    .shop-row input,
-    .shop-row select { font-size: 16px !important; padding: 6px 4px !important; }
+    .shop-row input { font-size: 14px !important; padding: 6px 4px !important; }
+    .shop-row select { font-size: 12px !important; padding: 6px 3px !important; }
 
     /* 기준환율 바 */
     .settle-rate-label { font-size: 11px !important; }
-    .settle-rate-input { font-size: 16px !important; width: 70px !important; padding: 6px 6px !important; }
+    .settle-rate-input { font-size: 14px !important; width: 70px !important; padding: 6px 6px !important; }
 
     /* 정산서 탭 */
     .settle-grid2,.settle-grid3,.settle-grid4,.settle-grid5 { gap: 6px !important; }
