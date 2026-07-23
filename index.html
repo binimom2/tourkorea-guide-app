@@ -833,8 +833,10 @@
     }
     /* 옵션: [옵션명           ][✕] / [통화][판매가][인원][합계][원가]
        스피너를 없앴으므로 인원칸을 줄이고 금액칸에 폭을 더 준다 */
+    /* 폭은 글자 실측 기준: 통화 "฿ THB"(화살표 포함 52px), 인원 "인원"(26px),
+       금액칸은 6자리 "123,456"(57px)가 들어가야 한다 */
     #option-list .option-row-grid {
-      grid-template-columns: 54px 1fr 34px 1fr 1fr 24px !important;
+      grid-template-columns: 60px 1fr 40px 1fr 1fr 24px !important;
       grid-template-areas:
         "name name  name name  name del"
         "cur  price pax  total cost cost" !important;
@@ -849,7 +851,7 @@
 
     /* 기가팁: [구분][내용            ][✕] / [통화][판매가][인원][합계] */
     #gigatip-list .option-row-grid {
-      grid-template-columns: 86px 1fr 34px 1fr 24px !important;
+      grid-template-columns: 86px 1fr 40px 1fr 24px !important;
       grid-template-areas:
         "type detail detail detail del"
         "cur  price  pax    total  total" !important;
