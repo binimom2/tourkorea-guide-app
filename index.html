@@ -820,6 +820,11 @@
       left: auto !important;
       border-right: none !important;
     }
+    /* 좌측 고정컬럼용 배경(#f0f4f8)이 모바일에도 남아 옵션명·통화·판매가만
+       색이 달라 보였다. 고정을 껐으니 입력칸 배경을 하나로 통일한다.
+       합계는 계산 결과라 연두색 유지, 삭제 버튼은 제외. */
+    .option-row-grid input:not([data-role="total"]),
+    .option-row-grid select { background: var(--surface2) !important; }
     /* 헤더행은 2줄 레이아웃과 열이 맞지 않으므로 숨김 (칸 이름은 placeholder로 표시) */
     #option-headers-row,
     #gigatip-headers-row { display: none !important; }
