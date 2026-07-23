@@ -1952,8 +1952,11 @@ async function loadAppSettings() {
     if (d) { appSettings = Object.assign(appSettings, d); localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); }
     else { const r = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(r) appSettings = Object.assign(appSettings, r); }
   } catch(e) {}
-  // 구버전 평면 배열이면 분류 구조로 승격하고 그 결과를 즉시 저장
-  try { if (normalizeEventContents()) await saveAppSettings(); } catch(e) {}
+  // 구버전 평면 배열이면 분류 구조로 승격한다. 메모리에서만 바꾸고 저장은 하지 않는다.
+  // 로드 도중 저장하면, Supabase 로드가 실패해 localStorage 구버전으로 떨어진 세션이
+  // 그 상태를 서버에 그대로 덮어써서 다른 설정(상품명·구분)까지 되돌릴 수 있다.
+  // 실제 저장은 어드민이 설정관리에서 손댈 때 일어난다.
+  try { normalizeEventContents(); } catch(e) {}
 }
 async function saveAppSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings));
@@ -4002,6 +4005,10 @@ function loadData() {
       if (val !== null) el.value = val;
     });
     Object.assign(state.info, savedInfo);
+    // 상품명은 select라 목록에 없는 값을 넣으면 빈칸이 된다 → 복원한 값으로 목록을 다시 만든다
+    const _pn = (savedInfo.productName !== undefined && savedInfo.productName !== '')
+                ? savedInfo.productName : (fields.productName || '');
+    populateProductDropdown(_pn);
   } catch(e) {}
 
   // ② state 메모리 복원
@@ -4485,12 +4492,18 @@ function updateSettleCode() {
 }
 
 // ── 상품명 드롭다운 채우기 ──────────────────────────────
-function populateProductDropdown() {
+function populateProductDropdown(keepValue) {
   const sel = document.getElementById('productName');
   if (!sel) return;
-  const cur = (state.info && state.info.productName) || '';
-  sel.innerHTML = '<option value="">-- 선택 --</option>' +
-    (appSettings.products||[]).map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
+  // 화면에 이미 값이 있으면 그것을 우선한다(제출건 열람 중에는 state.info보다 최신)
+  const cur = keepValue || sel.value || (state.info && state.info.productName) || '';
+  const list = appSettings.products || [];
+  // 저장된 상품명이 목록에 없으면 select는 조용히 빈칸이 된다.
+  // 설정관리에서 지웠거나 설정 로드가 늦은 경우라도 값 자체는 보여야 하므로 옵션으로 살려 둔다.
+  const orphan = (cur && !list.includes(cur))
+    ? `<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur} (목록에 없음)</option>` : '';
+  sel.innerHTML = '<option value="">-- 선택 --</option>' + orphan +
+    list.map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
 }
 
 // ── 새 기본정보 필드 복원 ──────────────────────────────
@@ -5527,6 +5540,8 @@ function applyStateToUI() {
       const el = document.getElementById(id);
       if (el && state.info[id] !== undefined) el.value = state.info[id];
     });
+    // 상품명 select: 저장값이 목록에 없어도 보이게
+    populateProductDropdown(state.info.productName || '');
   } catch(e) {}
   // ② 기존 일차 패널 제거 후 재생성
   try {
