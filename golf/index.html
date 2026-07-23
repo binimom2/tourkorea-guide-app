@@ -218,9 +218,13 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 
   <div class="row2">
     <div class="card step" id="s5">
-      <h2 class="steph">5. 차량 선택<span class="csum" id="sum5"></span><span class="cedit">수정</span></h2>
+      <h2 class="steph">5. 차량<span class="csum" id="sum5"></span><span class="cedit">수정</span></h2>
+      <!-- 차량은 기본 포함. 필요 없을 때만 빼도록 체크를 둔다(대부분 쓰기 때문). -->
       <div class="cbody">
         <div class="f"><label>차량 요금 기준</label><select id="vehGroup"></select></div>
+        <label for="noVeh" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="noVeh"> 차량이 필요 없습니다
+        </label>
       </div>
     </div>
 
@@ -391,6 +395,20 @@ function amDepOn(){ const c=$('#amDep'); return !!(c&&c.checked); }
 function amRetOn(){ const c=$('#amRet'); return !!(c&&c.checked); }
 function useHotelOn(){ const c=$('#useHotel'); return !!(c&&c.checked); }
 function useGuideOn(){ const c=$('#useGuide'); return !!(c&&c.checked); }
+// 차량은 기본 포함 — '필요 없습니다'를 체크했을 때만 뺀다(숙소·가이드와 반대)
+function useVehOn(){ const c=$('#noVeh'); return !(c&&c.checked); }
+/* 손님에게 보여줄 차량명. 요금기준 라벨에는 «(노출금지--방파)» 같은 내부 메모가 섞여 있어
+   그대로 쓰면 견적서로 새어나간다. 관리에서 표시명(name)을 따로 넣으면 그것을 쓰고,
+   없으면 라벨에서 내부 메모를 떼어낸 앞부분을 쓴다. */
+function vehName(g){
+  if(!g) return '차량';
+  if(g.name) return String(g.name).trim();
+  let s=String(g.label||'').trim();
+  s=s.replace(/\s*\([^()]*노출\s*금지[^()]*\)\s*/g,' ');  // (노출금지--방파) 통째로
+  s=s.split('--')[0];                                      // 남은 '--메모' 꼬리
+  s=s.replace(/\s{2,}/g,' ').trim();
+  return s||'차량';
+}
 const LOCK_FIRST='한국에서 오전 출발을 체크하면 1일차도 라운딩할 수 있습니다';
 const LOCK_LAST='태국에서 오전 출국이면 마지막 날은 라운딩할 수 없습니다';
 /* 라운딩을 못 하는 날인지 — 1일차는 밤 비행기면 못 하고(오전 출발 체크 시 열림),
@@ -561,12 +579,15 @@ function calc(){
     lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(unit)} × ${pax}명`,v:unit*pax});
   });
   // 2) 차량 (선택한 지역 조합의 기간값 + 1박추가 확장)
-  const vgIdx=+($('#vehGroup').value||0);
-  const vGroup=(P.vehicleGroups||[])[vgIdx];
   const amDep=!!($('#amDep')&&$('#amDep').checked);   // 오전 출발 = 첫날부터 온종일
-  const vt=tierValue((vGroup&&vGroup.periods)||{},nights,'amount',amDep);
-  if(vt){ const vans=Math.ceil(pax/7); lines.push({t:`차량 (12인승 밴)${vGroup&&vGroup.label?' · '+vGroup.label:''}`,s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
-  else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
+  if(useVehOn()){
+    const vgIdx=+($('#vehGroup').value||0);
+    const vGroup=(P.vehicleGroups||[])[vgIdx];
+    const vt=tierValue((vGroup&&vGroup.periods)||{},nights,'amount',amDep);
+    // 내부 화면·내부용 견적서에만 요금기준 라벨을 붙인다(라벨에 내부 메모가 섞여 있음)
+    if(vt){ const vans=Math.ceil(pax/7); lines.push({t:`${vehName(vGroup)}${vGroup&&vGroup.label?' · '+vGroup.label:''}`,s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
+    else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
+  }
   // 3) 핸들링
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
   if(ht) lines.push({t:'핸들링 차지',s:`${won(ht.value)}${ht.extra?` (기본 ${won(ht.base)} +1박추가 ${won(ht.oneMore)}×${ht.extra})`:''} × ${pax}명`,v:ht.value*pax});
@@ -632,8 +653,11 @@ function quoteIncludes(mode){
   const out=[];
   const rounds=dayState.filter(s=>s.round&&s.course).length;
   if(rounds) out.push(`골프 ${rounds}회 — 그린피 · 캐디피 · 전동카트 포함`);
-  const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
-  out.push(`차량 (12인승 밴)${vg&&vg.label?' · '+vg.label:''} — 전 일정 이용`);
+  if(useVehOn()){
+    const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
+    // 손님용에는 표시명만. 요금기준 라벨(내부 메모 포함)은 내부용에만 붙인다.
+    out.push(`차량 ${vehName(vg)} — 전 일정 이용${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
+  }
   if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
   if(useHotelOn()){
@@ -998,7 +1022,11 @@ function stepSummary(id){
       const done=dayState.filter(st=>st.round&&st.course);
       return done.length?`${done.length}회 · ${done.map(st=>st.course).join(', ')}`:'';
     }
-    case 's5': { const sel=$('#vehGroup'); return (sel&&sel.selectedOptions[0])?sel.selectedOptions[0].textContent:''; }
+    case 's5': {
+      if(!useVehOn()) return '차량 없이';
+      const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
+      return g?vehName(g):'';
+    }
     case 's6': return useGuideOn()?($('#guide').value||''):'가이드 없이';
   }
   return '';
@@ -1070,6 +1098,7 @@ document.addEventListener('change',e=>{
   if(t.id==='useHotel'){ renderHotels(); autoFold('s3'); calc(); return; }
   if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; autoFold('s6'); calc(); return; }
   if(t.id==='vehGroup'){ calc(); return; }
+  if(t.id==='noVeh'){ const w=$('#vehGroup'); if(w) w.closest('.f').style.display=t.checked?'none':''; autoFold('s5'); calc(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
   if(t.dataset.hroom!==undefined){ hotelRoom[t.dataset.hroom]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
