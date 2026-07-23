@@ -241,10 +241,23 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
     <div class="dlrow">
       <button type="button" class="dlbtn" id="dlCustomer" onclick="downloadQuote('customer')">📷 손님용 견적서</button>
       <button type="button" class="dlbtn ghost" id="dlInternal" onclick="downloadQuote('internal')">📷 내부용 견적서</button>
+      <button type="button" class="dlbtn ghost" id="dlHistory" onclick="openQuoteHistory()">🗂 견적 이력</button>
     </div>
   </section>
   <!-- 견적서 그림을 뜨기 위한 자리. 화면 밖에 두고 캡처만 한다. -->
   <div id="quoteHost" aria-hidden="true" style="position:absolute;left:-10000px;top:0;"></div>
+
+  <!-- 견적 이력: 보관된 견적을 그때 금액 그대로 다시 뽑는다 -->
+  <div id="qhModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:620px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#123A2B;color:#fff;">
+        <b style="font-size:14px;">🗂 견적 이력</b>
+        <button type="button" onclick="document.getElementById('qhModal').style.display='none'"
+                style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+      </div>
+      <div id="qhBody" style="overflow:auto;"></div>
+    </div>
+  </div>
   <div class="hint" id="vehNotes"></div>
   <div class="hint">※ 표시 금액은 THB 기준, 항공료 미포함. 태국 공휴일·토·일은 주말 요금 적용.</div>
 </div>
@@ -669,17 +682,43 @@ async function ensureQuoteNo(){
 /* 견적서 한 장을 만든다. mode='customer'면 금액은 1인 요금·총액만,
    'internal'이면 항목별 금액까지 적는다. html2canvas가 그대로 찍으므로
    색은 변수 말고 실제 값으로 쓴다. */
-function buildQuoteHtml(mode){
+/* 견적 한 건을 그 시점 그대로 얼려 담는다.
+   요금표(P)·환율(FX_RATE)·공휴일은 나중에 바뀌므로, 다시 계산할 여지를 두지 않고
+   화면에 찍힌 값(금액·주말여부·포함사항)을 결과째로 저장한다.
+   저장본으로 견적서를 다시 뽑으면 그날 손님에게 준 것과 같은 금액이 나온다. */
+function quoteSnapshot(){
   const start=$('#startDate').value;
-  const team=($('#teamName').value||'').trim();
-  const n=LAST.nights, pax=LAST.pax;
-  const route=ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-';
+  const n=LAST.nights;
   const end=(()=>{ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); })();
-  const flight=[amDepOn()?'한국 오전 출발':'한국 야간 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · ');
+  return {
+    quoteNo: QUOTE_NO||'',
+    issued: iso(new Date()),
+    savedAt: new Date().toISOString(),
+    start, end,
+    team: ($('#teamName').value||'').trim(),
+    pax: LAST.pax, nights: n,
+    route: ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-',
+    flight: [amDepOn()?'한국 오전 출발':'한국 야간 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · '),
+    days: dayState.map(st=>({
+      date:st.date, region:st.region||'', course:st.course||'', holes:st.holes||'', round:!!st.round,
+      we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
+    })),
+    includes: { customer: quoteIncludes('customer'), internal: quoteIncludes('internal') },
+    fx: FX_RATE||0,
+    lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
+    total: LAST.total, per: LAST.per
+  };
+}
 
-  const days=dayState.map(st=>{
-    const d=new Date(st.date+'T00:00:00');
-    const we=isWeekend(d)||isHoliday(st.date);
+function buildQuoteHtml(mode, Q){
+  Q = Q || quoteSnapshot();
+  const start=Q.start, end=Q.end, team=Q.team;
+  const n=Q.nights, pax=Q.pax;
+  const route=Q.route, flight=Q.flight;
+  const FX=Q.fx||0, QNO=Q.quoteNo||'';
+
+  const days=(Q.days||[]).map(st=>{
+    const we=st.we;
     const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'<span style="color:#9aa4a0">라운딩 없음</span>';
     return `<tr>
       <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;font-weight:700">${fmtDay(st.date)}</td>
@@ -693,7 +732,7 @@ function buildQuoteHtml(mode){
     <div style="margin-top:16px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">항목별 금액 <span style="font-weight:600;color:#c0492f">· 내부 검토용</span></div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
-        ${LAST.lines.map(l=>`<tr>
+        ${(Q.lines||[]).map(l=>`<tr>
           <td style="padding:6px 8px;border-bottom:1px solid #e7e3d8">${esc(l.t)}${l.warn?' <span style="color:#c0492f;font-weight:700">⚠</span>':''}
             <span style="display:block;color:#7c867f;font-size:10.5px;margin-top:1px">${esc(l.s)}</span></td>
           <td style="padding:6px 8px;border-bottom:1px solid #e7e3d8;text-align:right;white-space:nowrap;font-weight:700">${won(l.v)}</td>
@@ -704,7 +743,7 @@ function buildQuoteHtml(mode){
   /* 손님용 견적서에는 밧을 한 글자도 적지 않는다 — 전부 원화다.
      «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이라, 손님이 직접 곱해도 딱 맞는다.
      환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. */
-  const perKrw=(FX_RATE>0)?krwUp(LAST.per*FX_RATE):0;
+  const perKrw=(FX>0)?krwUp(Q.per*FX):0;
   const totKrw=perKrw*pax;
   const moneyRow=(k,v,opt)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;${(opt&&opt.top)||''}">
       <span style="font-size:${(opt&&opt.big)?15:13}px;${(opt&&opt.big)?'font-weight:800':'opacity:.85'}">${k}</span>
@@ -714,10 +753,10 @@ function buildQuoteHtml(mode){
   const RULE='border-top:2px solid #E8A33D;margin-top:9px;padding-top:11px;';
   const sub=t=>`<div style="text-align:right;font-size:13px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:2px">${t}</div>`;
   const moneyBox=(mode==='internal')
-    ? moneyRow('1인 요금',`${won(LAST.per)} <span style="font-size:12px;opacity:.7">THB</span>`)
+    ? moneyRow('1인 요금',`${won(Q.per)} <span style="font-size:12px;opacity:.7">THB</span>`)
       +(perKrw?sub(`${won(perKrw)} 원`):'')
       +moneyRow('인원수',`× ${pax}명`,{top:DASH})
-      +moneyRow('총액',`${won(LAST.total)} <span style="font-size:13px">THB</span>`,{top:RULE,big:1})
+      +moneyRow('총액',`${won(Q.total)} <span style="font-size:13px">THB</span>`,{top:RULE,big:1})
       +(perKrw?sub(`한화 ${won(totKrw)} 원`):'')
     : moneyRow('1인 요금',`${won(perKrw)} <span style="font-size:12px;opacity:.7">원</span>`)
       +moneyRow('인원수',`× ${pax}명`,{top:DASH})
@@ -730,8 +769,8 @@ function buildQuoteHtml(mode){
         <div style="font-size:25px;font-weight:800;letter-spacing:-.03em;margin-top:2px">골프 견적서</div>
       </div>
       <div style="text-align:right;font-size:11.5px;color:#5E6F66">
-        ${QUOTE_NO?`<div style="font-size:13px;font-weight:800;color:#15211C;letter-spacing:.02em">${esc(QUOTE_NO)}</div>`:''}
-        발행일 ${iso(new Date())}${mode==='internal'?'<br><b style="color:#c0492f">내부용 (손님 전달 금지)</b>':''}
+        ${QNO?`<div style="font-size:13px;font-weight:800;color:#15211C;letter-spacing:.02em">${esc(QNO)}</div>`:''}
+        발행일 ${esc(Q.issued||iso(new Date()))}${mode==='internal'?'<br><b style="color:#c0492f">내부용 (손님 전달 금지)</b>':''}
       </div>
     </div>
 
@@ -770,7 +809,7 @@ function buildQuoteHtml(mode){
     <div style="margin-top:16px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
-        ${quoteIncludes(mode).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
+        ${(((Q.includes||{})[mode==='internal'?'internal':'customer'])||[]).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
       </div>
     </div>
     ${detail}
@@ -781,7 +820,7 @@ function buildQuoteHtml(mode){
 
     <div style="margin-top:14px;font-size:11px;color:#5E6F66;line-height:1.7">
       ${mode==='internal'
-        ? `${FX_RATE>0?`※ 한화는 1밧 = ${FX_RATE} 원으로 환산해 1인 요금을 천원 단위로 올린 뒤 인원수를 곱한 금액입니다.<br>`:''}※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>`
+        ? `${FX>0?`※ 한화는 1밧 = ${FX} 원으로 환산해 1인 요금을 천원 단위로 올린 뒤 인원수를 곱한 금액입니다.<br>`:''}※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>`
         : `※ 표시 금액은 원화 기준이며 항공료는 포함되지 않습니다.<br>`}
       ※ 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
       ※ 골프장 사정과 환율 변동에 따라 금액이 달라질 수 있습니다.
@@ -798,6 +837,88 @@ function loadCanvasLib(){
     document.head.appendChild(s);
   });
 }
+/* ── 견적 보관 (guide_data / golf_quotes) ──
+   견적서를 뽑는 순간의 금액을 통째로 남긴다. 요금표를 나중에 고쳐도
+   지난 견적은 그때 금액 그대로 다시 뽑을 수 있다. */
+const QUOTES_KEY='golf_quotes';
+const QUOTES_MAX=500;          // 한 행(JSON)에 담으므로 상한을 둔다. 넘으면 오래된 것부터 빠진다.
+
+async function saveQuoteRecord(Q){
+  if(!Q||!Q.quoteNo) return false;
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key',QUOTES_KEY).maybeSingle();
+    let list=(row&&Array.isArray(row.data))?row.data:[];
+    list=list.filter(x=>x&&x.quoteNo!==Q.quoteNo);   // 같은 번호로 다시 뽑으면 최신본으로 교체
+    list.unshift(Q);
+    if(list.length>QUOTES_MAX) list=list.slice(0,QUOTES_MAX);
+    const {error}=await sb.from('guide_data').upsert({data_key:QUOTES_KEY,data:list,updated_at:new Date().toISOString()});
+    if(error) throw error;
+    return true;
+  }catch(e){ return false; }
+}
+
+async function loadQuoteRecords(){
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key',QUOTES_KEY).maybeSingle();
+    return (row&&Array.isArray(row.data))?row.data:[];
+  }catch(e){ return null; }   // null = 불러오기 실패(빈 목록과 구분)
+}
+
+async function openQuoteHistory(){
+  const box=$('#qhBody'); if(!box) return;
+  $('#qhModal').style.display='flex';
+  box.innerHTML='<div style="padding:18px;color:#5E6F66">불러오는 중…</div>';
+  const list=await loadQuoteRecords();
+  if(list===null){ box.innerHTML='<div style="padding:18px;color:#c0492f">견적 이력을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</div>'; return; }
+  if(!list.length){ box.innerHTML='<div style="padding:18px;color:#5E6F66">아직 보관된 견적이 없습니다.<br><span style="font-size:12px">견적서를 내려받으면 그때 금액이 자동으로 보관됩니다.</span></div>'; return; }
+  QH_LIST=list;
+  box.innerHTML=`
+    <div style="padding:10px 12px;border-bottom:1px solid #e7e3d8;">
+      <input id="qhSearch" placeholder="견적번호 · 팀명 · 날짜로 찾기" oninput="renderQuoteHistory()"
+             style="width:100%;box-sizing:border-box;border:1.5px solid #d8d2c4;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;">
+    </div>
+    <div id="qhList"></div>`;
+  renderQuoteHistory();
+}
+let QH_LIST=[];
+function renderQuoteHistory(){
+  const q=(($('#qhSearch')||{}).value||'').trim().toLowerCase();
+  const rows=QH_LIST.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route].join(' ').toLowerCase().includes(q));
+  $('#qhList').innerHTML = rows.length ? rows.map((r,i)=>{
+    const idx=QH_LIST.indexOf(r);
+    const krw=(r.fx>0)?krwUp(r.per*r.fx)*r.pax:0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #efeada;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:800;font-size:13px;">${esc(r.quoteNo)} <span style="font-weight:600;color:#5E6F66;">${esc(r.team||'-')}</span></div>
+        <div style="font-size:11.5px;color:#5E6F66;margin-top:2px;">${esc(r.start)} · ${esc(r.route)} · ${r.pax}명 · ${r.nights}박</div>
+        <div style="font-size:12px;font-weight:700;margin-top:3px;">${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+        <button type="button" onclick="reissueQuote(${idx},'customer')" style="border:none;background:#123A2B;color:#fff;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">손님용 다시받기</button>
+        <button type="button" onclick="reissueQuote(${idx},'internal')" style="border:1px solid #123A2B;background:#fff;color:#123A2B;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">내부용 다시받기</button>
+      </div>
+    </div>`;
+  }).join('') : '<div style="padding:18px;color:#5E6F66">찾는 견적이 없습니다.</div>';
+}
+
+/* 보관된 견적을 그때 금액 그대로 다시 PNG로 뽑는다. 계산을 다시 하지 않는다. */
+async function reissueQuote(idx, mode){
+  const Q=QH_LIST[idx]; if(!Q) return;
+  if(mode!=='internal' && !(Q.fx>0)){ alert('이 견적은 환율이 없이 저장되어 손님용(원화)으로 다시 만들 수 없습니다.\n내부용으로 받아주세요.'); return; }
+  const host=$('#quoteHost');
+  try{
+    await loadCanvasLib();
+    host.innerHTML=buildQuoteHtml(mode, Q);
+    const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const team=(Q.team||'').replace(/[\\/:*?"<>|]/g,'');
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png');
+    a.download=`${Q.quoteNo}${team?'_'+team:''}_${Q.pax}명${mode==='internal'?'_내부용':''}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){ alert('견적서를 다시 만들지 못했습니다. 인터넷 연결을 확인해 주세요.'); }
+  finally{ host.innerHTML=''; }
+}
+
 async function downloadQuote(mode){
   if(!LAST||!LAST.lines.length){ alert('먼저 라운딩할 날을 체크해 주세요. 견적이 있어야 견적서를 만들 수 있습니다.'); return; }
   if(!$('#startDate').value){ alert('출발 일자를 먼저 골라주세요.'); return; }
@@ -813,13 +934,17 @@ async function downloadQuote(mode){
   try{
     await ensureQuoteNo();          // 견적이 완성됐으니 번호를 부여한다
     await loadCanvasLib();
-    host.innerHTML=buildQuoteHtml(mode);
+    // 이 시점의 금액을 얼려 담고, 견적서도 저장본에서 그린다(화면과 저장본이 어긋나지 않게)
+    const Q=quoteSnapshot();
+    host.innerHTML=buildQuoteHtml(mode, Q);
     const canvas=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    const team=($('#teamName').value||'').trim().replace(/[\\/:*?"<>|]/g,'');
-    const name=`${QUOTE_NO||'골프견적'}${team?'_'+team:''}_${LAST.pax}명${mode==='internal'?'_내부용':''}.png`;
+    const team=(Q.team||'').replace(/[\\/:*?"<>|]/g,'');
+    const name=`${Q.quoteNo||'골프견적'}${team?'_'+team:''}_${Q.pax}명${mode==='internal'?'_내부용':''}.png`;
     const url=canvas.toDataURL('image/png');
     const a=document.createElement('a'); a.href=url; a.download=name;
     document.body.appendChild(a); a.click(); a.remove();
+    // 보관 실패해도 견적서는 이미 내려받았으므로 알리기만 한다
+    if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 견적 보관에 실패했습니다.\n나중에 「견적 이력」에서 찾을 수 없으니 파일을 꼭 보관해 주세요.');
   }catch(e){
     alert('견적서를 만들지 못했습니다. 인터넷 연결을 확인하고 다시 눌러주세요.');
   }finally{
