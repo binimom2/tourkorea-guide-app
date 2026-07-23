@@ -563,10 +563,12 @@ function fillCourses(i){
 function fillHoles(i){
   const st=dayState[i];
   const sel=document.querySelector(`[data-h="${i}"]`);
-  const c=(COURSES[st.region]||[]).find(x=>x.n===st.course);
-  let opts=['<option value="18">18홀</option>'];
-  if(c){ const has9=(c.s||[]).some(s=>s.g9); if(has9){ opts.push('<option value="27">27홀</option>'); opts.push('<option value="9">9홀</option>'); } }
-  sel.innerHTML=opts.join(''); sel.value=st.holes||'18';
+  /* 홀수는 18 · 27 · 36 세 가지로 고정한다. 27홀은 18홀+9홀 요금,
+     36홀은 18홀 요금 2회. 9홀 단독은 팔지 않는다. */
+  const opts=['18','27','36'].map(v=>`<option value="${v}">${v}홀</option>`);
+  sel.innerHTML=opts.join('');
+  if(!['18','27','36'].includes(st.holes)) st.holes='18';   // 옛 '9' 값이 남아 있어도 되돌린다
+  sel.value=st.holes;
 }
 // 차량 요금 기준(지역 조합) · 안내문구 — 수송밴은 화면에서 뺐다(차량 요금 안으로 넣을 예정)
 function renderVehicleUI(){
@@ -652,9 +654,11 @@ function calc(){
     const nm=`${c.n} ${st.holes}홀`, dl=`${st.date.slice(5)} ${st.region}`;
     if(!ss){ lines.push({t:nm,s:`${dl} · 해당일 요금 미등록`,v:0,warn:1}); return; }
     let unit=null;
-    if(st.holes==='18') unit = ss.g18[wk]!=null ? ss.g18[wk]+ss.cad+ss.crt : null;
-    else if(st.holes==='27') unit = (ss.g18[wk]!=null&&ss.g9&&ss.g9[wk]!=null) ? ss.g18[wk]+ss.g9[wk]+ss.cad+ss.cad9+ss.crt+ss.crt9 : null;
-    else if(st.holes==='9') unit = (ss.g9&&ss.g9[wk]!=null) ? ss.g9[wk]+ss.cad9+ss.crt9 : null;
+    const u18 = ss.g18&&ss.g18[wk]!=null ? ss.g18[wk]+ss.cad+ss.crt : null;
+    const u9  = ss.g9 &&ss.g9 [wk]!=null ? ss.g9 [wk]+ss.cad9+ss.crt9 : null;
+    if(st.holes==='18') unit = u18;
+    else if(st.holes==='27') unit = (u18!=null&&u9!=null) ? u18+u9 : null;   // 18홀 + 9홀
+    else if(st.holes==='36') unit = u18!=null ? u18*2 : null;                // 18홀 2회
     if(unit==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
     lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(unit)} × ${pax}명`,v:unit*pax});
   });
