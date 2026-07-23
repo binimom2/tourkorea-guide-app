@@ -404,7 +404,11 @@ function useVehOn(){ const c=$('#noVeh'); return !(c&&c.checked); }
    없으면 라벨에서 내부 메모를 떼어낸 앞부분을 쓴다. */
 function vehName(g){
   if(!g) return '차량';
-  if(g.name) return String(g.name).trim() + (g.seats?` (${g.seats}인승)`:'');
+  if(g.name){
+    const nm=String(g.name).trim();
+    // 표시명에 이미 «12인승»이 들어 있으면 뒤에 또 붙이지 않는다
+    return (g.seats && nm.indexOf(g.seats+'인승')<0) ? `${nm} (${g.seats}인승)` : nm;
+  }
   let s=String(g.label||'').trim();
   s=s.replace(/\s*\([^()]*노출\s*금지[^()]*\)\s*/g,' ');  // (노출금지--방파) 통째로
   s=s.split('--')[0];                                      // 남은 '--메모' 꼬리
