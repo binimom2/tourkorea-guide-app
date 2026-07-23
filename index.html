@@ -5269,6 +5269,9 @@ async function markSubSeen(id) {
 //  가이드 정산수첩 (옵션+쇼핑 정산금액 - 회사 지급액 = 잔여 정산금)
 // ══════════════════════════════════════════════════════
 async function openGuideLedger() {
+  // 계정 목록으로 노출 대상을 거르므로(가이드 아이디 보유자만) 먼저 최신화한다.
+  // localStorage만 보면 이 기기에서 계정관리를 연 적 없을 때 목록이 비어 있다.
+  await syncAccountsFromSupabase();
   await loadSubmissions();
   await loadPayments();
   await loadCarryover();
@@ -5331,11 +5334,18 @@ function _buildLedgerData() {
     g.payments.push(p);
   });
 
-  // 정산수첩에서 노출 제외할 가이드
-  const LEDGER_EXCLUDED_GUIDES = ['노가이드','조수영'];
-  Object.keys(byGuide).forEach(k=>{
-    if (LEDGER_EXCLUDED_GUIDES.includes(byGuide[k].guideName)) delete byGuide[k];
-  });
+  // 정산수첩은 가이드 아이디(계정)가 있는 사람만 노출한다.
+  // 계정 없이 제출건·지급내역에만 이름이 남은 경우(퇴사·임시입력 등)는 제외.
+  // 단 계정 목록을 못 읽었으면(localStorage 비었거나 동기화 실패) 거르지 않는다 —
+  // 여기서 걸러버리면 수첩이 통째로 빈 화면이 되어 데이터가 사라진 것처럼 보인다.
+  const guideNames = new Set(
+    getAccounts().filter(a=>a.role==='guide').map(a=>(a.name||'').trim()).filter(Boolean)
+  );
+  if (guideNames.size) {
+    Object.keys(byGuide).forEach(k=>{
+      if (!guideNames.has((byGuide[k].guideName||'').trim())) delete byGuide[k];
+    });
+  }
 
   return byGuide;
 }
@@ -6157,6 +6167,7 @@ function _sheetNameSafe(name, used) {
 }
 
 async function downloadLedgerExcel() {
+  await syncAccountsFromSupabase();   // 노출 대상 판단에 계정 목록이 필요
   await loadSubmissions();
   await loadPayments();
   await loadCarryover();
