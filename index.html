@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>가이드 정산서</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -192,13 +192,14 @@
 
   /* ── OPTION ── */
   .option-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  /* 좌측 3칸 고정: 옵션명(160px) | 통화(64px) | 판매가(100px), gap:4px */
-  .option-headers span:nth-child(1),
-  .option-row-grid > :nth-child(1) { position:sticky; left:0; z-index:3; background:#f0f4f8; }
-  .option-headers span:nth-child(2),
-  .option-row-grid > :nth-child(2) { position:sticky; left:164px; z-index:3; background:#f0f4f8; }
-  .option-headers span:nth-child(3),
-  .option-row-grid > :nth-child(3) { position:sticky; left:232px; z-index:3; background:#f0f4f8; border-right:2px solid #cbd5e1; }
+  /* 좌측 3칸 고정: 옵션명(160px) | 통화(64px) | 판매가(100px), gap:4px
+     ※ 옵션탭 전용. 기가팁탭은 컬럼폭이 달라(160/110/64…) 같은 left값을 쓰면 어긋나므로 제외 */
+  #option-headers-row span:nth-child(1),
+  #option-list .option-row-grid > :nth-child(1) { position:sticky; left:0; z-index:3; background:#f0f4f8; }
+  #option-headers-row span:nth-child(2),
+  #option-list .option-row-grid > :nth-child(2) { position:sticky; left:164px; z-index:3; background:#f0f4f8; }
+  #option-headers-row span:nth-child(3),
+  #option-list .option-row-grid > :nth-child(3) { position:sticky; left:232px; z-index:3; background:#f0f4f8; border-right:2px solid #cbd5e1; }
   /* 입력 행 배경 (헤더와 구분) */
   .option-row-grid > :nth-child(1),
   .option-row-grid > :nth-child(2),
@@ -800,17 +801,62 @@
     .total-row span { font-size: 12px; }
     .btn-add { font-size: 13px; padding: 10px; }
 
-    /* 옵션 테이블 - 가로 스크롤 */
-    .option-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .option-row-grid,
-    .option-headers {
-      min-width: 560px;
-      grid-template-columns: 120px 64px 80px 52px 88px 60px 24px !important;
-      gap: 4px;
-      padding: 4px 8px;
+    /* ── 옵션/기가팁 테이블: 모바일은 2줄 카드형 ──
+       가로 스크롤 + 좌측 sticky 3칸 조합이면 오른쪽 끝 컬럼(원가)이
+       고정컬럼 밑에 영구히 깔려서 화면에 못 나온다 → 스크롤·sticky 둘 다 해제하고
+       한 행을 2줄로 접어서 모든 칸을 한 화면에 노출한다. */
+    .option-scroll { overflow-x: visible; }
+    .option-headers span,
+    .option-row-grid > * {
+      position: static !important;
+      left: auto !important;
+      border-right: none !important;
     }
-    .option-row-grid input,
-    .option-row-grid select { font-size: 16px !important; padding: 6px 4px !important; }
+    /* 헤더행은 2줄 레이아웃과 열이 맞지 않으므로 숨김 (칸 이름은 placeholder로 표시) */
+    #option-headers-row,
+    #gigatip-headers-row { display: none !important; }
+
+    .option-row-grid {
+      width: 100% !important;
+      min-width: 0 !important;
+      gap: 4px !important;
+      padding: 8px 6px !important;
+      row-gap: 5px !important;
+    }
+    /* 옵션: [옵션명           ][✕] / [통화][판매가][인원][합계][원가] */
+    #option-list .option-row-grid {
+      grid-template-columns: 58px 1fr 42px 1fr 1fr 22px !important;
+      grid-template-areas:
+        "name name  name name  name del"
+        "cur  price pax  total cost cost" !important;
+    }
+    #option-list .option-row-grid > :nth-child(1) { grid-area: name; }
+    #option-list .option-row-grid > :nth-child(2) { grid-area: cur; }
+    #option-list .option-row-grid > :nth-child(3) { grid-area: price; }
+    #option-list .option-row-grid > :nth-child(4) { grid-area: pax; }
+    #option-list .option-row-grid > :nth-child(5) { grid-area: total; }
+    #option-list .option-row-grid > :nth-child(6) { grid-area: cost; }
+    #option-list .option-row-grid > :nth-child(7) { grid-area: del; }
+
+    /* 기가팁: [구분][내용            ][✕] / [통화][판매가][인원][합계] */
+    #gigatip-list .option-row-grid {
+      grid-template-columns: 86px 1fr 42px 1fr 22px !important;
+      grid-template-areas:
+        "type detail detail detail del"
+        "cur  price  pax    total  total" !important;
+    }
+    #gigatip-list .option-row-grid > :nth-child(1) { grid-area: type; }
+    #gigatip-list .option-row-grid > :nth-child(2) { grid-area: detail; }
+    #gigatip-list .option-row-grid > :nth-child(3) { grid-area: cur; }
+    #gigatip-list .option-row-grid > :nth-child(4) { grid-area: price; }
+    #gigatip-list .option-row-grid > :nth-child(5) { grid-area: pax; }
+    #gigatip-list .option-row-grid > :nth-child(6) { grid-area: total; }
+    #gigatip-list .option-row-grid > :nth-child(7) { grid-area: del; }
+
+    /* iOS 포커스 자동확대 방지: 입력칸 16px 유지 */
+    .option-row-grid input { font-size: 16px !important; padding: 7px 5px !important; }
+    .option-row-grid select { font-size: 13px !important; padding: 7px 2px !important; }
+    .option-row-grid .btn-delete { width: 100%; height: 100%; min-height: 34px; }
 
     /* 옵션 요약 카드 */
     #opt-conv-bar { padding: 10px !important; }
@@ -2605,15 +2651,15 @@ function renderOptions() {
       row.currency=e.target.value;
       // placeholder 심볼 업데이트
       const sym = getCurrencySym(row.currency);
-      inPrice.placeholder=sym+' 0';
-      inTotal.placeholder=sym+' 0';
+      inPrice.placeholder=sym+' 판매가';
+      inTotal.placeholder=sym+' 합계';
       calcOptionRowDOM(row, div);
     });
 
     // 판매가 (text + 콤마)
     const sym0 = getCurrencySym(row.currency||'THB');
     const inPrice = document.createElement('input');
-    inPrice.type='text'; inPrice.placeholder='0'; inPrice.inputMode='numeric';
+    inPrice.type='text'; inPrice.placeholder=sym0+' 판매가'; inPrice.inputMode='numeric';
     inPrice.value = row.price ? fmtNum(row.price) : '';
     inPrice.style.fontWeight='700'; inPrice.style.textAlign='right';
     inPrice.dataset.role='price';
@@ -2626,7 +2672,7 @@ function renderOptions() {
 
     // 인원
     const inPax = document.createElement('input');
-    inPax.type='number'; inPax.placeholder='0'; inPax.value=row.pax||'';
+    inPax.type='number'; inPax.placeholder='인원'; inPax.value=row.pax||'';
     inPax.min='0'; inPax.step='1';
     inPax.addEventListener('input', e=>{
       const v = parseInt(e.target.value,10);
@@ -2636,14 +2682,14 @@ function renderOptions() {
 
     // 합계 (readonly, text + 콤마)
     const inTotal = document.createElement('input');
-    inTotal.type='text'; inTotal.placeholder='0'; inTotal.readOnly=true;
+    inTotal.type='text'; inTotal.placeholder=sym0+' 합계'; inTotal.readOnly=true;
     inTotal.dataset.role='total';
     inTotal.value = row.total ? fmtNum(row.total) : '';
     inTotal.style.background='#e8f4e8'; inTotal.style.fontWeight='700'; inTotal.style.textAlign='right';
 
     // 원가 (text + 콤마)
     const inCost = document.createElement('input');
-    inCost.type='text'; inCost.placeholder='0'; inCost.inputMode='numeric';
+    inCost.type='text'; inCost.placeholder='฿ 원가'; inCost.inputMode='numeric';
     inCost.value = row.cost ? fmtNum(row.cost) : '';
     inCost.style.textAlign='right';
     inCost.dataset.role='cost';
@@ -2784,14 +2830,15 @@ function renderGigatip() {
     selCur.addEventListener('change', e=>{
       row.currency=e.target.value;
       const sym = getCurrencySym(row.currency);
-      inPrice.placeholder=sym+' 0';
-      inTotal.placeholder=sym+' 0';
+      inPrice.placeholder=sym+' 판매가';
+      inTotal.placeholder=sym+' 합계';
       calcGigatipRowDOM(row, div);
     });
 
     // 판매가 (text + 콤마)
+    const symG = getCurrencySym(row.currency||'THB');
     const inPrice = document.createElement('input');
-    inPrice.type='text'; inPrice.placeholder='0'; inPrice.inputMode='numeric';
+    inPrice.type='text'; inPrice.placeholder=symG+' 판매가'; inPrice.inputMode='numeric';
     inPrice.value = row.price ? fmtNum(row.price) : '';
     inPrice.style.fontWeight='700'; inPrice.style.textAlign='right';
     inPrice.dataset.role='price';
@@ -2804,7 +2851,7 @@ function renderGigatip() {
 
     // 인원
     const inPax = document.createElement('input');
-    inPax.type='number'; inPax.placeholder='0'; inPax.value=row.pax||'';
+    inPax.type='number'; inPax.placeholder='인원'; inPax.value=row.pax||'';
     inPax.min='0'; inPax.step='1';
     inPax.addEventListener('input', e=>{
       const v = parseInt(e.target.value,10);
@@ -2814,7 +2861,7 @@ function renderGigatip() {
 
     // 합계 (readonly, text + 콤마)
     const inTotal = document.createElement('input');
-    inTotal.type='text'; inTotal.placeholder='0'; inTotal.readOnly=true;
+    inTotal.type='text'; inTotal.placeholder=symG+' 합계'; inTotal.readOnly=true;
     inTotal.dataset.role='total';
     inTotal.value = row.total ? fmtNum(row.total) : '';
     inTotal.style.background='#e8f4e8'; inTotal.style.fontWeight='700'; inTotal.style.textAlign='right';
