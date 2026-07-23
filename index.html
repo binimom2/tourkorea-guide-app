@@ -214,9 +214,12 @@
   .option-row-grid input:focus { outline:none; border-color:var(--primary); background:#fff; }
   .option-row-grid select { border:1px solid var(--border); border-radius:6px; padding:7px 4px; font-size:11px; font-family:inherit; background:var(--surface2); width:100%; box-sizing:border-box; font-weight:700; color:var(--primary); }
   .option-row-grid select:focus { outline:none; border-color:var(--primary); background:#fff; }
-  /* 스피너 버튼 표시 (number 타입) */
-  .option-row-grid input[type="number"]::-webkit-inner-spin-button { opacity:1; width:18px; cursor:pointer; }
-  .option-row-grid input[type="number"]::-webkit-outer-spin-button { opacity:1; }
+  /* ── 숫자칸 상하 화살표(스피너) 전면 제거 ──
+     인원·개수·% 등 모든 number 입력칸에 적용. 역할·화면 구분 없이 전역.
+     화살표가 좁은 칸의 폭을 잡아먹어 숫자가 밀리므로 직접 타이핑만 허용한다. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; appearance:none; margin:0; }
+  input[type="number"] { -moz-appearance:textfield; appearance:textfield; }
   .option-headers { display:grid; grid-template-columns:160px 64px 100px 46px 100px 90px 28px; gap:4px; padding:4px 10px; background:var(--surface2); width:max-content; min-width:100%; }
   .option-headers span { font-size:10px; color:var(--text-sub); font-weight:700; letter-spacing:0.5px; }
   /* 통화별 합산 바 */
@@ -825,9 +828,10 @@
       padding: 8px 6px !important;
       row-gap: 5px !important;
     }
-    /* 옵션: [옵션명           ][✕] / [통화][판매가][인원][합계][원가] */
+    /* 옵션: [옵션명           ][✕] / [통화][판매가][인원][합계][원가]
+       스피너를 없앴으므로 인원칸을 줄이고 금액칸에 폭을 더 준다 */
     #option-list .option-row-grid {
-      grid-template-columns: 58px 1fr 42px 1fr 1fr 22px !important;
+      grid-template-columns: 54px 1fr 34px 1fr 1fr 24px !important;
       grid-template-areas:
         "name name  name name  name del"
         "cur  price pax  total cost cost" !important;
@@ -842,7 +846,7 @@
 
     /* 기가팁: [구분][내용            ][✕] / [통화][판매가][인원][합계] */
     #gigatip-list .option-row-grid {
-      grid-template-columns: 86px 1fr 42px 1fr 22px !important;
+      grid-template-columns: 86px 1fr 34px 1fr 24px !important;
       grid-template-areas:
         "type detail detail detail del"
         "cur  price  pax    total  total" !important;
@@ -2653,16 +2657,12 @@ function renderOptions() {
     selCur.addEventListener('change', e=>{
       row.currency=e.target.value;
       // placeholder 심볼 업데이트
-      const sym = getCurrencySym(row.currency);
-      inPrice.placeholder=sym+' 판매가';
-      inTotal.placeholder=sym+' 합계';
       calcOptionRowDOM(row, div);
     });
 
     // 판매가 (text + 콤마)
-    const sym0 = getCurrencySym(row.currency||'THB');
     const inPrice = document.createElement('input');
-    inPrice.type='text'; inPrice.placeholder=sym0+' 판매가'; inPrice.inputMode='numeric';
+    inPrice.type='text'; inPrice.placeholder='판매가'; inPrice.inputMode='numeric';
     inPrice.value = row.price ? fmtNum(row.price) : '';
     inPrice.style.fontWeight='700'; inPrice.style.textAlign='right';
     inPrice.dataset.role='price';
@@ -2685,14 +2685,14 @@ function renderOptions() {
 
     // 합계 (readonly, text + 콤마)
     const inTotal = document.createElement('input');
-    inTotal.type='text'; inTotal.placeholder=sym0+' 합계'; inTotal.readOnly=true;
+    inTotal.type='text'; inTotal.placeholder='합계'; inTotal.readOnly=true;
     inTotal.dataset.role='total';
     inTotal.value = row.total ? fmtNum(row.total) : '';
     inTotal.style.background='#e8f4e8'; inTotal.style.fontWeight='700'; inTotal.style.textAlign='right';
 
     // 원가 (text + 콤마)
     const inCost = document.createElement('input');
-    inCost.type='text'; inCost.placeholder='฿ 원가'; inCost.inputMode='numeric';
+    inCost.type='text'; inCost.placeholder='원가'; inCost.inputMode='numeric';
     inCost.value = row.cost ? fmtNum(row.cost) : '';
     inCost.style.textAlign='right';
     inCost.dataset.role='cost';
@@ -2832,16 +2832,12 @@ function renderGigatip() {
     });
     selCur.addEventListener('change', e=>{
       row.currency=e.target.value;
-      const sym = getCurrencySym(row.currency);
-      inPrice.placeholder=sym+' 판매가';
-      inTotal.placeholder=sym+' 합계';
       calcGigatipRowDOM(row, div);
     });
 
     // 판매가 (text + 콤마)
-    const symG = getCurrencySym(row.currency||'THB');
     const inPrice = document.createElement('input');
-    inPrice.type='text'; inPrice.placeholder=symG+' 판매가'; inPrice.inputMode='numeric';
+    inPrice.type='text'; inPrice.placeholder='판매가'; inPrice.inputMode='numeric';
     inPrice.value = row.price ? fmtNum(row.price) : '';
     inPrice.style.fontWeight='700'; inPrice.style.textAlign='right';
     inPrice.dataset.role='price';
@@ -2864,7 +2860,7 @@ function renderGigatip() {
 
     // 합계 (readonly, text + 콤마)
     const inTotal = document.createElement('input');
-    inTotal.type='text'; inTotal.placeholder=symG+' 합계'; inTotal.readOnly=true;
+    inTotal.type='text'; inTotal.placeholder='합계'; inTotal.readOnly=true;
     inTotal.dataset.role='total';
     inTotal.value = row.total ? fmtNum(row.total) : '';
     inTotal.style.background='#e8f4e8'; inTotal.style.fontWeight='700'; inTotal.style.textAlign='right';
