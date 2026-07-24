@@ -178,6 +178,13 @@
   body.view-readonly .tab-panel textarea,
   body.view-readonly .tab-panel button:not(.tab-btn) { pointer-events:none !important; opacity:0.6; }
 
+  /* 가이드 제출 완료 잠금 — 제출한 뒤에는 본인 정산서를 수정할 수 없다 */
+  body.submit-locked .tab-panel input,
+  body.submit-locked .tab-panel select,
+  body.submit-locked .tab-panel textarea,
+  body.submit-locked .tab-panel button:not(.tab-btn) { pointer-events:none !important; opacity:0.6; }
+  #submitLockBanner { background:#7c3aed; color:#fff; text-align:center; padding:8px; font-size:13px; font-weight:700; margin-bottom:8px; border-radius:8px; }
+
   .btn-add { display:flex; align-items:center; gap:5px; padding:9px 14px; background:var(--primary-light); color:var(--primary); border:1px dashed var(--primary); border-radius:8px; margin:7px 10px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; width:calc(100% - 20px); justify-content:center; }
   .btn-add:hover { background:var(--primary); color:#fff; }
   .btn-delete { background:#FEE8E8; color:var(--danger); border:none; border-radius:6px; width:26px; height:26px; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
@@ -2216,11 +2223,13 @@ function isMySubmission(s) {
 async function checkAdminEdits() {
   await loadSubmissions();
   if (!currentUser) return;
-  // 이 가이드의 제출 중 아직 확인하지 않은 수정본 찾기 (작업중인 초안은 건드리지 않음 — [내 제출현황]에서 직접 열람)
-  // 배지(✏ 수정본)는 s.adminEdited로 항상 표시되고, 로그인 알림은 s.adminEditSeen으로 한 번만 뜨도록 구분.
-  const edited = submissionsDB.filter(s => isMySubmission(s) && s.adminEdited && !s.adminEditSeen);
-  if (!edited.length) return;
-  showToast(`📋 관리자가 수정한 제출본이 ${edited.length}건 있습니다. [내 제출현황]에서 확인하세요.`);
+  // 가이드에게는 "정산 종료(정산완료)된 최종본"만 알린다.
+  // 어드민/매니저가 작업 중 수정저장한 것은 확정 전이라 알리지 않는다 — 확정 전 금액이
+  // 가이드에게 먼저 보이면 나중에 바뀐 최종 금액과 어긋나 혼선이 생기기 때문.
+  // 알림은 s.finalSeen으로 한 번만 뜨고, [내 제출현황]에서 열어보면 확인 처리된다.
+  const finals = submissionsDB.filter(s => isMySubmission(s) && s.settled && !s.finalSeen);
+  if (!finals.length) return;
+  showToast(`📋 정산이 종료된 최종 정산서가 ${finals.length}건 있습니다. [내 제출현황]에서 확인하세요.`);
 }
 
 function LS_KEY_USER() { return currentUser ? 'guide_data_' + currentUser.username : LS_KEY; }
@@ -2292,6 +2301,36 @@ function applyRoleUI() {
   document.body.classList.add('role-' + currentRole);
 
   applyKBVisibility();
+  try { applySubmitLock(); } catch(e) {}
+}
+
+// ── 가이드 제출 잠금 ────────────────────────────────────────
+// 가이드가 [📤 제출]을 누르면 그 정산서는 확정되어 더 이상 고칠 수 없다.
+// (수정이 필요하면 어드민/매니저가 제출건을 열어 수정하고, 가이드는 결과만 열람)
+// 잠금 상태는 state.info.submitLocked에 저장되어 재로그인/다른 기기에서도 유지된다.
+// [📝 새 보고서]로 다음 행사를 시작하면 초기화되어 다시 입력할 수 있다.
+function isSubmitLocked() {
+  if (currentRole !== 'guide') return false;
+  if (window._viewingSubId || window._viewOpening) return false;  // 제출건 열람 중에는 열람 잠금이 따로 적용됨
+  return !!(state.info && state.info.submitLocked);
+}
+
+function applySubmitLock() {
+  const locked = isSubmitLocked();
+  document.body.classList.toggle('submit-locked', locked);
+  // 잠금 중에는 저장/제출 버튼을 숨긴다 — [📝 새 보고서]만 남겨 다음 행사를 시작할 수 있게 함
+  if (locked) {
+    ['btnSave','btnSubmit'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  }
+  const old = document.getElementById('submitLockBanner');
+  if (old) old.remove();
+  if (!locked) return;
+  const content = document.querySelector('.content');
+  if (!content) return;
+  const banner = document.createElement('div');
+  banner.id = 'submitLockBanner';
+  banner.innerHTML = '🔒 제출 완료 — 수정할 수 없습니다. 수정이 필요하면 관리자에게 요청하세요.';
+  content.prepend(banner);
 }
 
 // ══════════════════════════════════
@@ -2307,7 +2346,7 @@ const state = {
   info: { guideName:'', agencyName:'', localGuide:'', tourStart:'', tourNights:'',
           paxAdult:'0', paxChild:'0', paxTC:'0', advancePay:'',
           rateUSD:'0', rateKRW:'0', guideCode:'',
-          productName:'', shopCount:'0', settleSeq:'00' }
+          productName:'', shopCount:'0', settleSeq:'00', submitLocked:'' }
 };
 
 let _uid = 1;
@@ -3844,6 +3883,7 @@ function confirmReset(){
   state.info.paxAdult='0'; state.info.paxChild='0'; state.info.paxTC='0';
   state.info.rateUSD='0'; state.info.rateKRW='0';
   state.info.shopCount='0'; state.info.settleSeq=''; state.info.settleCode='-';
+  state.info.submitLocked = '';   // 새 보고서 → 제출 잠금 해제
 
   // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
   state.optionCurrency = 'THB';
@@ -5085,10 +5125,26 @@ function collectProfitFields() {
 //  가이드 → 어드민 제출
 // ══════════════════════════════════════════════════════
 async function submitToAdmin() {
-  if(!confirm('현재 정산서를 어드민에 제출하시겠습니까?\n제출 후에도 수정은 가능합니다.')) return;
   await loadSubmissions();
   const code = (state.info && state.info.settleCode) || (document.getElementById('settleCodeSec1')||{}).textContent || '-';
   const guideName = (document.getElementById('guideName')||{}).value || (currentUser&&currentUser.name) || '';
+  // 가이드는 한 번 제출하면 수정 불가 — 재제출(덮어쓰기)도 막는다.
+  // 이미 제출한 건을 다시 보내면 어드민이 수정해 둔 내용이 가이드 값으로 덮여
+  // 화면과 엑셀 금액이 어긋나던 문제도 함께 사라진다.
+  if (currentRole === 'guide') {
+    const myName0 = (guideName||'').trim();
+    const dup = submissionsDB.find(s=>s.settleCode===code &&
+      (s.username===(currentUser?currentUser.username:'') || (myName0 && (s.guideName||'').trim()===myName0)));
+    if (dup) {
+      if (state.info) { state.info.submitLocked = true; saveData(); }
+      applySubmitLock();
+      showToast('🔒 이미 제출된 정산서입니다. 수정이 필요하면 관리자에게 요청하세요.', true);
+      return;
+    }
+    if(!confirm('현재 정산서를 어드민에 제출하시겠습니까?\n⚠️ 제출 후에는 수정할 수 없습니다.')) return;
+  } else {
+    if(!confirm('현재 정산서를 어드민에 제출하시겠습니까?')) return;
+  }
   const paxTotal = parseInt((document.getElementById('paxTotalDisplay')||{}).textContent)||0;
   const productName = (document.getElementById('productName')||{}).value || '';
   const shopCount = parseInt((document.getElementById('shopCount')||{}).value)||0;
@@ -5119,26 +5175,26 @@ async function submitToAdmin() {
   const existing = submissionsDB.findIndex(s=>s.settleCode===code && (s.username===sub.username || (myName && (s.guideName||'').trim()===myName)));
   if (existing >= 0) {
     const prev = submissionsDB[existing];
-    // 어드민이 수정저장한 경우 → 어드민 수정본(fullData)을 최종본으로 유지
-    if (prev.adminEdited && prev.fullData) {
-      // 가이드 재제출 시 안내만 표시하고 어드민 최종본은 보존
-      submissionsDB[existing] = {
-        ...sub,
-        fullData: prev.fullData,           // 어드민 최종 데이터 유지
-        adminEdited: true,
-        adminEditedAt: prev.adminEditedAt,
-        adminEditSeen: prev.adminEditSeen,
-        status: prev.status === 'seen' ? 'seen' : prev.status,
-      };
-      await saveSubmissions();
-      showToast('📤 제출되었습니다. (어드민 수정본이 최종본으로 유지됩니다)');
+    // 정산이 종료된 건은 덮어쓰지 않는다 — 어드민이 확정해 가이드에게 나간 최종본이라
+    // 여기서 다시 쓰면 정산수첩·엑셀 금액까지 바뀐다. 고치려면 먼저 [↩ 완료취소].
+    if (prev.settled) {
+      showToast('🔒 정산이 종료된 정산서입니다. 수정하려면 어드민이 먼저 완료취소해야 합니다.', true);
       return;
     }
+    // 어드민이 수정해 둔 건을 매니저 대행 제출이 말없이 덮어쓰지 않도록 확인
+    if (prev.adminEdited && !confirm('이 정산서는 어드민이 수정해 둔 건입니다.\n지금 제출하면 어드민 수정 내용이 사라집니다. 계속하시겠습니까?')) return;
     submissionsDB[existing] = sub;
   } else {
     submissionsDB.push(sub);
   }
   await saveSubmissions();
+  // 가이드: 제출과 동시에 본인 화면을 잠근다 (새 보고서를 시작하기 전까지 수정 불가)
+  if (currentRole === 'guide') {
+    if (state.info) { state.info.submitLocked = true; saveData(); }
+    applySubmitLock();
+    showToast('📤 제출되었습니다. 제출 후에는 수정할 수 없습니다.');
+    return;
+  }
   showToast('📤 어드민에 제출되었습니다!');
 }
 
@@ -5219,12 +5275,16 @@ function renderSubmissions() {
           html += `<div class="sub-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <div>
-                <div class="sc-code">${s.settleCode} <span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}</div>
+                <div class="sc-code">${s.settleCode} ${currentRole==='guide'
+                    ? (s.settled ? '<span class="sub-badge settled">최종본</span>' : '<span class="sub-badge" style="background:#e5e7eb;color:#555;">⏳ 정산 진행중</span>')
+                    : `<span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}`}</div>
                 <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
                 <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
               </div>
               <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-                <button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>
+                ${(currentRole==='guide' && !s.settled)
+                  ? `<span style="font-size:11px;color:#888;">정산 종료 후 열람</span>`
+                  : `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>`}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료'}</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
               </div>
@@ -5250,14 +5310,20 @@ async function deleteSubData(id) {
   showToast('🗑 삭제되었습니다.');
 }
 
+// 최종 정산(정산 종료)은 어드민만 한다 — 매니저는 가이드 입력 대행·수정까지만.
+// 여기서 settled가 켜지는 순간이 곧 "가이드에게 최종본 전달" 시점이다.
 async function toggleSubSettled(id) {
   if (currentRole !== 'admin') return;
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
   s.settled = !s.settled;
+  if (s.settled) {
+    s.settledAt = new Date().toISOString();
+    s.finalSeen = false;   // 가이드 로그인 시 "최종 정산서 도착" 알림이 뜨도록
+  }
   await saveSubmissions();
   renderSubmissions();
-  showToast(s.settled ? '✅ 정산완료 처리되었습니다.' : '↩ 정산완료가 취소되었습니다.');
+  showToast(s.settled ? '✅ 정산완료 — 가이드가 최종본을 열람할 수 있습니다.' : '↩ 정산완료가 취소되었습니다. (가이드 열람 중단)');
 }
 
 async function markSubSeen(id) {
@@ -5597,13 +5663,19 @@ async function openSubData(id) {
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
   if (currentRole === 'guide' && !isMySubmission(s)) { showToast('❌ 본인이 제출한 정산서만 열람할 수 있습니다.', true); return; }
+  // 가이드는 정산이 종료(정산완료)된 최종본만 열람할 수 있다.
+  // 어드민/매니저가 작업 중인 수정본은 확정 전이라 보여주지 않는다.
+  if (currentRole === 'guide' && !s.settled) { showToast('⏳ 아직 정산이 종료되지 않았습니다. 종료 후 최종본을 확인할 수 있습니다.', true); return; }
   const readOnly = !!s.settled || currentRole === 'guide';
   if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.${readOnly ? '\n(읽기 전용 · 수정 불가)' : ''}`)) return;
   showToast('⏳ 불러오는 중...');
+  // 열람용 데이터를 로드하는 동안에는 "제출 잠금" 배너가 끼어들지 않게 한다
+  // (_viewingSubId는 아래에서 잠시 null이 되므로 별도 플래그가 필요)
+  window._viewOpening = true;
 
   s.status = 'seen';
-  // "✏ 수정본" 배지는 계속 유지 — 로그인 알림(1회성)만 확인 처리
-  if (currentRole === 'guide' && s.adminEdited) s.adminEditSeen = true;
+  // 가이드가 최종본을 열어봤으면 로그인 알림(1회성)을 끈다
+  if (currentRole === 'guide' && s.settled) s.finalSeen = true;
   await saveSubmissions();
 
   // 공통: fullData를 내 localStorage 키에 임시 기록 → loadData()가 읽게 함
@@ -5638,6 +5710,7 @@ async function openSubData(id) {
 
   // 열람 중인 제출 ID 저장
   window._viewingSubId = id;
+  window._viewOpening = false;
   window._viewReadOnly = readOnly;
   window._viewOpenSnapshot = readOnly ? null : JSON.stringify(state);
   document.body.classList.toggle('view-readonly', readOnly);
@@ -5677,7 +5750,7 @@ async function saveSubEdits() {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 제출 항목을 찾을 수 없습니다.', true); return; }
   if (s.settled) { showToast('🔒 정산완료된 파일은 수정할 수 없습니다. 먼저 완료취소 해주세요.', true); return; }
-  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드가 다음 로그인 시 반영됩니다.`)) return;
+  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드에게는 전달되지 않습니다. (정산 종료 시 최종본만 전달)`)) return;
 
   // DOM의 모든 최신 값을 state에 동기화 (환율 포함)
   saveData();
@@ -5700,7 +5773,8 @@ async function saveSubEdits() {
   s.fullData.fields = lsFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
-  s.adminEditSeen = false; // 새 수정 발생 → 가이드 로그인 알림 다시 뜨도록
+  // 수정저장은 가이드에게 알리지 않는다 — 알림/열람은 어드민이 [✅ 완료]로
+  // 정산을 종료하는 시점에 최종본 한 번만 나간다(toggleSubSettled 참고).
 
   // 정산서관리/누계정산서 엑셀에서 쓰는 요약 수치도 최신 화면값으로 갱신
   Object.assign(s, collectProfitFields());
@@ -5715,7 +5789,7 @@ async function saveSubEdits() {
 
   await saveSubmissions();
   window._viewOpenSnapshot = JSON.stringify(state);
-  showToast('💾 수정내용이 저장되었습니다. 가이드 로그인 시 반영됩니다.');
+  showToast('💾 수정내용이 저장되었습니다. (정산 종료 시 가이드에게 최종본 전달)');
 }
 
 function restoreMyData() {
