@@ -6398,13 +6398,15 @@ function _vsScanRows() {
       (arr||[]).forEach(r => {
         const name = (r && r.detail || '').trim();
         if (!name) return;
-        rows.push({ ...base, cat: (r.category||'').trim() || '기타', name, pax: _vsNum(r.pax), amount: _vsNum(r.amount) });
+        rows.push({ ...base, cat: (r.category||'').trim() || '기타', name, pax: _vsNum(r.pax), amount: _vsNum(r.amount), cur:'THB' });
       });
     });
+    // 옵션은 행마다 통화가 다를 수 있다(฿/$/₩). 제출 당시 환율로만 정확히 환산되므로
+    // 여기서는 환산하지 않고 통화별로 따로 합산한다.
     (fd.options || []).forEach(o => {
       const name = (o && o.name || '').trim();
       if (!name) return;
-      rows.push({ ...base, cat: '옵션', name, pax: _vsNum(o.pax), amount: _vsNum(o.total) });
+      rows.push({ ...base, cat: '옵션', name, pax: _vsNum(o.pax), amount: _vsNum(o.total), cur: (o.currency||'THB') });
     });
   });
   return rows;
@@ -6429,13 +6431,28 @@ function _vsFiltered() {
   return { rows, from, to, cat, kw, hasKeyword: terms.length > 0 };
 }
 
+// 통화 표기 (옵션은 ฿ 말고 $·₩ 행이 섞일 수 있다)
+const VS_SYM = { THB:'฿', USD:'$', KRW:'₩' };
+function _vsMoney(byCur) {
+  const parts = Object.entries(byCur).filter(([,v])=>v).map(([c,v])=>`${VS_SYM[c]||c}${fmtNum(v)}`);
+  return parts.length ? parts.join(' / ') : '-';
+}
+function _vsSumByCur(rows) {
+  const by = {};
+  rows.forEach(r => { const c = r.cur||'THB'; by[c] = (by[c]||0) + r.amount; });
+  return by;
+}
+
 // 항목명별 묶음 (인원 많은 순)
 function _vsGroup(rows) {
   const map = {};
   rows.forEach(r => {
     const k = r.name;
-    if (!map[k]) map[k] = { name:k, cat:r.cat, count:0, pax:0, paxTotal:0, amount:0 };
-    map[k].count++; map[k].pax += r.pax; map[k].paxTotal += r.paxTotal; map[k].amount += r.amount;
+    if (!map[k]) map[k] = { name:k, cat:r.cat, count:0, pax:0, paxTotal:0, byCur:{} };
+    const g = map[k];
+    g.count++; g.pax += r.pax; g.paxTotal += r.paxTotal;
+    const c = r.cur||'THB';
+    g.byCur[c] = (g.byCur[c]||0) + r.amount;
   });
   return Object.values(map).sort((a,b)=> b.pax - a.pax || b.count - a.count);
 }
@@ -6466,13 +6483,13 @@ function runVisitStats() {
   const box = document.getElementById('vsResult');
   if (!rows.length) { box.innerHTML = '<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">해당 조건의 기록이 없습니다.</p>'; return; }
 
-  const tot = rows.reduce((a,r)=>({ pax:a.pax+r.pax, amount:a.amount+r.amount, paxTotal:a.paxTotal+r.paxTotal }), {pax:0,amount:0,paxTotal:0});
+  const tot = rows.reduce((a,r)=>({ pax:a.pax+r.pax, paxTotal:a.paxTotal+r.paxTotal }), {pax:0,paxTotal:0});
   const summary = `<div class="sub-card" style="background:#f1f5f9;margin-bottom:8px;">
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;">
         <span style="font-size:13px;font-weight:800;">총 ${rows.length}건</span>
         <span style="font-size:13px;">인원 <b style="color:#1a6b8a;font-size:16px;">${fmtNum(tot.pax)}</b>명</span>
         <span style="font-size:12px;color:#888;">행사인원 ${fmtNum(tot.paxTotal)}명</span>
-        <span style="font-size:13px;">금액 <b style="color:#e8872a;">฿${fmtNum(tot.amount)}</b></span>
+        <span style="font-size:13px;">금액 <b style="color:#e8872a;">${_vsMoney(_vsSumByCur(rows))}</b></span>
       </div>
     </div>`;
 
@@ -6484,22 +6501,22 @@ function runVisitStats() {
     const sorted = [...rows].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     table = `<table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:#f1f5f9;">
-        ${th(['일자'])}${th(['정산코드'])}${th(['가이드'])}${th(['구분'])}${th(['내용'])}${th(['인원','right'])}${th(['금액(฿)','right'])}
+        ${th(['일자'])}${th(['정산코드'])}${th(['가이드'])}${th(['구분'])}${th(['내용'])}${th(['인원','right'])}${th(['금액','right'])}
       </tr></thead><tbody>
       ${sorted.map(r=>`<tr style="border-bottom:1px solid #f0f0f0;">
         ${td(r.date||'-')}${td(r.code,'','color:#888;')}${td(r.guide)}${td(r.cat,'','color:#888;')}${td(r.name)}
-        ${td(r.pax?fmtNum(r.pax):'-','right','font-weight:700;')}${td(r.amount?fmtNum(r.amount):'-','right')}
+        ${td(r.pax?fmtNum(r.pax):'-','right','font-weight:700;')}${td(r.amount?((VS_SYM[r.cur]||'')+fmtNum(r.amount)):'-','right')}
       </tr>`).join('')}
       </tbody></table>`;
   } else {
     // 검색어가 없으면 항목별 요약 (인원 많은 순)
     table = `<table style="width:100%;border-collapse:collapse;">
       <thead><tr style="background:#f1f5f9;">
-        ${th(['구분'])}${th(['내용'])}${th(['방문','right'])}${th(['인원','right'])}${th(['금액(฿)','right'])}
+        ${th(['구분'])}${th(['내용'])}${th(['방문','right'])}${th(['인원','right'])}${th(['금액','right'])}
       </tr></thead><tbody>
       ${_vsGroup(rows).map(g=>`<tr style="border-bottom:1px solid #f0f0f0;cursor:pointer;" onclick="vsPick('${g.name.replace(/'/g,"\\'")}')">
         ${td(g.cat,'','color:#888;')}${td(g.name)}${td(g.count+'건','right')}
-        ${td(fmtNum(g.pax),'right','font-weight:700;color:#1a6b8a;')}${td(fmtNum(g.amount),'right')}
+        ${td(fmtNum(g.pax),'right','font-weight:700;color:#1a6b8a;')}${td(_vsMoney(g.byCur),'right')}
       </tr>`).join('')}
       </tbody></table>`;
   }
@@ -6523,9 +6540,9 @@ async function downloadVisitStatsExcel() {
   ws.properties.defaultRowHeight = 20;
 
   const HDRS = hasKeyword
-    ? ['일자','정산코드','가이드','구분','내용','인원','금액(฿)']
-    : ['구분','내용','방문건수','인원','금액(฿)'];
-  ws.columns = (hasKeyword ? [13,13,12,12,26,10,14] : [14,30,12,12,14]).map(w=>({width:w}));
+    ? ['일자','정산코드','가이드','구분','내용','인원','통화','금액']
+    : ['구분','내용','방문건수','인원','통화','금액'];
+  ws.columns = (hasKeyword ? [13,13,12,12,26,10,8,14] : [14,30,12,12,8,14]).map(w=>({width:w}));
 
   ws.mergeCells(1,1,1,HDRS.length);
   const title = ws.getCell(1,1);
@@ -6544,29 +6561,40 @@ async function downloadVisitStatsExcel() {
       const row = ws.getRow(ri++);
       _txt(row.getCell(1), r.date||'-'); _txt(row.getCell(2), r.code); _txt(row.getCell(3), r.guide);
       _txt(row.getCell(4), r.cat); _txt(row.getCell(5), r.name);
-      _num(row.getCell(6), r.pax); _num(row.getCell(7), r.amount);
+      _num(row.getCell(6), r.pax); _txt(row.getCell(7), VS_SYM[r.cur]||r.cur||'฿'); _num(row.getCell(8), r.amount);
     });
   } else {
+    // 통화가 섞인 항목은 통화별로 한 줄씩 (합산이 왜곡되지 않게)
     _vsGroup(rows).forEach(g=>{
-      const row = ws.getRow(ri++);
-      _txt(row.getCell(1), g.cat); _txt(row.getCell(2), g.name);
-      _num(row.getCell(3), g.count); _num(row.getCell(4), g.pax); _num(row.getCell(5), g.amount);
+      Object.entries(g.byCur).filter(([,v])=>v || Object.keys(g.byCur).length===1).forEach(([cur,amt],i)=>{
+        const row = ws.getRow(ri++);
+        _txt(row.getCell(1), i===0 ? g.cat : ''); _txt(row.getCell(2), i===0 ? g.name : '');
+        if (i===0) { _num(row.getCell(3), g.count); _num(row.getCell(4), g.pax); }
+        else { _txt(row.getCell(3), ''); _txt(row.getCell(4), ''); }
+        _txt(row.getCell(5), VS_SYM[cur]||cur); _num(row.getCell(6), amt);
+      });
     });
   }
 
-  const tot = rows.reduce((a,r)=>({pax:a.pax+r.pax, amount:a.amount+r.amount}), {pax:0,amount:0});
-  const sr = ws.getRow(ri);
+  const totPax = rows.reduce((a,r)=>a+r.pax, 0);
+  const byCur = _vsSumByCur(rows);
   const lastCol = HDRS.length;
-  ws.mergeCells(ri,1,ri,lastCol-2);
-  const sc = ws.getCell(ri,1); sc.value = `합계 (${rows.length}건)`; sc.alignment={horizontal:'center'};
-  _num(ws.getCell(ri,lastCol-1), tot.pax);
-  _num(ws.getCell(ri,lastCol), tot.amount);
-  for (let ci=1; ci<=lastCol; ci++) {
-    const c = ws.getCell(ri,ci);
-    c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
-    c.font = {...(c.font||{}), bold:true};
-  }
-  sr.height = 20;
+  const curs = Object.keys(byCur);
+  curs.forEach((cur,i)=>{
+    const sr = ws.getRow(ri);
+    ws.mergeCells(ri,1,ri,lastCol-3);
+    const sc = ws.getCell(ri,1); sc.value = i===0 ? `합계 (${rows.length}건)` : ''; sc.alignment={horizontal:'center'};
+    if (i===0) _num(ws.getCell(ri,lastCol-2), totPax); else _txt(ws.getCell(ri,lastCol-2), '');
+    _txt(ws.getCell(ri,lastCol-1), VS_SYM[cur]||cur);
+    _num(ws.getCell(ri,lastCol), byCur[cur]);
+    for (let ci=1; ci<=lastCol; ci++) {
+      const c = ws.getCell(ri,ci);
+      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+      c.font = {...(c.font||{}), bold:true};
+    }
+    sr.height = 20;
+    ri++;
+  });
   ws.views = [{state:'frozen', xSplit:0, ySplit:2}];
 
   const tag = (kw ? kw.replace(/[\\\/:*?"<>|\[\]]/g,'').slice(0,20)+'_' : '');
