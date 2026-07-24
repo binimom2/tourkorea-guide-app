@@ -1879,9 +1879,8 @@
         </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:4px;">
-        <button onclick="downloadSettleExcel()" style="width:100%;padding:10px;background:#1a6b8a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📋 정산서 관리 파일 다운로드</button>
-        <button onclick="downloadShoppingExcel()" style="width:100%;padding:10px;background:#e8872a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🛒 쇼핑 매출 정리 파일 다운로드</button>
-        <button onclick="downloadLedgerExcel()" style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📒 가이드별 정산수첩 다운로드 (가이드별 시트)</button>
+        <button id="btnDownloadAll" onclick="downloadAllExcel()" style="width:100%;padding:12px;background:#1a6b8a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📥 엑셀 3종 모두 다운로드</button>
+        <div style="font-size:11px;color:var(--text-sub);line-height:1.6;">📋 정산서 관리 &nbsp;·&nbsp; 🛒 쇼핑 매출 정리 &nbsp;·&nbsp; 📒 가이드별 정산수첩</div>
       </div>
       <div id="monthExcelPreview" style="font-size:12px;color:var(--text-sub);margin-top:8px;"></div>
     </div>
@@ -6049,7 +6048,40 @@ async function openMonthExcel() {
   document.getElementById('monthExcelPreview').textContent='';
   document.getElementById('monthExcelModal').style.display='flex';
 }
-function closeMonthExcel() { document.getElementById('monthExcelModal').style.display='none'; }
+function closeMonthExcel() {
+  // 3종 연속 다운로드 중에는 첫 파일에서 창이 닫히지 않게 한다
+  if (window._xlBatch) return;
+  document.getElementById('monthExcelModal').style.display='none';
+}
+
+// ── 3종 한 번에 ────────────────────────────────────────────
+// 브라우저가 연속 다운로드를 한꺼번에 받으면 뒤엣것을 무시하는 경우가 있어 사이를 띄운다.
+// 한 파일에 자료가 없어도(토스트만 뜨고 null 반환) 나머지는 계속 받는다.
+async function downloadAllExcel() {
+  const btn = document.getElementById('btnDownloadAll');
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  window._xlBatch = true;
+  try {
+    if (btn) btn.textContent = '⏳ 1/3 정산서 관리...';
+    await downloadSettleExcel();
+    await wait(800);
+    if (btn) btn.textContent = '⏳ 2/3 쇼핑 매출 정리...';
+    await downloadShoppingExcel();
+    await wait(800);
+    if (btn) btn.textContent = '⏳ 3/3 가이드별 정산수첩...';
+    await downloadLedgerExcel();
+    await wait(400);
+    showToast('📥 3개 파일을 모두 받았습니다.');
+  } catch(e) {
+    showToast('❌ 다운로드 중 오류가 났습니다: ' + (e && e.message || e), true);
+  } finally {
+    window._xlBatch = false;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = label; }
+    closeMonthExcel();
+  }
+}
 
 // ── 공통: ExcelJS 로드 + 선택 기간(시작~종료 년월) rows 필터 ──
 async function _getMonthRows() {
