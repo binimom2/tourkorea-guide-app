@@ -2346,6 +2346,41 @@ function applyRoleUI() {
   try { applySubmitLock(); } catch(e) {}
 }
 
+// ── 한글 입력칸 설정 ────────────────────────────────────────
+// IME(한/영) 자체는 브라우저·OS가 정하는 값이라 웹에서 바꿀 수 없다. 대신 글자를 넣는
+// 칸마다 한국어 기준으로 잡아준다 — 문자 키보드 고정(inputmode=text), 영문 자동대문자·
+// 자동수정·맞춤법검사 끄기. 안 그러면 폰에서 한글을 쳐도 영문으로 바뀌거나 첫 글자가
+// 대문자로 튀어 입력이 자꾸 어긋난다. 숫자·금액·날짜·비밀번호 칸은 건드리지 않는다.
+function applyKoreanInputHints(root) {
+  const scope = root || document;
+  // type을 안 적은 input도 기본이 text라 함께 잡는다 (예: 현지가이드 칸)
+  scope.querySelectorAll('input[type="text"], input:not([type]), textarea').forEach(el => {
+    if (el.dataset.koHint) return;
+    const im = (el.getAttribute('inputmode') || el.inputMode || '').toLowerCase();
+    if (im === 'numeric' || im === 'decimal' || im === 'tel') return;   // 숫자칸은 숫자 키패드 유지
+    if (el.classList.contains('amount-input') || el.classList.contains('settle-input')) return;
+    el.setAttribute('lang', 'ko');
+    el.setAttribute('inputmode', 'text');
+    el.setAttribute('autocapitalize', 'none');
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('spellcheck', 'false');
+    el.dataset.koHint = '1';
+  });
+}
+
+// 나중에 그려지는 칸(모달, 행 추가, 설정 화면 등)에도 자동으로 적용된다.
+// childList만 지켜보므로 속성 변경이 다시 감지를 부르는 되먹임은 없다.
+try {
+  let _koPending = false;
+  new MutationObserver(() => {
+    if (_koPending) return;
+    _koPending = true;
+    // rAF는 탭이 화면 뒤로 가면 멈춰서 새로 뜬 칸이 설정을 못 받는다 → 타이머로 처리
+    setTimeout(() => { _koPending = false; applyKoreanInputHints(document); }, 0);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  applyKoreanInputHints(document);
+} catch(e) {}
+
 // ── 가이드 제출 잠금 ────────────────────────────────────────
 // 가이드가 [📤 제출]을 누르면 그 정산서는 확정되어 더 이상 고칠 수 없다.
 // (수정이 필요하면 어드민/매니저가 제출건을 열어 수정하고, 가이드는 결과만 열람)
@@ -2690,6 +2725,7 @@ function renderExpenses(key) {
     list.appendChild(div);
   });
   calcExpenseTotal(key);
+  applyKoreanInputHints(list);
 }
 
 function onCategoryChange(select, key, id) {
@@ -2906,6 +2942,7 @@ function renderOptions() {
     list.appendChild(div);
   });
   calcOptionTotal();
+  applyKoreanInputHints(list);
 }
 
 function calcOptionRowDOM(row, div) {
@@ -3075,6 +3112,7 @@ function renderGigatip() {
     list.appendChild(div);
   });
   calcGigatipTotal();
+  applyKoreanInputHints(list);
 }
 
 function calcGigatipRowDOM(row, div) {
@@ -3310,6 +3348,7 @@ function renderShop(key) {
   });
   calcShopCat(key);
   applyKBVisibility();
+  applyKoreanInputHints(list);
 }
 
 const SHOP_LABEL_MAP = { jewell:'💎 지노잼', latex:'🛏 GM라텍스', beomrung:'🏪 범룽디', taiko:'🏬 타이코', herb:'🌿 허브' };
