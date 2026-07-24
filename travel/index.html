@@ -73,9 +73,9 @@ main{flex:1;padding:18px 22px 40px;}
 .cal-head h2{font-size:18px;font-weight:800;color:#161f38;}
 .cal-nav{background:#fff;border:1px solid #dfe3ea;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#3457d5;}
 .refresh-row{flex-basis:100%;display:flex;justify-content:flex-end;}
-.cal-refresh{background:#1f4a85;color:#fff;border:none;border-radius:7px;padding:7px 16px;cursor:pointer;font-size:13px;font-weight:800;letter-spacing:.4px;white-space:nowrap;}
-.cal-refresh:hover{background:#173a6a;}
-.cal-refresh:disabled{opacity:.6;cursor:default;}
+.cal-refresh{background:none;border:none;color:#1f4a85;padding:6px 4px;cursor:pointer;font-size:13px;font-weight:800;letter-spacing:.4px;white-space:nowrap;}
+.cal-refresh:hover{color:#3457d5;text-decoration:underline;}
+.cal-refresh:disabled{opacity:.6;cursor:default;text-decoration:none;}
 .cal-grid{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(20,30,60,0.05);}
 /* 두 달을 위아래로 — 아래 달 제목도 상단 제목과 같은 모양(가운데 정렬)으로 */
 .cal-month+.cal-month{margin-top:24px;}
@@ -749,7 +749,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-24-refresh2';
+const APP_VERSION='2026-07-24-refresh3';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
