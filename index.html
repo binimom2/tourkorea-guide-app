@@ -1879,8 +1879,10 @@
         </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:4px;">
-        <button id="btnDownloadAll" onclick="downloadAllExcel()" style="width:100%;padding:12px;background:#1a6b8a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📥 엑셀 3종 모두 다운로드</button>
-        <div style="font-size:11px;color:var(--text-sub);line-height:1.6;">📋 정산서 관리 &nbsp;·&nbsp; 🛒 쇼핑 매출 정리 &nbsp;·&nbsp; 📒 가이드별 정산수첩</div>
+        <button onclick="downloadSettleExcel()" style="width:100%;padding:10px;background:#1a6b8a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📋 정산서 관리 파일 다운로드</button>
+        <button onclick="downloadShoppingExcel()" style="width:100%;padding:10px;background:#e8872a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🛒 쇼핑 매출 정리 파일 다운로드</button>
+        <button onclick="downloadLedgerExcel()" style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📒 가이드별 정산수첩 다운로드 (가이드별 시트)</button>
+        <button id="btnDownloadAll" onclick="downloadAllExcel()" style="width:100%;padding:12px;margin-top:2px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">📥 3종 모두 다운로드</button>
       </div>
       <div id="monthExcelPreview" style="font-size:12px;color:var(--text-sub);margin-top:8px;"></div>
     </div>
