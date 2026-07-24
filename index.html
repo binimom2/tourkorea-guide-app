@@ -2030,6 +2030,9 @@ function normalizeEventContents() {
   return legacy.length > 0;
 }
 
+// 자동완성 후보 전체 (화면에는 글자를 친 뒤에만 걸러서 보여준다)
+let _ecAll = [];
+
 function syncEventContentsList() {
   const dl = document.getElementById('eventContents-list');
   if (!dl) return;
@@ -2038,9 +2041,23 @@ function syncEventContentsList() {
   // 같은 문구가 두 분류에 들어 있으면 자동완성에 똑같은 줄이 두 번 뜨므로
   // 값 기준으로 한 번만 남긴다 (앞선 분류가 우선).
   const seen = new Set();
-  dl.innerHTML = (appSettings.eventContents||[])
+  _ecAll = (appSettings.eventContents||[])
     .flatMap(g => (g.items||[]).map(v=>({v, g:g.name})))
-    .filter(o => { const k=o.v.trim(); if(seen.has(k)) return false; seen.add(k); return true; })
+    .filter(o => { const k=o.v.trim(); if(seen.has(k)) return false; seen.add(k); return true; });
+  // 처음에는 비워둔다 — 빈칸을 눌렀을 때 목록 전체가 쏟아지면 모바일에서 오히려 불편하다.
+  dl.innerHTML = '';
+}
+
+// 내용칸에 글자를 치면 그때부터 그 글자가 든 항목만 후보로 올린다.
+// 앞글자가 아니어도 잡히게 부분일치, 띄어쓰기·대소문자는 무시.
+function filterEventContents(val) {
+  const dl = document.getElementById('eventContents-list');
+  if (!dl) return;
+  const q = (val||'').trim().toLowerCase().replace(/\s+/g,'');
+  if (!q) { dl.innerHTML = ''; return; }
+  dl.innerHTML = _ecAll
+    .filter(o => o.v.toLowerCase().replace(/\s+/g,'').includes(q))
+    .slice(0, 30)
     .map(o => `<option value="${cfgEsc(o.v)}" label="${cfgEsc(o.g)}">`)
     .join('');
 }
@@ -2661,7 +2678,8 @@ function renderExpenses(key) {
       </select>
       <input type="text" lang="ko" inputmode="text" placeholder="${detailPlaceholder}" value="${row.detail||''}"
         list="eventContents-list"
-        oninput="updateExpense('${key}','${row.id}','detail',this.value)"
+        oninput="updateExpense('${key}','${row.id}','detail',this.value);filterEventContents(this.value)"
+        onfocus="filterEventContents(this.value)"
         style="${isRestaurant ? 'border-color:#E8872A;background:#FEF9F4;' : ''}">
       <input type="number" placeholder="인원/개수" value="${row.pax||''}" min="0" oninput="updateExpense('${key}','${row.id}','pax',this.value)">
       <input type="text" class="amount-input" placeholder="฿ 금액" value="${row.amount ? Number(row.amount).toLocaleString() : ''}"
