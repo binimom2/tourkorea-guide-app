@@ -958,6 +958,7 @@
       <button class="logout-btn guide-only" id="btnSave" onclick="manuallySave()" style="background:rgba(26,107,138,0.7);margin-right:4px;">💾 저장</button>
       <button class="logout-btn" id="btnSubmit" onclick="submitToAdmin()" style="background:rgba(220,38,38,0.35);margin-right:4px;display:none;">📤 제출</button>
       <button class="logout-btn guide-only" id="btnNewReport" onclick="confirmReset()" style="background:rgba(40,168,122,0.7);margin-right:4px;">📝 새 보고서</button>
+      <button class="logout-btn admin-only" id="btnVisitStats" onclick="openVisitStats()" style="background:rgba(124,58,237,0.45);margin-right:4px;">📊 방문집계</button>
       <button class="logout-btn admin-only" id="btnMonthExcel" onclick="openMonthExcel()" style="background:rgba(232,135,42,0.35);margin-right:4px;">📥 다운로드</button>
       <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
       <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 설정</button>
@@ -1826,6 +1827,30 @@
       <button onclick="closeGuideLedger()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
     </div>
     <div class="cfg-body" id="ledgerBody"></div>
+  </div>
+</div>
+
+<!-- ═══ 항목별 방문 집계 모달 ═══ -->
+<div class="cfg-modal" id="visitStatsModal">
+  <div class="cfg-box" style="max-width:760px;">
+    <div class="cfg-head">
+      <span>📊 항목별 방문 집계</span>
+      <button onclick="closeVisitStats()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px;">
+        <input type="date" id="vsFrom" style="border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+        <span style="color:#888;">~</span>
+        <input type="date" id="vsTo" style="border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+        <select id="vsCat" style="border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;"></select>
+        <input type="text" id="vsKeyword" list="vs-item-list" placeholder="항목명 일부 (예: 캠프)" onkeydown="if(event.key==='Enter'){event.preventDefault();runVisitStats();}" onchange="runVisitStats()" style="flex:1;min-width:150px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+        <datalist id="vs-item-list"></datalist>
+        <button onclick="runVisitStats()" style="background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">🔍 조회</button>
+        <button onclick="downloadVisitStatsExcel()" style="background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">📥 엑셀</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-sub);margin-bottom:8px;">항목명을 비워두면 기간 안의 <b>전체 항목을 인원 많은 순</b>으로 보여줍니다. 날짜는 행사일자 기준입니다.</div>
+      <div id="vsResult"></div>
+    </div>
   </div>
 </div>
 
@@ -6334,6 +6359,200 @@ function _sheetNameSafe(name, used) {
   while (used.has(n)) { n = base.slice(0,28) + '_' + (i++); }
   used.add(n);
   return n;
+}
+
+// ══════════════════════════════════════════════════════
+//  항목별 방문 집계 — 기간 + 항목명으로 식당·관광지 등 방문 인원 조회
+// ══════════════════════════════════════════════════════
+// 검색어는 부분일치. 띄어쓰기로 여러 단어를 넣으면 모두 포함된 항목만 나온다.
+// (예: "캠프"만 쳐도 "코끼리 캠프"가 잡히고, "코끼리 캠프"는 둘 다 든 항목만)
+function _vsNorm(s) { return (s||'').toString().toLowerCase().replace(/\s+/g,''); }
+function _vsNum(v) { return parseFloat((v!=null?v:'').toString().replace(/,/g,'')) || 0; }
+
+// 모든 제출건에서 "내용이 있는 행"을 납작하게 펼친다 (행사진행비 + 옵션)
+function _vsScanRows() {
+  const rows = [];
+  submissionsDB.forEach(s => {
+    const fd = s.fullData || {};
+    const date = _settleDateOf(s);
+    const base = { date, code: s.settleCode||'', guide: s.guideName||'', paxTotal: s.paxTotal||0 };
+    Object.values(fd.expenses || {}).forEach(arr => {
+      (arr||[]).forEach(r => {
+        const name = (r && r.detail || '').trim();
+        if (!name) return;
+        rows.push({ ...base, cat: (r.category||'').trim() || '기타', name, pax: _vsNum(r.pax), amount: _vsNum(r.amount) });
+      });
+    });
+    (fd.options || []).forEach(o => {
+      const name = (o && o.name || '').trim();
+      if (!name) return;
+      rows.push({ ...base, cat: '옵션', name, pax: _vsNum(o.pax), amount: _vsNum(o.total) });
+    });
+  });
+  return rows;
+}
+
+function _vsFiltered() {
+  const from = (document.getElementById('vsFrom')||{}).value || '';
+  const to   = (document.getElementById('vsTo')||{}).value || '';
+  const cat  = (document.getElementById('vsCat')||{}).value || '';
+  const kw   = (document.getElementById('vsKeyword')||{}).value || '';
+  const terms = kw.trim().split(/\s+/).filter(Boolean).map(_vsNorm);
+  const rows = _vsScanRows().filter(r => {
+    if (from && (!r.date || r.date < from)) return false;
+    if (to   && (!r.date || r.date > to))   return false;
+    if (cat && r.cat !== cat) return false;
+    if (terms.length) {
+      const n = _vsNorm(r.name);
+      if (!terms.every(t => n.includes(t))) return false;
+    }
+    return true;
+  });
+  return { rows, from, to, cat, kw, hasKeyword: terms.length > 0 };
+}
+
+// 항목명별 묶음 (인원 많은 순)
+function _vsGroup(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const k = r.name;
+    if (!map[k]) map[k] = { name:k, cat:r.cat, count:0, pax:0, paxTotal:0, amount:0 };
+    map[k].count++; map[k].pax += r.pax; map[k].paxTotal += r.paxTotal; map[k].amount += r.amount;
+  });
+  return Object.values(map).sort((a,b)=> b.pax - a.pax || b.count - a.count);
+}
+
+async function openVisitStats() {
+  if (currentRole !== 'admin') return;
+  await loadSubmissions();
+  // 구분 드롭다운 + 항목명 자동완성 목록 채우기
+  const rows = _vsScanRows();
+  const cats = [...new Set(rows.map(r=>r.cat))].sort((a,b)=>a.localeCompare(b,'ko'));
+  const sel = document.getElementById('vsCat');
+  sel.innerHTML = '<option value="">구분 전체</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const names = [...new Set(rows.map(r=>r.name))].sort((a,b)=>a.localeCompare(b,'ko'));
+  document.getElementById('vs-item-list').innerHTML = names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('');
+  // 기본 기간: 이번 달 1일 ~ 말일
+  const now = new Date();
+  const p = n => String(n).padStart(2,'0');
+  const y = now.getFullYear(), m = now.getMonth();
+  if (!document.getElementById('vsFrom').value) document.getElementById('vsFrom').value = `${y}-${p(m+1)}-01`;
+  if (!document.getElementById('vsTo').value)   document.getElementById('vsTo').value   = `${y}-${p(m+1)}-${p(new Date(y,m+1,0).getDate())}`;
+  document.getElementById('visitStatsModal').style.display = 'flex';
+  runVisitStats();
+}
+function closeVisitStats() { document.getElementById('visitStatsModal').style.display = 'none'; }
+
+function runVisitStats() {
+  const { rows, hasKeyword } = _vsFiltered();
+  const box = document.getElementById('vsResult');
+  if (!rows.length) { box.innerHTML = '<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">해당 조건의 기록이 없습니다.</p>'; return; }
+
+  const tot = rows.reduce((a,r)=>({ pax:a.pax+r.pax, amount:a.amount+r.amount, paxTotal:a.paxTotal+r.paxTotal }), {pax:0,amount:0,paxTotal:0});
+  const summary = `<div class="sub-card" style="background:#f1f5f9;margin-bottom:8px;">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;">
+        <span style="font-size:13px;font-weight:800;">총 ${rows.length}건</span>
+        <span style="font-size:13px;">인원 <b style="color:#1a6b8a;font-size:16px;">${fmtNum(tot.pax)}</b>명</span>
+        <span style="font-size:12px;color:#888;">행사인원 ${fmtNum(tot.paxTotal)}명</span>
+        <span style="font-size:13px;">금액 <b style="color:#e8872a;">฿${fmtNum(tot.amount)}</b></span>
+      </div>
+    </div>`;
+
+  const th = t => `<th style="padding:6px 4px;font-size:11px;color:#666;text-align:${t[1]||'left'};">${t[0]}</th>`;
+  const td = (v,al,st) => `<td style="padding:5px 4px;font-size:12px;text-align:${al||'left'};${st||''}">${v}</td>`;
+  let table;
+  if (hasKeyword) {
+    // 검색어가 있으면 방문 하나하나를 날짜순으로
+    const sorted = [...rows].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    table = `<table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#f1f5f9;">
+        ${th(['일자'])}${th(['정산코드'])}${th(['가이드'])}${th(['구분'])}${th(['내용'])}${th(['인원','right'])}${th(['금액(฿)','right'])}
+      </tr></thead><tbody>
+      ${sorted.map(r=>`<tr style="border-bottom:1px solid #f0f0f0;">
+        ${td(r.date||'-')}${td(r.code,'','color:#888;')}${td(r.guide)}${td(r.cat,'','color:#888;')}${td(r.name)}
+        ${td(r.pax?fmtNum(r.pax):'-','right','font-weight:700;')}${td(r.amount?fmtNum(r.amount):'-','right')}
+      </tr>`).join('')}
+      </tbody></table>`;
+  } else {
+    // 검색어가 없으면 항목별 요약 (인원 많은 순)
+    table = `<table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#f1f5f9;">
+        ${th(['구분'])}${th(['내용'])}${th(['방문','right'])}${th(['인원','right'])}${th(['금액(฿)','right'])}
+      </tr></thead><tbody>
+      ${_vsGroup(rows).map(g=>`<tr style="border-bottom:1px solid #f0f0f0;cursor:pointer;" onclick="vsPick('${g.name.replace(/'/g,"\\'")}')">
+        ${td(g.cat,'','color:#888;')}${td(g.name)}${td(g.count+'건','right')}
+        ${td(fmtNum(g.pax),'right','font-weight:700;color:#1a6b8a;')}${td(fmtNum(g.amount),'right')}
+      </tr>`).join('')}
+      </tbody></table>`;
+  }
+  box.innerHTML = summary + `<div style="max-height:46vh;overflow:auto;">${table}</div>`;
+}
+
+// 요약 표에서 항목을 누르면 그 항목의 상세 목록으로
+function vsPick(name) {
+  document.getElementById('vsKeyword').value = name;
+  runVisitStats();
+}
+
+async function downloadVisitStatsExcel() {
+  const { rows, from, to, kw, hasKeyword } = _vsFiltered();
+  if (!rows.length) { showToast('내려받을 기록이 없습니다.', true); return; }
+  if(!window.ExcelJS){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  }
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('방문집계');
+  ws.properties.defaultRowHeight = 20;
+
+  const HDRS = hasKeyword
+    ? ['일자','정산코드','가이드','구분','내용','인원','금액(฿)']
+    : ['구분','내용','방문건수','인원','금액(฿)'];
+  ws.columns = (hasKeyword ? [13,13,12,12,26,10,14] : [14,30,12,12,14]).map(w=>({width:w}));
+
+  ws.mergeCells(1,1,1,HDRS.length);
+  const title = ws.getCell(1,1);
+  title.value = `방문 집계  ${from||'전체'} ~ ${to||'전체'}${kw?`  ·  "${kw}"`:''}`;
+  title.font = {bold:true,size:13,color:{argb:'FF1A6B8A'}};
+  title.alignment = {horizontal:'center',vertical:'middle'};
+  ws.getRow(1).height = 22;
+
+  const hr = ws.getRow(2);
+  HDRS.forEach((h,i)=>_hdr(hr.getCell(i+1),h));
+  hr.height = 20;
+
+  let ri = 3;
+  if (hasKeyword) {
+    [...rows].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(r=>{
+      const row = ws.getRow(ri++);
+      _txt(row.getCell(1), r.date||'-'); _txt(row.getCell(2), r.code); _txt(row.getCell(3), r.guide);
+      _txt(row.getCell(4), r.cat); _txt(row.getCell(5), r.name);
+      _num(row.getCell(6), r.pax); _num(row.getCell(7), r.amount);
+    });
+  } else {
+    _vsGroup(rows).forEach(g=>{
+      const row = ws.getRow(ri++);
+      _txt(row.getCell(1), g.cat); _txt(row.getCell(2), g.name);
+      _num(row.getCell(3), g.count); _num(row.getCell(4), g.pax); _num(row.getCell(5), g.amount);
+    });
+  }
+
+  const tot = rows.reduce((a,r)=>({pax:a.pax+r.pax, amount:a.amount+r.amount}), {pax:0,amount:0});
+  const sr = ws.getRow(ri);
+  const lastCol = HDRS.length;
+  ws.mergeCells(ri,1,ri,lastCol-2);
+  const sc = ws.getCell(ri,1); sc.value = `합계 (${rows.length}건)`; sc.alignment={horizontal:'center'};
+  _num(ws.getCell(ri,lastCol-1), tot.pax);
+  _num(ws.getCell(ri,lastCol), tot.amount);
+  for (let ci=1; ci<=lastCol; ci++) {
+    const c = ws.getCell(ri,ci);
+    c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
+    c.font = {...(c.font||{}), bold:true};
+  }
+  sr.height = 20;
+  ws.views = [{state:'frozen', xSplit:0, ySplit:2}];
+
+  const tag = (kw ? kw.replace(/[\\\/:*?"<>|\[\]]/g,'').slice(0,20)+'_' : '');
+  _xlSave(wb, `방문집계_${tag}${(from||'').replace(/-/g,'')}-${(to||'').replace(/-/g,'')}.xlsx`);
 }
 
 async function downloadLedgerExcel() {
