@@ -2223,11 +2223,11 @@ function isMySubmission(s) {
 async function checkAdminEdits() {
   await loadSubmissions();
   if (!currentUser) return;
-  // 가이드에게는 "정산 종료(정산완료)된 최종본"만 알린다.
-  // 어드민/매니저가 작업 중 수정저장한 것은 확정 전이라 알리지 않는다 — 확정 전 금액이
-  // 가이드에게 먼저 보이면 나중에 바뀐 최종 금액과 어긋나 혼선이 생기기 때문.
+  // 가이드 알림은 어드민이 [📨 가이드 전송]을 누른 건에만 뜬다.
+  // 정산완료(집계 기준)나 수정저장만으로는 알림이 가지 않는다 — 회사정산 부분을
+  // 여러 번 고칠 수 있어서, 보낼 시점은 어드민이 직접 정한다.
   // 알림은 s.finalSeen으로 한 번만 뜨고, [내 제출현황]에서 열어보면 확인 처리된다.
-  const finals = submissionsDB.filter(s => isMySubmission(s) && s.settled && !s.finalSeen);
+  const finals = submissionsDB.filter(s => isMySubmission(s) && s.sentToGuide && !s.finalSeen);
   if (!finals.length) return;
   showToast(`📋 정산이 종료된 최종 정산서가 ${finals.length}건 있습니다. [내 제출현황]에서 확인하세요.`);
 }
@@ -5325,16 +5325,18 @@ function renderSubmissions() {
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <div>
                 <div class="sc-code">${s.settleCode} ${currentRole==='guide'
-                    ? (s.settled ? '<span class="sub-badge settled">최종본</span>' : '<span class="sub-badge" style="background:#e5e7eb;color:#555;">⏳ 정산 진행중</span>')
-                    : `<span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}`}</div>
+                    ? (s.sentToGuide ? '<span class="sub-badge settled">최종본</span>' : '<span class="sub-badge" style="background:#e5e7eb;color:#555;">⏳ 정산 진행중</span>')
+                    : `<span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}${s.sentToGuide?' <span class="sub-badge" style="background:#ede9fe;color:#5b21b6;">📨 전송됨</span>':''}`}</div>
                 <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
                 <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
               </div>
               <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-                ${(currentRole==='guide' && !s.settled)
-                  ? `<span style="font-size:11px;color:#888;">정산 종료 후 열람</span>`
+                ${(currentRole==='guide' && !s.sentToGuide)
+                  ? `<span style="font-size:11px;color:#888;">전송 후 열람 가능</span>`
                   : `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>`}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료'}</button>` : ''}
+                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#7c3aed;color:#fff;border:none;" onclick="sendSubToGuide('${s.id}')">📨 ${s.sentToGuide?'다시 전송':'가이드 전송'}</button>` : ''}
+                ${(currentRole==='admin' && s.sentToGuide) ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 8px;background:#e5e7eb;color:#555;border:none;" title="전송 취소" onclick="unsendSubToGuide('${s.id}')">↩</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
               </div>
             </div>
@@ -5360,19 +5362,44 @@ async function deleteSubData(id) {
 }
 
 // 최종 정산(정산 종료)은 어드민만 한다 — 매니저는 가이드 입력 대행·수정까지만.
-// 여기서 settled가 켜지는 순간이 곧 "가이드에게 최종본 전달" 시점이다.
+// 정산완료는 "정산수첩·월별엑셀 집계 기준"일 뿐, 가이드에게 보내지는 않는다.
+// 회사정산 부분을 여러 번 고칠 수 있어서, 가이드 전송은 [📨 가이드 전송] 버튼으로만 한다.
 async function toggleSubSettled(id) {
   if (currentRole !== 'admin') return;
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
   s.settled = !s.settled;
-  if (s.settled) {
-    s.settledAt = new Date().toISOString();
-    s.finalSeen = false;   // 가이드 로그인 시 "최종 정산서 도착" 알림이 뜨도록
-  }
+  if (s.settled) s.settledAt = new Date().toISOString();
   await saveSubmissions();
   renderSubmissions();
-  showToast(s.settled ? '✅ 정산완료 — 가이드가 최종본을 열람할 수 있습니다.' : '↩ 정산완료가 취소되었습니다. (가이드 열람 중단)');
+  showToast(s.settled ? '✅ 정산완료 처리되었습니다. (가이드 전송은 별도 버튼)' : '↩ 정산완료가 취소되었습니다.');
+}
+
+// 가이드에게 최종본 보내기 — 이 버튼을 누른 때만 가이드가 열람·알림을 받는다.
+async function sendSubToGuide(id) {
+  if (currentRole !== 'admin') return;
+  const s = submissionsDB.find(x=>x.id===id);
+  if (!s) return;
+  const again = !!s.sentToGuide;
+  if (!confirm(`[${s.settleCode}] ${s.guideName}\n${again ? '수정된 최종본을 다시 보냅니다. 가이드에게 알림이 한 번 더 갑니다.' : '이 정산서를 가이드에게 보냅니다.'}\n계속하시겠습니까?`)) return;
+  s.sentToGuide = true;
+  s.sentAt = new Date().toISOString();
+  s.finalSeen = false;   // 가이드 로그인 시 알림이 한 번 뜨도록
+  await saveSubmissions();
+  renderSubmissions();
+  showToast(again ? '📨 최종본을 다시 보냈습니다.' : '📨 가이드에게 전송되었습니다.');
+}
+
+// 잘못 보낸 경우 되돌리기 (가이드 열람 중단)
+async function unsendSubToGuide(id) {
+  if (currentRole !== 'admin') return;
+  const s = submissionsDB.find(x=>x.id===id);
+  if (!s) return;
+  if (!confirm(`[${s.settleCode}] ${s.guideName}\n전송을 취소하면 가이드가 다시 열람할 수 없습니다. 계속할까요?`)) return;
+  s.sentToGuide = false;
+  await saveSubmissions();
+  renderSubmissions();
+  showToast('↩ 전송이 취소되었습니다.');
 }
 
 async function markSubSeen(id) {
@@ -5732,9 +5759,9 @@ async function openSubData(id) {
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
   if (currentRole === 'guide' && !isMySubmission(s)) { showToast('❌ 본인이 제출한 정산서만 열람할 수 있습니다.', true); return; }
-  // 가이드는 정산이 종료(정산완료)된 최종본만 열람할 수 있다.
-  // 어드민/매니저가 작업 중인 수정본은 확정 전이라 보여주지 않는다.
-  if (currentRole === 'guide' && !s.settled) { showToast('⏳ 아직 정산이 종료되지 않았습니다. 종료 후 최종본을 확인할 수 있습니다.', true); return; }
+  // 가이드는 어드민이 [📨 가이드 전송]을 누른 최종본만 열람할 수 있다.
+  // 작업 중인 수정본(회사정산 등)은 확정 전이라 보여주지 않는다.
+  if (currentRole === 'guide' && !s.sentToGuide) { showToast('⏳ 아직 정산이 진행 중입니다. 관리자가 최종본을 보내면 확인할 수 있습니다.', true); return; }
   const readOnly = !!s.settled || currentRole === 'guide';
   if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.${readOnly ? '\n(읽기 전용 · 수정 불가)' : ''}`)) return;
   showToast('⏳ 불러오는 중...');
@@ -5744,7 +5771,7 @@ async function openSubData(id) {
 
   s.status = 'seen';
   // 가이드가 최종본을 열어봤으면 로그인 알림(1회성)을 끈다
-  if (currentRole === 'guide' && s.settled) s.finalSeen = true;
+  if (currentRole === 'guide' && s.sentToGuide) s.finalSeen = true;
   await saveSubmissions();
 
   // 공통: fullData를 내 localStorage 키에 임시 기록 → loadData()가 읽게 함
@@ -5819,7 +5846,7 @@ async function saveSubEdits() {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 제출 항목을 찾을 수 없습니다.', true); return; }
   if (s.settled) { showToast('🔒 정산완료된 파일은 수정할 수 없습니다. 먼저 완료취소 해주세요.', true); return; }
-  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드에게는 전달되지 않습니다. (정산 종료 시 최종본만 전달)`)) return;
+  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드에게는 전달되지 않습니다. ([📨 가이드 전송]을 눌러야 전달)`)) return;
 
   // DOM의 모든 최신 값을 state에 동기화 (환율 포함)
   saveData();
@@ -5842,8 +5869,8 @@ async function saveSubEdits() {
   s.fullData.fields = lsFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
-  // 수정저장은 가이드에게 알리지 않는다 — 알림/열람은 어드민이 [✅ 완료]로
-  // 정산을 종료하는 시점에 최종본 한 번만 나간다(toggleSubSettled 참고).
+  // 수정저장은 가이드에게 알리지 않는다 — 알림/열람은 어드민이
+  // [📨 가이드 전송]을 누를 때만 나간다(sendSubToGuide 참고).
 
   // 정산서관리/누계정산서 엑셀에서 쓰는 요약 수치도 최신 화면값으로 갱신
   Object.assign(s, collectProfitFields());
@@ -5858,7 +5885,7 @@ async function saveSubEdits() {
 
   await saveSubmissions();
   window._viewOpenSnapshot = JSON.stringify(state);
-  showToast('💾 수정내용이 저장되었습니다. (정산 종료 시 가이드에게 최종본 전달)');
+  showToast('💾 수정내용이 저장되었습니다. (가이드 전송은 [📨 가이드 전송] 버튼)');
 }
 
 function restoreMyData() {
