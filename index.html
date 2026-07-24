@@ -2357,12 +2357,32 @@ function syncUidFromState() {
     ...state.days.map(d => d.id),
     ...Object.values(state.expenses || {}).flatMap(rows => (rows||[]).map(r => r.id)),
     ...(state.options || []).map(o => o.id),
-    ...(state.gigatip || []).map(o => o.id)
+    ...(state.gigatip || []).map(o => o.id),
+    // 쇼핑 행이 빠져 있었다 — 쇼핑 id가 가장 큰 경우가 많아서 불러온 뒤 새로 추가한
+    // 쇼핑 행이 기존 행과 같은 id를 받았고, id로 지우는 삭제가 값이 든 다른 행까지
+    // 함께 지워버렸다(범룽디 외상칸 삭제 시 B행이 사라지던 원인).
+    ...Object.values(state.shopping || {}).flatMap(rows => (rows||[]).map(r => r.id)),
   ];
   allIds.forEach(id => {
     const m = id && id.match(/r(\d+)$/);
     if (m) _uid = Math.max(_uid, parseInt(m[1]) + 1);
   });
+  dedupeRowIds();
+}
+
+// 이미 중복 id가 저장된 데이터 복구 — 뒤에 나온 행에 새 id를 발급한다.
+// (일차 id(state.days)는 expenses의 키로 쓰이므로 건드리지 않는다)
+function dedupeRowIds() {
+  const seen = new Set();
+  const fix = rows => (rows||[]).forEach(r => {
+    if (!r) return;
+    if (!r.id || seen.has(r.id)) r.id = uid();
+    seen.add(r.id);
+  });
+  Object.values(state.expenses || {}).forEach(fix);
+  fix(state.options);
+  fix(state.gigatip);
+  Object.values(state.shopping || {}).forEach(fix);
 }
 
 const CATEGORIES = ['호텔비','차량비','관광지','식당','골프장','기타'];
@@ -2604,7 +2624,7 @@ function renderExpenses(key) {
   list.innerHTML = '';
   const isMainLocked = (key === 'main' && !canEditMain());
   const cats = (appSettings.categories && appSettings.categories.length) ? appSettings.categories : ['메인','1일','2일','3일'];
-  (state.expenses[key]||[]).forEach(row => {
+  (state.expenses[key]||[]).forEach((row, rowIdx) => {
     const isRestaurant = row.category === '식당';
     const detailPlaceholder = isRestaurant ? '식당명 (메뉴명)' : '내용';
     const div = document.createElement('div');
@@ -2621,8 +2641,8 @@ function renderExpenses(key) {
       <input type="number" placeholder="인원/개수" value="${row.pax||''}" min="0" oninput="updateExpense('${key}','${row.id}','pax',this.value)">
       <input type="text" class="amount-input" placeholder="฿ 금액" value="${row.amount ? Number(row.amount).toLocaleString() : ''}"
         oninput="onAmountInput(this,'${key}','${row.id}')">
-      <button class="btn-insert" title="이 위에 행 추가" onclick="insertExpenseRow('${key}','${row.id}')">＋</button>
-      <button class="btn-delete" onclick="deleteExpense('${key}','${row.id}')">✕</button>
+      <button class="btn-insert" title="이 위에 행 추가" onclick="insertExpenseRow('${key}','${row.id}',${rowIdx})">＋</button>
+      <button class="btn-delete" onclick="deleteExpense('${key}','${row.id}',${rowIdx})">✕</button>
     `;
     list.appendChild(div);
   });
@@ -2654,19 +2674,25 @@ function addExpenseRow(key) {
   scheduleSave();
 }
 
-function insertExpenseRow(key, afterId) {
+function insertExpenseRow(key, afterId, atIdx) {
   if (key==='main' && !canEditMain()) return;
   if (!state.expenses[key]) state.expenses[key]=[];
-  const idx = state.expenses[key].findIndex(r=>r.id===afterId);
+  const arr = state.expenses[key];
+  const idx = (Number.isInteger(atIdx) && arr[atIdx] && arr[atIdx].id === afterId) ? atIdx : arr.findIndex(r=>r.id===afterId);
+  if (idx < 0) return;
   const newRow = {id:uid(),category:'',detail:'',pax:'',amount:''};
-  state.expenses[key].splice(idx, 0, newRow);
+  arr.splice(idx, 0, newRow);
   renderExpenses(key);
   scheduleSave();
 }
 
-function deleteExpense(key, id) {
+// 화면에 그려진 위치(idx)를 우선 쓰고, 어긋나면 id로 찾는다 — 한 줄만 지운다
+function deleteExpense(key, id, idx) {
   if (key==='main' && !canEditMain()) return;
-  state.expenses[key]=(state.expenses[key]||[]).filter(r=>r.id!==id);
+  const arr = state.expenses[key] || [];
+  let i = (Number.isInteger(idx) && arr[idx] && arr[idx].id === id) ? idx : arr.findIndex(r=>r.id===id);
+  if (i < 0) return;
+  arr.splice(i, 1);
   renderExpenses(key);
   scheduleSave();
 }
@@ -2825,7 +2851,7 @@ function renderOptions() {
     // 삭제
     const btnDel = document.createElement('button');
     btnDel.className='btn-delete'; btnDel.textContent='✕';
-    btnDel.addEventListener('click', ()=>{ deleteOption(row.id); });
+    btnDel.addEventListener('click', ()=>{ deleteOption(row); });
 
     div.appendChild(inName);
     div.appendChild(selCur);
@@ -2858,7 +2884,14 @@ function calcOptionRow(id){
   r.profit=r.total-(parseFloat(r.cost)||0);
 }
 function addOptionRow(){state.options.push({id:uid(),name:'',currency:'THB',price:'',pax:'',total:'',cost:'',profitTHB:0});renderOptions();scheduleSave();}
-function deleteOption(id){state.options=state.options.filter(r=>r.id!==id);renderOptions();scheduleSave();}
+// 쇼핑과 같은 이유로 위치 기준 삭제 — 한 줄만 지운다
+function deleteOption(rowOrId){
+  const idx = (typeof rowOrId === 'object') ? state.options.indexOf(rowOrId) : state.options.findIndex(r=>r.id===rowOrId);
+  if (idx < 0) return;
+  state.options.splice(idx,1);
+  renderOptions();
+  scheduleSave();
+}
 
 function calcOptionTotal(){
   const syms = {THB:'฿', USD:'$', KRW:'₩'};
@@ -2987,7 +3020,7 @@ function renderGigatip() {
     // 삭제
     const btnDel = document.createElement('button');
     btnDel.className='btn-delete'; btnDel.textContent='✕';
-    btnDel.addEventListener('click', ()=>{ deleteGigatip(row.id); });
+    btnDel.addEventListener('click', ()=>{ deleteGigatip(row); });
 
     div.appendChild(selType);
     div.appendChild(inDetail);
@@ -3011,7 +3044,13 @@ function calcGigatipRowDOM(row, div) {
 }
 
 function addGigatipRow(){state.gigatip.push({id:uid(),currency:'THB',price:'',pax:'',total:'',type:'기가팁',detail:''});renderGigatip();scheduleSave();}
-function deleteGigatip(id){state.gigatip=state.gigatip.filter(r=>r.id!==id);renderGigatip();scheduleSave();}
+function deleteGigatip(rowOrId){
+  const idx = (typeof rowOrId === 'object') ? state.gigatip.indexOf(rowOrId) : state.gigatip.findIndex(r=>r.id===rowOrId);
+  if (idx < 0) return;
+  state.gigatip.splice(idx,1);
+  renderGigatip();
+  scheduleSave();
+}
 
 // 기가팁(통화별)/TC정산금(฿환산) 합계 표시 + 정산서 지상비·TC정산금란에 자동 반영
 function calcGigatipTotal(){
@@ -3212,7 +3251,7 @@ function renderShop(key) {
     // 삭제
     const btnDel = document.createElement('button');
     btnDel.className='btn-delete'; btnDel.textContent='✕';
-    btnDel.addEventListener('click', ()=>{ deleteShop(key, row.id); });
+    btnDel.addEventListener('click', ()=>{ deleteShop(key, row); });
 
     div.appendChild(inName);
     div.appendChild(typeEl);
@@ -3333,8 +3372,13 @@ function addShopRow(key) {
   renderShop(key);
   scheduleSave();
 }
-function deleteShop(key,id) {
-  state.shopping[key]=state.shopping[key].filter(r=>r.id!==id);
+// 삭제는 반드시 "그 행 하나만" — 예전엔 id로 filter해서 같은 id가 있으면 여러 줄이
+// 한꺼번에 지워졌다. 행 객체를 그대로 받아 위치로 지운다(id가 겹쳐도 안전).
+function deleteShop(key, rowOrId) {
+  const arr = state.shopping[key] || [];
+  const idx = (typeof rowOrId === 'object') ? arr.indexOf(rowOrId) : arr.findIndex(r=>r.id===rowOrId);
+  if (idx < 0) return;
+  arr.splice(idx, 1);
   renderShop(key);
   scheduleSave();
 }
