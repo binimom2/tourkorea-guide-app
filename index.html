@@ -960,9 +960,8 @@
       <button class="logout-btn guide-only" id="btnNewReport" onclick="confirmReset()" style="background:rgba(40,168,122,0.7);margin-right:4px;">📝 새 보고서</button>
       <button class="logout-btn admin-only" id="btnVisitStats" onclick="openVisitStats()" style="background:rgba(124,58,237,0.45);margin-right:4px;">📊 방문집계</button>
       <button class="logout-btn admin-only" id="btnMonthExcel" onclick="openMonthExcel()" style="background:rgba(232,135,42,0.35);margin-right:4px;">📥 다운로드</button>
+      <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 코드관리</button>
       <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
-      <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 설정</button>
-      <a class="logout-btn admin-only" href="/travel/" style="background:rgba(52,87,213,0.6);margin-right:4px;text-decoration:none;display:inline-block;">✈ 상세예약</a>
       <button class="logout-btn" id="btnPwChange" onclick="openPwChange()" style="background:rgba(255,255,255,0.15);margin-right:4px;" title="비밀번호 변경">🔑</button>
       <button class="logout-btn" id="btnLogout" onclick="doLogout()">로그아웃</button>
     </div>
@@ -1752,7 +1751,7 @@
 <div class="cfg-modal" id="settingsModal">
   <div class="cfg-box">
     <div class="cfg-head">
-      <span>⚙ 설정 관리</span>
+      <span>⚙ 코드 관리</span>
       <button onclick="closeSettings()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
     </div>
     <div class="cfg-tabs">
@@ -4688,7 +4687,7 @@ function restoreNewInfoFields() {
 }
 
 // ══════════════════════════════════════════════════════
-//  설정 관리 (구분/상품명/차량)
+//  코드 관리 (구분/상품명/행사내용) — 헤더의 [⚙ 코드관리]
 // ══════════════════════════════════════════════════════
 let currentCfgTab = 'categories';
 
