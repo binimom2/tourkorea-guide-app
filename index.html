@@ -1802,7 +1802,7 @@
     <div class="login-error" id="pwError"></div>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="login-btn" style="background:#888;" onclick="closePwChange()">취소</button>
-      <button class="login-btn" onclick="confirmPwChange()">변경</button>
+      <button class="login-btn" id="pwConfirmBtn" onclick="confirmPwChange()">변경</button>
     </div>
   </div>
 </div>
@@ -5198,19 +5198,34 @@ async function confirmPwChange() {
   const nw  = document.getElementById('pwNew').value;
   const nw2 = document.getElementById('pwNew2').value;
   const err = document.getElementById('pwError');
+  const btn = document.getElementById('pwConfirmBtn');
+  const showErr = m => { err.textContent=m; err.style.display='block'; };
   err.style.display='none';
   if (!currentUser) return;
-  // 현재 비밀번호 확인
-  const curPw = currentRole==='admin' ? getAdminPw() : (getAccounts().find(a=>a.id===currentUser.id)||{}).pw||'';
-  if (cur !== curPw) { err.textContent='현재 비밀번호가 올바르지 않습니다.'; err.style.display='block'; return; }
-  if (!nw) { err.textContent='새 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
-  if (nw !== nw2) { err.textContent='새 비밀번호가 일치하지 않습니다.'; err.style.display='block'; return; }
-  if (currentRole==='admin') {
-    await setAdminPw(nw);
-  } else {
-    const accounts = getAccounts();
-    const idx = accounts.findIndex(a=>a.id===currentUser.id);
-    if (idx>=0) { accounts[idx].pw=nw; await saveAccounts(accounts); }
+  if (!cur) { showErr('현재 비밀번호를 입력해주세요.'); return; }
+  if (!nw)  { showErr('새 비밀번호를 입력해주세요.'); return; }
+  if (nw.length < 6) { showErr('새 비밀번호는 6자 이상이어야 합니다.'); return; }
+  if (nw !== nw2) { showErr('새 비밀번호가 일치하지 않습니다.'); return; }
+  if (nw === cur) { showErr('현재 비밀번호와 다른 비밀번호를 입력해주세요.'); return; }
+
+  // 로그인은 Supabase Auth로 하므로 실제 비밀번호도 Auth에서 바꿔야 한다.
+  // (예전에는 localStorage 계정만 바꿔서, 로그인에는 전혀 반영되지 않았음)
+  if (btn) { btn.disabled = true; btn.textContent = '변경 중...'; }
+  try {
+    const { data: ures } = await sb.auth.getUser();
+    const email = ures && ures.user && ures.user.email;
+    if (!email) { showErr('로그인이 만료되었습니다. 다시 로그인해주세요.'); return; }
+    // 현재 비밀번호 확인 — 같은 계정으로 재인증(성공하면 세션도 그대로 갱신됨)
+    const { error: signErr } = await sb.auth.signInWithPassword({ email, password: cur });
+    if (signErr) { showErr('현재 비밀번호가 올바르지 않습니다.'); return; }
+    // 새 비밀번호로 변경
+    const { error: upErr } = await sb.auth.updateUser({ password: nw });
+    if (upErr) { showErr('변경 실패: ' + (upErr.message || '잠시 후 다시 시도해주세요.')); return; }
+  } catch(e) {
+    showErr('비밀번호 변경 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    return;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '변경'; }
   }
   closePwChange();
   showToast('✅ 비밀번호가 변경되었습니다.');

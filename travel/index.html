@@ -749,7 +749,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-24-refresh3';
+const APP_VERSION='2026-07-24-pwfix';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1216,19 +1216,19 @@ async function doLogout(){
 // 로그인한 본인의 비밀번호 변경 (관리자관리 화면이 없는 오퍼레이터/매니저도 셀프 변경 가능)
 async function changeMyPassword(){
   if(!currentUser){ return; }
+  // 로그인은 Supabase Auth로 하므로 실제 비밀번호도 Auth에서 바꿔야 한다.
+  // (예전에는 localStorage 계정만 바꿔서 로그인에 전혀 반영되지 않았음)
   const np=prompt(`[${currentUser.id}] 새 비밀번호 (8자 이상)`,'');
   if(np===null) return;
   const pw=np.trim();
   if(pw.length<8){ showToast('⚠ 비밀번호는 8자 이상이어야 합니다'); return; }
-  if(currentUser.id.toLowerCase()===ADMIN_ID.toLowerCase()){
-    await setAdminPw(pw); // 내장 admin 계정
-  } else {
-    const accounts=getAccounts();
-    const acc=accounts.find(a=>a.id.toLowerCase()===currentUser.id.toLowerCase());
-    if(!acc){ showToast('⚠ 계정을 찾을 수 없습니다'); return; }
-    acc.pw=pw;
-    await saveAccounts(accounts);
-  }
+  const np2=prompt('확인을 위해 새 비밀번호를 한 번 더 입력하세요','');
+  if(np2===null) return;
+  if(pw!==np2.trim()){ showToast('⚠ 새 비밀번호가 일치하지 않습니다'); return; }
+  try{
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if(error){ showToast('⚠ 변경 실패: '+(error.message||'잠시 후 다시 시도하세요')); return; }
+  }catch(e){ showToast('⚠ 비밀번호 변경 중 오류가 발생했습니다'); return; }
   showToast('✅ 비밀번호가 변경되었습니다');
 }
 
