@@ -3062,12 +3062,14 @@ function applyGigatipToSettlement(tipByCur, tcTHB) {
 // ══════════════════════════════════
 //  SHOPPING
 // ══════════════════════════════════
+// 구분에서 '외상'은 뺐다 — 외상은 오른쪽 [외상체크] 칸에 금액으로 적는다.
+// (예전에 '외상'으로 저장된 행은 renderShop에서 그 값만 따로 살려 보여준다)
 const SHOP_TYPES = {
-  jewell:   ['A','B','C','D','외상','반품','회사보고'],
-  latex:    ['외상','반품','회사보고'],
-  beomrung: ['A','B','C','D','E','외상','반품','회사보고'],
-  taiko:    ['A','B','C','D','E','외상','반품','회사보고'],
-  herb:     ['외상','반품','회사보고'],
+  jewell:   ['A','B','C','D','반품','회사보고'],
+  latex:    ['반품','회사보고'],
+  beomrung: ['A','B','C','D','E','반품','회사보고'],
+  taiko:    ['A','B','C','D','E','반품','회사보고'],
+  herb:     ['반품','회사보고'],
 };
 const SHOP_NAMES = {
   jewell:   '지노잼',
@@ -3104,7 +3106,10 @@ function renderShop(key) {
     optBlank.value=''; optBlank.textContent='선택'; optBlank.disabled=true;
     if(!row.type) optBlank.selected=true;
     typeEl.appendChild(optBlank);
-    types.forEach(t=>{
+    // 목록에서 빠진 예전 값(예: '외상')이 저장돼 있으면 그 행에서만 살려둔다 —
+    // 안 그러면 선택이 풀린 것처럼 보이고 다시 저장할 때 값이 날아간다.
+    const rowTypes = (row.type && !types.includes(row.type)) ? [...types, row.type] : types;
+    rowTypes.forEach(t=>{
       const o=document.createElement('option');
       o.value=t; o.textContent=t;
       if(row.type===t) o.selected=true;
@@ -5376,7 +5381,7 @@ function _buildLedgerData() {
   const ensure = (k, guideName, username) => {
     k = (k||'').trim();
     const gName = (guideName||k).trim();
-    if (!byGuide[k]) byGuide[k] = { username: username||'', guideName: gName, settleTotal:0, paidTotal:0, payments:[], settlements:[] };
+    if (!byGuide[k]) byGuide[k] = { username: username||'', guideName: gName, settleTotal:0, paidTotal:0, returnTotal:0, payments:[], settlements:[], returns:[] };
     else if (username && !byGuide[k].username) byGuide[k].username = username;
     return byGuide[k];
   };
@@ -5393,11 +5398,19 @@ function _buildLedgerData() {
     g.settleTotal += (s.guideSettle||0);
     g.settlements.push({ settleCode: s.settleCode||'', amount: s.guideSettle||0, date: _settleDateOf(s) });
   });
+  // 반품(kind==='return')은 정산이 끝난 뒤에 생기므로 원래 정산건을 고치지 않고
+  // 반품이 발생한 날짜에 별도 마이너스 정산으로 기록한다 → 정산금에서 차감.
   paymentsDB.forEach(p=>{
     const k = (p.guideName || p.guideUsername || '(미상)').trim();
     const g = ensure(k, p.guideName, p.guideUsername);
-    g.paidTotal += (p.amount||0);
-    g.payments.push(p);
+    if (p.kind === 'return') {
+      g.returnTotal += (p.amount||0);
+      g.settleTotal -= (p.amount||0);
+      g.returns.push(p);
+    } else {
+      g.paidTotal += (p.amount||0);
+      g.payments.push(p);
+    }
   });
 
   // 정산수첩은 가이드 아이디(계정)가 있는 사람만 노출한다.
@@ -5489,18 +5502,20 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
   const entries = [
     ...g.settlements.map(s=>({ date:s.date||'', type:'settle', label:s.settleCode||'-', amount:s.amount||0 })),
     ...g.payments.map(p=>({ date:p.date||'', type:'pay', label:p.memo||'지급', amount:p.amount||0, id:p.id })),
+    // 반품: 발생한 날짜에 정산금 마이너스로 한 줄 (원래 정산건은 그대로 둔다)
+    ...g.returns.map(p=>({ date:p.date||'', type:'return', label:'반품'+(p.memo?' · '+p.memo:''), amount:p.amount||0, id:p.id })),
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   let running = carry;
   const bodyRows = entries.map(e=>{
     running += (e.type==='settle' ? e.amount : -e.amount);
-    return `<tr>
+    return `<tr${e.type==='return'?' style="background:#fff5f5;"':''}>
       <td style="padding:5px 4px;font-size:12px;">${e.date||'-'}</td>
-      <td style="padding:5px 4px;font-size:12px;color:#666;">${e.label}</td>
-      <td style="padding:5px 4px;font-size:12px;text-align:right;color:#1a6b8a;">${e.type==='settle'?('฿'+fmtNum(e.amount)):''}</td>
+      <td style="padding:5px 4px;font-size:12px;color:${e.type==='return'?'#c0392b':'#666'};font-weight:${e.type==='return'?'700':'400'};">${e.label}</td>
+      <td style="padding:5px 4px;font-size:12px;text-align:right;color:${e.type==='return'?'#c0392b':'#1a6b8a'};">${e.type==='settle'?('฿'+fmtNum(e.amount)):(e.type==='return'?('-฿'+fmtNum(e.amount)):'')}</td>
       <td style="padding:5px 4px;font-size:12px;text-align:right;color:#c0392b;">${e.type==='pay'?('฿'+fmtNum(e.amount)):''}</td>
       <td style="padding:5px 4px;font-size:12px;text-align:right;font-weight:700;">฿${fmtNum(running)}</td>
-      <td style="padding:5px 4px;text-align:center;">${e.type==='pay'&&isAdmin?`<button onclick="deletePayment('${e.id}')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:12px;">✕</button>`:''}</td>
+      <td style="padding:5px 4px;text-align:center;">${(e.type==='pay'||e.type==='return')&&isAdmin?`<button onclick="deletePayment('${e.id}')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:12px;">✕</button>`:''}</td>
     </tr>`;
   }).join('') || `<tr><td colspan="6" style="padding:10px;text-align:center;color:#aaa;font-size:12px;">정산/지급 내역 없음</td></tr>`;
 
@@ -5539,10 +5554,14 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
 
   const addForm = isAdmin ? `
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+      <select id="pay-kind-${key}" style="width:82px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;">
+        <option value="pay">지급</option>
+        <option value="return">반품</option>
+      </select>
       <input type="date" id="pay-date-${key}" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
-      <input type="text" id="pay-amount-${key}" placeholder="지급액(฿)" inputmode="numeric" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
-      <input type="text" id="pay-memo-${key}" placeholder="메모(선택)" style="flex:1;min-width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
-      <button onclick="addPayment('${key}')" style="background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">입출금 추가</button>
+      <input type="text" id="pay-amount-${key}" placeholder="금액(฿)" inputmode="numeric" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <input type="text" id="pay-memo-${key}" placeholder="메모·정산코드(선택)" style="flex:1;min-width:100px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      <button onclick="addPayment('${key}')" style="background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">추가</button>
     </div>` : '';
 
   const backBtn = showBackBtn ? `<button onclick="backToLedgerList()" style="background:none;border:none;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;padding:0;">← 가이드 목록</button>` : '';
@@ -5551,7 +5570,7 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
     ${backBtn}
     <div class="sub-card">
       <div class="sc-code" style="font-size:16px;">${g.guideName}</div>
-      <div class="sc-meta">이월금 ฿${fmtNum(carry)} · 정산금액 ฿${fmtNum(g.settleTotal)} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
+      <div class="sc-meta">이월금 ฿${fmtNum(carry)} · 정산금액 ฿${fmtNum(g.settleTotal)}${g.returnTotal?` <span style="color:#c0392b;">(반품 -฿${fmtNum(g.returnTotal)} 반영)</span>`:''} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
       <div style="margin-top:8px;text-align:right;">
         <span style="font-size:12px;color:#888;">누적분&nbsp;</span>
         <span style="font-size:20px;font-weight:800;color:${cumulative>0?'#c0392b':'#1a8a60'};">฿${fmtNum(cumulative)}</span>
@@ -5581,25 +5600,31 @@ async function addPayment(key) {
   const dateEl = document.getElementById('pay-date-'+key);
   const amtEl = document.getElementById('pay-amount-'+key);
   const memoEl = document.getElementById('pay-memo-'+key);
+  const kindEl = document.getElementById('pay-kind-'+key);
+  const kind = (kindEl && kindEl.value === 'return') ? 'return' : 'pay';
   const date = dateEl.value;
   const amount = parseFloat((amtEl.value||'').replace(/,/g,''))||0;
   if (!date) { showToast('❌ 날짜를 입력해주세요.', true); return; }
-  if (!amount) { showToast('❌ 지급액을 입력해주세요.', true); return; }
+  if (!amount) { showToast(kind==='return' ? '❌ 반품액을 입력해주세요.' : '❌ 지급액을 입력해주세요.', true); return; }
 
   // key는 이제 가이드 이름(guideName) 기준
   const acc = getAccounts().find(a=>a.role==='guide' && a.name===key);
   const guideName = key;
   const guideUsername = acc ? acc.id : '';
 
-  paymentsDB.push({ id:'pay_'+Date.now(), guideUsername, guideName, amount, date, memo:(memoEl.value||'').trim(), createdAt:new Date().toISOString() });
+  paymentsDB.push({ id:'pay_'+Date.now(), guideUsername, guideName, amount, date, kind, memo:(memoEl.value||'').trim(), createdAt:new Date().toISOString() });
   await savePayments();
-  showToast('✅ 지급 내역이 저장되었습니다.');
+  // 입력칸 비우기 — 연속 입력해도 앞 값이 남지 않게
+  amtEl.value=''; memoEl.value='';
+  showToast(kind==='return' ? '✅ 반품이 기록되었습니다. (정산금에서 차감)' : '✅ 지급 내역이 저장되었습니다.');
   renderGuideLedger();
 }
 
 async function deletePayment(id) {
   if (currentRole !== 'admin') return;
-  if (!confirm('이 지급 내역을 삭제하시겠습니까?')) return;
+  const target = paymentsDB.find(p=>p.id===id);
+  const what = (target && target.kind === 'return') ? '반품' : '지급';
+  if (!confirm(`이 ${what} 내역을 삭제하시겠습니까?`)) return;
   paymentsDB = paymentsDB.filter(p=>p.id!==id);
   await savePayments();
   renderGuideLedger();
@@ -6264,6 +6289,7 @@ async function downloadLedgerExcel() {
     const entries = [
       ...g.settlements.map(s=>({ date:s.date||'', type:'settle', label:s.settleCode||'-', amount:s.amount||0 })),
       ...g.payments.map(p=>({ date:p.date||'', type:'pay', label:p.memo||'지급', amount:p.amount||0 })),
+      ...g.returns.map(p=>({ date:p.date||'', type:'return', label:'반품'+(p.memo?' · '+p.memo:''), amount:p.amount||0 })),
     ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
     const ws = wb.addWorksheet(_sheetNameSafe(g.guideName, usedNames));
@@ -6304,10 +6330,13 @@ async function downloadLedgerExcel() {
         r.height = 22;
         _txt(r.getCell(1), e.date||'-');
         _txt(r.getCell(2), e.label);
-        if (e.type==='settle') _num(r.getCell(3), e.amount); else _txt(r.getCell(3), '');
+        if (e.type==='settle') _num(r.getCell(3), e.amount);
+        else if (e.type==='return') { _num(r.getCell(3), -e.amount); r.getCell(3).font={color:{argb:'FFC0392B'},bold:true}; }
+        else _txt(r.getCell(3), '');
         if (e.type==='pay') _num(r.getCell(4), e.amount); else _txt(r.getCell(4), '');
         _num(r.getCell(5), running);
         r.getCell(5).font = {bold:true};
+        if (e.type==='return') r.getCell(2).font = {color:{argb:'FFC0392B'},bold:true};
         ri++;
       });
     }
