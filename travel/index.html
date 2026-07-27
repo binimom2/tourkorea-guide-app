@@ -1756,7 +1756,7 @@ async function ensureCfmLabelsMigrated(){
 }
 function codeLabel(listName,code){
   const item=(getCodes()[listName]||[]).find(c=>c.code===code);
-  return item?`${item.code}[${item.label}]`:(code||'-');
+  return item?`${item.code}`:(code||'-');
 }
 function _firstActiveCode(list){
   return ((list||[]).find(c=>c.active!==false)||list[0]||{}).code||'';
@@ -1765,7 +1765,7 @@ function fillSelectFromCodes(selectId,listName,selected){
   // 미사용 처리된 코드는 신규 선택지에서 제외하되, 이미 지정된 값(기존 예약)은 계속 보이도록 유지
   const list=(getCodes()[listName]||[]).filter(c=>c.active!==false||c.code===selected);
   const sel=document.getElementById(selectId);
-  sel.innerHTML=list.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
+  sel.innerHTML=list.map(c=>`<option value="${c.code}">${c.code}</option>`).join('');
   if(selected) sel.value=selected;
 }
 
@@ -3651,7 +3651,7 @@ function renderFilters(){
   const fill=(id,list,allLabel)=>{
     const active=list.filter(c=>c.active!==false);
     document.getElementById(id).innerHTML=`<option value="">${allLabel}</option>`+
-      active.map(c=>`<option value="${c.code}">${c.code}[${c.label}]</option>`).join('');
+      active.map(c=>`<option value="${c.code}">${c.code}</option>`).join('');
   };
   fill('f-division',codes.divisions,'전체 구분');
   fill('f-type',codes.types,'전체 유형');
