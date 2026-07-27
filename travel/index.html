@@ -503,7 +503,7 @@ table.subtbl input.numcell{text-align:center;}
 
         <div class="sec-divider">CUSTOMER INFO</div>
         <div class="f-row2">
-          <div class="f-row"><label>CUSTOMER</label><select id="r-customer"></select></div>
+          <div class="f-row"><label>CUSTOMER</label><input type="text" id="r-customer" list="r-customer-list" autocomplete="off" placeholder="거래처 검색·선택"/><datalist id="r-customer-list"></datalist></div>
           <div class="f-row"><label>MANAGER</label><input type="text" id="r-manager"/></div>
         </div>
         <div class="f-row2">
@@ -4075,9 +4075,10 @@ function formatDT(iso){
 let workingRes=null;
 function fillCustomerSelect(selectedCustomer,selectedManager){
   const customers=getCustomers();
-  const sel=document.getElementById('r-customer');
-  sel.innerHTML='<option value="">NONE</option>'+customers.filter(c=>c.active!==false||c.name===selectedCustomer).map(c=>`<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}</option>`).join('');
-  sel.value=selectedCustomer||'';
+  // 거래처가 많아 기본 select는 부분검색이 안 돼서 input+datalist로 전환(단어 치면 부분검색, 클릭시 전체목록).
+  const dl=document.getElementById('r-customer-list');
+  dl.innerHTML=customers.filter(c=>c.active!==false||c.name===selectedCustomer).map(c=>`<option value="${escapeAttr(c.name)}"></option>`).join('');
+  document.getElementById('r-customer').value=selectedCustomer||'';
   document.getElementById('r-manager').value=selectedManager||''; // MANAGER는 자유입력이라 선택 목록 없이 값만 채움
 }
 
