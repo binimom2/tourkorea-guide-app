@@ -352,7 +352,9 @@ table.subtbl input.numcell{text-align:center;}
 @media (max-width:900px){
   /* 모바일: 팝업 안쪽을 flex로 스크롤시키면 폰에서 얼어붙는다(주소창 높이·100vh 계산 어긋남).
      → 오버레이(.rov) 자체를 폰 기본 스크롤로 굴리고, 헤더·하단버튼은 sticky로 고정한다. */
-  .rov{padding:0;display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  /* 주의: .rov 기본값은 닫힘 시 display:none 이므로 display는 .rov.open 에만 준다(안 그러면 오버레이가 상시 화면을 덮음). */
+  .rov{padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .rov.open{display:block;}
   .rmodal{max-width:100%;min-height:100vh;min-height:100dvh;height:auto;border-radius:0;display:block;overflow:visible;}
   .rmodal-hd{position:sticky;top:0;z-index:3;}
   .rmodal-body{display:block;grid-template-columns:1fr;overflow:visible;}
