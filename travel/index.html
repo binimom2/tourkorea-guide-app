@@ -350,17 +350,18 @@ table.subtbl input.numcell{text-align:center;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @media (max-width:900px){
-  /* 모바일: 팝업 안쪽을 flex로 스크롤시키면 폰에서 얼어붙는다(주소창 높이·100vh 계산 어긋남).
-     → 오버레이(.rov) 자체를 폰 기본 스크롤로 굴리고, 헤더·하단버튼은 sticky로 고정한다. */
-  /* 주의: .rov 기본값은 닫힘 시 display:none 이므로 display는 .rov.open 에만 준다(안 그러면 오버레이가 상시 화면을 덮음). */
-  .rov{padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-  .rov.open{display:block;}
-  .rmodal{max-width:100%;min-height:100vh;min-height:100dvh;height:auto;border-radius:0;display:block;overflow:visible;}
-  .rmodal-hd{position:sticky;top:0;z-index:3;}
-  .rmodal-body{display:block;grid-template-columns:1fr;overflow:visible;}
-  .rmodal-side{border-right:none;border-bottom:1px solid #e8eaf0;height:auto;overflow-y:visible;}
-  .rmodal-main{height:auto;overflow-y:visible;}
-  .rmodal-ft{position:sticky;bottom:0;z-index:3;}
+  /* 예약 상세: 모바일에서도 PC 2단 레이아웃(기본정보|배정표)을 그대로 두고,
+     오버레이 고정(position:fixed)을 풀어 '일반 페이지 흐름'으로 만든다.
+     → 브라우저 기본 핀치줌/이동이 살아나 PC 화면처럼 확대해서 볼 수 있다.
+     (position:fixed 오버레이 안에서는 두 손가락이 페이지확대가 아니라 스크롤로 처리돼 핀치줌이 막힌다.)
+     뒤 캘린더(#app)는 숨겨서 팝업만 남긴다. .rov 기본값은 닫힘 시 display:none 유지. */
+  body.res-open{background:#eef1f6;}
+  body.res-open #app{display:none;}
+  .rov.open{position:static;display:block;overflow:visible;padding:0;background:#eef1f6;}
+  .rmodal{max-width:none;width:960px;height:auto;min-height:100vh;border-radius:0;overflow:visible;}
+  .rmodal-body{overflow:visible;}
+  .rmodal-side{height:auto;overflow:visible;}
+  .rmodal-main{height:auto;overflow:visible;}
   .cal-cell{min-height:72px;}
   .stats{display:none;}
 }
@@ -4128,12 +4129,14 @@ function openReservation(id,presetDate){
 
   renderSubsections();
   document.getElementById('rov').classList.add('open');
+  document.body.classList.add('res-open');   // 모바일: 뒤 캘린더 숨기고 팝업을 일반 페이지로(핀치줌 가능)
   document.getElementById('rmViewers').innerHTML='';
   if(modalMode==='edit'&&workingRes.code) startPresence(workingRes.code); else stopPresence();
 }
 function closeReservation(){
   stopPresence();
   document.getElementById('rov').classList.remove('open');
+  document.body.classList.remove('res-open');
   workingRes=null;editingId=null;
   applyPendingReload();   // 버전이 바뀌어 미뤄뒀던 새로고침이 있으면 지금 실행
 }
