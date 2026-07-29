@@ -357,7 +357,7 @@ table.subtbl input.numcell{text-align:center;}
      뒤 캘린더(#app)는 숨겨서 팝업만 남긴다. .rov 기본값은 닫힘 시 display:none 유지.
      ※ 열 때 openReservation()에서 window.scrollTo(0,0) 로 맨 위로 올려야 팝업이 보인다. */
   body.res-open{background:#eef1f6;}
-  body.res-open #app{display:none;}
+  body.res-open #app{display:none !important;}  /* 로그인 후 JS가 #app에 인라인 display:flex를 박으므로 !important 필요 */
   .rov.open{position:static;display:block;overflow:visible;padding:0;background:#eef1f6;}
   .rmodal{max-width:none;width:960px;height:auto;min-height:100vh;border-radius:0;overflow:visible;}
   .rmodal-body{overflow:visible;}
