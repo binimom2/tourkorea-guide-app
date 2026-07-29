@@ -82,11 +82,11 @@ main{flex:1;padding:18px 22px 40px;}
 /* 두 달을 위아래로 — 아래 달 제목도 상단 제목과 같은 모양(가운데 정렬)으로 */
 .cal-month+.cal-month{margin-top:24px;}
 .cal-mtitle{font-size:18px;font-weight:800;color:#161f38;text-align:center;margin:0 0 14px;}
-.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);background:#f4f6fa;border-bottom:1px solid #e3e7ee;}
+.cal-dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#f4f6fa;border-bottom:1px solid #e3e7ee;}
 .cal-dow div{padding:9px;text-align:center;font-size:11.5px;font-weight:800;color:#8892a0;}
 .cal-dow div:first-child{color:#e0483f;}
 .cal-dow div:last-child{color:#3457d5;}
-.cal-body{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-body{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
 .cal-cell{min-height:92px;border-right:1px solid #eef0f5;border-bottom:1px solid #eef0f5;padding:5px 6px;position:relative;cursor:pointer;transition:background .12s;}
 .cal-cell:hover{background:#f7f9fd;}
 .cal-cell.out{background:#fafbfc;cursor:default;}
