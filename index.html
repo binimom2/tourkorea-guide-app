@@ -5172,7 +5172,7 @@ async function changePwAccount(i) {
   const nw = (document.getElementById(`pw-new-${i}`).value||'').trim();
   const err = document.getElementById(`pw-err-${i}`);
   if (!nw) { err.textContent='비밀번호를 입력해주세요.'; return; }
-  if (nw.length < 6) { err.textContent='비밀번호는 6자 이상이어야 합니다.'; return; }
+  if (nw.length < 8) { err.textContent='비밀번호는 8자 이상이어야 합니다.'; return; }
   const accounts = getAccounts();
   const a = accounts[i];
   if (!a) return;
@@ -5213,7 +5213,7 @@ async function addAccount() {
   err.style.display = 'none';
   if (!role) { err.textContent='역할을 선택해주세요.'; err.style.display='block'; return; }
   if (!val||!pw) { err.textContent='아이디(이름)와 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
-  if (pw.length < 6) { err.textContent='비밀번호는 6자 이상이어야 합니다.'; err.style.display='block'; return; }
+  if (pw.length < 8) { err.textContent='비밀번호는 8자 이상이어야 합니다.'; err.style.display='block'; return; }
   const accounts = getAccounts();
   // 로그인에 쓰이는 값 결정: 가이드는 이름으로, 나머지는 아이디로 로그인
   let accId, loginKey, email, entry;
@@ -5287,7 +5287,7 @@ async function confirmPwChange() {
   if (!currentUser) return;
   if (!cur) { showErr('현재 비밀번호를 입력해주세요.'); return; }
   if (!nw)  { showErr('새 비밀번호를 입력해주세요.'); return; }
-  if (nw.length < 6) { showErr('새 비밀번호는 6자 이상이어야 합니다.'); return; }
+  if (nw.length < 8) { showErr('새 비밀번호는 8자 이상이어야 합니다.'); return; }
   if (nw !== nw2) { showErr('새 비밀번호가 일치하지 않습니다.'); return; }
   if (nw === cur) { showErr('현재 비밀번호와 다른 비밀번호를 입력해주세요.'); return; }
 
