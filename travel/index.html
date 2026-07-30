@@ -1268,7 +1268,7 @@ function renderAccList(){
   const RANK={admin:0,manager:1,operator:2};
   const rk=r=>RANK[r]===undefined?2:RANK[r]; // 상급자 상단
   const ordered=getAccounts().map((a,i)=>({a,i})).sort((x,y)=>rk(x.a.role)-rk(y.a.role));
-  ul.innerHTML=ordered.map(({a,i})=>{
+  const rows=ordered.map(({a,i})=>{
     const role=(a.role==='admin'||a.role==='manager')?a.role:'operator';
     const approved=a.approved!==false;
     if(i===accEditIndex){
@@ -1290,7 +1290,25 @@ function renderAccList(){
       <a class="act-edit" style="cursor:pointer;font-size:11px;" onclick="editAccount(${i})">✏ 수정</a>
       <a class="act-edit" style="cursor:pointer;font-size:11px;color:#1a8a52;" onclick="changeAccPw(${i})">🔑 비번</a>
       <a class="act-del" style="cursor:pointer;font-size:11px;" onclick="delAccount(${i})">삭제</a>
-    </li>`;}).join('')||'<div class="subtbl-empty">등록된 직원 계정이 없습니다</div>';
+    </li>`;}).join('');
+  // 내장 관리자(admin) 계정 — 목록 맨 위에 고정 표시(비번변경만 가능)
+  const adminRow=`
+    <li style="display:flex;align-items:center;gap:6px;background:#fdecec;padding:8px 10px;border-radius:8px;flex-wrap:wrap;">
+      <span style="font-weight:700;font-size:12px;min-width:64px;">${ADMIN_ID}</span>
+      <span style="background:#e8220a;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">ADMIN</span>
+      <a class="act-edit" style="cursor:pointer;font-size:11px;color:#1a8a52;margin-left:auto;" onclick="changeAdminPw()">🔑 비번변경</a>
+    </li>`;
+  ul.innerHTML = adminRow + (rows || '<div class="subtbl-empty" style="margin-top:6px;">등록된 직원 계정이 없습니다</div>');
+}
+// 내장 admin 비밀번호 변경(실제 Auth 비번)
+async function changeAdminPw(){
+  const np=prompt(`[${ADMIN_ID}] 새 비밀번호 (8자 이상)`,'');
+  if(np===null)return;
+  const pw=np.trim();
+  if(pw.length<8){showToast('⚠ 비밀번호는 8자 이상이어야 합니다');return;}
+  const res=await callAccountApi('setPassword',{email:idToEmail(ADMIN_ID),password:pw});
+  if(!res||!res.ok){showToast('⚠ 변경 실패: '+((res&&res.error)||''));return;}
+  showToast('✅ 관리자 비밀번호가 변경되었습니다');
 }
 async function addAccount(){
   const id=document.getElementById('acc-id').value.trim();
