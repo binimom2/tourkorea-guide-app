@@ -5077,10 +5077,13 @@ function renderAccountList() {
 
   // 일반 계정 (역할 순서: organizer → op/manager → guide)
   const ROLE_ORDER = { organizer:0, op:1, manager:1, guide:2 };
-  const accounts = getAccounts().slice().sort((a,b)=>
-    (ROLE_ORDER[a.role]??9) - (ROLE_ORDER[b.role]??9)
-  );
-  accounts.forEach((a, i) => {
+  // 표시는 역할순으로 정렬하되, 삭제·비번·아이디변경은 "저장 배열의 원래 인덱스"를 써야
+  // 정렬 때문에 엉뚱한 계정이 지워지지 않는다.
+  const ROLE_RANK = ROLE_ORDER;
+  const order = getAccounts().map((a, oi) => ({ a, oi }))
+    .sort((x, y) => (ROLE_RANK[x.a.role]??9) - (ROLE_RANK[y.a.role]??9));
+  order.forEach(({ a, oi }) => {
+    const i = oi;   // 이하 모든 ${i}는 저장 배열의 원래 위치를 가리킨다
     const isGuide = a.role === 'guide';
     const loginLabel = isGuide
       ? `<span style="font-size:11px;color:#888;">로그인: 이름+비번</span>`
