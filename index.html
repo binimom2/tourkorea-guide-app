@@ -5217,8 +5217,10 @@ async function changePwAccount(i) {
   const accounts = getAccounts();
   const a = accounts[i];
   if (!a) return;
-  if (!a.authId && !a.email) { err.textContent='이 계정은 예전 방식이라 여기서 변경할 수 없습니다. 삭제 후 다시 추가해 주세요.'; return; }
-  const res = await callAccountApi('setPassword', Object.assign(a.authId ? { id: a.authId } : { email: a.email }, { password: nw }));
+  // 예전(legacy) 계정도 로그인 매핑표(login_directory) 이메일로 실제 Auth 비번을 바꿀 수 있게 한다
+  const email = await _accEmail(a);
+  if (!a.authId && !email) { err.textContent='이 계정의 로그인 계정을 찾을 수 없습니다.'; return; }
+  const res = await callAccountApi('setPassword', Object.assign(a.authId ? { id: a.authId } : { email }, { password: nw }));
   if (!res || !res.ok) { err.textContent = (res && res.error) || '비밀번호 변경에 실패했습니다.'; return; }
   document.getElementById(`pwrow-${i}`).style.display='none';
   document.getElementById(`pw-new-${i}`).value='';
