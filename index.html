@@ -2014,6 +2014,13 @@ async function removeLoginDir(key) {
   delete dir[(key||'').toLowerCase()];
   await sb.from('guide_data').upsert({ data_key:'login_directory', data: dir, updated_at: new Date().toISOString() });
 }
+// 계정의 Auth 이메일 찾기 — 신규계정은 a.email, 예전계정은 로그인 매핑표(login_directory)에서
+async function _accEmail(a) {
+  if (a && a.email) return a.email;
+  const dir = await _loadLoginDir();
+  const key = ((a && (a.loginKey || (a.role === 'guide' ? a.name : a.id))) || '').toLowerCase();
+  return dir[key] || null;
+}
 
 async function loadAppSettings() {
   try {
@@ -5097,7 +5104,12 @@ function renderAccountList() {
           ${roleBadge(a.role)}
           ${loginLabel}
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          ${!isGuide ? `<select onchange="changeRoleAccount(${i}, this.value)" title="역할 변경" style="font-size:11px;font-weight:700;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;background:#fff;color:#3730a3;cursor:pointer;">
+            <option value="organizer" ${a.role==='organizer'?'selected':''}>ORGANIZER</option>
+            <option value="op" ${(a.role==='op'||a.role==='manager')?'selected':''}>MANAGER</option>
+            <option value="admin" ${a.role==='admin'?'selected':''}>ADMIN</option>
+          </select>` : ''}
           ${!isGuide ? `<button onclick="toggleIdRow(${i})" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">✏️ 아이디변경</button>` : ''}
           <button onclick="togglePwRow('pwrow-${i}')" style="background:#f1f5f9;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">🔑 비번변경</button>
           <button onclick="deleteAccount(${i})" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;">삭제</button>
@@ -5136,6 +5148,25 @@ function toggleIdRow(i) {
   document.querySelectorAll('[id^="pwrow-"],[id^="idrow-"]').forEach(r => r.style.display='none');
   if (!open) row.style.display = 'block';
 }
+// 역할 변경 — 로그인 시 역할은 Auth 메타데이터에서 읽으므로 서버에도 반영해야 실제 적용됨
+async function changeRoleAccount(i, newRole) {
+  const accounts = getAccounts();
+  const a = accounts[i];
+  if (!a) return;
+  const prev = a.role;
+  if (prev === newRole) return;
+  const email = await _accEmail(a);
+  if (!a.authId && !email) { showToast('❌ 예전 방식 계정이라 역할 변경이 안 됩니다. 삭제 후 다시 추가해 주세요.', true); renderAccountList(); return; }
+  const idArg = a.authId ? { id: a.authId } : { oldEmail: email };
+  const res = await callAccountApi('update', Object.assign(idArg, {
+    metadata: { acc_id: a.id, login_name: a.name || a.id, name: a.name || a.id, role: newRole }
+  }));
+  if (!res || !res.ok) { showToast('❌ 역할 변경 실패: ' + ((res && res.error) || ''), true); renderAccountList(); return; }
+  a.role = newRole;
+  await saveAccounts(accounts);
+  renderAccountList();
+  showToast('✅ 역할이 ' + newRole.toUpperCase() + ' 로 변경되었습니다. (본인은 다시 로그인해야 적용)');
+}
 async function changeIdAccount(i) {
   const newId = (document.getElementById(`id-new-${i}`).value||'').trim();
   const err   = document.getElementById(`id-err-${i}`);
@@ -5164,7 +5195,14 @@ async function changePwAdmin() {
   const nw = (document.getElementById('pw-new-admin').value||'').trim();
   const err = document.getElementById('pw-err-admin');
   if (!nw) { err.textContent='비밀번호를 입력해주세요.'; return; }
-  await setAdminPw(nw);
+  if (nw.length < 8) { err.textContent='비밀번호는 8자 이상이어야 합니다.'; return; }
+  // 로그인은 Supabase Auth라 실제 admin 계정의 비번을 바꿔야 한다(예전엔 로컬 값만 바꿔 로그인에 반영 안 됐음)
+  const dir = await _loadLoginDir();
+  const email = dir[ADMIN_ID.toLowerCase()] || null;
+  if (!email) { err.textContent='관리자 로그인 이메일을 찾을 수 없습니다. (관리자로 로그인한 상태에서 시도하세요)'; return; }
+  const res = await callAccountApi('setPassword', { email, password: nw });
+  if (!res || !res.ok) { err.textContent = (res && res.error) || '변경 실패'; return; }
+  try { await setAdminPw(nw); } catch(e) {}   // 표시용 로컬 값도 맞춰 둠(로그인엔 무관)
   document.getElementById('pwrow-admin').style.display='none';
   document.getElementById('pw-new-admin').value='';
   err.textContent='';
@@ -5258,9 +5296,10 @@ async function deleteAccount(i) {
   const accounts = getAccounts();
   const a = accounts[i];
   if (!a) return;
-  // 실제 로그인 계정(Auth) 삭제 — authId 우선, 없으면 이메일로 조회
-  if (a.authId || a.email) {
-    const res = await callAccountApi('delete', a.authId ? { id: a.authId } : { email: a.email });
+  // 실제 로그인 계정(Auth) 삭제 — authId 우선, 없으면 이메일로 조회(예전 계정 포함)
+  const email = await _accEmail(a);
+  if (a.authId || email) {
+    const res = await callAccountApi('delete', a.authId ? { id: a.authId } : { email });
     if (!res || !res.ok) {
       if (!confirm('로그인 계정 삭제에 실패했습니다:\n' + ((res&&res.error)||'') + '\n\n그래도 목록에서 제거할까요?')) return;
     }
