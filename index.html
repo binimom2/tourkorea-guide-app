@@ -5294,10 +5294,10 @@ async function addAccount() {
 }
 
 async function deleteAccount(i) {
-  if (!confirm('이 계정을 삭제할까요?')) return;
   const accounts = getAccounts();
   const a = accounts[i];
   if (!a) return;
+  if (!confirm(`정말 [${a.name || a.id}] 계정을 삭제할까요?\n\n⚠️ 이 이름의 로그인 계정이 삭제됩니다. (정산서 데이터는 남아 있어요)`)) return;
   // 실제 로그인 계정(Auth) 삭제 — authId 우선, 없으면 이메일로 조회(예전 계정 포함)
   const email = await _accEmail(a);
   if (a.authId || email) {
