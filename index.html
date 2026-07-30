@@ -1933,14 +1933,18 @@ function showIdleWarn(sec){
   _idleWarnEl.innerHTML = `⏰ ${sec}초 후 자동 로그아웃 — 화면을 누르면 계속 사용합니다`
     + `<br><span style="font-weight:600;opacity:.9;font-size:11.5px;">(Auto sign-out in ${sec}s — tap anywhere to stay signed in)</span>`;
 }
+let _loggingOut=false;
 async function idleLogout(){
+  if(_loggingOut) return;          // 이미 로그아웃 처리 중이면 재실행 금지(안내창 중복 방지)
+  _loggingOut=true;
+  currentUser=null;                // 1초 검사기가 다시 idleLogout을 못 부르게 즉시 해제
   try{ await sb.auth.signOut(); }catch(e){}
   try{ localStorage.removeItem(SESSION_KEY); localStorage.removeItem(IDLE_KEY); }catch(e){}
   alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.\n\n(Signed out after 1 hour of inactivity. Please sign in again.)');
   location.reload();
 }
 setInterval(() => {
-  if(!currentUser) return;
+  if(_loggingOut||!currentUser) return;
   const idle = Date.now() - _idleAt;
   if(idle >= IDLE_LIMIT) idleLogout();
   else if(idle >= IDLE_LIMIT - IDLE_WARN) showIdleWarn(Math.ceil((IDLE_LIMIT-idle)/1000));
