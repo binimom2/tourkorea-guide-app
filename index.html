@@ -1978,6 +1978,39 @@ async function syncAccountsFromSupabase() {
   } catch(e) {}
 }
 
+// ── 계정 서버 함수(/api/account) 호출 — 관리자 토큰 첨부 ──
+// 로그인용 Supabase Auth 계정 생성/삭제/비번변경은 반드시 서버(service_role)에서 한다.
+async function callAccountApi(action, payload) {
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    const token = session && session.access_token;
+    if (!token) return { error: '로그인이 만료되었습니다. 다시 로그인해 주세요.' };
+    const r = await fetch('/api/account', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(Object.assign({ action }, payload)),
+    });
+    return await r.json().catch(() => ({ error: '서버 응답을 해석할 수 없습니다.' }));
+  } catch (e) { return { error: '서버 연결 실패: ' + ((e && e.message) || e) }; }
+}
+// 로그인 매핑표(login_directory): 로그인 화면에서 입력한 이름/아이디 → 이메일
+const GUIDE_EMAIL_DOMAIN = '@tourkorea-guide.app';
+async function _loadLoginDir() {
+  try { const { data: row } = await sb.from('guide_data').select('data').eq('data_key','login_directory').single();
+    if (row && row.data && typeof row.data === 'object') return row.data; } catch(e) {}
+  return {};
+}
+async function upsertLoginDir(key, email) {
+  const dir = await _loadLoginDir();
+  dir[(key||'').toLowerCase()] = (email||'').toLowerCase();
+  await sb.from('guide_data').upsert({ data_key:'login_directory', data: dir, updated_at: new Date().toISOString() });
+}
+async function removeLoginDir(key) {
+  const dir = await _loadLoginDir();
+  delete dir[(key||'').toLowerCase()];
+  await sb.from('guide_data').upsert({ data_key:'login_directory', data: dir, updated_at: new Date().toISOString() });
+}
+
 async function loadAppSettings() {
   try {
     const d = await loadFromSupabase(SETTINGS_KEY);
@@ -5103,7 +5136,16 @@ async function changeIdAccount(i) {
   if (newId === ADMIN_ID) { err.textContent='사용할 수 없는 아이디입니다.'; return; }
   const accounts = getAccounts();
   if (accounts.find((a,idx)=>a.id===newId && idx!==i)) { err.textContent='이미 사용 중인 아이디입니다.'; return; }
-  accounts[i].id = newId;
+  const a = accounts[i];
+  const oldKey = a.loginKey || (a.id||'').toLowerCase();
+  const newKey = newId.toLowerCase();
+  // 로그인 매핑표 재지정 (이메일/Auth 계정은 그대로 두고 로그인 키만 바꾼다)
+  if (a.email) {
+    if (oldKey !== newKey) await removeLoginDir(oldKey);
+    await upsertLoginDir(newKey, a.email);
+  }
+  a.id = newId;
+  a.loginKey = newKey;
   await saveAccounts(accounts);
   document.getElementById(`idrow-${i}`).style.display='none';
   err.textContent='';
@@ -5126,9 +5168,13 @@ async function changePwAccount(i) {
   const nw = (document.getElementById(`pw-new-${i}`).value||'').trim();
   const err = document.getElementById(`pw-err-${i}`);
   if (!nw) { err.textContent='비밀번호를 입력해주세요.'; return; }
+  if (nw.length < 6) { err.textContent='비밀번호는 6자 이상이어야 합니다.'; return; }
   const accounts = getAccounts();
-  accounts[i].pw = nw;
-  await saveAccounts(accounts);
+  const a = accounts[i];
+  if (!a) return;
+  if (!a.authId && !a.email) { err.textContent='이 계정은 예전 방식이라 여기서 변경할 수 없습니다. 삭제 후 다시 추가해 주세요.'; return; }
+  const res = await callAccountApi('setPassword', Object.assign(a.authId ? { id: a.authId } : { email: a.email }, { password: nw }));
+  if (!res || !res.ok) { err.textContent = (res && res.error) || '비밀번호 변경에 실패했습니다.'; return; }
   document.getElementById(`pwrow-${i}`).style.display='none';
   document.getElementById(`pw-new-${i}`).value='';
   err.textContent='';
@@ -5163,27 +5209,58 @@ async function addAccount() {
   err.style.display = 'none';
   if (!role) { err.textContent='역할을 선택해주세요.'; err.style.display='block'; return; }
   if (!val||!pw) { err.textContent='아이디(이름)와 비밀번호를 입력해주세요.'; err.style.display='block'; return; }
+  if (pw.length < 6) { err.textContent='비밀번호는 6자 이상이어야 합니다.'; err.style.display='block'; return; }
   const accounts = getAccounts();
-  // 가이드는 name으로, 나머지는 id로 중복 체크
+  // 로그인에 쓰이는 값 결정: 가이드는 이름으로, 나머지는 아이디로 로그인
+  let accId, loginKey, email, entry;
   if (role === 'guide') {
     if (accounts.find(a=>a.role==='guide' && a.name===val)) { err.textContent='같은 이름의 가이드가 이미 있습니다.'; err.style.display='block'; return; }
-    accounts.push({ id:'g_'+Date.now(), pw, name:val, role });
+    accId = 'g_' + Date.now();
+    loginKey = val.toLowerCase();          // 가이드는 이름으로 로그인
+    email = accId + GUIDE_EMAIL_DOMAIN;
+    entry = { id: accId, name: val, role, email, loginKey };
   } else {
     if (val === ADMIN_ID) { err.textContent='이미 사용 중인 아이디입니다.'; err.style.display='block'; return; }
     if (accounts.find(a=>a.id===val)) { err.textContent='이미 존재하는 아이디입니다.'; err.style.display='block'; return; }
-    accounts.push({ id:val, pw, name:val, role });
+    accId = val;
+    loginKey = val.toLowerCase();
+    email = val.toLowerCase() + GUIDE_EMAIL_DOMAIN;
+    entry = { id: accId, name: val, role, email, loginKey };
   }
+  const btn = document.querySelector('#userMgrModal .acc-add-btn') || null;
+  if (btn) { btn.disabled = true; btn.textContent = '생성 중...'; }
+  // 1) 실제 로그인 계정(Supabase Auth) 생성 — 서버(service_role)에서
+  const res = await callAccountApi('create', { email, password: pw, metadata: { acc_id: accId, login_name: val, name: val, role } });
+  if (btn) { btn.disabled = false; btn.textContent = '추가'; }
+  if (!res || !res.ok) { err.textContent = (res && res.error) || '계정 생성에 실패했습니다.'; err.style.display='block'; return; }
+  entry.authId = res.id;
+  // 2) 로그인 매핑표 등록 (이 값이 있어야 로그인 화면에서 이름/아이디로 로그인됨)
+  await upsertLoginDir(loginKey, email);
+  // 3) 화면 목록 저장 (비밀번호는 더 이상 앱에 저장하지 않음 — Auth가 보관)
+  accounts.push(entry);
   await saveAccounts(accounts);
   document.getElementById('acc-id').value='';
   document.getElementById('acc-pw').value='';
   document.getElementById('acc-role').value='';
   renderAccountList();
-  showToast('✅ 계정이 추가되었습니다.');
+  showToast('✅ 계정이 추가되었습니다. 이제 로그인할 수 있습니다.');
 }
 
 async function deleteAccount(i) {
   if (!confirm('이 계정을 삭제할까요?')) return;
   const accounts = getAccounts();
+  const a = accounts[i];
+  if (!a) return;
+  // 실제 로그인 계정(Auth) 삭제 — authId 우선, 없으면 이메일로 조회
+  if (a.authId || a.email) {
+    const res = await callAccountApi('delete', a.authId ? { id: a.authId } : { email: a.email });
+    if (!res || !res.ok) {
+      if (!confirm('로그인 계정 삭제에 실패했습니다:\n' + ((res&&res.error)||'') + '\n\n그래도 목록에서 제거할까요?')) return;
+    }
+  }
+  // 로그인 매핑표에서도 제거
+  const key = a.loginKey || (a.role === 'guide' ? (a.name||'') : (a.id||''));
+  if (key) await removeLoginDir(key);
   accounts.splice(i, 1);
   await saveAccounts(accounts);
   renderAccountList();

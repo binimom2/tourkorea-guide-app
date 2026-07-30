@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "가이드정산서",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3300", "."],
+      "port": 3300
+    }
+  ]
+}

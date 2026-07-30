@@ -1140,6 +1140,21 @@ function getAdminPw(){return localStorage.getItem('trv_admin_pw')||ADMIN_PW_DEFA
 async function setAdminPw(pw){ await sbSave('trv_admin_pw',pw); }
 function getAccounts(){try{return JSON.parse(localStorage.getItem('trv_accounts')||'[]');}catch{return[];}}
 async function saveAccounts(arr){ await sbSave('trv_accounts',arr); }
+const TRV_EMAIL_DOMAIN='@traveldetail.app';
+function idToEmail(id){ return (id||'').toLowerCase()+TRV_EMAIL_DOMAIN; }
+// 로그인 계정(Supabase Auth) 생성/삭제/변경은 서버(service_role) 함수에서만 처리
+async function callAccountApi(action,payload){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const token = session && session.access_token;
+    if(!token) return { error:'로그인이 만료되었습니다. 다시 로그인해 주세요.' };
+    const r = await fetch('/api/account',{ method:'POST',
+      headers:{ 'content-type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify(Object.assign({action},payload)) });
+    return await r.json().catch(()=>({error:'서버 응답을 해석할 수 없습니다.'}));
+  }catch(e){ return { error:'서버 연결 실패: '+((e&&e.message)||e) }; }
+}
+function trvMeta(a){ return { login_name:a.id, name:a.id, role:a.role||'operator', approved:a.approved!==false }; }
 
 let currentUser=null;
 function roleLabel(r){return r==='admin'?'ADMIN':r==='manager'?'MANAGER':'OPERATOR';}
@@ -1153,8 +1168,8 @@ async function doLogin(){
   if(!id||!pw){err.textContent='아이디와 비밀번호를 입력하세요.';err.style.display='block';return;}
   if(btn){btn.textContent='로그인 중...';btn.disabled=true;}
   try{
-    // Supabase 정식 인증 (Auth). 이메일 = 아이디@traveldetail.app
-    const email = id + '@traveldetail.app';
+    // Supabase 정식 인증 (Auth). 이메일 = 아이디@traveldetail.app (소문자 통일)
+    const email = idToEmail(id);
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
     if(!error && data && data.session){
       const meta = (data.user && data.user.user_metadata) || {};
@@ -1281,21 +1296,41 @@ async function addAccount(){
   if(pw.length<8){err.textContent='비밀번호는 8자 이상이어야 합니다.';return;}
   const accounts=getAccounts();
   if(accounts.find(a=>a.id.toLowerCase()===id.toLowerCase())){err.textContent='이미 존재하는 아이디입니다.';return;}
+  if(id.toLowerCase()==='admin'){err.textContent='사용할 수 없는 아이디입니다.';return;}
   const role=document.getElementById('acc-role').value||'operator';
-  accounts.push({id,pw,role,approved:true});
+  const entry={ id, role, approved:true, email:idToEmail(id) };
+  // 1) 로그인 계정(Auth) 생성 — 서버에서
+  const res=await callAccountApi('create',{ email:entry.email, password:pw, metadata:trvMeta(entry) });
+  if(!res||!res.ok){ err.textContent=(res&&res.error)||'계정 생성에 실패했습니다.'; return; }
+  entry.authId=res.id;
+  // 2) 화면 목록 저장 (비밀번호는 앱에 저장하지 않음 — Auth가 보관)
+  accounts.push(entry);
   await saveAccounts(accounts);
   err.textContent='';
   document.getElementById('acc-id').value='';document.getElementById('acc-pw').value='12345678';
   renderAccList();
-  showToast('✅ 계정이 추가되었습니다');
+  showToast('✅ 계정이 추가되었습니다. 이제 로그인할 수 있습니다.');
 }
+function _accIdArg(a){ return a.authId ? { id:a.authId } : { oldEmail: a.email || idToEmail(a.id) }; }
 async function delAccount(i){
-  const accounts=getAccounts();accounts.splice(i,1);await saveAccounts(accounts);renderAccList();
+  const accounts=getAccounts();
+  const a=accounts[i]; if(!a)return;
+  if(!confirm(`[${a.id}] 계정을 삭제할까요?`))return;
+  if(a.authId||a.email){
+    const res=await callAccountApi('delete', a.authId?{id:a.authId}:{email:a.email});
+    if(!res||!res.ok){ if(!confirm('로그인 계정 삭제 실패:\n'+((res&&res.error)||'')+'\n\n목록에서만 제거할까요?'))return; }
+  }
+  accounts.splice(i,1);await saveAccounts(accounts);renderAccList();
+  showToast('🗑 계정이 삭제되었습니다');
 }
 async function changeAccRole(i,role){
   const accounts=getAccounts();
   if(!accounts[i])return;
+  const prev=accounts[i].role;
   accounts[i].role=role;
+  // 로그인 시 역할은 Auth 메타데이터에서 읽으므로 서버에도 반영
+  const res=await callAccountApi('update', Object.assign(_accIdArg(accounts[i]),{ metadata: trvMeta(accounts[i]) }));
+  if(!res||!res.ok){ accounts[i].role=prev; showToast('⚠ 역할 변경 실패: '+((res&&res.error)||'')); renderAccList(); return; }
   await saveAccounts(accounts);
   renderAccList();
   showToast('✅ 구분이 변경되었습니다');
@@ -1307,8 +1342,14 @@ async function saveAccEdit(i){
   if(!accounts[i])return;
   const newId=document.getElementById('acc-edit-id').value.trim();
   if(!newId){showToast('⚠ 아이디를 입력해주세요');return;}
+  if(newId.toLowerCase()==='admin'){showToast('⚠ 사용할 수 없는 아이디입니다');return;}
   if(accounts.some((x,xi)=>xi!==i&&x.id.toLowerCase()===newId.toLowerCase())){showToast('⚠ 이미 존재하는 아이디입니다');return;}
-  accounts[i].id=newId;
+  const a=accounts[i];
+  const newEmail=idToEmail(newId);
+  // 아이디가 바뀌면 로그인 이메일도 바뀌므로 Auth 계정을 함께 갱신
+  const res=await callAccountApi('update', Object.assign(_accIdArg(a),{ email:newEmail, metadata: trvMeta(Object.assign({},a,{id:newId})) }));
+  if(!res||!res.ok){ showToast('⚠ 수정 실패: '+((res&&res.error)||'')); return; }
+  a.id=newId; a.email=newEmail; if(res.id) a.authId=res.id;
   await saveAccounts(accounts);
   accEditIndex=null; renderAccList();
   showToast('✅ 수정되었습니다');
@@ -1316,19 +1357,24 @@ async function saveAccEdit(i){
 async function toggleAccApproved(i){
   const accounts=getAccounts();
   if(!accounts[i])return;
-  accounts[i].approved=(accounts[i].approved===false)?true:false;
+  const next=(accounts[i].approved===false)?true:false;
+  accounts[i].approved=next;
+  // 로그인 차단 여부(approved)도 Auth 메타데이터 기준이므로 서버에 반영
+  const res=await callAccountApi('update', Object.assign(_accIdArg(accounts[i]),{ metadata: trvMeta(accounts[i]) }));
+  if(!res||!res.ok){ accounts[i].approved=!next; showToast('⚠ 변경 실패: '+((res&&res.error)||'')); renderAccList(); return; }
   await saveAccounts(accounts);
   renderAccList();
-  showToast(accounts[i].approved?'✅ 허가되었습니다':'⛔ 허가가 취소되었습니다 (로그인 불가)');
+  showToast(next?'✅ 허가되었습니다':'⛔ 허가가 취소되었습니다 (로그인 불가)');
 }
 async function changeAccPw(i){
   const accounts=getAccounts();
-  if(!accounts[i])return;
-  const np=prompt(`[${accounts[i].id}] 새 비밀번호 (8자 이상)`,'12345678');
+  const a=accounts[i]; if(!a)return;
+  const np=prompt(`[${a.id}] 새 비밀번호 (8자 이상)`,'12345678');
   if(np===null)return;
   if(np.trim().length<8){showToast('⚠ 비밀번호는 8자 이상이어야 합니다');return;}
-  accounts[i].pw=np.trim();
-  await saveAccounts(accounts);
+  if(!a.authId&&!a.email){showToast('⚠ 예전 방식 계정이라 여기서 변경할 수 없습니다. 삭제 후 다시 추가해 주세요.');return;}
+  const res=await callAccountApi('setPassword', Object.assign(a.authId?{id:a.authId}:{email:a.email},{ password:np.trim() }));
+  if(!res||!res.ok){ showToast('⚠ 비밀번호 변경 실패: '+((res&&res.error)||'')); return; }
   renderAccList();
   showToast('✅ 비밀번호가 변경되었습니다');
 }

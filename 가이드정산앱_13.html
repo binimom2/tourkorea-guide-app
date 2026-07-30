@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가이드 정산서</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F0F4F8; --surface: #FFFFFF; --surface2: #F7F9FC;
+    --primary: #1A6B8A; --primary-light: #E8F4F8;
+    --accent: #E8872A; --accent-light: #FEF3E7;
+    --text: #1A2332; --text-sub: #5A6A7A; --border: #DDE4EC;
+    --success: #28A87A; --danger: #E05252;
+    --shadow: 0 2px 12px rgba(26,107,138,0.10);
+    --radius: 14px; --radius-sm: 8px;
+    --thb: #0B7B5E;
+  }
+  body { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; }
+
+  /* ── LOGIN ── */
+  #loginScreen { position:fixed; inset:0; background:var(--primary); display:flex; align-items:center; justify-content:center; z-index:999; }
+  .login-box { background:#fff; border-radius:20px; padding:32px 28px; width:320px; max-width:90vw; box-shadow:0 8px 40px rgba(0,0,0,0.25); }
+  .login-logo { text-align:center; margin-bottom:20px; }
+  .login-logo h1 { font-size:20px; font-weight:800; color:var(--primary); }
+  .login-logo p { font-size:12px; color:var(--text-sub); margin-top:4px; }
+  .login-field { margin-bottom:14px; }
+  .login-field label { font-size:11px; font-weight:700; color:var(--text-sub); display:block; margin-bottom:5px; }
+  .login-field input, .login-field select {
+    width:100%; border:1.5px solid var(--border); border-radius:var(--radius-sm);
+    padding:10px 12px; font-size:14px; font-family:inherit; color:var(--text);
+    background:var(--surface2); transition:border-color 0.2s;
+  }
+  .login-field input:focus, .login-field select:focus { outline:none; border-color:var(--primary); background:#fff; }
+  .login-btn { width:100%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; transition:all 0.2s; }
+  .login-btn:hover { background:#145a75; }
+  .login-error { color:var(--danger); font-size:12px; text-align:center; margin-top:8px; display:none; }
+
+  /* ── HEADER ── */
+  .app-header { background:var(--primary); color:#fff; padding:10px 16px 0; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.18); }
+  .app-header-top { display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; }
+  .app-title { font-size:16px; font-weight:700; letter-spacing:-0.3px; }
+  .header-right { display:flex; align-items:center; gap:10px; }
+  .role-badge { font-size:10px; font-weight:700; padding:3px 8px; border-radius:20px; }
+  .role-badge.admin { background:#FFD700; color:#7A5A00; }
+  .role-badge.op    { background:#B8E0FF; color:#1A4A7A; }
+  .role-badge.guide { background:#B8F0D8; color:#0A5A3A; }
+  .logout-btn { background:rgba(255,255,255,0.18); border:none; border-radius:6px; color:#fff; font-size:11px; font-weight:600; padding:4px 9px; cursor:pointer; font-family:inherit; }
+  .app-meta { font-size:11px; opacity:0.75; }
+
+  /* ── TABS ── */
+  .tab-bar { background:var(--primary); display:flex; overflow-x:auto; scrollbar-width:none; padding:0 4px; gap:2px; border-bottom:1px solid rgba(255,255,255,0.15); }
+  .tab-bar::-webkit-scrollbar { display:none; }
+  .tab-btn { flex:none; padding:8px 12px; border:none; background:transparent; color:rgba(255,255,255,0.6); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; transition:all 0.2s; font-family:inherit; }
+  .tab-btn.active { color:#fff; border-bottom-color:var(--accent); }
+  .tab-btn.day-tab { position:relative; }
+  .tab-btn .close-day { display:none; position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.25); border:none; border-radius:50%; width:14px; height:14px; font-size:9px; color:#fff; cursor:pointer; line-height:14px; text-align:center; font-family:inherit; }
+  .tab-btn.active .close-day { display:block; }
+  .tab-btn-add-day { flex:none; padding:6px 9px; border:none; background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.85); font-size:14px; font-weight:700; cursor:pointer; border-radius:6px; margin:4px 4px 4px 0; font-family:inherit; transition:all 0.2s; }
+  .tab-btn-add-day:hover { background:rgba(255,255,255,0.3); }
+
+  /* ── CONTENT ── */
+  .content { padding:14px; max-width:820px; margin:0 auto; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* ── 행사보고서 타이틀 ── */
+  .report-title { text-align:center; font-size:18px; font-weight:800; color:var(--primary); letter-spacing:2px; padding:14px 0 10px; }
+
+  /* ── INFO CARD ── */
+  .info-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px; margin-bottom:12px; }
+  .info-card h3 { font-size:10px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--border); }
+  .info-grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:9px; }
+  .info-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:9px; }
+  .field-group { display:flex; flex-direction:column; gap:4px; }
+  .field-group label { font-size:11px; color:var(--text-sub); font-weight:600; }
+  .field-group input, .field-group select { border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface2); width:100%; transition:border-color 0.2s; }
+  .field-group input:focus, .field-group select:focus { outline:none; border-color:var(--primary); background:#fff; }
+
+  /* ── PAX ── */
+  .pax-row { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .pax-item { display:flex; flex-direction:column; gap:3px; text-align:center; }
+  .pax-item label { font-size:10px; color:var(--text-sub); font-weight:600; }
+  .pax-item input { border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 3px; font-size:12px; font-family:inherit; text-align:center; background:var(--surface2); width:100%; }
+  .pax-item input:focus { outline:none; border-color:var(--primary); background:#fff; }
+  .pax-total { background:var(--primary-light); border-radius:var(--radius-sm); padding:7px 3px; text-align:center; font-size:12px; font-weight:700; color:var(--primary); border:1px solid #c3dce8; }
+
+  /* ── 행사비 지급금 ── */
+  .advance-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:11px 14px; margin-bottom:12px; border-left:4px solid var(--danger); }
+  .advance-symbol { font-size:16px; font-weight:800; color:var(--danger); }
+  .advance-input { border:2px solid var(--danger) !important; border-radius:var(--radius-sm); padding:8px 10px; font-size:16px; font-weight:800; color:var(--danger) !important; background:#fff8f8 !important; width:100%; font-family:inherit; text-align:right; }
+  .advance-input:focus { outline:none; border-color:#b03030 !important; }
+
+  /* ── SECTION CARD ── */
+  .section-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:12px; overflow:hidden; }
+  .section-header { background:var(--primary-light); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .section-header h3 { font-size:13px; font-weight:700; color:var(--primary); }
+  .thb-badge { background:var(--thb); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; margin-left:6px; }
+
+  /* ── EXPENSE TABLE ── */
+  .expense-list { padding:6px 10px 2px; }
+  .expense-row { display:grid; grid-template-columns:88px 1fr 54px 96px 30px; gap:5px; align-items:center; padding:5px 0; border-bottom:1px solid var(--surface2); }
+  .expense-row:last-child { border-bottom:none; }
+  .expense-row input, .expense-row select { border:1px solid var(--border); border-radius:6px; padding:7px 7px; font-size:12px; font-family:inherit; background:var(--surface2); width:100%; }
+  .expense-row input:focus, .expense-row select:focus { outline:none; border-color:var(--primary); background:#fff; }
+  .expense-row input[type="number"] { text-align:right; }
+  .col-headers { display:grid; grid-template-columns:88px 1fr 54px 96px 30px; gap:5px; padding:4px 10px; background:var(--surface2); }
+  .col-headers span { font-size:10px; color:var(--text-sub); font-weight:700; letter-spacing:0.5px; }
+
+  /* readonly 행 (guide 전용) */
+  .expense-row.readonly input,
+  .expense-row.readonly select { pointer-events:none; opacity:0.65; background:#f0f0f0; }
+  .expense-row.readonly .btn-delete { display:none; }
+
+  .btn-add { display:flex; align-items:center; gap:5px; padding:9px 14px; background:var(--primary-light); color:var(--primary); border:1px dashed var(--primary); border-radius:8px; margin:7px 10px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; width:calc(100% - 20px); justify-content:center; }
+  .btn-add:hover { background:var(--primary); color:#fff; }
+  .btn-delete { background:#FEE8E8; color:var(--danger); border:none; border-radius:6px; width:26px; height:26px; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
+  .btn-delete:hover { background:var(--danger); color:#fff; }
+
+  .total-row { display:flex; justify-content:space-between; align-items:center; padding:9px 14px; background:var(--accent-light); border-top:1px solid #f0d9c4; }
+  .total-row span:first-child { font-size:12px; font-weight:700; color:var(--accent); }
+  .total-row span:last-child { font-size:15px; font-weight:800; color:var(--accent); }
+
+  /* ── 잠금 오버레이 (guide가 메인 볼 때) ── */
+  .lock-notice { background:#FFF3CD; border:1px solid #FFD97D; border-radius:8px; padding:9px 14px; margin:8px 10px; font-size:12px; color:#856404; font-weight:600; display:flex; align-items:center; gap:6px; }
+
+  /* ── OPTION ── */
+  .option-scroll { overflow-x:auto; }
+  .option-row-grid { display:grid; grid-template-columns:minmax(90px,1.5fr) 110px 46px 110px 100px 100px 28px; gap:4px; align-items:center; padding:5px 10px; border-bottom:1px solid var(--surface2); min-width:640px; }
+  .option-row-grid input, .option-row-grid select { border:1px solid var(--border); border-radius:6px; padding:6px 6px; font-size:12px; font-family:inherit; background:var(--surface2); width:100%; min-width:0; box-sizing:border-box; }
+  .option-row-grid input:focus { outline:none; border-color:var(--primary); background:#fff; }
+  .option-row-grid input[type="number"] { text-align:right; }
+  .option-headers { display:grid; grid-template-columns:minmax(90px,1.5fr) 110px 46px 110px 100px 100px 28px; gap:4px; padding:4px 10px; background:var(--surface2); min-width:640px; }
+  .option-headers span { font-size:10px; color:var(--text-sub); font-weight:700; letter-spacing:0.5px; }
+  /* 통화별 합산 바 */
+  .option-totals-bar { display:flex; gap:8px; padding:10px 14px 10px; background:var(--accent-light); border-top:1px solid #f0d9c4; flex-wrap:wrap; align-items:center; }
+  .option-totals-bar .tot-label { font-size:12px; font-weight:700; color:var(--accent); margin-right:4px; }
+  .option-totals-bar .tot-item { font-size:13px; font-weight:800; color:var(--accent); background:#fff; border:1px solid #f0d9c4; border-radius:8px; padding:4px 10px; }
+  .currency-toggle { display:flex; gap:4px; }
+  .currency-btn { padding:3px 8px; border-radius:5px; border:1px solid var(--border); font-size:11px; font-weight:700; cursor:pointer; background:var(--surface2); color:var(--text-sub); font-family:inherit; transition:all 0.15s; }
+  .currency-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* ── SHOPPING ── */
+  .shopping-category { margin:10px 0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .shopping-cat-header { background:var(--surface2); padding:9px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .shopping-cat-header h4 { font-size:12px; font-weight:700; color:var(--text); }
+  .cat-commission { font-size:11px; color:var(--success); font-weight:700; }
+  .shop-row { display:grid; grid-template-columns:1fr 65px 78px 78px 30px; gap:5px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--surface2); }
+  .shop-row:last-child { border-bottom:none; }
+  .shop-row input { border:1px solid var(--border); border-radius:6px; padding:7px 7px; font-size:12px; font-family:inherit; background:var(--surface2); width:100%; }
+  .shop-row input:focus { outline:none; border-color:var(--primary); background:#fff; }
+  .shop-row input[type="number"] { text-align:right; }
+  .shop-headers { display:grid; grid-template-columns:1fr 65px 78px 78px 30px; gap:5px; padding:4px 10px; background:#f0f0f0; }
+  .shop-headers span { font-size:10px; color:var(--text-sub); font-weight:700; letter-spacing:0.5px; }
+  .section-total-badge { background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; }
+
+  /* ── SUMMARY ── */
+  .summary-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px; margin-bottom:12px; }
+  .summary-card h3 { font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--border); }
+  .summary-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--surface2); font-size:13px; }
+  .summary-row:last-child { border-bottom:none; }
+  .summary-row .label { color:var(--text-sub); }
+  .summary-row .value { font-weight:700; color:var(--text); }
+  .summary-row.highlight .label { color:var(--accent); font-weight:700; }
+  .summary-row.highlight .value { color:var(--accent); font-size:16px; font-weight:800; }
+  .summary-row.danger .value { color:var(--danger); }
+  .summary-row.success .value { color:var(--success); }
+
+  /* ── MINI BAR ── */
+  #miniInfoBar { display:none; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow); padding:9px 14px; margin-bottom:12px; align-items:center; gap:6px 16px; flex-wrap:wrap; }
+
+  .btn-print { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:12px; }
+  .btn-print:hover { background:#145a75; }
+  .btn-reset { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:11px; background:transparent; color:var(--danger); border:1px solid var(--danger); border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-reset:hover { background:var(--danger); color:#fff; }
+
+  @media (min-width:600px) {
+    .content { padding:18px 22px; }
+    .expense-row { grid-template-columns:100px 1fr 64px 106px 30px; }
+    .col-headers { grid-template-columns:100px 1fr 64px 106px 30px; }
+    .option-row-grid { grid-template-columns:minmax(100px,1.5fr) 120px 50px 120px 106px 106px 28px; }
+    .option-headers { grid-template-columns:minmax(100px,1.5fr) 120px 50px 120px 106px 106px 28px; }
+  }
+  @media print {
+    #loginScreen { display:none !important; }
+    .tab-bar,.btn-add,.btn-delete,.btn-print,.btn-reset,.tab-btn-add-day,.close-day,.logout-btn,.lock-notice { display:none !important; }
+    .tab-panel { display:block !important; }
+    .app-header { position:relative; }
+    body { background:#fff; }
+    .section-card,.info-card,.summary-card,.advance-card { box-shadow:none; border:1px solid #ddd; break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>📋 가이드 정산서</h1>
+      <p>로그인 후 이용하세요</p>
+    </div>
+    <div class="login-field">
+      <label>역할 선택</label>
+      <select id="loginRole">
+        <option value="">-- 역할 선택 --</option>
+        <option value="admin">Admin (관리자)</option>
+        <option value="op">Manager (운영)</option>
+        <option value="guide">Guide (가이드)</option>
+      </select>
+    </div>
+    <div class="login-field">
+      <label>비밀번호</label>
+      <input type="password" id="loginPw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="loginError">역할 또는 비밀번호가 올바르지 않습니다.</div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#aaa;text-align:center;">
+      Admin: 1234 &nbsp;|&nbsp; Manager: 5678 &nbsp;|&nbsp; Guide: 9999
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div id="appWrap" style="display:none;">
+
+<div class="app-header">
+  <div class="app-header-top">
+    <div class="app-title">📋 가이드 정산서</div>
+    <div class="header-right">
+      <span class="role-badge" id="roleBadge"></span>
+      <span class="app-meta" id="todayDate"></span>
+      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+  <div class="tab-bar" id="tabBar"></div>
+</div>
+
+<div class="content">
+
+  <!-- 미니 정보바 (메인·요약 제외) -->
+  <div id="miniInfoBar">
+    <span style="font-size:13px;font-weight:700;color:var(--primary);" id="mini-guide">-</span>
+    <span style="font-size:11px;color:var(--text-sub);" id="mini-period">-</span>
+  </div>
+
+  <!-- ═══ 메인 탭 ═══ -->
+  <div id="tab-main" class="tab-panel active">
+
+    <div class="report-title">행 사 보 고 서</div>
+
+    <!-- 기본 정보 -->
+    <div class="info-card">
+      <h3>기본 정보</h3>
+      <!-- 줄1: 가이드명 / 여행사명 / 로컬가이드명 -->
+      <div class="info-grid3">
+        <div class="field-group"><label>가이드명</label><input type="text" id="guideName" placeholder="이름 입력" oninput="updateMiniBar()"></div>
+        <div class="field-group"><label>여행사명</label><input type="text" id="agencyName" placeholder="여행사 입력"></div>
+        <div class="field-group"><label>로컬가이드명</label><input type="text" id="localGuide" placeholder="로컬가이드 입력"></div>
+      </div>
+      <!-- 줄2: 행사기간 시작 / 종료 -->
+      <div class="info-grid2">
+        <div class="field-group"><label>행사기간 시작</label><input type="date" id="tourStart" onchange="updateMiniBar()"></div>
+        <div class="field-group"><label>행사기간 종료</label><input type="date" id="tourEnd" onchange="updateMiniBar()"></div>
+      </div>
+      <!-- 줄3: 행사인원 -->
+      <div>
+        <label style="font-size:11px;color:var(--text-sub);font-weight:600;display:block;margin-bottom:5px;">행사인원</label>
+        <div class="pax-row">
+          <div class="pax-item"><label>성인</label><input type="number" id="paxAdult" min="0" value="0" oninput="calcPaxTotal()"></div>
+          <div class="pax-item"><label>어린이</label><input type="number" id="paxChild" min="0" value="0" oninput="calcPaxTotal()"></div>
+          <div class="pax-item"><label>유아</label><input type="number" id="paxInfant" min="0" value="0" oninput="calcPaxTotal()"></div>
+          <div class="pax-item"><label>TC</label><input type="number" id="paxTC" min="0" value="0" oninput="calcPaxTotal()"></div>
+          <div class="pax-item"><label>총인원</label><div class="pax-total" id="paxTotalDisplay">0명</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 행사비 지급금 -->
+    <div class="advance-card">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:13px;font-weight:700;color:var(--danger);white-space:nowrap;min-width:fit-content;">행사비 지급금</span>
+        <div style="display:flex;align-items:center;gap:6px;flex:1;">
+          <span class="advance-symbol" style="font-size:16px;">฿</span>
+          <input type="text" id="advancePay" class="advance-input" placeholder="0" oninput="formatAdvance(this); updateAdvancePay()" style="font-size:16px;padding:8px 10px;">
+        </div>
+      </div>
+    </div>
+
+    <!-- 회사지불 행사비 -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3>회사지불 행사비 <span class="thb-badge">฿ 바트</span></h3>
+      </div>
+      <div id="main-lock-notice" style="display:none;">
+        <div class="lock-notice">🔒 이 란은 회사에서 입력합니다.</div>
+      </div>
+      <div class="col-headers">
+        <span>구분</span><span>내용</span><span>인원/개수</span><span>금액 (฿)</span><span></span>
+      </div>
+      <div class="expense-list" id="main-list"></div>
+      <div id="main-add-btn-wrap">
+        <button class="btn-add" onclick="addExpenseRow('main')">＋ 항목 추가</button>
+      </div>
+      <div class="total-row"><span>합계</span><span id="main-total">฿0</span></div>
+    </div>
+  </div><!-- /tab-main -->
+
+  <!-- 일차 탭들 (JS 생성) -->
+
+  <!-- ═══ 옵션 탭 ═══ -->
+  <div id="tab-option" class="tab-panel">
+    <div class="section-card">
+      <div class="section-header">
+        <h3>옵션내역</h3>
+        <span class="section-total-badge" id="option-total-badge">수익: ฿0</span>
+      </div>
+      <div style="padding:7px 10px;display:flex;align-items:center;gap:8px;background:var(--surface2);border-bottom:1px solid var(--border);">
+        <span style="font-size:11px;color:var(--text-sub);font-weight:700;">통화:</span>
+        <div class="currency-toggle">
+          <button class="currency-btn active" onclick="setOptionCurrency('THB',this)">฿ 바트</button>
+          <button class="currency-btn" onclick="setOptionCurrency('KRW',this)">₩ 원</button>
+          <button class="currency-btn" onclick="setOptionCurrency('USD',this)">$ 달러</button>
+        </div>
+      </div>
+      <div class="option-scroll"><div class="option-headers">
+        <span>옵션명</span><span>판매가</span><span>인원</span><span>합계</span><span>원가 (฿)</span><span>수익금 (฿)</span><span></span>
+      </div></div>
+      <div class="option-scroll"><div id="option-list"></div></div>
+      <button class="btn-add" onclick="addOptionRow()">＋ 옵션 추가</button>
+      <div class="option-totals-bar">
+        <span class="tot-label">통화별 합계</span>
+        <span class="tot-item" id="opt-tot-thb">฿ —</span>
+        <span class="tot-item" id="opt-tot-usd">$ —</span>
+        <span class="tot-item" id="opt-tot-krw">₩ —</span>
+        <span style="font-size:11px;color:var(--accent);font-weight:700;margin-left:4px;">수익금</span>
+        <span class="tot-item" id="opt-profit-total">฿ —</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 쇼핑 탭 ═══ -->
+  <div id="tab-shopping" class="tab-panel">
+    <div class="section-card">
+      <div class="section-header">
+        <h3>쇼핑내역 (방문샵 체크)</h3>
+        <span class="section-total-badge" id="shop-total-badge">커미션: ฿0</span>
+      </div>
+      <div class="shopping-category">
+        <div class="shopping-cat-header"><h4>💎 보석</h4><span class="cat-commission" id="jewell-commission">฿0</span></div>
+        <div class="shop-headers"><span>샵명/내용</span><span>커미션%</span><span>판매액</span><span>커미션</span><span></span></div>
+        <div id="jewell-list"></div>
+        <button class="btn-add" style="margin:5px 8px 8px;width:calc(100% - 16px);" onclick="addShopRow('jewell')">＋ 추가</button>
+      </div>
+      <div class="shopping-category">
+        <div class="shopping-cat-header"><h4>🏪 휴게소 / 쇼핑센터</h4><span class="cat-commission" id="rest-commission">฿0</span></div>
+        <div style="padding:7px 10px;border-bottom:1px solid var(--border);">
+          <input type="text" id="restCenterName" placeholder="쇼핑센터명 입력" style="border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:12px;font-family:inherit;background:var(--surface2);width:100%;">
+        </div>
+        <div class="shop-headers"><span>구분</span><span>커미션%</span><span>판매액</span><span>커미션</span><span></span></div>
+        <div id="rest-list"></div>
+        <button class="btn-add" style="margin:5px 8px 8px;width:calc(100% - 16px);" onclick="addShopRow('rest')">＋ 추가</button>
+      </div>
+      <div class="shopping-category">
+        <div class="shopping-cat-header"><h4>🌿 허브</h4><span class="cat-commission" id="herb-commission">฿0</span></div>
+        <div class="shop-headers"><span>샵명/내용</span><span>커미션%</span><span>판매액</span><span>커미션</span><span></span></div>
+        <div id="herb-list"></div>
+        <button class="btn-add" style="margin:5px 8px 8px;width:calc(100% - 16px);" onclick="addShopRow('herb')">＋ 추가</button>
+      </div>
+      <div class="shopping-category">
+        <div class="shopping-cat-header"><h4>🛏 라텍스</h4><span class="cat-commission" id="latex-commission">฿0</span></div>
+        <div class="shop-headers"><span>샵명/내용</span><span>커미션%</span><span>판매액</span><span>커미션</span><span></span></div>
+        <div id="latex-list"></div>
+        <button class="btn-add" style="margin:5px 8px 8px;width:calc(100% - 16px);" onclick="addShopRow('latex')">＋ 추가</button>
+      </div>
+      <div class="total-row"><span>쇼핑 커미션 합계</span><span id="shop-total">฿0</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ 요약 탭 ═══ -->
+  <div id="tab-summary" class="tab-panel">
+    <div class="report-title">행 사 보 고 서</div>
+    <div class="summary-card">
+      <h3>행사 기본 정보</h3>
+      <div class="summary-row"><span class="label">가이드명</span><span class="value" id="sum-guide">-</span></div>
+      <div class="summary-row"><span class="label">여행사명</span><span class="value" id="sum-agency">-</span></div>
+      <div class="summary-row"><span class="label">행사기간</span><span class="value" id="sum-period">-</span></div>
+      <div class="summary-row"><span class="label">총 행사인원</span><span class="value" id="sum-pax">0명</span></div>
+      <div class="summary-row"><span class="label">로컬가이드</span><span class="value" id="sum-local">-</span></div>
+    </div>
+    <div class="summary-card">
+      <h3>💸 행사 지출 (฿ 바트)</h3>
+      <div class="summary-row"><span class="label">회사지불 행사비</span><span class="value danger" id="sum-main">฿0</span></div>
+      <div id="sum-days-container"></div>
+      <div class="summary-row highlight"><span class="label">총 지출</span><span class="value" id="sum-total-expense">฿0</span></div>
+    </div>
+    <div class="summary-card">
+      <h3>💰 수익</h3>
+      <div class="summary-row"><span class="label">옵션 수익금</span><span class="value success" id="sum-option">฿0</span></div>
+      <div class="summary-row"><span class="label">쇼핑 커미션</span><span class="value success" id="sum-shop">฿0</span></div>
+      <div class="summary-row highlight"><span class="label">총 수익</span><span class="value" id="sum-total-income">฿0</span></div>
+    </div>
+    <div class="summary-card">
+      <h3>📊 최종 정산</h3>
+      <div class="summary-row"><span class="label">총 수익</span><span class="value success" id="sum-fin-income">฿0</span></div>
+      <div class="summary-row"><span class="label">총 지출 (바트)</span><span class="value danger" id="sum-fin-expense">฿0</span></div>
+      <div class="summary-row"><span class="label">행사비 지급금</span><span class="value danger" id="sum-advance">฿0</span></div>
+      <div class="summary-row highlight"><span class="label">순 수익 / 손실</span><span class="value" id="sum-net">฿0</span></div>
+    </div>
+    <button class="btn-print" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+    <button class="btn-reset" onclick="confirmReset()">🗑 데이터 초기화</button>
+  </div>
+
+</div><!-- /content -->
+</div><!-- /appWrap -->
+
+<script>
+// ══════════════════════════════════
+//  AUTH
+// ══════════════════════════════════
+const PASSWORDS = { admin:'1234', op:'5678', guide:'9999' };
+let currentRole = null;
+
+function doLogin() {
+  const role = document.getElementById('loginRole').value;
+  const pw   = document.getElementById('loginPw').value;
+  if (!role || PASSWORDS[role] !== pw) {
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  currentRole = role;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  const badgeEl = document.getElementById('roleBadge');
+  const labels = { admin:'Admin', op:'Manager', guide:'Guide' };
+  badgeEl.textContent = labels[role];
+  badgeEl.className = 'role-badge ' + role;
+  applyRoleUI();
+  initData();
+  renderAll();
+  calcPaxTotal();
+  switchTab('main');
+}
+
+function doLogout() {
+  currentRole = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('loginRole').value = '';
+  document.getElementById('loginPw').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function canEditMain() { return currentRole === 'admin' || currentRole === 'op'; }
+
+function applyRoleUI() {
+  // 메인 회사지불 행사비 잠금 여부
+  const lockNotice = document.getElementById('main-lock-notice');
+  const addBtnWrap = document.getElementById('main-add-btn-wrap');
+  if (canEditMain()) {
+    lockNotice.style.display = 'none';
+    addBtnWrap.style.display = 'block';
+  } else {
+    lockNotice.style.display = 'block';
+    addBtnWrap.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════
+//  STATE
+// ══════════════════════════════════
+const state = {
+  optionCurrency: 'THB',
+  expenses: { main: [] },
+  days: [],
+  options: [],
+  shopping: { jewell:[], rest:[], herb:[], latex:[] }
+};
+
+let _uid = 1;
+function uid() { return 'r' + (_uid++); }
+
+const CATEGORIES = ['호텔비','차량비','관광지','식당','골프장','기타'];
+const DAY_CATEGORIES = ['아따비','호텔비','식당','관광지','맛사지&스파','산호섬&요트','골프','기타'];
+const RESTAURANT_CATS = ['식당']; // 이 카테고리는 식당명(메뉴명) 플레이스홀더 표시
+
+const defaultRows = () => [
+  { id:uid(), category:'', detail:'', pax:'', amount:'' },
+  { id:uid(), category:'', detail:'', pax:'', amount:'' },
+  { id:uid(), category:'', detail:'', pax:'', amount:'' },
+  { id:uid(), category:'', detail:'', pax:'', amount:'' },
+  { id:uid(), category:'', detail:'', pax:'', amount:'' },
+];
+
+function initData() {
+  state.expenses = { main: defaultRows() };
+  state.days = [];
+  state.options = [{ id:uid(), name:'', price:'', pax:'', total:'', cost:'', profit:'' }];
+  ['jewell','rest','herb','latex'].forEach(k => {
+    state.shopping[k] = [{ id:uid(), name:'', discount:'', sale:'', commission:'' }];
+  });
+  // 일차 패널 정리
+  document.querySelectorAll('.day-panel').forEach(p => p.remove());
+  addDay(); addDay(); addDay();
+}
+
+function today() {
+  return new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});
+}
+
+// ══════════════════════════════════
+//  ADVANCE PAY (3자리 콤마 포맷)
+// ══════════════════════════════════
+function formatAdvance(input) {
+  let raw = input.value.replace(/[^0-9]/g, '');
+  if (raw === '') { input.value = ''; return; }
+  input.value = Number(raw).toLocaleString();
+}
+
+function getAdvanceRaw() {
+  const v = (document.getElementById('advancePay').value || '').replace(/,/g,'');
+  return parseFloat(v) || 0;
+}
+
+function updateAdvancePay() {
+  if (currentTab === 'summary') updateSummary();
+}
+
+// ══════════════════════════════════
+//  TAB
+// ══════════════════════════════════
+let currentTab = 'main';
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('tab-' + name);
+  if (panel) panel.classList.add('active');
+  const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  if (btn) btn.classList.add('active');
+  currentTab = name;
+  const mini = document.getElementById('miniInfoBar');
+  if (mini) mini.style.display = (name !== 'main' && name !== 'summary') ? 'flex' : 'none';
+  if (name === 'summary') updateSummary();
+}
+
+function updateMiniBar() {
+  const guide = document.getElementById('guideName').value || '-';
+  const s = document.getElementById('tourStart').value;
+  const e = document.getElementById('tourEnd').value;
+  const period = (s && e) ? s + ' ~ ' + e : (s || '-');
+  document.getElementById('mini-guide').textContent = guide;
+  document.getElementById('mini-period').textContent = period;
+}
+
+function rebuildTabBar() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+  bar.appendChild(makeTabBtn('main','메인'));
+  state.days.forEach(d => bar.appendChild(makeDayTabBtn(d)));
+  const addBtn = document.createElement('button');
+  addBtn.className = 'tab-btn-add-day';
+  addBtn.title = '일차 추가';
+  addBtn.textContent = '＋일';
+  addBtn.onclick = addDay;
+  bar.appendChild(addBtn);
+  ['option','shopping','summary'].forEach((t,i) => {
+    bar.appendChild(makeTabBtn(t, ['옵션','쇼핑','📊 요약'][i]));
+  });
+  const active = document.querySelector(`.tab-btn[data-tab="${currentTab}"]`);
+  if (active) active.classList.add('active');
+}
+
+function makeTabBtn(name, label) {
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn';
+  btn.dataset.tab = name;
+  btn.textContent = label;
+  btn.onclick = () => switchTab(name);
+  return btn;
+}
+
+function makeDayTabBtn(d) {
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn day-tab';
+  btn.dataset.tab = d.id;
+  btn.onclick = (e) => { if (!e.target.classList.contains('close-day')) switchTab(d.id); };
+  const span = document.createElement('span');
+  span.textContent = d.label;
+  btn.appendChild(span);
+  const x = document.createElement('button');
+  x.className = 'close-day';
+  x.textContent = '×';
+  x.title = '이 일차 삭제';
+  x.onclick = (e) => { e.stopPropagation(); deleteDay(d.id); };
+  btn.appendChild(x);
+  return btn;
+}
+
+// ══════════════════════════════════
+//  DAY 동적 추가/삭제
+// ══════════════════════════════════
+function addDay() {
+  const dayNum = state.days.length + 1;
+  const dayId = 'day' + uid();
+  state.days.push({ id:dayId, label:dayNum+'일차' });
+  state.expenses[dayId] = defaultRows();
+
+  const panel = document.createElement('div');
+  panel.id = 'tab-' + dayId;
+  panel.className = 'tab-panel day-panel';
+  panel.innerHTML = `
+    <div class="section-card">
+      <div class="section-header">
+        <h3 id="${dayId}-hdr">${dayNum}일차 - 행사진행비 <span class="thb-badge">฿ 바트</span></h3>
+      </div>
+      <div class="col-headers">
+        <span>구분</span><span>내용</span><span>인원/개수</span><span>금액 (฿)</span><span></span>
+      </div>
+      <div class="expense-list" id="${dayId}-list"></div>
+      <button class="btn-add" onclick="addExpenseRow('${dayId}')">＋ 항목 추가</button>
+      <div class="total-row"><span>합계</span><span id="${dayId}-total">฿0</span></div>
+    </div>
+  `;
+  const optPanel = document.getElementById('tab-option');
+  document.querySelector('.content').insertBefore(panel, optPanel);
+  renderExpenses(dayId);
+  rebuildTabBar();
+  switchTab(dayId);
+}
+
+function deleteDay(dayId) {
+  if (state.days.length <= 1) { alert('최소 1일차는 유지해야 합니다.'); return; }
+  if (!confirm('이 일차를 삭제하시겠습니까?')) return;
+  state.days = state.days.filter(d => d.id !== dayId);
+  delete state.expenses[dayId];
+  state.days.forEach((d,i) => {
+    d.label = (i+1)+'일차';
+    const hdr = document.getElementById(d.id+'-hdr');
+    if (hdr) hdr.innerHTML = `${i+1}일차 - 행사진행비 <span class="thb-badge">฿ 바트</span>`;
+  });
+  const panel = document.getElementById('tab-'+dayId);
+  if (panel) panel.remove();
+  rebuildTabBar();
+  if (currentTab === dayId) switchTab(state.days.length>0 ? state.days[0].id : 'main');
+}
+
+// ══════════════════════════════════
+//  PAX
+// ══════════════════════════════════
+function calcPaxTotal() {
+  const a=parseInt(document.getElementById('paxAdult').value)||0;
+  const c=parseInt(document.getElementById('paxChild').value)||0;
+  const i=parseInt(document.getElementById('paxInfant').value)||0;
+  const t=parseInt(document.getElementById('paxTC').value)||0;
+  document.getElementById('paxTotalDisplay').textContent=(a+c+i+t)+'명';
+}
+
+// ══════════════════════════════════
+//  FORMAT
+// ══════════════════════════════════
+function fmtTHB(n) {
+  if (!n && n!==0) return '-';
+  return '฿' + Number(n).toLocaleString();
+}
+function fmtOpt(n) {
+  if (!n && n!==0) return '-';
+  const sym = state.optionCurrency==='KRW'?'₩':state.optionCurrency==='USD'?'$':'฿';
+  return sym + Number(n).toLocaleString();
+}
+
+// ══════════════════════════════════
+//  EXPENSE
+// ══════════════════════════════════
+function renderExpenses(key) {
+  const list = document.getElementById(key+'-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const isMainLocked = (key === 'main' && !canEditMain());
+  const cats = (key === 'main') ? CATEGORIES : DAY_CATEGORIES;
+  (state.expenses[key]||[]).forEach(row => {
+    const isRestaurant = row.category === '식당';
+    const detailPlaceholder = isRestaurant ? '식당명 (메뉴명)' : '내용';
+    const div = document.createElement('div');
+    div.className = 'expense-row' + (isMainLocked ? ' readonly' : '');
+    div.innerHTML = `
+      <select onchange="onCategoryChange(this,'${key}','${row.id}')">
+        <option value="" ${!row.category||row.category===''?' selected':''} disabled>선택</option>
+        ${cats.map(c=>`<option${row.category===c?' selected':''}>${c}</option>`).join('')}
+      </select>
+      <input type="text" placeholder="${detailPlaceholder}" value="${row.detail||''}"
+        oninput="updateExpense('${key}','${row.id}','detail',this.value)"
+        style="${isRestaurant ? 'border-color:#E8872A;background:#FEF9F4;' : ''}">
+      <input type="number" placeholder="인원/개수" value="${row.pax||''}" min="0" oninput="updateExpense('${key}','${row.id}','pax',this.value)">
+      <input type="text" placeholder="฿ 금액" value="${row.amount ? Number(row.amount).toLocaleString() : ''}"
+        oninput="onAmountInput(this,'${key}','${row.id}')">
+      <button class="btn-delete" onclick="deleteExpense('${key}','${row.id}')">✕</button>
+    `;
+    list.appendChild(div);
+  });
+  calcExpenseTotal(key);
+}
+
+function onCategoryChange(select, key, id) {
+  updateExpense(key, id, 'category', select.value);
+  renderExpenses(key); // re-render to update placeholder style
+}
+
+function onAmountInput(input, key, id) {
+  let raw = input.value.replace(/[^0-9.]/g,'');
+  input.value = raw === '' ? '' : Number(raw).toLocaleString();
+  updateExpense(key, id, 'amount', raw);
+  calcExpenseTotal(key);
+}
+
+function updateExpense(key, id, field, val) {
+  const row = (state.expenses[key]||[]).find(r=>r.id===id);
+  if (row) row[field] = val;
+}
+
+function addExpenseRow(key) {
+  if (key==='main' && !canEditMain()) return;
+  if (!state.expenses[key]) state.expenses[key]=[];
+  state.expenses[key].push({id:uid(),category:'',detail:'',pax:'',amount:''});
+  renderExpenses(key);
+}
+
+function deleteExpense(key, id) {
+  if (key==='main' && !canEditMain()) return;
+  state.expenses[key]=(state.expenses[key]||[]).filter(r=>r.id!==id);
+  renderExpenses(key);
+}
+
+function calcExpenseTotal(key) {
+  const total=(state.expenses[key]||[]).reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const el=document.getElementById(key+'-total');
+  if (el) el.textContent=fmtTHB(total);
+}
+
+// ══════════════════════════════════
+//  OPTION
+// ══════════════════════════════════
+function setOptionCurrency(cur,btn) {
+  state.optionCurrency=cur;
+  document.querySelectorAll('.currency-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderOptions();
+}
+
+function currencySym() {
+  return state.optionCurrency==='KRW'?'₩':state.optionCurrency==='USD'?'$':'฿';
+}
+
+function renderOptions() {
+  const list=document.getElementById('option-list');
+  list.innerHTML='';
+  const sym = currencySym();
+  state.options.forEach(row=>{
+    const div=document.createElement('div');
+    div.className='option-row-grid';
+    div.innerHTML=`
+      <input type="text" placeholder="옵션명" value="${row.name||''}" oninput="updateOption('${row.id}','name',this.value)">
+      <input type="number" placeholder="${sym} 판매가" value="${row.price||''}" min="0" style="font-weight:700;"
+        oninput="updateOption('${row.id}','price',this.value);calcOptionRow('${row.id}')">
+      <input type="number" placeholder="인원" value="${row.pax||''}" min="0"
+        oninput="updateOption('${row.id}','pax',this.value);calcOptionRow('${row.id}')">
+      <input type="number" placeholder="${sym} 합계" value="${row.total||''}" style="background:#e8f4e8;font-weight:700;" readonly>
+      <input type="number" placeholder="฿ 원가" value="${row.cost||''}" min="0"
+        oninput="updateOption('${row.id}','cost',this.value);calcOptionRow('${row.id}')">
+      <input type="number" placeholder="฿ 수익금" value="${row.profit||''}" style="background:#e6f5f1;font-weight:700;color:#0B7B5E;" readonly>
+      <button class="btn-delete" onclick="deleteOption('${row.id}')">✕</button>
+    `;
+    list.appendChild(div);
+  });
+  calcOptionTotal();
+}
+
+function updateOption(id,field,val){const r=state.options.find(r=>r.id===id);if(r)r[field]=val;}
+function calcOptionRow(id){
+  const r=state.options.find(r=>r.id===id);if(!r)return;
+  r.total=(parseFloat(r.price)||0)*(parseFloat(r.pax)||0);
+  // profit = 합계(판매통화 그대로) - 원가(바트). 단순 수치 차감
+  r.profit=r.total-(parseFloat(r.cost)||0);
+  renderOptions();
+}
+function addOptionRow(){state.options.push({id:uid(),name:'',price:'',pax:'',total:'',cost:'',profit:''});renderOptions();}
+function deleteOption(id){state.options=state.options.filter(r=>r.id!==id);renderOptions();}
+function calcOptionTotal(){
+  const sym = currencySym();
+  const cur = state.optionCurrency;
+  // 통화별 합계
+  const saleTotal = state.options.reduce((s,r)=>s+(parseFloat(r.total)||0),0);
+  const profitTotal = state.options.reduce((s,r)=>s+(parseFloat(r.profit)||0),0);
+  // 각 통화 칸 표시 (현재 선택 통화만 값, 나머지는 해당 통화 행만 합산)
+  const thbRows = cur==='THB' ? saleTotal : 0;
+  const usdRows = cur==='USD' ? saleTotal : 0;
+  const krwRows = cur==='KRW' ? saleTotal : 0;
+  const setTot = (id, val, s) => {
+    const el=document.getElementById(id);
+    if(el) el.textContent = val>0 ? s+Number(val).toLocaleString() : (s+' —');
+  };
+  setTot('opt-tot-thb', thbRows, '฿');
+  setTot('opt-tot-usd', usdRows, '$');
+  setTot('opt-tot-krw', krwRows, '₩');
+  const profitEl=document.getElementById('opt-profit-total');
+  if(profitEl) profitEl.textContent = '฿'+Number(profitTotal).toLocaleString();
+  // badge
+  document.getElementById('option-total-badge').textContent='수익: ฿'+Number(profitTotal).toLocaleString();
+}
+
+// ══════════════════════════════════
+//  SHOPPING
+// ══════════════════════════════════
+function renderShop(key){
+  const list=document.getElementById(key+'-list');if(!list)return;
+  list.innerHTML='';
+  (state.shopping[key]||[]).forEach(row=>{
+    const div=document.createElement('div');div.className='shop-row';
+    div.innerHTML=`
+      <input type="text" placeholder="샵명/내용" value="${row.name||''}" oninput="updateShop('${key}','${row.id}','name',this.value)">
+      <input type="number" placeholder="%" value="${row.discount||''}" min="0" max="100" oninput="updateShop('${key}','${row.id}','discount',this.value);calcShopRow('${key}','${row.id}')">
+      <input type="number" placeholder="판매액" value="${row.sale||''}" min="0" oninput="updateShop('${key}','${row.id}','sale',this.value);calcShopRow('${key}','${row.id}')">
+      <input type="number" placeholder="커미션" value="${row.commission||''}" style="background:#e8f4e8;" readonly>
+      <button class="btn-delete" onclick="deleteShop('${key}','${row.id}')">✕</button>
+    `;
+    list.appendChild(div);
+  });
+  calcShopCat(key);
+}
+function updateShop(key,id,field,val){const r=(state.shopping[key]||[]).find(r=>r.id===id);if(r)r[field]=val;}
+function calcShopRow(key,id){
+  const r=(state.shopping[key]||[]).find(r=>r.id===id);if(!r)return;
+  r.commission=(parseFloat(r.sale)||0)*((parseFloat(r.discount)||0)/100);
+  renderShop(key);
+}
+function addShopRow(key){state.shopping[key].push({id:uid(),name:'',discount:'',sale:'',commission:''});renderShop(key);}
+function deleteShop(key,id){state.shopping[key]=state.shopping[key].filter(r=>r.id!==id);renderShop(key);}
+function calcShopCat(key){
+  const total=(state.shopping[key]||[]).reduce((s,r)=>s+(parseFloat(r.commission)||0),0);
+  const el=document.getElementById(key+'-commission');if(el)el.textContent=fmtTHB(total);
+  calcShopTotal();
+}
+function calcShopTotal(){
+  const total=Object.values(state.shopping).reduce((s,arr)=>s+arr.reduce((ss,r)=>ss+(parseFloat(r.commission)||0),0),0);
+  document.getElementById('shop-total').textContent=fmtTHB(total);
+  document.getElementById('shop-total-badge').textContent='커미션: '+fmtTHB(total);
+}
+
+// ══════════════════════════════════
+//  SUMMARY
+// ══════════════════════════════════
+function updateSummary(){
+  document.getElementById('sum-guide').textContent=document.getElementById('guideName').value||'-';
+  document.getElementById('sum-agency').textContent=document.getElementById('agencyName').value||'-';
+  const s=document.getElementById('tourStart').value;
+  const e=document.getElementById('tourEnd').value;
+  document.getElementById('sum-period').textContent=(s&&e)?s+' ~ '+e:(s||'-');
+  document.getElementById('sum-pax').textContent=document.getElementById('paxTotalDisplay').textContent;
+  document.getElementById('sum-local').textContent=document.getElementById('localGuide').value||'-';
+
+  const mainTotal=(state.expenses.main||[]).reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  document.getElementById('sum-main').textContent=fmtTHB(mainTotal);
+
+  const daysCont=document.getElementById('sum-days-container');
+  daysCont.innerHTML='';
+  let daysTotalSum=0;
+  state.days.forEach(d=>{
+    const t=(state.expenses[d.id]||[]).reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+    daysTotalSum+=t;
+    const row=document.createElement('div');
+    row.className='summary-row';
+    row.innerHTML=`<span class="label">${d.label} 진행비</span><span class="value danger">${fmtTHB(t)}</span>`;
+    daysCont.appendChild(row);
+  });
+
+  const totalExpense=mainTotal+daysTotalSum;
+  document.getElementById('sum-total-expense').textContent=fmtTHB(totalExpense);
+
+  const optTotal=state.options.reduce((s,r)=>s+(parseFloat(r.profit)||0),0);
+  const shopTotal=Object.values(state.shopping).reduce((s,arr)=>s+arr.reduce((ss,r)=>ss+(parseFloat(r.commission)||0),0),0);
+  const totalIncome=optTotal+shopTotal;
+
+  document.getElementById('sum-option').textContent=fmtOpt(optTotal);
+  document.getElementById('sum-shop').textContent=fmtTHB(shopTotal);
+  document.getElementById('sum-total-income').textContent=fmtOpt(totalIncome);
+  document.getElementById('sum-fin-income').textContent=fmtOpt(totalIncome);
+  document.getElementById('sum-fin-expense').textContent=fmtTHB(totalExpense);
+
+  const advance=getAdvanceRaw();
+  document.getElementById('sum-advance').textContent=fmtTHB(advance);
+
+  const net=totalIncome-totalExpense-advance;
+  const netEl=document.getElementById('sum-net');
+  netEl.textContent=(net>=0?'+':'')+fmtTHB(net);
+  netEl.style.color=net>=0?'var(--success)':'var(--danger)';
+}
+
+// ══════════════════════════════════
+//  RESET
+// ══════════════════════════════════
+function confirmReset(){
+  if(!confirm('모든 입력 데이터를 초기화하시겠습니까?'))return;
+  ['guideName','agencyName','tourStart','tourEnd','localGuide','advancePay'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  ['paxAdult','paxChild','paxInfant','paxTC'].forEach(id=>document.getElementById(id).value=0);
+  document.getElementById('paxTotalDisplay').textContent='0명';
+  document.querySelectorAll('.day-panel').forEach(p=>p.remove());
+  initData(); renderAll(); switchTab('main');
+}
+
+function renderAll(){
+  renderExpenses('main');
+  state.days.forEach(d=>renderExpenses(d.id));
+  renderOptions();
+  ['jewell','rest','herb','latex'].forEach(k=>renderShop(k));
+  rebuildTabBar();
+  applyRoleUI();
+}
+
+// ══════════════════════════════════
+//  BOOT
+// ══════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('todayDate').textContent='작성일: '+today();
+});
+</script>
+</body>
+</html>
