@@ -82,6 +82,10 @@
   .sub-month-block { margin-left:10px; margin-bottom:6px; }
   .sub-day-block { margin-left:10px; margin-bottom:4px; }
   .sub-day-body { margin-left:4px; }
+  /* ── 정산 미완료 상단 섹션 ── */
+  .sub-unsettled-block { margin-bottom:16px; }
+  .sub-unsettled-hd { display:flex; align-items:center; gap:8px; background:#fff7ed; color:#c2410c; border:1.5px solid #fdba74; padding:8px 14px; border-radius:8px; margin-bottom:8px; font-weight:800; font-size:14px; }
+  .sub-unsettled-block .sub-card { border-color:#fdba74; }
   /* ── MONTH PICKER ── */
   .month-export-bar { display:flex; gap:8px; align-items:center; padding:10px 0; flex-wrap:wrap; }
   .month-export-bar select { border:1.5px solid var(--border); border-radius:7px; padding:6px 10px; font-size:13px; font-family:inherit; }
@@ -5514,53 +5518,11 @@ function renderSubmissions() {
   // 날짜 내림차순 정렬
   const sorted = [...visibleDB].sort((a,b)=>(b.submittedAt||b.settleCode).localeCompare(a.submittedAt||a.settleCode));
 
-  // 연 > 월 > 일 그룹핑
-  const tree = {}; // { '2026': { '06': { '26': [sub,...] } } }
-  sorted.forEach(s => {
-    const dt = s.submittedAt ? new Date(s.submittedAt) : null;
-    const y = dt ? String(dt.getFullYear()) : ('20'+s.settleCode.slice(0,2));
-    const m = dt ? String(dt.getMonth()+1).padStart(2,'0') : s.settleCode.slice(2,4);
-    const d = dt ? String(dt.getDate()).padStart(2,'0') : s.settleCode.slice(4,6);
-    if(!tree[y]) tree[y]={};
-    if(!tree[y][m]) tree[y][m]={};
-    if(!tree[y][m][d]) tree[y][m][d]=[];
-    tree[y][m][d].push(s);
-  });
-
   const MONTH_KO = ['','1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
-  let html = '';
-  Object.keys(tree).sort((a,b)=>b-a).forEach(y => {
-    const newInYear = Object.values(tree[y]).flatMap(mv=>Object.values(mv).flat()).some(s=>s.status==='new');
-    html += `<div class="sub-year-block">
-      <div class="sub-year-hd" onclick="this.parentElement.classList.toggle('collapsed')">
-        <span>${y}년</span>
-        ${newInYear?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
-        <span class="sub-fold-icon">▾</span>
-      </div>
-      <div class="sub-year-body">`;
-    Object.keys(tree[y]).sort((a,b)=>b-a).forEach(m => {
-      const newInMonth = Object.values(tree[y][m]).flat().some(s=>s.status==='new');
-      html += `<div class="sub-month-block">
-        <div class="sub-month-hd" onclick="this.parentElement.classList.toggle('collapsed')">
-          <span>${MONTH_KO[parseInt(m)]}</span>
-          ${newInMonth?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
-          <span class="sub-fold-icon">▾</span>
-        </div>
-        <div class="sub-month-body">`;
-      Object.keys(tree[y][m]).sort((a,b)=>b-a).forEach(d => {
-        const dayItems = tree[y][m][d];
-        const newInDay = dayItems.some(s=>s.status==='new');
-        html += `<div class="sub-day-block">
-          <div class="sub-day-hd" onclick="this.parentElement.classList.toggle('collapsed')">
-            <span>${y}-${m}-${d}</span>
-            <span style="color:#888;font-size:11px;">${dayItems.length}건</span>
-            ${newInDay?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
-            <span class="sub-fold-icon">▾</span>
-          </div>
-          <div class="sub-day-body">`;
-        dayItems.forEach(s => {
-          html += `<div class="sub-card">
+  // ── 제출 카드 1개 HTML ──
+  function subCardHtml(s) {
+    return `<div class="sub-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <div>
                 <div class="sc-code">${s.settleCode} ${currentRole==='guide'
@@ -5580,13 +5542,77 @@ function renderSubmissions() {
               </div>
             </div>
           </div>`;
-        });
-        html += `</div></div>`; // sub-day-body / sub-day-block
-      });
-      html += `</div></div>`; // sub-month-body / sub-month-block
+  }
+
+  // ── 날짜 트리(연>월>일, 각 내림차순) HTML ──
+  function buildDateTree(items) {
+    if(!items.length) return '';
+    const tree = {}; // { '2026': { '06': { '26': [sub,...] } } }
+    items.forEach(s => {
+      const dt = s.submittedAt ? new Date(s.submittedAt) : null;
+      const y = dt ? String(dt.getFullYear()) : ('20'+s.settleCode.slice(0,2));
+      const m = dt ? String(dt.getMonth()+1).padStart(2,'0') : s.settleCode.slice(2,4);
+      const d = dt ? String(dt.getDate()).padStart(2,'0') : s.settleCode.slice(4,6);
+      if(!tree[y]) tree[y]={};
+      if(!tree[y][m]) tree[y][m]={};
+      if(!tree[y][m][d]) tree[y][m][d]=[];
+      tree[y][m][d].push(s);
     });
-    html += `</div></div>`; // sub-year-body / sub-year-block
-  });
+    let h = '';
+    Object.keys(tree).sort((a,b)=>b-a).forEach(y => {
+      const newInYear = Object.values(tree[y]).flatMap(mv=>Object.values(mv).flat()).some(s=>s.status==='new');
+      h += `<div class="sub-year-block">
+      <div class="sub-year-hd" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span>${y}년</span>
+        ${newInYear?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
+        <span class="sub-fold-icon">▾</span>
+      </div>
+      <div class="sub-year-body">`;
+      Object.keys(tree[y]).sort((a,b)=>b-a).forEach(m => {
+        const newInMonth = Object.values(tree[y][m]).flat().some(s=>s.status==='new');
+        h += `<div class="sub-month-block">
+        <div class="sub-month-hd" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span>${MONTH_KO[parseInt(m)]}</span>
+          ${newInMonth?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
+          <span class="sub-fold-icon">▾</span>
+        </div>
+        <div class="sub-month-body">`;
+        Object.keys(tree[y][m]).sort((a,b)=>b-a).forEach(d => {
+          const dayItems = tree[y][m][d];
+          const newInDay = dayItems.some(s=>s.status==='new');
+          h += `<div class="sub-day-block">
+          <div class="sub-day-hd" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>${y}-${m}-${d}</span>
+            <span style="color:#888;font-size:11px;">${dayItems.length}건</span>
+            ${newInDay?'<span class="sub-badge new" style="font-size:10px;">NEW</span>':''}
+            <span class="sub-fold-icon">▾</span>
+          </div>
+          <div class="sub-day-body">`;
+          dayItems.forEach(s => { h += subCardHtml(s); });
+          h += `</div></div>`; // sub-day-body / sub-day-block
+        });
+        h += `</div></div>`; // sub-month-body / sub-month-block
+      });
+      h += `</div></div>`; // sub-year-body / sub-year-block
+    });
+    return h;
+  }
+
+  let html = '';
+  if (currentRole === 'admin') {
+    // 정산 미완료 → 상단 별도 섹션(날짜 내림차순), 정산 완료 → 날짜 역순 트리
+    const unsettled = sorted.filter(s => !s.settled);
+    const settled   = sorted.filter(s =>  s.settled);
+    if (unsettled.length) {
+      html += `<div class="sub-unsettled-block">
+        <div class="sub-unsettled-hd">⏳ 정산 미완료 <span style="font-size:11px;font-weight:700;">${unsettled.length}건</span></div>
+        <div class="sub-unsettled-body">${unsettled.map(subCardHtml).join('')}</div>
+      </div>`;
+    }
+    html += buildDateTree(settled);
+  } else {
+    html += buildDateTree(sorted);
+  }
   body.innerHTML = html;
 }
 
