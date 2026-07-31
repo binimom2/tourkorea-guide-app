@@ -1064,7 +1064,7 @@
           <div style="display:flex;align-items:center;gap:4px;">
             <div id="settleCodeSec1" style="flex:1;padding:7px 8px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;font-weight:700;color:#3730a3;letter-spacing:1px;text-align:center;box-sizing:border-box;">-</div>
             <span style="font-size:14px;font-weight:700;color:#3730a3;flex-shrink:0;">-</span>
-            <input type="text" id="settleSeq" maxlength="2" value="00" style="width:44px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" oninput="state.info.settleSeq=this.value; updateSettleCode(); saveData()">
+            <input type="text" id="settleSeq" maxlength="2" value="00" placeholder="00" inputmode="numeric" style="width:44px;flex-shrink:0;border:2px solid #c7d2fe;border-radius:6px;padding:7px 6px;font-size:14px;font-weight:700;color:#3730a3;text-align:center;font-family:inherit;" onfocus="if(this.value==='00')this.value=''" onblur="if(this.value===''){this.value='00';state.info.settleSeq='00';updateSettleCode();saveData();}" oninput="this.value=this.value.replace(/[^0-9]/g,''); state.info.settleSeq=this.value; updateSettleCode(); saveData()">
           </div>
         </div>
 
@@ -3300,6 +3300,11 @@ function renderShop(key) {
     inSale.addEventListener('input', e=>{
       let raw = e.target.value.replace(/,/g,'').replace(/[^0-9.\-]/g,'');
       if(raw.indexOf('-')>0) raw = raw.replace(/-/g,'');
+      // 회사보고는 100% 마이너스 처리 — 가이드가 양수로 찍어도 자동으로 음수 표기
+      if(row.type==='회사보고'){
+        raw = raw.replace(/-/g,'');
+        if(raw && parseFloat(raw)>0) raw = '-' + raw;
+      }
       row.sale = raw;
       if(raw !== '-') e.target.value = raw ? fmtNumSigned(raw) : '';
       recalcShopRow(key,row,div);
@@ -3335,6 +3340,11 @@ function renderShop(key) {
       if (t==='회사보고') {
         row.com=100; inCom.value=100; inCom.readOnly=true; inCom.style.background='#f0f0f0';
         row.kbPct=0; inKBPct.value=0; inKBPct.readOnly=true; inKBPct.style.background='#f0f0f0';
+        // 회사보고 전환 시 이미 입력된 양수 판매액도 자동으로 음수 처리
+        if(row.sale){
+          let s = String(row.sale).replace(/-/g,'');
+          if(s && parseFloat(s)>0){ row.sale = '-'+s; inSale.value = fmtNumSigned(row.sale); }
+        }
       } else {
         inCom.readOnly=false; inCom.style.background='';
         inKBPct.readOnly=false; inKBPct.style.background='';
