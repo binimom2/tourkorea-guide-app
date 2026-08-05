@@ -6373,7 +6373,7 @@ function _hdr(cell,txt,bg='FF1A6B8A'){
   cell.border=_borderAll();
 }
 function _num(cell,v){
-  cell.value=v||0; cell.numFmt='#,##0'; cell.alignment={horizontal:'right'};
+  cell.value=v||0; cell.numFmt='#,##0;[Red]-#,##0'; cell.alignment={horizontal:'right'};
   cell.border=_borderAll();
 }
 function _txt(cell,v){
@@ -6462,7 +6462,7 @@ async function downloadSettleExcel() {
    [12,rows.reduce((a,s)=>a+(s.exchangeProfit||0),0)],
    [13,totalPerOpt],[14,totalPerShop],[15,totalPerOpt+totalPerShop]].forEach(([ci,v])=>{
     const c=ws.getCell(ti,ci);
-    c.value=v; c.numFmt='#,##0'; c.font={bold:true};
+    c.value=v; c.numFmt='#,##0;[Red]-#,##0'; c.font={bold:true};
     c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
     c.alignment={horizontal:'right'};
   });
@@ -6515,7 +6515,7 @@ async function downloadSettleExcel() {
     gCell.font={bold:true}; gCell.alignment={horizontal:'center',vertical:'middle'};
     const groupTotal=list.reduce((a,p)=>a+p.profit,0);
     ws.mergeCells(groupStartRow,6,groupEndRow,7);
-    const gt=ws.getCell(groupStartRow,6); gt.value=Math.round(groupTotal); gt.numFmt='#,##0';
+    const gt=ws.getCell(groupStartRow,6); gt.value=Math.round(groupTotal); gt.numFmt='#,##0;[Red]-#,##0';
     gt.font={bold:true,color:{argb:'FF1A6B8A'}}; gt.alignment={horizontal:'center',vertical:'middle'};
     for(let rr=groupStartRow; rr<=groupEndRow; rr++){
       for(let ci=1; ci<=7; ci++) ws.getCell(rr,ci).border=_borderAll();
@@ -6550,7 +6550,7 @@ async function downloadSettleExcel() {
 
   ws.mergeCells(cumRow,6,exRow,7);
   const grandCell=ws.getCell(cumRow,6);
-  grandCell.value=Math.round(totalProfit+totalExchange); grandCell.numFmt='#,##0';
+  grandCell.value=Math.round(totalProfit+totalExchange); grandCell.numFmt='#,##0;[Red]-#,##0';
   grandCell.font={bold:true,size:13,color:{argb:'FF1A6B8A'}}; grandCell.alignment={horizontal:'center',vertical:'middle'};
   grandCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};
   for(let rr=cumRow; rr<=exRow; rr++){ for(let ci=1; ci<=7; ci++) ws.getCell(rr,ci).border=_borderAll(); }
@@ -6658,7 +6658,7 @@ async function downloadShoppingExcel() {
       const sc=ws.getCell(rowIdx,1); sc.value='합  계'; sc.font={bold:true}; sc.alignment={horizontal:'center'};
       sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
       [[8,sumSale],[10,sumComm],[12,sumKb],[13,sumComm+sumKb]].forEach(([ci,v])=>{
-        const c=ws.getCell(rowIdx,ci); c.value=Math.round(v); c.numFmt='#,##0'; c.font={bold:true};
+        const c=ws.getCell(rowIdx,ci); c.value=Math.round(v); c.numFmt='#,##0;[Red]-#,##0'; c.font={bold:true};
         c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};
         c.alignment={horizontal:'right'};
       });
