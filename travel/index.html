@@ -891,8 +891,42 @@ const TRV_SAVE_OPTS={
    지난번 접속 때의 낡은 값이 그대로 남아 있다. 그걸 모르고 저장하면 예전처럼 통째 덮어쓰기가
    된다 → 저장 쪽에서 이 상태를 반드시 감지해야 한다. (2026-07-20 7/30·31 재소멸 원인) */
 const _sbLoadFailed={};
+
+/* ── 세션 토큰 신선도 보장 ──
+   액세스 토큰(JWT) 수명은 1시간. 탭을 오래 열어두거나 자리를 비우면 자동갱신 타이머가
+   제때 못 돌아, 「만료된 토큰」으로 요청이 나간다. RLS는 이를 익명 취급 →
+   · 쓰기(upsert)는 42501로 거부(재저장하면 되던 그 증상)
+   · 읽기(select)는 에러 없이 「0행」을 줘서 앱이 "서버가 비었다"로 오인
+   그래서 저장·조회 직전에 만료 임박이면 미리 갱신한다.
+   반환: 사용 가능한 세션이 확보되면 true, 로그인이 없거나 갱신 실패면 false. */
+async function _ensureFreshToken(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) return false;                       // 로그인 안 됨
+    const left = (session.expires_at||0) - Math.floor(Date.now()/1000);
+    if(left <= 120){                                 // 2분 이하 남았으면 미리 갱신
+      const { data, error } = await sb.auth.refreshSession();
+      return !error && !!(data && data.session);
+    }
+    return true;
+  }catch(e){ return false; }
+}
+// 인증/RLS 때문에 막힌 에러인지(만료 토큰으로 익명 요청이 된 경우 등)
+function _isAuthErr(error){
+  if(!error) return false;
+  const c=String(error.code||''), m=String(error.message||'');
+  return c==='42501' || c==='PGRST301' || /row-level security|jwt|token|not authenticated|expired/i.test(m);
+}
+let _lastSaveFailAuth=false;   // 직전 sbSaveRaw 실패가 인증 만료 때문이었나(안내 문구 구분용)
+function _saveFailMsg(){
+  return _lastSaveFailAuth
+    ? '❌ 저장 실패 — 로그인이 만료됐습니다. 다시 로그인한 뒤 저장하세요.\n지금 새로고침하면 입력한 내용이 사라집니다. (Session expired — log in again, then save. Do NOT refresh or your input will be lost.)'
+    : '❌ 서버 저장 실패 — 이 기기에만 저장되었습니다. 새로고침하면 사라질 수 있습니다. (Server save failed — saved on this device only; may be lost on refresh.)';
+}
+
 async function sbLoad(key){
   try{
+    if(!await _ensureFreshToken()) throw new Error('세션이 없어 서버를 읽을 수 없습니다');
     const{data:row,error}=await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
     if(error) throw error;
     const val=(row&&row.data!==undefined&&row.data!==null)?row.data:null;
@@ -908,14 +942,24 @@ async function sbLoad(key){
 }
 // localStorage를 건드리지 않고 서버 최신본만 읽는다(병합 저장·백업용). 행이 없으면 null, 통신 실패면 throw.
 async function sbLoadRaw(key){
+  // 세션이 없으면 「0행=빈 서버」로 오인하지 않도록 통신 실패로 처리(throw) — 호출측이 안전하게 멈춘다
+  if(!await _ensureFreshToken()) throw new Error('세션이 없어 서버를 읽을 수 없습니다');
   const{data:row,error}=await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
   if(error) throw error;
   return (row&&row.data!==undefined&&row.data!==null)?row.data:null;
 }
 // localStorage를 건드리지 않고 서버에만 저장. 성공 여부를 반환(호출측이 실패를 알아야 함).
 async function sbSaveRaw(key,data){
+  _lastSaveFailAuth=false;
+  const row={data_key:key,data,updated_at:new Date().toISOString()};
   try{
-    const{error}=await sb.from('guide_data').upsert({data_key:key,data,updated_at:new Date().toISOString()});
+    await _ensureFreshToken();                              // 만료 임박이면 미리 갱신
+    let{error}=await sb.from('guide_data').upsert(row);
+    if(error && _isAuthErr(error)){                         // 만료 토큰으로 익명 요청이 된 경우 — 갱신 후 1회 재시도
+      try{ await sb.auth.refreshSession(); }catch(e){}
+      ({error}=await sb.from('guide_data').upsert(row));
+    }
+    if(error && _isAuthErr(error)) _lastSaveFailAuth=true;  // 재시도까지 인증 실패 = 세션이 진짜 죽음(재로그인 필요)
     return !error;
   }catch(e){ return false; }
 }
@@ -1052,7 +1096,7 @@ async function sbSaveSafe(key,data,opts){
       if(dropped>0) showToast('⚠ 최신 목록을 못 받은 상태라 삭제는 반영하지 않았습니다. 새로고침 후 다시 해주세요. (Deletions were not applied because the latest list could not be loaded. Please refresh and retry.)');
       try{ await pushBackup(key,server); }catch(e){}
       localStorage.setItem(key,JSON.stringify(out));
-      if(!await sbSaveRaw(key,out)){ showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다 (Server save failed — saved on this device only)'); return false; }
+      if(!await sbSaveRaw(key,out)){ showToast(_saveFailMsg()); return false; }
       _sbBase[key]=_sbSnap(out); delete _sbLoadFailed[key];
       return out;
     }
@@ -1120,7 +1164,7 @@ async function sbSaveSafe(key,data,opts){
 
   localStorage.setItem(key,JSON.stringify(out));
   if(!await sbSaveRaw(key,out)){
-    showToast('❌ 서버 저장 실패 — 이 기기에만 저장되었습니다 (Server save failed — saved on this device only)');
+    showToast(_saveFailMsg());
     return false;
   }
   _sbBase[key]=_sbSnap(out);
