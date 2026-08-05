@@ -4129,13 +4129,66 @@ const SUPABASE_URL = 'https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'gs-auth', persistSession: true, autoRefreshToken: true } });
 
+/* ── 세션 토큰 신선도 보장 (RLS 후유증 대비) ──
+   액세스 토큰(JWT)은 1시간 수명. 탭을 오래 열어두거나 자리를 비우면 자동갱신 타이머가
+   못 돌아 「만료된 토큰」으로 요청이 나간다. RLS는 이를 익명 취급 →
+   저장(upsert)은 42501로 거부되고, 예전엔 catch로 조용히 삼켜 「저장된 줄 알았다가
+   새로고침하면 사라지는」 침묵 유실이 났다. 저장·조회 직전에 만료 임박이면 미리 갱신한다. */
+async function _ensureFreshToken(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) return false;
+    const left = (session.expires_at||0) - Math.floor(Date.now()/1000);
+    if(left <= 120){
+      const { data, error } = await sb.auth.refreshSession();
+      return !error && !!(data && data.session);
+    }
+    return true;
+  }catch(e){ return false; }
+}
+function _isAuthErr(error){
+  if(!error) return false;
+  const c=String(error.code||''), m=String(error.message||'');
+  return c==='42501' || c==='PGRST301' || /row-level security|jwt|token|not authenticated|expired/i.test(m);
+}
+/* 탭이 다시 보이거나 포커스될 때(자리 비웠다 복귀), 그리고 주기적으로 토큰을 미리 갱신.
+   백그라운드 탭은 타이머가 throttle 돼 autoRefresh가 못 도는 걸 보완한다. */
+async function _keepTokenFresh(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) return;
+    const left = (session.expires_at||0) - Math.floor(Date.now()/1000);
+    if(left <= 300) await sb.auth.refreshSession();   // 5분 이하 남으면 미리 갱신
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _keepTokenFresh(); });
+window.addEventListener('focus', _keepTokenFresh);
+setInterval(_keepTokenFresh, 4*60*1000);
+
 async function syncToSupabase(key, data) {
+  const row = { data_key: key, data: data, updated_at: new Date().toISOString() };
   try {
-    await sb.from('guide_data').upsert({ data_key: key, data: data, updated_at: new Date().toISOString() });
-  } catch(e) {}
+    await _ensureFreshToken();                                 // 만료 임박이면 미리 갱신
+    let { error } = await sb.from('guide_data').upsert(row);
+    if (error && _isAuthErr(error)) {                          // 만료 토큰으로 익명 요청이 된 경우 — 갱신 후 1회 재시도
+      try{ await sb.auth.refreshSession(); }catch(e){}
+      ({ error } = await sb.from('guide_data').upsert(row));
+    }
+    if (error) {
+      showToast(_isAuthErr(error)
+        ? '❌ 저장 실패 — 로그인이 만료됐습니다. 다시 로그인 후 저장하세요.\n지금 새로고침하면 입력한 내용이 사라집니다.'
+        : '❌ 서버 저장 실패 — 이 기기에만 남아있습니다. 새로고침하면 사라질 수 있습니다.', true);
+      return false;
+    }
+    return true;
+  } catch(e) {
+    showToast('❌ 서버 저장 실패 — 연결을 확인하세요. 지금 새로고침하면 사라질 수 있습니다.', true);
+    return false;
+  }
 }
 async function loadFromSupabase(key) {
   try {
+    await _ensureFreshToken();   // 만료 토큰이면 「0행」으로 오인해 빈 데이터로 덮어쓰는 것 방지
     const { data } = await sb.from('guide_data').select('data').eq('data_key', key).single();
     return data ? data.data : null;
   } catch(e) { return null; }
