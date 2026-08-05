@@ -5653,7 +5653,7 @@ function renderSubmissions() {
 
   let html = '';
   if (currentRole === 'admin') {
-    // 정산 미완료 → 상단 별도 섹션(날짜 내림차순), 정산 완료 → 날짜 역순 트리
+    // 정산 미완료 → 상단 별도 섹션(날짜 내림차순), 정산 완료 → 연/월/일 그룹 없이 날짜 역순 평면 나열
     const unsettled = sorted.filter(s => !s.settled);
     const settled   = sorted.filter(s =>  s.settled);
     if (unsettled.length) {
@@ -5662,9 +5662,9 @@ function renderSubmissions() {
         <div class="sub-unsettled-body">${unsettled.map(subCardHtml).join('')}</div>
       </div>`;
     }
-    html += buildDateTree(settled);
+    html += settled.map(subCardHtml).join('');   // 그룹 헤더 없이 최신순으로 쭉
   } else {
-    html += buildDateTree(sorted);
+    html += sorted.map(subCardHtml).join('');    // 그룹 헤더 없이 최신순으로 쭉
   }
   body.innerHTML = html;
 }
