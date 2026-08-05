@@ -6195,6 +6195,9 @@ async function saveSubEdits() {
   const paxEl=document.getElementById('paxTotalDisplay'); if(paxEl) s.paxTotal=parseInt(paxEl.textContent)||s.paxTotal;
   const shopCountEl=document.getElementById('shopCount'); if(shopCountEl) s.shopCount=parseInt(shopCountEl.value)||s.shopCount;
   const productEl=document.getElementById('productName'); if(productEl) s.productName=productEl.value||s.productName;
+  // 가이드명도 목록/엑셀이 쓰는 최상위 s.guideName을 폼값으로 갱신 — 그동안 갱신 안 돼
+  // 어드민이 열어서 이름을 고쳐도(예: "노가이"→"노가이드") 반영되지 않던 문제.
+  const guideEl=document.getElementById('guideName'); if(guideEl) s.guideName=guideEl.value.trim()||s.guideName;
   // 정산코드(예: 260709 → 260709-01)는 fullData(state.info) 안에는 반영되지만
   // 목록/엑셀/정산수첩이 참조하는 최상위 s.settleCode는 그동안 갱신되지 않아
   // 어드민이 정산코드(순번)를 고쳐도 반영이 안 됐음. 여기서 함께 갱신.
