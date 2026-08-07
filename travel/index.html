@@ -4174,6 +4174,7 @@ function nextSeqForDate(list,d,excludeId){
   let mx=0;
   (list||[]).forEach(r=>{
     if(!r||(excludeId&&r.id===excludeId)) return;
+    if(r.status==='DELETE') return;   // 삭제건은 코드 번호를 차지하지 않는다(테스트/제거건이 번호를 먹어 01→02로 밀리던 문제)
     const c=String(r.code||'');
     if(c.slice(0,6)!==d) return;
     const n=parseInt(c.slice(7),10);
@@ -4196,7 +4197,8 @@ async function resolveCodeCollisions(created){
   const list=(Array.isArray(created)?created:[created]).filter(Boolean);
   let changed=false;
   list.forEach(res=>{
-    if(!reservations.some(r=>r&&r.id!==res.id&&r.code===res.code)) return;
+    // 삭제건은 코드를 차지하지 않으므로 충돌로 치지 않는다(삭제된 01과 코드가 같아도 활성건이 01을 쓸 수 있게)
+    if(!reservations.some(r=>r&&r.id!==res.id&&r.status!=='DELETE'&&r.code===res.code)) return;
     const d=_dcode(res.datein);
     res.code=`${d}-${String(nextSeqForDate(reservations,d,res.id)).padStart(2,'0')}`;
     changed=true;
