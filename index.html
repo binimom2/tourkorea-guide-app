@@ -5738,7 +5738,7 @@ function renderMyDocs() {
           <div class="sc-meta">${s.guideName||''} · ${s.productName||'-'} · 쇼핑 ${s.shopCount||0}회 · ${s.paxTotal||0}명</div>
         </div>
         ${openable
-          ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;flex-shrink:0;" onclick="openSubData('${s.id}')">📂 열기</button>`
+          ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;flex-shrink:0;" onclick="openSubData('${s.id}','summary')">📂 열기</button>`
           : `<span style="font-size:11px;color:#888;flex-shrink:0;">확정 후 열람 가능</span>`}
       </div>
     </div>`;
@@ -6176,7 +6176,7 @@ function applyStateToUI() {
   try { calcPaxTotal(); } catch(e) {}
 }
 
-async function openSubData(id) {
+async function openSubData(id, landTab) {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
@@ -6228,7 +6228,8 @@ async function openSubData(id) {
   // 열람 중인 제출 ID를 rebuildTabBar 전에 설정 — 가이드가 완료본을 열람할 때 정산서 탭이 뜨도록.
   window._viewingSubId = id;
   rebuildTabBar();
-  switchTab('main');
+  // 기본은 행사보고서(main). [내 정산서 모음]에서 열면 곧바로 정산서(정산금) 화면으로.
+  switchTab((landTab && document.querySelector(`.tab-btn[data-tab="${landTab}"]`)) ? landTab : 'main');
 
   window._viewOpening = false;
   window._viewReadOnly = readOnly;
