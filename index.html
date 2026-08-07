@@ -6893,6 +6893,10 @@ async function openVisitStats() {
 }
 function closeVisitStats() { document.getElementById('visitStatsModal').style.display = 'none'; }
 
+// 방문집계 표 하단 합계칸 — 스크롤 중에도 보이도록 아래에 고정(sticky)
+function _vsFootTd(v, al, st, colspan) {
+  return `<td ${colspan?`colspan="${colspan}"`:''} style="padding:7px 4px;font-size:12px;font-weight:800;text-align:${al||'left'};background:#eef2f7;position:sticky;bottom:0;box-shadow:inset 0 2px 0 #cbd5e1;${st||''}">${v}</td>`;
+}
 function runVisitStats() {
   const { rows, hasKeyword } = _vsFiltered();
   const box = document.getElementById('vsResult');
@@ -6922,7 +6926,12 @@ function runVisitStats() {
         ${td(r.date||'-')}${td(r.code,'','color:#888;')}${td(r.guide)}${td(r.cat,'','color:#888;')}${td(r.name)}
         ${td(r.pax?fmtNum(r.pax):'-','right','font-weight:700;')}${td(r.amount?((VS_SYM[r.cur]||'')+fmtNum(r.amount)):'-','right')}
       </tr>`).join('')}
-      </tbody></table>`;
+      </tbody>
+      <tfoot><tr>
+        ${_vsFootTd(`합계 ${rows.length}건`,'left','','5')}
+        ${_vsFootTd(fmtNum(tot.pax)+'명','right','color:#1a6b8a;')}
+        ${_vsFootTd(_vsMoney(_vsSumByCur(rows)),'right')}
+      </tr></tfoot></table>`;
   } else {
     // 검색어가 없으면 항목별 요약 (인원 많은 순)
     table = `<table style="width:100%;border-collapse:collapse;">
@@ -6933,7 +6942,13 @@ function runVisitStats() {
         ${td(g.cat,'','color:#888;')}${td(g.name)}${td(g.count+'건','right')}
         ${td(fmtNum(g.pax),'right','font-weight:700;color:#1a6b8a;')}${td(_vsMoney(g.byCur),'right')}
       </tr>`).join('')}
-      </tbody></table>`;
+      </tbody>
+      <tfoot><tr>
+        ${_vsFootTd('합계','left','','2')}
+        ${_vsFootTd(rows.length+'건','right')}
+        ${_vsFootTd(fmtNum(tot.pax)+'명','right','color:#1a6b8a;')}
+        ${_vsFootTd(_vsMoney(_vsSumByCur(rows)),'right')}
+      </tr></tfoot></table>`;
   }
   box.innerHTML = summary + `<div style="max-height:46vh;overflow:auto;">${table}</div>`;
 }
