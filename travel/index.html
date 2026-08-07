@@ -4266,6 +4266,9 @@ function openReservation(id,presetDate){
   document.getElementById('r-memo').value=workingRes.memo||'';
 
   renderSubsections();
+  // 여는 시점의 기준 스냅샷 — 닫을 때 저장 안 된 변경이 있는지 판단(오탐 방지: 폼 기본값까지 반영 후 기록)
+  try{ syncFormToRes(); }catch(e){}
+  window._resBaselineSnap=_sbSnap(workingRes);
   _calScrollY=window.scrollY;                 // 캘린더 보던 위치 기억
   document.getElementById('rov').classList.add('open');
   document.body.classList.add('res-open');    // 모바일: 뒤 캘린더 숨기고 팝업을 일반 페이지로(핀치줌 가능)
@@ -4273,7 +4276,14 @@ function openReservation(id,presetDate){
   document.getElementById('rmViewers').innerHTML='';
   if(modalMode==='edit'&&workingRes.code) startPresence(workingRes.code); else stopPresence();
 }
-function closeReservation(){
+function closeReservation(force){
+  // 저장 안 된 변경(특히 서브섹션 인라인 편집: 호텔 PAYING·REMARK·메모 등)이 있는 채로
+  // 창을 닫으면 그동안 조용히 사라졌다 → 닫기 전에 경고한다. force=true는 저장/삭제 후 프로그램이 닫을 때.
+  if(!force && workingRes){
+    try{ syncFormToRes(); }catch(e){}
+    if(_sbSnap(workingRes)!==window._resBaselineSnap
+       && !confirm('저장하지 않은 변경사항이 있습니다.\n닫으면 입력한 내용이 사라집니다 — 먼저 [Save]를 눌러 저장하세요.\n\n[확인] 저장 안 하고 닫기      [취소] 계속 편집')) return;
+  }
   stopPresence();
   document.getElementById('rov').classList.remove('open');
   document.body.classList.remove('res-open');
@@ -4829,6 +4839,7 @@ async function persistWorkingRes(){
     return true;
   }
   renderSubsections(); renderFilters(); renderAll();
+  window._resBaselineSnap=_sbSnap(workingRes);   // 저장된 상태를 기준으로 갱신(닫을 때 오탐 방지)
   showToast('✅ 저장되었습니다 (Saved)');
   return true;
 }
@@ -4930,6 +4941,7 @@ async function saveReservation(){
     document.getElementById('btnSaveRes').textContent='Save';
     renderSubsections();
     renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
+    window._resBaselineSnap=_sbSnap(workingRes);   // 저장된 상태를 기준으로 갱신(닫을 때 오탐 방지)
     showToast('✅ 예약이 생성되었습니다. 이제 세부 배정을 등록해 주세요. (Reservation created — now add the assignments)');
   } else {
     workingRes.updatedAt=new Date().toISOString();
@@ -4941,7 +4953,7 @@ async function saveReservation(){
     // 저장이 취소·실패했으면 내용을 잃지 않도록 창을 그대로 열어둔다
     if(!ok){ renderSubsections(); renderFilters(); renderAll(); return; }
     // 저장하면 창을 닫는다 — 달력에서 팀 현황만 확인하고 저장하는 흐름이 대부분
-    closeReservation();
+    closeReservation(true);
     renderFilters();focusCalOnDate(din,dout);renderAll();
     showToast('✅ 저장되었습니다 (Saved)');
   }
@@ -4950,7 +4962,7 @@ async function deleteReservation(){
   if(!confirm('이 예약을 삭제할까요? 삭제된 데이터는 복구할 수 없습니다.\n\n(Delete this reservation? This cannot be undone.)'))return;
   reservations=reservations.filter(r=>r.id!==editingId);
   await saveData();
-  closeReservation();
+  closeReservation(true);
   renderFilters();renderAll();
   showToast('🗑 예약이 삭제되었습니다 (Reservation deleted)');
 }
