@@ -3718,6 +3718,9 @@ function loadData(){
 // 예약 저장. 병합·충돌확인·백업은 sbSaveSafe가 담당하고, 여기선 화면 상태만 맞춘다.
 async function saveData(){
   const out=await sbSaveSafe('trv_reservations',reservations,{
+    // 병합 키: id 우선, 없으면(구버전 예약) 안 바뀌는 값(createdAt→code)으로 대체.
+    // id 없는 예약 하나 때문에 목록 전체 병합이 막혀 "다른 사람이 변경했습니다"가 오탐되던 문제 해결.
+    keyFn:r=>r.id || (r.createdAt?('C:'+r.createdAt):(r.code?('K:'+r.code):'')),
     labelFn:r=>`${r.datein||''} ${r.name||r.code||''}`.trim(),
     onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); },
   });
