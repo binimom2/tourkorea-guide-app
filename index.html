@@ -6213,9 +6213,11 @@ async function openSubData(id) {
   const tempData = { state: s.fullData, fields: s.fullData.fields || {} };
   localStorage.setItem(myKey, JSON.stringify(tempData));
 
-  // 제출현황 모달 닫기 (auto-restore 방지용 플래그 임시 해제)
+  // 제출현황 / 내 정산서 모음 모달 닫기 (auto-restore 방지용 플래그 임시 해제)
   window._viewingSubId = null;
   document.getElementById('submissionsModal').style.display='none';
+  const _myDocsModal = document.getElementById('myDocsModal');
+  if (_myDocsModal) _myDocsModal.style.display='none';
 
   // 기존 배너 제거
   const oldBanner = document.getElementById('viewBanner');
