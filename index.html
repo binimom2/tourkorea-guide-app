@@ -4363,9 +4363,11 @@ function loadData() {
         toggleSettleMethod(method, isChecked);
       }
     });
-    // 가이드 정산 비율 기본값 50% 보장
+    // 가이드 정산 비율 기본값 보장 (인센티브 50% / 절대메꾸기 55%)
     const pctEl = document.getElementById('inc-guide-pct');
     if (pctEl && (pctEl.value === '' || pctEl.value === '0')) pctEl.value = '50';
+    const guPctEl = document.getElementById('gu-guide-pct');
+    if (guPctEl && (guPctEl.value === '' || guPctEl.value === '0')) guPctEl.value = '55';
   } catch(e) {}
 
   // ⑥ 계산 갱신
