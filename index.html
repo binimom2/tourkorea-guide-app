@@ -5568,8 +5568,8 @@ function renderSubmissions() {
   if (currentRole === 'op' && !visibleDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">정산완료되지 않은 정산서가 없습니다.</p>'; return; }
   if (currentRole === 'guide' && !visibleDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">제출한 정산서가 없습니다.</p>'; return; }
 
-  // 날짜 내림차순 정렬
-  const sorted = [...visibleDB].sort((a,b)=>(b.submittedAt||b.settleCode).localeCompare(a.submittedAt||a.settleCode));
+  // 행사 진행일자 코드(settleCode, 예: 260729-03 = YYMMDD-일련번호) 기준 내림차순 정렬
+  const sorted = [...visibleDB].sort((a,b)=>(b.settleCode||'').localeCompare(a.settleCode||'',undefined,{numeric:true})||(b.submittedAt||'').localeCompare(a.submittedAt||''));
 
   const MONTH_KO = ['','1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
