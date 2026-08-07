@@ -2120,16 +2120,55 @@ function filterEventContents(val) {
     .map(o => `<option value="${cfgEsc(o.v)}" label="${cfgEsc(o.g)}">`)
     .join('');
 }
+// ── 제출본 안전 저장(병합)용 ──
+// 통짜 덮어쓰기로, 오래된 목록으로 저장하면 그 사이 남이 추가한 제출본이 통째로 사라지던 문제가 있었다.
+// 저장 직전 서버 최신본을 다시 읽어 base(내가 마지막에 본 서버)/mine(내 화면)/server(현재 서버)를 id로 3-way 병합한다.
+let _subsBase = {};   // id → 마지막으로 서버와 맞춰진 제출본 스냅샷(JSON). "내가 뭘 바꿨나"의 기준.
+function _subsSnap(s){ try{ return JSON.stringify(s); }catch(e){ return ''; } }
+function _setSubsBase(arr){ _subsBase={}; (Array.isArray(arr)?arr:[]).forEach(s=>{ if(s&&s.id) _subsBase[s.id]=_subsSnap(s); }); }
+// 통신/세션 실패 시 「0행=빈 서버」로 오인하지 않도록 오류면 throw. 행이 없으면 null(정상적으로 서버가 비어있음).
+async function _loadSubsRaw(){
+  if(!await _ensureFreshToken()) throw new Error('세션이 없어 서버를 읽을 수 없습니다');
+  const { data, error } = await sb.from('guide_data').select('data').eq('data_key', SUBS_KEY).maybeSingle();
+  if(error) throw error;
+  return (data && data.data!==undefined && data.data!==null) ? data.data : null;
+}
+// base/mine/server → 서버 위에 내 변경분만 얹은 결과(내가 모르는 서버 항목은 보존, 내가 지운 것만 제거)
+function _mergeSubs(baseSnap, mine, server){
+  const mineById=new Map(); (Array.isArray(mine)?mine:[]).forEach(s=>{ if(s&&s.id) mineById.set(s.id,s); });
+  const deleted=new Set(Object.keys(baseSnap).filter(id=>!mineById.has(id)));   // base엔 있고 내겐 없음 = 내가 지움
+  const out=[], pos=new Map();
+  (Array.isArray(server)?server:[]).forEach(s=>{ if(!s||!s.id){ out.push(s); return; } if(deleted.has(s.id)) return; pos.set(s.id,out.length); out.push(s); });
+  mineById.forEach((s,id)=>{ const b=baseSnap[id];
+    if(b===undefined || b!==_subsSnap(s)){   // 내가 추가했거나 수정함 → 서버 위에 얹기
+      if(pos.has(id)) out[pos.get(id)]=s; else { pos.set(id,out.length); out.push(s); }
+    }
+    // 내가 안 바꾼 항목은 서버 것을 그대로 둔다(그 사이 남이 고쳤을 수 있으니 존중)
+  });
+  return out;
+}
 async function loadSubmissions() {
   try {
     const d = await loadFromSupabase(SUBS_KEY);
     if (d) { submissionsDB = d; localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB)); }
     else { submissionsDB = JSON.parse(localStorage.getItem(SUBS_KEY)||'[]'); }
   } catch(e) { submissionsDB = []; }
+  _setSubsBase(submissionsDB);   // 병합 기준 갱신
 }
 async function saveSubmissions() {
+  let server, fetched=true;
+  try{ server = await _loadSubsRaw(); }catch(e){ fetched=false; }
+  if(!fetched){
+    // 서버 최신본을 못 읽음 — 통짜 덮어쓰기는 위험하니 서버 저장은 보류(로컬만). 다시 저장하면 반영된다.
+    localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
+    showToast('⚠ 서버 최신본을 확인하지 못해 이 기기에만 저장했습니다. 잠시 후 다시 저장해 주세요.', true);
+    return false;
+  }
+  submissionsDB = _mergeSubs(_subsBase, submissionsDB, server);
   localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
-  await syncToSupabase(SUBS_KEY, submissionsDB);
+  const ok = await syncToSupabase(SUBS_KEY, submissionsDB);
+  _setSubsBase(submissionsDB);   // 저장 후 현재를 다음 병합 기준으로
+  return ok;
 }
 
 // ══════════════════════════════════════════════════════
