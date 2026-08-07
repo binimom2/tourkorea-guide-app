@@ -3976,7 +3976,7 @@ function calMonthHtml(y,m,byDate,todayStr,showTitle){
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${y}-${p(m+1)}-${p(d)}`;
     const items=byDate[dateStr]||[];
-    const shown=items.slice(0,3);
+    const shown=items;           // 3개 제한 없이 그 날짜 예약 전부 표시(칸 높이는 내용만큼 늘어남)
     const more=items.length-shown.length;
     cells+=`<div class="cal-cell" onclick="calCellClick(event,'${dateStr}')">
       <div class="cal-daynum${dateStr===todayStr?' today':''}">${d}</div>
