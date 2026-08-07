@@ -1833,6 +1833,17 @@
   </div>
 </div>
 
+<!-- ═══ 내 정산서 모음 모달 (가이드 전용) ═══ -->
+<div class="cfg-modal" id="myDocsModal">
+  <div class="cfg-box" style="max-width:620px;">
+    <div class="cfg-head">
+      <span>📑 내 정산서 모음</span>
+      <button onclick="closeMyDocs()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body" id="myDocsBody"></div>
+  </div>
+</div>
+
 <!-- ═══ 항목별 방문 집계 모달 ═══ -->
 <div class="cfg-modal" id="visitStatsModal">
   <div class="cfg-box" style="max-width:760px;">
@@ -2608,9 +2619,15 @@ function rebuildTabBar() {
     subBtn.onclick = () => openSubmissions();
     bar.appendChild(subBtn);
   }
-  const ledgerBtn = makeTabBtn('ledger','📒 가이드정산수첩');
+  const ledgerBtn = makeTabBtn('ledger', currentRole === 'guide' ? '📒 내 정산수첩' : '📒 가이드정산수첩');
   ledgerBtn.onclick = () => openGuideLedger();
   bar.appendChild(ledgerBtn);
+  // 📑 내 정산서 모음 (가이드 전용 · 우선 조수영 가이드에게만 노출) — 정산완료된 내 정산서를 행사일자순으로
+  if (currentRole === 'guide' && (currentUser?.name || '').trim() === '조수영') {
+    const myDocsBtn = makeTabBtn('mydocs','📑 내 정산서 모음');
+    myDocsBtn.onclick = () => openMyDocs();
+    bar.appendChild(myDocsBtn);
+  }
   const active = document.querySelector(`.tab-btn[data-tab="${currentTab}"]`);
   if (active) active.classList.add('active');
 }
@@ -5671,6 +5688,75 @@ function renderSubmissions() {
   body.innerHTML = html;
 }
 
+// ══════════════════════════════════════════════════════
+//  📑 내 정산서 모음 (가이드 전용)
+//  - 정산완료(settled)된 본인 정산서만
+//  - 행사기간(행사일자 = _settleDateOf) 기준 내림차순, 날짜별 그룹
+// ══════════════════════════════════════════════════════
+async function openMyDocs() {
+  await loadSubmissions();
+  renderMyDocs();
+  document.getElementById('myDocsModal').style.display='flex';
+}
+function closeMyDocs() {
+  document.getElementById('myDocsModal').style.display='none';
+  if (window._viewingSubId && currentRole !== 'admin') restoreMyData();
+}
+function renderMyDocs() {
+  const body = document.getElementById('myDocsBody');
+  // 정산완료된 본인 정산서만
+  let items = submissionsDB.filter(s => isMySubmission(s) && s.settled);
+  // 같은 정산코드에 제출본+수정본이 남아 있으면 최신 1건만
+  const byCode = {};
+  items.forEach(s => {
+    const k = (s.settleCode || s.id);
+    const prev = byCode[k];
+    if (!prev || (s.submittedAt||'') > (prev.submittedAt||'')) byCode[k] = s;
+  });
+  items = Object.values(byCode);
+  if (!items.length) {
+    body.innerHTML = '<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">정산완료된 정산서가 없습니다.</p>';
+    return;
+  }
+  const dateOf = s => _settleDateOf(s) || '';
+  // 행사일자 내림차순, 동일 날짜면 정산코드 내림차순
+  items.sort((a,b) => dateOf(b).localeCompare(dateOf(a))
+    || (b.settleCode||'').localeCompare(a.settleCode||'', undefined, {numeric:true}));
+  // 날짜별 그룹
+  const groups = {};
+  items.forEach(s => { const d = dateOf(s) || '(날짜미상)'; (groups[d] = groups[d] || []).push(s); });
+  const days = Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+
+  function myDocCardHtml(s) {
+    const openable = !!s.sentToGuide;
+    return `<div class="sub-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <div class="sc-code">${s.settleCode||''} ${openable
+              ? '<span class="sub-badge settled">최종본</span>'
+              : '<span class="sub-badge" style="background:#e5e7eb;color:#555;">관리자 확정 대기</span>'}</div>
+          <div class="sc-meta">${s.guideName||''} · ${s.productName||'-'} · 쇼핑 ${s.shopCount||0}회 · ${s.paxTotal||0}명</div>
+        </div>
+        ${openable
+          ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;flex-shrink:0;" onclick="openSubData('${s.id}')">📂 열기</button>`
+          : `<span style="font-size:11px;color:#888;flex-shrink:0;">확정 후 열람 가능</span>`}
+      </div>
+    </div>`;
+  }
+
+  let html = '';
+  days.forEach(d => {
+    html += `<div class="sub-day-block">
+      <div class="sub-day-hd" style="cursor:default;">
+        <span>${d}</span>
+        <span style="color:#888;font-size:11px;">${groups[d].length}건</span>
+      </div>
+      <div class="sub-day-body">${groups[d].map(myDocCardHtml).join('')}</div>
+    </div>`;
+  });
+  body.innerHTML = html;
+}
+
 async function deleteSubData(id) {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
@@ -5738,6 +5824,8 @@ async function openGuideLedger() {
   await loadPayments();
   await loadCarryover();
   window._ledgerSelected = null;
+  const _lh = document.querySelector('#ledgerModal .cfg-head span');
+  if (_lh) _lh.textContent = currentRole === 'guide' ? '📒 내 정산수첩' : '📒 가이드 정산수첩';
   renderGuideLedger();
   document.getElementById('ledgerModal').style.display='flex';
 }
