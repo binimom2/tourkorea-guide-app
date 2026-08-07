@@ -4006,6 +4006,13 @@ function renderCalendar(){
   document.getElementById('calTitle').textContent=`${calY}년 ${calM+1}월`;
   const byDate={};
   getFiltered().forEach(r=>{ (byDate[r.datein]=byDate[r.datein]||[]).push(r); });
+  // 하루 안 순서를 코드(순번) 기준으로 고정 — 배열 순서(마이그레이션·병합 등)에 따라 들쭉날쭉하던 문제 해결.
+  // 코드가 없으면 뒤로.
+  Object.keys(byDate).forEach(k=>byDate[k].sort((a,b)=>{
+    const ca=String(a.code||''), cb=String(b.code||'');
+    if(!ca) return 1; if(!cb) return -1;
+    return ca.localeCompare(cb,undefined,{numeric:true});
+  }));
   const _t=new Date();
   const todayStr=`${_t.getFullYear()}-${String(_t.getMonth()+1).padStart(2,'0')}-${String(_t.getDate()).padStart(2,'0')}`;
   // 첫 달은 위쪽 제목(◀ 이전달 2026년 7월 다음달 ▶)이 대신하므로 표 제목을 달지 않는다
