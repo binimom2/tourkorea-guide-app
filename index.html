@@ -5607,9 +5607,7 @@ function renderSubmissions() {
                 ${(currentRole==='guide' && !s.sentToGuide)
                   ? `<span style="font-size:11px;color:#888;">전송 후 열람 가능</span>`
                   : `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>`}
-                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료'}</button>` : ''}
-                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#7c3aed;color:#fff;border:none;" onclick="sendSubToGuide('${s.id}')">📨 ${s.sentToGuide?'다시 전송':'가이드 전송'}</button>` : ''}
-                ${(currentRole==='admin' && s.sentToGuide) ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 8px;background:#e5e7eb;color:#555;border:none;" title="전송 취소" onclick="unsendSubToGuide('${s.id}')">↩</button>` : ''}
+                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료+전송'}</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
               </div>
             </div>
@@ -5774,11 +5772,25 @@ async function toggleSubSettled(id) {
   if (currentRole !== 'admin') return;
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
-  s.settled = !s.settled;
-  if (s.settled) s.settledAt = new Date().toISOString();
+  const willSettle = !s.settled;
+  if (willSettle) {
+    // 정산완료 = 가이드에게 최종본 자동 전송 (별도 전송 버튼 없음).
+    // 저장할 때마다 가는 게 아니라, 이 [완료] 버튼을 누른 순간에만 전송된다.
+    if (!confirm(`[${s.settleCode}] ${s.guideName}\n정산완료 처리하고 가이드에게 최종본을 보냅니다.${s.sentToGuide ? '\n(수정본을 다시 보냅니다 — 가이드 알림이 한 번 더 갑니다.)' : ''}\n계속하시겠습니까?`)) return;
+    s.settled = true;
+    s.settledAt = new Date().toISOString();
+    s.sentToGuide = true;
+    s.sentAt = new Date().toISOString();
+    s.finalSeen = false;   // 가이드 로그인 시 알림이 한 번 뜨도록
+  } else {
+    // 완료취소 = 전송도 함께 회수 (가이드 열람 중단)
+    if (!confirm(`[${s.settleCode}] ${s.guideName}\n정산완료를 취소하면 가이드 열람도 함께 중단됩니다. 계속할까요?`)) return;
+    s.settled = false;
+    s.sentToGuide = false;
+  }
   await saveSubmissions();
   renderSubmissions();
-  showToast(s.settled ? '✅ 정산완료 처리되었습니다. (가이드 전송은 별도 버튼)' : '↩ 정산완료가 취소되었습니다.');
+  showToast(s.settled ? '✅ 정산완료 — 가이드에게 최종본이 전송되었습니다.' : '↩ 정산완료·전송이 함께 취소되었습니다.');
 }
 
 // 가이드에게 최종본 보내기 — 이 버튼을 누른 때만 가이드가 열람·알림을 받는다.
