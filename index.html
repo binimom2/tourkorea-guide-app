@@ -2611,7 +2611,9 @@ function rebuildTabBar() {
   addBtn.onclick = () => addDay();
   bar.appendChild(addBtn);
   const tabDefs = [['option','옵션'],['gigatip','기가팁&TC정산금'],['shopping','쇼핑']];
-  if (currentRole !== 'guide') tabDefs.push(['summary','📊 정산서']);
+  // 정산서 탭: 어드민/매니저는 항상, 가이드는 제출건 열람 중(정산완료 최종본)일 때만.
+  // (회사 정산서 부분은 body.role-guide .settle-admin-card 로 계속 숨겨져 가이드 정산금까지만 보인다.)
+  if (currentRole !== 'guide' || window._viewingSubId) tabDefs.push(['summary','📊 정산서']);
   tabDefs.forEach(([t,label]) => bar.appendChild(makeTabBtn(t, label)));
   if (currentRole === 'admin' || currentRole === 'organizer' || currentRole === 'op' || currentRole === 'guide') {
     const subLabel = currentRole === 'guide' ? '📋 내 제출현황' : '📋 제출현황';
@@ -6221,11 +6223,11 @@ async function openSubData(id) {
 
   loadData();
   renderAll();
+  // 열람 중인 제출 ID를 rebuildTabBar 전에 설정 — 가이드가 완료본을 열람할 때 정산서 탭이 뜨도록.
+  window._viewingSubId = id;
   rebuildTabBar();
   switchTab('main');
 
-  // 열람 중인 제출 ID 저장
-  window._viewingSubId = id;
   window._viewOpening = false;
   window._viewReadOnly = readOnly;
   window._viewOpenSnapshot = readOnly ? null : JSON.stringify(state);
