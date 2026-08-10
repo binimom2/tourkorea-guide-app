@@ -2166,6 +2166,7 @@ async function saveSubmissions() {
   }
   submissionsDB = _mergeSubs(_subsBase, submissionsDB, server);
   localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
+  try{ await pushGuideBackup(SUBS_KEY, server); }catch(e){}   // 덮어쓰기 직전 서버본 백업(유실 대비)
   const ok = await syncToSupabase(SUBS_KEY, submissionsDB);
   _setSubsBase(submissionsDB);   // 저장 후 현재를 다음 병합 기준으로
   return ok;
@@ -4250,6 +4251,50 @@ async function loadFromSupabase(key) {
     const { data } = await sb.from('guide_data').select('data').eq('data_key', key).single();
     return data ? data.data : null;
   } catch(e) { return null; }
+}
+
+/* ── 백업 스냅샷 (제출본 통짜 유실 대비) ──
+   가이드앱은 그동안 백업이 없어, 구버전 탭 덮어쓰기로 유실되면 복원 소스가 남지 않았다.
+   저장 직전 서버본을 ① 회전 슬롯(단기 되돌리기) + ② 하루 1개·30일(장기 보관)로 남긴다.
+   travel 백업과 동일 개념. 키 충돌 방지 위해 bak_/bakmeta_/daily_/dailymeta_ 접두사 사용. */
+const G_BAK_SLOTS = 30, G_DAILY_KEEP = 30;
+function _gBakSlotKey(key, slot){ return 'bak_' + key + '_' + slot; }
+function _gBakMetaKey(key){ return 'bakmeta_' + key; }
+function _gDailySlotKey(key, ymd){ return 'daily_' + key + '_' + ymd; }
+function _gDailyMetaKey(key){ return 'dailymeta_' + key; }
+function _gYmd(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`; }
+function _gSig(v){ try{ const c=Array.isArray(v)?v.length:-1; return c+':'+JSON.stringify(v).length; }catch(e){ return 'x'; } }
+async function _gDeleteRaw(key){
+  try{ await _ensureFreshToken(); const{error}=await sb.from('guide_data').delete().eq('data_key',key); return !error; }
+  catch(e){ return false; }
+}
+async function pushGuideBackup(key, serverVal){
+  if(serverVal===undefined || serverVal===null) return;
+  try{ await pushGuideDailyBackup(key, serverVal); }catch(e){}   // 일별 장기 백업
+  let meta=[];
+  try{ meta=(await loadFromSupabase(_gBakMetaKey(key)))||[]; }catch(e){ return; }
+  if(!Array.isArray(meta)) meta=[];
+  const count=Array.isArray(serverVal)?serverVal.length:-1;
+  const sig=_gSig(serverVal);
+  if(meta.length && meta[0].sig===sig) return;   // 직전 백업과 같으면 중복 보관 안 함
+  const slot=meta.length?((meta[0].slot+1)%G_BAK_SLOTS):0;
+  if(!await syncToSupabase(_gBakSlotKey(key,slot), serverVal)) return;
+  meta.unshift({slot,at:new Date().toISOString(),by:(currentUser?currentUser.username:''),count,sig});
+  await syncToSupabase(_gBakMetaKey(key), meta.slice(0,G_BAK_SLOTS));
+}
+async function pushGuideDailyBackup(key, serverVal){
+  if(serverVal===undefined || serverVal===null) return;
+  const ymd=_gYmd(new Date());
+  let meta=[];
+  try{ meta=(await loadFromSupabase(_gDailyMetaKey(key)))||[]; }catch(e){ return; }
+  if(!Array.isArray(meta)) meta=[];
+  if(meta.length && meta[0].date===ymd) return;   // 오늘자가 이미 있으면 = 그 날 첫 상태 유지(덮어쓰지 않음)
+  const count=Array.isArray(serverVal)?serverVal.length:-1;
+  if(!await syncToSupabase(_gDailySlotKey(key,ymd), serverVal)) return;
+  meta.unshift({date:ymd,at:new Date().toISOString(),by:(currentUser?currentUser.username:''),count});
+  const drop=meta.slice(G_DAILY_KEEP);                        // 30일 초과분은 실제 데이터까지 삭제
+  for(const d of drop){ try{ await _gDeleteRaw(_gDailySlotKey(key,d.date)); }catch(e){} }
+  await syncToSupabase(_gDailyMetaKey(key), meta.slice(0,G_DAILY_KEEP));
 }
 
 // 저장할 입력 필드 ID 목록 (state로 관리되지 않는 값들)
