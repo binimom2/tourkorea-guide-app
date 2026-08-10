@@ -689,11 +689,12 @@ table.subtbl input.numcell{text-align:center;}
     <div class="smodal-hd"><span>백업 복원</span><button onclick="closeBakModal()">✕</button></div>
     <div class="smodal-body">
       <div style="font-size:12px;color:#7a8296;line-height:1.65;margin-bottom:12px;">
-        저장할 때마다 <b>직전 상태</b>가 자동으로 보관됩니다(항목별 최근 10개).<br>
+        저장할 때마다 <b>직전 상태</b>가 자동으로 보관됩니다.<br>
+        <span style="color:#3f6ad8;font-weight:700;">최근</span> = 방금 전 되돌리기용(항목별 최근 30개) · <span style="color:#59a06a;font-weight:700;">일별</span> = 하루 1개씩 30일 장기 보관.<br>
         복원해도 현재 내용이 함께 백업되므로 다시 되돌릴 수 있습니다.
       </div>
       <select id="bakKey" onchange="renderBakList()" style="width:100%;padding:9px 10px;border:1.5px solid #dfe3ea;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:12px;"></select>
-      <ul id="bakList" style="list-style:none;display:flex;flex-direction:column;gap:8px;"></ul>
+      <ul id="bakList" style="list-style:none;display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;"></ul>
     </div>
   </div>
 </div>
@@ -963,6 +964,14 @@ async function sbSaveRaw(key,data){
     return !error;
   }catch(e){ return false; }
 }
+// 서버에서 키를 완전히 삭제(백업 보관기간 초과분 정리용). 성공 여부 반환.
+async function sbDeleteRaw(key){
+  try{
+    await _ensureFreshToken();
+    const{error}=await sb.from('guide_data').delete().eq('data_key',key);
+    return !error;
+  }catch(e){ return false; }
+}
 
 /* ══════════════════════════ 안전 저장 (병합 + 백업) ══════════════════════════
    문제: 저장이 「내 화면의 값으로 서버를 통째 교체」였다. 오래 열어둔 탭에서 저장하면
@@ -1021,13 +1030,16 @@ function _mergeByKey(base,mine,server,kf){
   return {out,ups,bM};
 }
 
-/* ── 백업 스냅샷: 덮어쓰기 직전 서버본을 키별로 슬롯 10개에 순환 보관 ── */
-const BAK_SLOTS=10;
+/* ── 백업 스냅샷: 덮어쓰기 직전 서버본을 키별로 슬롯에 순환 보관 ──
+   슬롯이 짧으면(직원 다수가 자주 저장) 며칠 전 원본이 밀려나 복구 못 하므로,
+   ① 회전 슬롯을 늘리고(단기 실행취소) ② 하루 1개씩 장기 보관하는 일별 계층을 둔다. */
+const BAK_SLOTS=30;
 // 예약은 이미 배포된 키 이름을 유지한다(오늘 쌓인 스냅샷을 계속 쓸 수 있게)
 function _bakSlotKey(key,slot){ return key==='trv_reservations'?('trv_res_bak_'+slot):('trv_bak_'+key+'_'+slot); }
 function _bakMetaKey(key){ return key==='trv_reservations'?'trv_res_bakmeta':('trv_bakmeta_'+key); }
 async function pushBackup(key,serverVal){
   if(serverVal===undefined||serverVal===null) return;
+  try{ await pushDailyBackup(key,serverVal); }catch(e){}   // 일별 장기 백업(하루 1개·30일 보관)
   let meta=[];
   try{ meta=(await sbLoadRaw(_bakMetaKey(key)))||[]; }catch(e){ return; }
   if(!Array.isArray(meta)) meta=[];
@@ -1038,6 +1050,28 @@ async function pushBackup(key,serverVal){
   if(!await sbSaveRaw(_bakSlotKey(key,slot),serverVal)) return;
   meta.unshift({slot,at:new Date().toISOString(),by:(currentUser?currentUser.id:''),count,sig});
   await sbSaveRaw(_bakMetaKey(key),meta.slice(0,BAK_SLOTS));
+}
+
+/* ── 일별 백업: 그 날 「첫 저장 직전 상태」를 하루 1개만 보관하고 30일 유지한다.
+   회전 슬롯은 몇 분~몇 시간이면 밀려나지만, 이건 며칠~한 달 전 상태도 복원 가능하게 한다. ── */
+const DAILY_KEEP=30;
+function _dailyMetaKey(key){ return key==='trv_reservations'?'trv_res_dailymeta':('trv_dailymeta_'+key); }
+function _dailySlotKey(key,ymd){ return key==='trv_reservations'?('trv_res_daily_'+ymd):('trv_daily_'+key+'_'+ymd); }
+function _ymd(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`; }
+async function pushDailyBackup(key,serverVal){
+  if(serverVal===undefined||serverVal===null) return;
+  const ymd=_ymd(new Date());
+  let meta=[];
+  try{ meta=(await sbLoadRaw(_dailyMetaKey(key)))||[]; }catch(e){ return; }
+  if(!Array.isArray(meta)) meta=[];
+  if(meta.length&&meta[0].date===ymd) return;   // 오늘자가 이미 있으면 = 그 날 첫 상태를 유지(덮어쓰지 않음)
+  const count=Array.isArray(serverVal)?serverVal.length:-1;
+  const sig=count+':'+(_sbSnap(serverVal)||'').length;
+  if(!await sbSaveRaw(_dailySlotKey(key,ymd),serverVal)) return;
+  meta.unshift({date:ymd,at:new Date().toISOString(),by:(currentUser?currentUser.id:''),count,sig});
+  const drop=meta.slice(DAILY_KEEP);                       // 30일 초과분은 실제 데이터까지 삭제
+  for(const d of drop){ try{ await sbDeleteRaw(_dailySlotKey(key,d.date)); }catch(e){} }
+  await sbSaveRaw(_dailyMetaKey(key),meta.slice(0,DAILY_KEEP));
 }
 
 const TRV_LABEL={
@@ -3746,30 +3780,40 @@ async function renderBakList(){
   const key=document.getElementById('bakKey').value;
   const host=document.getElementById('bakList');
   host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">불러오는 중…</li>';
-  let meta=[];
+  let meta=[], daily=[];
   try{ meta=(await sbLoadRaw(_bakMetaKey(key)))||[]; }catch(e){ meta=[]; }
+  try{ daily=(await sbLoadRaw(_dailyMetaKey(key)))||[]; }catch(e){ daily=[]; }
   if(document.getElementById('bakKey').value!==key) return;   // 그새 다른 항목을 고름
-  if(!Array.isArray(meta)||!meta.length){
+  if(!Array.isArray(meta)) meta=[];
+  if(!Array.isArray(daily)) daily=[];
+  if(!meta.length&&!daily.length){
     host.innerHTML='<li style="color:#8a90a0;font-size:12.5px;">아직 백업이 없습니다. 이 항목을 한 번 저장하면 만들어집니다.</li>';
     return;
   }
-  host.innerHTML=meta.map(m=>{
-    const ts=_bakTs(m.at);
-    const cnt=(m.count>=0)?`${m.count}건`:'값 1개';
-    return `<li style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid #dfe3ea;border-radius:8px;">
+  const row=(title,badge,badgeBg,cnt,by,onclick)=>`<li style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid #dfe3ea;border-radius:8px;">
       <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:#1f2b46;">${ts}</div>
-        <div style="font-size:11.5px;color:#7a8296;">${cnt} · 저장자 ${escapeHtml(m.by||'-')}</div>
+        <div style="font-size:13px;font-weight:700;color:#1f2b46;">${title} <span style="font-size:10px;font-weight:700;color:#fff;background:${badgeBg};padding:1px 6px;border-radius:10px;vertical-align:1px;">${badge}</span></div>
+        <div style="font-size:11.5px;color:#7a8296;">${cnt} · 저장자 ${escapeHtml(by||'-')}</div>
       </div>
-      <button class="btn btn-save" style="padding:0 14px;white-space:nowrap;" onclick="restoreBackup('${key}',${m.slot},'${ts}')">이 시점으로 복원</button>
+      <button class="btn btn-save" style="padding:0 14px;white-space:nowrap;" onclick="${onclick}">이 시점으로 복원</button>
     </li>`;
+  const recent=meta.map(m=>{
+    const ts=_bakTs(m.at), cnt=(m.count>=0)?`${m.count}건`:'값 1개';
+    return row(ts,'최근','#3f6ad8',cnt,m.by,`restoreBackup('${key}',${m.slot},'${ts}','slot')`);
   }).join('');
+  const days=daily.map(m=>{
+    const ts=_bakTs(m.at), cnt=(m.count>=0)?`${m.count}건`:'값 1개';
+    const d=`${m.date.slice(0,4)}-${m.date.slice(4,6)}-${m.date.slice(6,8)}`;
+    return row(d,'일별','#59a06a',cnt,m.by,`restoreBackup('${key}','${m.date}','${ts}','daily')`);
+  }).join('');
+  host.innerHTML=recent+days;
 }
-async function restoreBackup(key,slot,ts){
+async function restoreBackup(key,ref,ts,kind){
   const nm=trvLabel(key);
   if(!confirm(`[${nm}] 데이터를 ${ts} 시점으로 되돌립니다.\n현재 내용도 백업되므로 다시 되돌릴 수 있습니다.\n\n복원 후 화면이 새로고침됩니다.\n진행할까요?`)) return;
+  const slotKey=(kind==='daily')?_dailySlotKey(key,ref):_bakSlotKey(key,ref);
   let snap;
-  try{ snap=await sbLoadRaw(_bakSlotKey(key,slot)); }catch(e){ snap=undefined; }
+  try{ snap=await sbLoadRaw(slotKey); }catch(e){ snap=undefined; }
   if(snap===undefined||snap===null){ showToast('❌ 백업을 읽지 못했습니다'); return; }
   try{ await pushBackup(key,await sbLoadRaw(key)); }catch(e){}   // 되돌리기 전 현재 상태도 보관
   if(!await sbSaveRaw(key,snap)){ showToast('❌ 복원 저장 실패'); return; }
