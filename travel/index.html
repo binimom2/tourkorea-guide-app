@@ -1074,6 +1074,28 @@ async function pushDailyBackup(key,serverVal){
   await sbSaveRaw(_dailyMetaKey(key),meta.slice(0,DAILY_KEEP));
 }
 
+/* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
+   배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
+   그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
+const TRV_APP_VERSION = 1;
+const TRV_VERSION_KEY = 'trv_app_version';
+async function _trvVersionSync(){
+  try{
+    const dbv = Number(await sbLoadRaw(TRV_VERSION_KEY))||0;
+    if (TRV_APP_VERSION > dbv) await sbSaveRaw(TRV_VERSION_KEY, TRV_APP_VERSION);   // 내가 최신 → 서버에 알림
+  }catch(e){}
+}
+async function _trvVersionOK(){
+  try{
+    const dbv = Number(await sbLoadRaw(TRV_VERSION_KEY))||0;
+    if (dbv > TRV_APP_VERSION){
+      alert('⚠ 더 새로운 버전이 배포됐습니다.\n지금 저장하면 다른 사람의 최신 데이터를 덮어써 유실될 수 있어 저장을 막았습니다.\n\n새로고침(Ctrl+Shift+R) 후 다시 시도해 주세요.');
+      return false;
+    }
+  }catch(e){}   // 버전 확인 실패(네트워크 등)는 저장을 막지 않는다 — 백업이 있으니 과잉차단은 피한다
+  return true;
+}
+
 const TRV_LABEL={
   trv_reservations:'예약', trv_codes:'코드', trv_customers:'고객사', trv_accounts:'계정',
   trv_admin_pw:'관리자 비밀번호',
@@ -1098,6 +1120,7 @@ function trvLabel(key){
 /* 안전 저장. 성공하면 실제로 저장된 값을, 취소·실패하면 false를 반환한다.
    opts.labelFn(item) — 충돌 경고에 보여줄 항목 이름 */
 async function sbSaveSafe(key,data,opts){
+  if(!await _trvVersionOK()) return false;   // 구버전 탭이면 저장 차단(최신 데이터 덮어쓰기 방지)
   opts=opts||{};
   const baseStr=_sbBase[key];
 
@@ -1287,6 +1310,7 @@ async function enterApp(){
   document.getElementById('btnGolf').style.display=(currentUser.role==='admin')?'':'none'; // 골프견적: admin만
   document.getElementById('btnCodes').style.display=''; // 코드관리: 오퍼레이터 포함 전원
   await loadAllFromSupabase();
+  _trvVersionSync();   // 내 버전을 서버에 알림(최신이면) — 구버전 탭 저장차단의 기준
   // 예약 목록을 못 받았으면 화면이 낡은 상태다 — 모르고 저장하면 서버 데이터가 밀린다
   if(_sbLoadFailed['trv_reservations']){
     alert('⚠ 예약 목록을 서버에서 불러오지 못했습니다.\n지금 화면은 예전에 받아둔 낡은 내용일 수 있습니다.\n새로고침(Ctrl+Shift+R) 후 다시 사용해 주세요.\n\n(Could not load the reservation list from the server.\nThis screen may be showing outdated data.\nPlease refresh with Ctrl+Shift+R before continuing.)');

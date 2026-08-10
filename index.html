@@ -2156,6 +2156,7 @@ async function loadSubmissions() {
   _setSubsBase(submissionsDB);   // 병합 기준 갱신
 }
 async function saveSubmissions() {
+  if (!await _gVersionOK()) return false;   // 구버전 탭이면 저장 차단(최신 데이터 덮어쓰기 방지)
   let server, fetched=true;
   try{ server = await _loadSubsRaw(); }catch(e){ fetched=false; }
   if(!fetched){
@@ -2298,6 +2299,7 @@ function _completeLogin() {
   const _loginSeq = ++_loginLoadSeq;  // 리셋이 일어나면 이 번호는 무효화됨
   // 어드민은 빈 화면으로 시작 — Supabase 개인 데이터 로드 없이 제출현황만 로드
   const supabaseLoad = (currentRole === 'admin') ? Promise.resolve(null) : loadFromSupabase(userDataKey);
+  _gVersionSync();   // 내 버전을 서버에 알림(최신이면) — 구버전 탭 저장차단의 기준
   Promise.all([
     supabaseLoad,
     loadAppSettings(),
@@ -4295,6 +4297,28 @@ async function pushGuideDailyBackup(key, serverVal){
   const drop=meta.slice(G_DAILY_KEEP);                        // 30일 초과분은 실제 데이터까지 삭제
   for(const d of drop){ try{ await _gDeleteRaw(_gDailySlotKey(key,d.date)); }catch(e){} }
   await syncToSupabase(_gDailyMetaKey(key), meta.slice(0,G_DAILY_KEEP));
+}
+
+/* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
+   배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
+   그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
+const G_APP_VERSION = 1;
+const G_VERSION_KEY = 'guide_app_version';
+async function _gVersionSync(){
+  try{
+    const dbv = Number(await loadFromSupabase(G_VERSION_KEY))||0;
+    if (G_APP_VERSION > dbv) await syncToSupabase(G_VERSION_KEY, G_APP_VERSION);   // 내가 최신 → 서버에 알림
+  }catch(e){}
+}
+async function _gVersionOK(){
+  try{
+    const dbv = Number(await loadFromSupabase(G_VERSION_KEY))||0;
+    if (dbv > G_APP_VERSION){
+      alert('⚠ 더 새로운 버전이 배포됐습니다.\n지금 저장하면 다른 사람의 최신 데이터를 덮어써 유실될 수 있어 저장을 막았습니다.\n\n새로고침(Ctrl+Shift+R) 후 다시 시도해 주세요.');
+      return false;
+    }
+  }catch(e){}   // 버전 확인 실패(네트워크 등)는 저장을 막지 않는다 — 백업이 있으니 과잉차단은 피한다
+  return true;
 }
 
 // 저장할 입력 필드 ID 목록 (state로 관리되지 않는 값들)
