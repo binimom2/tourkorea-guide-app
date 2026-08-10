@@ -1077,7 +1077,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 1;
+const TRV_APP_VERSION = 2;   // 배포마다 +1 (구버전 탭 저장차단 기준)
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -4764,8 +4764,10 @@ const PAYING_SYNC={
   vehicles:{acc:'차량',nameField:'company',dateField:''},
   shows:{acc:'공연',nameField:'name',dateField:'date'},
 };
-function saveSubRowInline(sectionKey,index){
+// 열린 편집행의 입력칸을 workingRes에 반영(서버저장은 하지 않음). Save/이동/삭제·예약저장 직전에 커밋용.
+function _commitSubRowToWorking(sectionKey,index){
   const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
+  if(!sec) return;
   const row={};
   sec.fields.forEach(f=>{ const el=document.getElementById(`sf-${f.k}`); row[f.k]=el?(f.type==='checkbox'?(el.checked?'OK':''):el.value):''; });
   const arr=workingRes[sectionKey]=workingRes[sectionKey]||[];
@@ -4780,8 +4782,24 @@ function saveSubRowInline(sectionKey,index){
   if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
   if(sectionKey==='flights') updateNamePrefixFromFlights();
+}
+// 예약 저장/닫기 직전, 아직 [Save] 안 누른 채 열려있는 편집행을 잃지 않게 먼저 커밋한다(서버저장은 호출측이 함).
+function _flushOpenSubRow(){
+  if(subEditKey===null||subEditIndex===null) return;
+  const sec=SUBSECTIONS.find(s=>s.key===subEditKey);
+  if(!sec||!document.getElementById(`sf-${sec.fields[0].k}`)) return;   // 열린 입력칸이 없으면 패스
+  if(subEditIndex===-1){                                                 // 신규행: 빈 값이면 커밋 안 함
+    const hasVal=sec.fields.some(f=>{ if(f.type==='select') return false; const el=document.getElementById(`sf-${f.k}`); return el&&(f.type==='checkbox'?el.checked:!!el.value); });
+    if(!hasVal){ subEditKey=null; subEditIndex=null; return; }
+  }
+  _commitSubRowToWorking(subEditKey,subEditIndex);
+  subEditKey=null; subEditIndex=null;
+}
+function saveSubRowInline(sectionKey,index){
+  _commitSubRowToWorking(sectionKey,index);
   subEditKey=null; subEditIndex=null;
   renderSubsections();
+  if(modalMode==='edit') persistWorkingRes();   // 인라인 [Save] = 즉시 서버 저장(예약 전체 Save 안 눌러도 유실 방지)
 }
 // 도착(ARRIVAL) 항공편이 06:00~18:00 도착이면 예약명 앞에 "낮)" 접두어를 자동으로 붙임/제거 (새벽 00~05시 도착은 제외)
 function updateNamePrefixFromFlights(){
@@ -4898,6 +4916,7 @@ async function saveBahtAndPersist(){
    창을 열어두기 때문에 저장 뒤 목록이 바뀌면 열린 예약이 그 항목을 계속 가리키도록 맞춘다. */
 async function persistWorkingRes(){
   if(!workingRes) return false;
+  _flushOpenSubRow();   // 열려있는 편집행이 있으면 먼저 커밋
   syncFormToRes();
   if(!workingRes.datein){ showToast('⚠ 체크인 날짜를 입력해주세요 (Please enter the check-in date)'); return false; }
   if(!workingRes.name){ showToast('⚠ 예약명을 입력해주세요 (Please enter the reservation name)'); return false; }
@@ -4995,6 +5014,7 @@ function syncFormToRes(){
   const _m2=document.getElementById('r-memo2'); if(_m2) workingRes.memo2=_m2.value.trim();
 }
 async function saveReservation(){
+  _flushOpenSubRow();   // [Save] 안 누른 채 열려있는 편집행도 함께 저장
   syncFormToRes();
 
   if(!workingRes.datein){showToast('⚠ 체크인 날짜를 입력해주세요 (Please enter the check-in date)');return;}
@@ -5218,6 +5238,7 @@ function delSubRow(sectionKey,index){
     }
   }
   renderSubsections();
+  if(modalMode==='edit') persistWorkingRes();   // 삭제 즉시 서버 반영
 }
 // GUIDES/VEHICLES 등 순서가 의미 있는 섹션의 행 순서 위/아래 이동
 function moveSubRow(sectionKey,index,dir){
@@ -5226,6 +5247,7 @@ function moveSubRow(sectionKey,index,dir){
   if(!arr||newIndex<0||newIndex>=arr.length) return;
   [arr[index],arr[newIndex]]=[arr[newIndex],arr[index]];
   renderSubsections();
+  if(modalMode==='edit') persistWorkingRes();   // 순서변경 즉시 서버 반영
 }
 
 /* ══════════════════════════ UTIL ══════════════════════════ */
