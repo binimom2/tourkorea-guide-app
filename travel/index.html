@@ -1018,16 +1018,74 @@ function _pickKeyFn(arrs,customKf){
 function _byKey(arr,kf){ const m=new Map(); arr.forEach(it=>m.set(String(kf(it)),it)); return m; }
 
 // base(내가 본 서버) / mine(내 화면) / server(현재 서버) → 서버 위에 내 변경분만 얹은 결과
-function _mergeByKey(base,mine,server,kf){
-  const bM=_byKey(base,kf), cM=_byKey(mine,kf);
-  const ups=[]; const dels=new Set();
+// itemMerge(b,m,s)가 주어지면, 나도 서버도 바꾼 항목은 항목 "내부"까지 3-way 병합한다
+// (같은 예약을 여러 명이 서로 다른 섹션 편집 시 둘 다 살리기 위함). {res,conflict} 반환 기대.
+function _mergeByKey(base,mine,server,kf,itemMerge){
+  const bM=_byKey(base,kf), cM=_byKey(mine,kf), sM=_byKey(server,kf);
+  const ups=[]; const dels=new Set(); const conflicts=[];
   cM.forEach((it,k)=>{ const b=bM.get(k); if(!b||_sbSnap(b)!==_sbSnap(it)) ups.push(it); });
   bM.forEach((b,k)=>{ if(!cM.has(k)) dels.add(k); });
   const out=server.filter(it=>!dels.has(String(kf(it))));
   const pos=new Map(); out.forEach((it,i)=>pos.set(String(kf(it)),i));
   ups.forEach(it=>{ const k=String(kf(it));
-    if(pos.has(k)) out[pos.get(k)]=it; else { pos.set(k,out.length); out.push(it); } });
-  return {out,ups,bM};
+    if(pos.has(k)){
+      let val=it; const b=bM.get(k), s=sM.get(k);
+      const serverAlsoChanged=b&&s&&_sbSnap(b)!==_sbSnap(s);
+      if(serverAlsoChanged){
+        if(itemMerge){ const m=itemMerge(b,it,s); val=m.res; if(m.conflict) conflicts.push(it); }
+        else conflicts.push(it);   // 병합함수 없는 데이터(코드·거래처 등)는 통째 충돌로 처리(기존 보호 유지)
+      }
+      out[pos.get(k)]=val;
+    } else { pos.set(k,out.length); out.push(it); } });
+  return {out,ups,bM,conflicts};
+}
+// 행 고유키: _id 우선(섹션행·지불연동), 없으면 linkedRowId, 그래도 없으면 내용
+function _rowKey(r){ return (r&&(r._id||r.linkedRowId))||_sbSnap(r); }
+// 서브배열(hotels/vehicles/deposits 등) 3-way 병합: 내가 바꾼 행은 내 값, 서버가 바꾼 행은 서버 값,
+// 같은 행을 둘 다 다르게 바꿨으면 내 값 + conflict 표시(호출측이 확인창).
+function _mergeRowsById(base,mine,server){
+  base=base||[]; mine=mine||[]; server=server||[];
+  const bM=new Map(base.map(r=>[_rowKey(r),r])), mM=new Map(mine.map(r=>[_rowKey(r),r])), sM=new Map(server.map(r=>[_rowKey(r),r]));
+  const order=[], seen=new Set();
+  server.forEach(r=>{ const k=_rowKey(r); if(!seen.has(k)){order.push(k);seen.add(k);} });
+  mine.forEach(r=>{ const k=_rowKey(r); if(!seen.has(k)){order.push(k);seen.add(k);} });
+  const out=[]; let conflict=false;
+  order.forEach(k=>{
+    const b=bM.get(k), m=mM.get(k), s=sM.get(k);
+    const mCh=(m!==undefined)&&(b===undefined||_sbSnap(m)!==_sbSnap(b));
+    const mDel=(b!==undefined)&&(m===undefined);
+    const sCh=(s!==undefined)&&(b===undefined||_sbSnap(s)!==_sbSnap(b));
+    const sDel=(b!==undefined)&&(s===undefined);
+    if(mDel){ if(sCh) conflict=true; return; }                     // 내가 삭제(서버가 바꿨으면 충돌표시) → 삭제
+    if(mCh){ if(sCh&&_sbSnap(m)!==_sbSnap(s)) conflict=true; out.push(m); return; } // 내가 바꿈 → 내 값
+    if(sDel) return;                                                // 나는 그대로, 서버 삭제 → 삭제
+    if(s!==undefined){ out.push(s); return; }                      // 서버 변경 반영
+    if(m!==undefined) out.push(m);
+  });
+  return {rows:out,conflict};
+}
+const _RES_SUBARRAYS=['flights','hotels','golfs','guides','vehicles','shows','shopping','deposits','withdrawals'];
+const _RES_IGNORE=new Set(['updatedAt','updatedBy']);   // 저장 때마다 바뀌는 메타 — 충돌로 치지 않음
+// 예약 하나를 base/mine/server로 필드·섹션 단위 3-way 병합. {res,conflict}.
+function _mergeReservation(base,mine,server){
+  base=base||{}; mine=mine||{};
+  const out=JSON.parse(JSON.stringify(server));
+  let conflict=false;
+  new Set([...Object.keys(mine),...Object.keys(server)]).forEach(key=>{
+    if(_RES_SUBARRAYS.includes(key)||_RES_IGNORE.has(key)) return;
+    const bv=_sbSnap(base[key]), mv=_sbSnap(mine[key]), sv=_sbSnap(server[key]);
+    const mCh=mv!==bv, sCh=sv!==bv;
+    if(mCh&&!sCh) out[key]=mine[key];                    // 나만 바꿈 → 내 값
+    else if(mCh&&sCh&&mv!==sv){ out[key]=mine[key]; conflict=true; }  // 둘 다 다르게 → 내 값+충돌표시
+    // else 서버값 유지
+  });
+  _RES_SUBARRAYS.forEach(key=>{
+    const r=_mergeRowsById(base[key],mine[key],server[key]);
+    out[key]=r.rows; if(r.conflict) conflict=true;
+  });
+  if(mine.updatedAt) out.updatedAt=mine.updatedAt;
+  if(mine.updatedBy) out.updatedBy=mine.updatedBy;
+  return {res:out,conflict};
 }
 
 /* ── 백업 스냅샷: 덮어쓰기 직전 서버본을 키별로 슬롯에 순환 보관 ──
@@ -1077,7 +1135,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 2;   // 배포마다 +1 (구버전 탭 저장차단 기준)
+const TRV_APP_VERSION = 3;   // 배포마다 +1 (구버전 탭 저장차단 기준)
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -1168,15 +1226,13 @@ async function sbSaveSafe(key,data,opts){
     const base=JSON.parse(baseStr);
     const f=(Array.isArray(base)&&Array.isArray(data)&&Array.isArray(server))?_pickKeyFn([base,data,server],opts.keyFn):null;
     if(f){
-      const {out:merged,ups,bM}=_mergeByKey(base,data,server,f);
-      // 내가 고친 항목을 남도 고쳤는지 확인(자동 병합으로 남의 수정을 조용히 지우지 않도록)
-      const sM=_byKey(server,f);
-      const clash=ups.filter(it=>{ const k=String(f(it)); const b=bM.get(k), s=sM.get(k);
-        return b&&s&&_sbSnap(b)!==_sbSnap(s); });
-      if(clash.length){
-        const names=clash.slice(0,10).map(it=>'· '+(opts.labelFn?opts.labelFn(it):(it.name||it.code||it.id))).join('\n');
-        const more=clash.length>10?`\n… 외 ${clash.length-10}건`:'';
-        if(!confirm(`[${trvLabel(key)}] 아래 항목을 그 사이 다른 사람이 수정했습니다.\n(Someone else has modified these items in the meantime.)\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n(Overwrite with your version? Cancel = discard your changes and reload the latest.)`)){
+      // 예약은 itemMerge(_mergeReservation)로 섹션·행 단위까지 자동 병합 → 서로 다른 부분(호텔 vs 차량 등)은
+      // 둘 다 살아남고, 정말 같은 부분(같은 행/필드)을 둘이 다르게 고쳤을 때만 conflicts로 잡혀 확인창을 띄운다.
+      const {out:merged,conflicts}=_mergeByKey(base,data,server,f,opts.itemMerge);
+      if(conflicts.length){
+        const names=conflicts.slice(0,10).map(it=>'· '+(opts.labelFn?opts.labelFn(it):(it.name||it.code||it.id))).join('\n');
+        const more=conflicts.length>10?`\n… 외 ${conflicts.length-10}건`:'';
+        if(!confirm(`[${trvLabel(key)}] 아래 항목의 「같은 부분」을 그 사이 다른 사람도 수정했습니다.\n(Someone else edited the same part of these items.)\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n(Overwrite with your version? Cancel = discard and reload the latest.)`)){
           localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
           if(opts.onCancel) opts.onCancel(server);
           showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다 (Save cancelled — latest data reloaded)');
@@ -3779,6 +3835,7 @@ async function saveData(){
     // 병합 키: id 우선, 없으면(구버전 예약) 안 바뀌는 값(createdAt→code)으로 대체.
     // id 없는 예약 하나 때문에 목록 전체 병합이 막혀 "다른 사람이 변경했습니다"가 오탐되던 문제 해결.
     keyFn:r=>r.id || (r.createdAt?('C:'+r.createdAt):(r.code?('K:'+r.code):'')),
+    itemMerge:_mergeReservation,   // 같은 예약을 여러 명이 서로 다른 섹션 편집 시 둘 다 살리는 중첩 병합
     labelFn:r=>`${r.datein||''} ${r.name||r.code||''}`.trim(),
     onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); },
   });
@@ -4779,6 +4836,7 @@ function _commitSubRowToWorking(sectionKey,index){
     if(prev.payingMemo!==undefined) row.payingMemo=prev.payingMemo;   // +Baht 비고 유지
     if(prev.payingDate!==undefined) row.payingDate=prev.payingDate;   // +Baht 날짜 유지
   }
+  if(!row._id) row._id=sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);   // 병합·지불연동용 안정 id 1회 부여
   if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
   if(sectionKey==='flights') updateNamePrefixFromFlights();
