@@ -4325,7 +4325,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 2;   // 배포마다 +1 (구버전 탭 저장차단). v2: KB% 매장고정(latex7/herb10) + 구분 '선택' 복귀
+const G_APP_VERSION = 3;   // 배포마다 +1 (구버전 탭 저장차단). v2: KB% 매장고정+구분복귀 / v3: 🏢회사 내부 수정모드(정산완료건 완료취소없이 회사부분 수정·가이드 알림없음)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5741,6 +5741,7 @@ function renderSubmissions() {
                   ? `<span style="font-size:11px;color:#888;">전송 후 열람 가능</span>`
                   : `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>`}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료+전송'}</button>` : ''}
+                ${(currentRole==='admin' && s.settled) ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#00897b;color:#fff;border:none;" title="완료취소 없이 회사부분만 수정 · 가이드 알림 없음" onclick="openSubData('${s.id}', null, true)">🏢 회사수정</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
               </div>
             </div>
@@ -6307,7 +6308,7 @@ function applyStateToUI() {
   try { calcPaxTotal(); } catch(e) {}
 }
 
-async function openSubData(id, landTab) {
+async function openSubData(id, landTab, forceEdit) {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
@@ -6315,8 +6316,16 @@ async function openSubData(id, landTab) {
   // 가이드는 어드민이 [📨 가이드 전송]을 누른 최종본만 열람할 수 있다.
   // 작업 중인 수정본(회사정산 등)은 확정 전이라 보여주지 않는다.
   if (currentRole === 'guide' && !s.sentToGuide) { showToast('⏳ 아직 정산이 진행 중입니다. 관리자가 최종본을 보내면 확인할 수 있습니다.', true); return; }
-  const readOnly = !!s.settled || currentRole === 'guide';
-  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.${readOnly ? '\n(읽기 전용 · 수정 불가)' : ''}`)) return;
+  // 🏢 회사 내부 수정: 어드민이 정산완료건을 완료취소 없이 열어 회사부분만 고친다.
+  // 저장해도 정산완료·전송 상태가 유지되고 가이드에게 알림이 가지 않는다(saveSubEdits 참고).
+  window._internalCompanyEdit = false;
+  const _canInternalEdit = !!(forceEdit && currentRole === 'admin' && s.settled);
+  const readOnly = (currentRole === 'guide') || (!!s.settled && !_canInternalEdit);
+  const _openMsg = _canInternalEdit
+    ? `[${s.settleCode}] ${s.guideName}\n🏢 회사 내부 수정 모드로 엽니다 (완료취소 없이 수정).\n\n· 가이드에게 알림·재전송이 가지 않습니다.\n· KB 등 회사 전용 항목은 가이드 화면에 보이지 않습니다.\n· 단, 가이드에게 보이는 숫자를 바꾸면 가이드가 다시 열 때 반영됩니다.\n\n계속할까요?`
+    : `[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.${readOnly ? '\n(읽기 전용 · 수정 불가)' : ''}`;
+  if (!confirm(_openMsg)) return;
+  window._internalCompanyEdit = _canInternalEdit;
   showToast('⏳ 불러오는 중...');
   // 열람용 데이터를 로드하는 동안에는 "제출 잠금" 배너가 끼어들지 않게 한다
   // (_viewingSubId는 아래에서 잠시 null이 되므로 별도 플래그가 필요)
@@ -6384,8 +6393,9 @@ async function openSubData(id, landTab) {
   banner.style.zIndex = '99';
   const saveBtn = readOnly ? '' : `<button onclick="saveSubEdits()" style="background:#fff;color:#1a6b8a;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;margin-right:6px;">💾 수정저장</button>`;
   const lockNote = readOnly ? `<span style="background:rgba(255,255,255,0.25);border-radius:6px;padding:3px 9px;margin-right:6px;">🔒 읽기 전용${s.settled ? ' · 정산완료' : ''}</span>` : '';
+  const internalNote = _canInternalEdit ? `<span style="background:#00897b;border-radius:6px;padding:3px 9px;margin-right:6px;">🏢 회사 내부 수정 · 가이드 알림 없음</span>` : '';
   const closeLabel = currentRole === 'admin' ? '✕ 닫기' : '✕ 내 데이터로 복귀';
-  banner.innerHTML = `📂 열람 중: [${s.settleCode}] ${s.guideName} &nbsp;${lockNote}${saveBtn}
+  banner.innerHTML = `📂 열람 중: [${s.settleCode}] ${s.guideName} &nbsp;${lockNote}${internalNote}${saveBtn}
     <button onclick="restoreMyData()" style="background:#fff;color:#e53935;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;">${closeLabel}</button>`;
   document.querySelector('.content').prepend(banner);
 
@@ -6401,8 +6411,12 @@ async function saveSubEdits() {
   await loadSubmissions();
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 제출 항목을 찾을 수 없습니다.', true); return; }
-  if (s.settled) { showToast('🔒 정산완료된 파일은 수정할 수 없습니다. 먼저 완료취소 해주세요.', true); return; }
-  if (!confirm(`[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드에게는 전달되지 않습니다. ([📨 가이드 전송]을 눌러야 전달)`)) return;
+  const _internal = !!window._internalCompanyEdit;
+  if (s.settled && !_internal) { showToast('🔒 정산완료된 파일은 수정할 수 없습니다. 먼저 완료취소하거나 [🏢 회사수정]으로 여세요.', true); return; }
+  const _saveMsg = _internal
+    ? `[${s.settleCode}] ${s.guideName}\n🏢 회사 내부 수정 저장 — 정산완료·전송 상태는 그대로 유지되고,\n가이드에게 알림이 가지 않습니다.\n저장할까요?`
+    : `[${s.settleCode}] ${s.guideName} 정산서에 수정내용을 저장합니까?\n가이드에게는 전달되지 않습니다. ([📨 가이드 전송]을 눌러야 전달)`;
+  if (!confirm(_saveMsg)) return;
 
   // DOM의 모든 최신 값을 state에 동기화 (환율 포함)
   saveData();
@@ -6425,6 +6439,9 @@ async function saveSubEdits() {
   s.fullData.fields = lsFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
+  // 🏢 회사 내부 수정이면 감사기록만 남기고, 정산완료·전송·알림상태(settled/sentToGuide/finalSeen)는
+  // 손대지 않는다 → 가이드 열람상태 유지 + 재알림 없음.
+  if (_internal) { s.companyEditedAt = new Date().toISOString(); s.companyEditedBy = (typeof currentUser !== 'undefined' && currentUser && currentUser.id) ? currentUser.id : (currentRole||'admin'); }
   // 수정저장은 가이드에게 알리지 않는다 — 알림/열람은 어드민이
   // [📨 가이드 전송]을 누를 때만 나간다(sendSubToGuide 참고).
 
@@ -6444,7 +6461,9 @@ async function saveSubEdits() {
 
   await saveSubmissions();
   window._viewOpenSnapshot = JSON.stringify(state);
-  showToast('💾 수정내용이 저장되었습니다. (가이드 전송은 [📨 가이드 전송] 버튼)');
+  showToast(_internal
+    ? '🏢 회사 내부 수정이 저장되었습니다. (정산완료·전송 유지 · 가이드 알림 없음)'
+    : '💾 수정내용이 저장되었습니다. (가이드 전송은 [📨 가이드 전송] 버튼)');
 }
 
 function restoreMyData() {
@@ -6458,6 +6477,7 @@ function restoreMyData() {
   window._viewingSubId = null;
   window._viewReadOnly = false;
   window._viewOpenSnapshot = null;
+  window._internalCompanyEdit = false;   // 🏢 회사수정 모드 해제
   document.body.classList.remove('view-readonly');
   if (currentRole === 'admin') {
     // 어드민: 임시 localStorage 삭제 + 모든 state 초기화
