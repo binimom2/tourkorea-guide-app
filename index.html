@@ -3332,7 +3332,7 @@ function renderShop(key) {
     let typeEl;
     typeEl = document.createElement('select');
     const optBlank = document.createElement('option');
-    optBlank.value=''; optBlank.textContent='선택'; optBlank.disabled=true;
+    optBlank.value=''; optBlank.textContent='선택';   // 반품/회사보고 오선택 후 '선택'(일반)으로 되돌릴 수 있게 disabled 제거
     if(!row.type) optBlank.selected=true;
     typeEl.appendChild(optBlank);
     // 목록에서 빠진 예전 값(예: '외상')이 저장돼 있으면 그 행에서만 살려둔다 —
@@ -3394,8 +3394,14 @@ function renderShop(key) {
     const inKBPct = document.createElement('input');
     inKBPct.type='number'; inKBPct.placeholder='0'; inKBPct.min='0'; inKBPct.max='100'; inKBPct.step='0.1';
     inKBPct.className='kb-col';
-    // 저장값 없으면 매장·구분 기본값 적용
-    if (row.kbPct === '' || row.kbPct == null) row.kbPct = getDefaultKbPct(key, row.type||'');
+    // 매장 고정 KB%(latex/herb)면 저장된 옛 값(5% 등)이 있어도 강제 교정 + 잠금. 아니면 빈값일 때만 기본값.
+    const _fkRender = fixedKbPct(key, row.type||'');
+    if (_fkRender !== null) {
+      row.kbPct = _fkRender;
+      inKBPct.readOnly = true; inKBPct.style.background = '#f0f0f0'; inKBPct.title = '매장 고정 KB%';
+    } else if (row.kbPct === '' || row.kbPct == null) {
+      row.kbPct = getDefaultKbPct(key, row.type||'');
+    }
     inKBPct.value = row.kbPct;
     inKBPct.addEventListener('input', e=>{ row.kbPct=e.target.value; recalcShopRow(key,row,div); });
 
@@ -3412,10 +3418,17 @@ function renderShop(key) {
         }
       } else {
         inCom.readOnly=false; inCom.style.background='';
-        inKBPct.readOnly=false; inKBPct.style.background='';
-        // 구분 변경 시 KB% 기본값 업데이트 (기존 값 0이거나 기본값이었던 경우만)
-        const newKb = getDefaultKbPct(key, t);
-        row.kbPct = newKb; inKBPct.value = newKb;
+        // 매장 고정 KB%(latex/herb)면 구분을 바꿔도 고정값 유지 + 잠금
+        const _fkType = fixedKbPct(key, t);
+        if (_fkType !== null) {
+          row.kbPct = _fkType; inKBPct.value = _fkType;
+          inKBPct.readOnly = true; inKBPct.style.background = '#f0f0f0';
+        } else {
+          inKBPct.readOnly=false; inKBPct.style.background='';
+          // 구분 변경 시 KB% 기본값 업데이트 (기존 값 0이거나 기본값이었던 경우만)
+          const newKb = getDefaultKbPct(key, t);
+          row.kbPct = newKb; inKBPct.value = newKb;
+        }
         // 구분(A/B/C/D)별 DC→COM 매핑표 재적용
         const mappedCom = getComFromDcTable(key, row.dc, t);
         if (mappedCom !== null) { row.com = mappedCom; inCom.value = mappedCom; }
@@ -3492,6 +3505,9 @@ function toggleShopCat(key, checked) {
 function recalcShopRow(key, row, div) {
   const sale   = parseFloat((row.sale||'').toString().replace(/,/g,''))  || 0;
   const com    = parseFloat(row.com)   || 0;
+  // 매장 고정 KB%(latex/herb)면 저장된 옛 값과 무관하게 고정값으로 계산
+  const _fkCalc = fixedKbPct(key, row.type||'');
+  if (_fkCalc !== null) row.kbPct = _fkCalc;
   const kbPct  = parseFloat(row.kbPct) || 0;
   row.commission = Math.round(sale * com / 100 * 10) / 10;
   row.kbCom      = Math.round(sale * kbPct / 100 * 10) / 10;
@@ -3563,6 +3579,13 @@ function getDefaultKbPct(key, type) {
   if (key === 'latex') return 7;
   if (key === 'beomrung' || key === 'taiko') return (type==='A'||type==='B') ? 7 : 5;
   return 5; // jewell
+}
+// latex(7%)·herb(10%)는 매장 고정 KB%다. 옛 데이터에 5% 등이 저장돼 있어도 항상 이 값으로 본다.
+// (회사보고 구분만 예외로 0%.) 요청: 라텍스 KB 고정 7%. null이면 "고정 아님"(저장값/기본값 사용).
+const FLAT_KB_SHOPS = { latex:7, herb:10 };
+function fixedKbPct(key, type) {
+  if (type === '회사보고') return 0;
+  return Object.prototype.hasOwnProperty.call(FLAT_KB_SHOPS, key) ? FLAT_KB_SHOPS[key] : null;
 }
 
 function addShopRow(key) {
@@ -4302,7 +4325,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 1;
+const G_APP_VERSION = 2;   // 배포마다 +1 (구버전 탭 저장차단). v2: KB% 매장고정(latex7/herb10) + 구분 '선택' 복귀
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -6831,9 +6854,11 @@ async function downloadShoppingExcel() {
           if (sale===0 && !type) return;
           const dc=parseFloat(item.dc)||0;
           const com=parseFloat(item.com)||0;
-          const kbPct=parseFloat(item.kbPct)||0;
+          // 매장 고정 KB%(latex/herb)면 저장된 옛 값(5% 등)과 무관하게 고정값으로 출력·재계산
+          const _fkX=fixedKbPct(ck, type);
+          const kbPct=(_fkX!==null)?_fkX:(parseFloat(item.kbPct)||0);
           const commission=item.commission||0;
-          const kbCom=item.kbCom||0;
+          const kbCom=(_fkX!==null)?(Math.round(sale*kbPct/100*10)/10):(item.kbCom||0);
           const r=ws.getRow(rowIdx++);
           r.height=22;
           _txt(r.getCell(1),code);
