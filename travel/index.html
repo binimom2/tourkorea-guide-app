@@ -544,6 +544,7 @@ table.subtbl input.numcell{text-align:center;}
     <div class="rmodal-ft">
       <button class="btn btn-ghost" id="btnDateAmend" onclick="dateChangeAmend()" style="display:none;">📅 날짜변경 이관</button>
       <button class="btn btn-ghost" id="btnCopyRes" onclick="copyReservation()" style="display:none;">📋 복사</button>
+      <button class="btn btn-ghost" id="btnRenumCode" onclick="renumberCode()" style="display:none;">🔢 순번 재부여</button>
       <div style="flex:1;"></div>
       <button class="btn btn-ghost" onclick="closeReservation()">Close</button>
       <button class="btn btn-save" id="btnSaveRes" onclick="saveReservation()">Save</button>
@@ -758,7 +759,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-07-24-calcompact';
+const APP_VERSION='2026-08-11-renumcode';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1135,7 +1136,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 3;   // 배포마다 +1 (구버전 탭 저장차단 기준)
+const TRV_APP_VERSION = 4;   // 배포마다 +1 (구버전 탭 저장차단 기준)
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -4338,6 +4339,43 @@ async function resolveCodeCollisions(created){
   if(changed) await saveData();
   return changed;
 }
+/* 순번 재부여 — 삭제 잔재 등으로 순번이 부풀려진 예약의 코드를 고친다(관리자 전용).
+   기본값은 그 날짜의 다음 가용번호(삭제건 제외 max+1). 필요하면 관리자가 직접 순번을 입력할 수도 있다.
+   원칙: 삭제(DELETE)건은 번호를 차지하지 않으므로, 혼자 남은 예약은 -01로 정리된다. */
+async function renumberCode(){
+  if(!(currentUser&&currentUser.role==='admin')){ showToast('⚠ 관리자만 가능합니다 (Admin only)'); return; }
+  if(modalMode!=='edit'||!workingRes){ showToast('⚠ 저장된 예약에서만 가능합니다 (Only on a saved reservation)'); return; }
+  syncFormToRes();
+  const din=workingRes.datein;
+  if(!din){ showToast('⚠ 체크인 날짜가 없습니다 (No check-in date)'); return; }
+  const d=_dcode(din);
+  const cur=workingRes.code||'';
+  const suggested=nextSeqForDate(reservations,d,workingRes.id);
+  const ans=prompt(`현재 코드: ${cur||'(없음)'}\n체크인: ${din}\n\n이 예약의 순번을 입력하세요.\n(비워두고 확인하면 자동 ${d}-${String(suggested).padStart(2,'0')} 로 재부여)`, String(suggested));
+  if(ans===null) return;                       // 취소
+  const t=String(ans).trim();
+  let n;
+  if(t===''){ n=suggested; }
+  else { n=parseInt(t,10); if(isNaN(n)||n<1||n>99){ showToast('⚠ 1~99 사이 순번을 입력하세요'); return; } }
+  const newCode=`${d}-${String(n).padStart(2,'0')}`;
+  if(newCode===cur){ showToast('ℹ 코드가 동일합니다 (Same code)'); return; }
+  // 활성(삭제 제외) 예약 중 같은 코드가 있으면 중복 경고
+  const dup=reservations.some(r=>r&&r.id!==workingRes.id&&r.status!=='DELETE'&&r.code===newCode);
+  if(dup&&!confirm(`⚠ ${newCode} 를 쓰는 다른 활성 예약이 이미 있습니다.\n그래도 바꾸면 코드가 중복됩니다.\n\n계속할까요?`)) return;
+  if(!confirm(`코드를 [${cur||'(없음)'}] → [${newCode}] 로 바꿉니다.\n팀코드는 외부(거래처·가이드)에 나갈 수 있으니 신중히 확인하세요.\n\n진행할까요?`)) return;
+  workingRes.code=newCode;
+  workingRes.updatedAt=new Date().toISOString();
+  workingRes.updatedBy=currentUser?currentUser.id:'';
+  const idx=reservations.findIndex(r=>r&&r.id===workingRes.id);
+  if(idx>=0) reservations[idx]=workingRes;
+  const ok=await saveData();
+  if(!ok){ showToast('⚠ 저장 실패 — 코드 변경이 반영되지 않았습니다 (Save failed)'); return; }
+  document.getElementById('rmCode').textContent=newCode;
+  document.getElementById('r-code').value=newCode;
+  window._resBaselineSnap=_sbSnap(workingRes);   // 닫을 때 오탐 방지
+  renderFilters();renderAll();
+  showToast(`🔢 순번을 ${newCode} 로 재부여했습니다 (Code renumbered)`);
+}
 function blankReservation(){
   const codes=getCodes();
   return {id:'id_'+Date.now()+Math.random().toString(36).slice(2,7),code:'',
@@ -4386,6 +4424,7 @@ function openReservation(id,presetDate){
   document.getElementById('r-code').value=_rmCode;
   document.getElementById('btnDateAmend').style.display=modalMode==='edit'?'':'none';
   document.getElementById('btnCopyRes').style.display=modalMode==='edit'?'':'none';
+  document.getElementById('btnRenumCode').style.display=(modalMode==='edit'&&currentUser&&currentUser.role==='admin')?'':'none';
   document.getElementById('btnSaveRes').textContent=modalMode==='edit'?'Save':'Create';
 
   document.getElementById('r-datein').value=workingRes.datein;
@@ -5096,6 +5135,7 @@ async function saveReservation(){
     document.getElementById('r-code').value=workingRes.code;
     document.getElementById('btnDateAmend').style.display='';
     document.getElementById('btnCopyRes').style.display='';
+    document.getElementById('btnRenumCode').style.display=(currentUser&&currentUser.role==='admin')?'':'none';
     document.getElementById('btnSaveRes').textContent='Save';
     renderSubsections();
     renderFilters();focusCalOnDate(workingRes.datein,workingRes.dateout);renderAll();
