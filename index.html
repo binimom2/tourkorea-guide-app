@@ -4325,7 +4325,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 3;   // 배포마다 +1 (구버전 탭 저장차단). v2: KB% 매장고정+구분복귀 / v3: 🏢회사 내부 수정모드(정산완료건 완료취소없이 회사부분 수정·가이드 알림없음)
+const G_APP_VERSION = 4;   // 배포마다 +1 (구버전 탭 저장차단). v2: KB%매장고정+구분복귀 / v3: 🏢회사 내부 수정모드 / v4: 제출현황 코드별 가이드·회사 정산서 다운로드 + 월별 접기
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5709,6 +5709,13 @@ function closeSubmissions() {
   if (window._viewingSubId && currentRole !== 'admin') restoreMyData();
 }
 
+// 제출현황 월별 그룹 접기/펼치기 — 토글 상태를 기억해 재렌더 후에도 유지한다.
+function toggleSubMonth(hd){
+  const block = hd.parentElement;
+  block.classList.toggle('collapsed');
+  const mk = block.getAttribute('data-mk');
+  if (mk){ if(!window._subMonthState) window._subMonthState={}; window._subMonthState[mk] = block.classList.contains('collapsed') ? 'closed' : 'open'; }
+}
 function renderSubmissions() {
   const body = document.getElementById('submissionsBody');
   if(!submissionsDB.length) { body.innerHTML='<p style="color:#aaa;font-size:13px;padding:16px;text-align:center;">제출된 정산서가 없습니다.</p>'; return; }
@@ -5740,6 +5747,7 @@ function renderSubmissions() {
                 ${(currentRole==='guide' && !s.sentToGuide)
                   ? `<span style="font-size:11px;color:#888;">전송 후 열람 가능</span>`
                   : `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;" onclick="openSubData('${s.id}')">📂 열기</button>`}
+                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#455a64;color:#fff;border:none;" title="가이드 정산서 PDF 저장(인쇄→PDF로 저장)" onclick="openSubData('${s.id}', null, false, 'guide')">📄 가이드</button><button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#5d4037;color:#fff;border:none;" title="회사 정산서 PDF 저장(인쇄→PDF로 저장)" onclick="openSubData('${s.id}', null, false, 'admin')">📄 회사</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료+전송'}</button>` : ''}
                 ${(currentRole==='admin' && s.settled) ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#00897b;color:#fff;border:none;" title="완료취소 없이 회사부분만 수정 · 가이드 알림 없음" onclick="openSubData('${s.id}', null, true)">🏢 회사수정</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
@@ -5813,7 +5821,32 @@ function renderSubmissions() {
         <div class="sub-unsettled-body">${unsettled.map(subCardHtml).join('')}</div>
       </div>`;
     }
-    html += settled.map(subCardHtml).join('');   // 그룹 헤더 없이 최신순으로 쭉
+    // 정산완료 → 월별 그룹(접기 가능, 최신 월이 위). settleCode(YYMMDD) 기준.
+    if (settled.length) {
+      const byMonth = {};
+      settled.forEach(s => {
+        const cc = s.settleCode || '';
+        const key = (cc.length>=4) ? ('20'+cc.slice(0,2)+'-'+cc.slice(2,4)) : '(월미상)';
+        (byMonth[key] = byMonth[key] || []).push(s);
+      });
+      if (!window._subMonthState) window._subMonthState = {};
+      const months = Object.keys(byMonth).sort((a,b)=>b.localeCompare(a));
+      months.forEach((mk, idx) => {
+        const items = byMonth[mk];
+        const label = (mk==='(월미상)') ? '(월미상)' : `${mk.slice(0,4)}년 ${parseInt(mk.slice(5,7))}월`;
+        // 기본: 가장 최신 월만 펼치고 나머지는 접음. 사용자가 토글하면 그 상태를 유지.
+        const st = window._subMonthState[mk];
+        const collapsed = (st === 'open') ? false : (st === 'closed' ? true : idx !== 0);
+        html += `<div class="sub-month-block${collapsed?' collapsed':''}" data-mk="${mk}">
+          <div class="sub-month-hd" onclick="toggleSubMonth(this)">
+            <span>${label}</span>
+            <span style="color:#888;font-size:11px;font-weight:700;">${items.length}건</span>
+            <span class="sub-fold-icon">▾</span>
+          </div>
+          <div class="sub-month-body">${items.map(subCardHtml).join('')}</div>
+        </div>`;
+      });
+    }
   } else {
     html += sorted.map(subCardHtml).join('');    // 그룹 헤더 없이 최신순으로 쭉
   }
@@ -6308,7 +6341,7 @@ function applyStateToUI() {
   try { calcPaxTotal(); } catch(e) {}
 }
 
-async function openSubData(id, landTab, forceEdit) {
+async function openSubData(id, landTab, forceEdit, autoPrint) {
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
@@ -6316,15 +6349,17 @@ async function openSubData(id, landTab, forceEdit) {
   // 가이드는 어드민이 [📨 가이드 전송]을 누른 최종본만 열람할 수 있다.
   // 작업 중인 수정본(회사정산 등)은 확정 전이라 보여주지 않는다.
   if (currentRole === 'guide' && !s.sentToGuide) { showToast('⏳ 아직 정산이 진행 중입니다. 관리자가 최종본을 보내면 확인할 수 있습니다.', true); return; }
+  // 🖨 autoPrint('guide'|'admin'): 제출현황에서 코드별로 바로 정산서를 인쇄(PDF 저장)한다.
+  //    읽기전용으로 잠깐 열어 인쇄 후 원래 화면으로 자동 복귀(restoreMyData).
   // 🏢 회사 내부 수정: 어드민이 정산완료건을 완료취소 없이 열어 회사부분만 고친다.
   // 저장해도 정산완료·전송 상태가 유지되고 가이드에게 알림이 가지 않는다(saveSubEdits 참고).
   window._internalCompanyEdit = false;
-  const _canInternalEdit = !!(forceEdit && currentRole === 'admin' && s.settled);
-  const readOnly = (currentRole === 'guide') || (!!s.settled && !_canInternalEdit);
+  const _canInternalEdit = !autoPrint && !!(forceEdit && currentRole === 'admin' && s.settled);
+  const readOnly = !!autoPrint || (currentRole === 'guide') || (!!s.settled && !_canInternalEdit);
   const _openMsg = _canInternalEdit
     ? `[${s.settleCode}] ${s.guideName}\n🏢 회사 내부 수정 모드로 엽니다 (완료취소 없이 수정).\n\n· 가이드에게 알림·재전송이 가지 않습니다.\n· KB 등 회사 전용 항목은 가이드 화면에 보이지 않습니다.\n· 단, 가이드에게 보이는 숫자를 바꾸면 가이드가 다시 열 때 반영됩니다.\n\n계속할까요?`
     : `[${s.settleCode}] ${s.guideName} 정산서를 열람합니다.${readOnly ? '\n(읽기 전용 · 수정 불가)' : ''}`;
-  if (!confirm(_openMsg)) return;
+  if (!autoPrint && !confirm(_openMsg)) return;
   window._internalCompanyEdit = _canInternalEdit;
   showToast('⏳ 불러오는 중...');
   // 열람용 데이터를 로드하는 동안에는 "제출 잠금" 배너가 끼어들지 않게 한다
@@ -6399,6 +6434,20 @@ async function openSubData(id, landTab, forceEdit) {
     <button onclick="restoreMyData()" style="background:#fff;color:#e53935;border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;">${closeLabel}</button>`;
   document.querySelector('.content').prepend(banner);
 
+  if (autoPrint) {
+    // 인쇄창(→PDF 저장)을 띄우고, 끝나면 원래 화면으로 자동 복귀
+    showToast(`🖨 ${autoPrint==='guide'?'가이드':'회사'} 정산서 생성 중...`);
+    setTimeout(() => {
+      const ap = () => {
+        window.removeEventListener('afterprint', ap);
+        // 인쇄 후 원래 화면 복귀 + 제출현황 목록 다시 열기(연속 다운로드 편의)
+        setTimeout(()=>{ restoreMyData(); try{ openSubmissions(); }catch(e){} }, 150);
+      };
+      window.addEventListener('afterprint', ap);
+      if (autoPrint === 'guide') printGuide(); else printAdmin();
+    }, 450);
+    return;
+  }
   showToast(`📂 [${s.settleCode}] ${s.guideName} 열람 중`);
 }
 
