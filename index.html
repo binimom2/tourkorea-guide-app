@@ -4116,9 +4116,21 @@ function doPrint(cls, title) {
     dateEl.textContent = dateStr;
   }
 
+  // PDF로 저장할 때 파일명이 코드와 연계되도록 document.title을 잠시 코드기반으로 바꾼다.
+  // (브라우저 인쇄→"PDF로 저장"의 기본 파일명 = document.title)
+  const _prevDocTitle = document.title;
+  let _code = '';
+  try {
+    if (window._viewingSubId) { const sub = submissionsDB.find(s => s.id === window._viewingSubId); if (sub) _code = sub.settleCode || ''; }
+    if (!_code && typeof state !== 'undefined' && state.info && state.info.settleCode && state.info.settleCode !== '-') _code = state.info.settleCode;
+  } catch(e) {}
+  const _docName = title.replace(/\s/g,'') + (_code ? '_' + _code : '');
+  document.title = _docName;
+
   function onAfterPrint() {
     document.body.classList.remove(cls);
     restorePrintGrid(restoreList);
+    document.title = _prevDocTitle;   // 파일명용 임시 타이틀 원복
     window.removeEventListener('afterprint', onAfterPrint);
   }
   window.addEventListener('afterprint', onAfterPrint);
@@ -4325,7 +4337,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 5;   // 배포마다 +1 (구버전 탭 저장차단). v2: KB%매장고정+구분복귀 / v3: 🏢회사 내부 수정모드 / v4: 제출현황 코드별 다운로드+월별접기 / v5: 제출카드 버튼 줄바꿈(넘침 수정)
+const G_APP_VERSION = 6;   // 배포마다 +1 (구버전 탭 저장차단). v2~v5: KB고정/구분복귀/회사수정모드/코드별다운로드+월별접기/버튼줄바꿈 / v6: 인쇄→PDF저장 파일명을 코드연계(가이드정산서_260804-01)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
