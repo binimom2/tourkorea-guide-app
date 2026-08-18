@@ -4337,7 +4337,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 7;   // 배포마다 +1 (구버전 탭 저장차단). v6: 인쇄→PDF파일명 코드연계 / v7: 정산서 fields(지상비·정산방법) 유실방지 + 어드민 닫기 초기화
+const G_APP_VERSION = 8;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5640,6 +5640,18 @@ function collectSaveFields() {
   SHOP_KEYS.forEach(k => { const c=document.getElementById('chk-'+k); if(c) flds['_chk_'+k]=c.checked; });
   return flds;
 }
+// 열람 중 "저장하지 않은 변경"을 판별하는 스냅샷.
+// state만 찍으면 지상비·정산방법·환율(=fields)은 바뀌어도 감지되지 않아,
+// 입력만 하고 저장 없이 닫거나 정산완료를 누르면 경고 없이 사라졌다.
+function _viewSnapshot() {
+  try { return JSON.stringify({ s: state, f: collectSaveFields() }); } catch(e) { return ''; }
+}
+// 열람 중인 그 정산서에 저장 안 한 수정이 남아 있는가
+function _hasUnsavedView(id) {
+  if (!window._viewOpenSnapshot || window._viewReadOnly) return false;
+  if (id !== undefined && window._viewingSubId !== id) return false;
+  return _viewSnapshot() !== window._viewOpenSnapshot;
+}
 // fields에서 "정산방법 체크 / 지상비 입력"이 있었는지 요약 — 저장 전 유실 검사용
 function _fieldsDigest(f) {
   f = f || {};
@@ -5964,6 +5976,15 @@ async function deleteSubData(id) {
 // 회사정산 부분을 여러 번 고칠 수 있어서, 가이드 전송은 [📨 가이드 전송] 버튼으로만 한다.
 async function toggleSubSettled(id) {
   if (currentRole !== 'admin') return;
+  // 이 정산서를 열어 놓고 고치던 중이면 [완료]를 눌러도 화면의 입력값은 저장되지 않는다.
+  // (완료는 플래그만 저장) → 지상비·정산방법·환율을 넣고 저장 없이 완료를 눌러
+  // 값이 통째로 사라지던 사고를 여기서 막는다.
+  if (_hasUnsavedView(id)) {
+    alert('⚠ 저장하지 않은 수정 내용이 있습니다.\n(정산방법 체크 · 지상비 · 환율 포함)\n\n먼저 [💾 수정저장]을 누른 뒤 정산완료해 주세요.\n지금 완료하면 화면에 입력한 값은 저장되지 않습니다.');
+    return;
+  }
+  // 목록이 오래됐으면 그 옛 사본으로 저장돼 남의 최신 수정이 지워진다 → 서버 최신본으로 맞춘 뒤 처리
+  try { await loadSubmissions(); } catch(e) {}
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
   const willSettle = !s.settled;
@@ -5990,6 +6011,11 @@ async function toggleSubSettled(id) {
 // 가이드에게 최종본 보내기 — 이 버튼을 누른 때만 가이드가 열람·알림을 받는다.
 async function sendSubToGuide(id) {
   if (currentRole !== 'admin') return;
+  if (_hasUnsavedView(id)) {
+    alert('⚠ 저장하지 않은 수정 내용이 있습니다.\n먼저 [💾 수정저장]을 누른 뒤 전송해 주세요.\n지금 보내면 화면에 입력한 값은 반영되지 않습니다.');
+    return;
+  }
+  try { await loadSubmissions(); } catch(e) {}
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
   const again = !!s.sentToGuide;
@@ -6369,7 +6395,7 @@ function applyStateToUI() {
 }
 
 async function openSubData(id, landTab, forceEdit, autoPrint) {
-  const s = submissionsDB.find(x=>x.id===id);
+  let s = submissionsDB.find(x=>x.id===id);
   if (!s) { showToast('❌ 항목을 찾을 수 없습니다. id:'+id, true); return; }
   if (!s.fullData) { showToast('❌ fullData 없음: '+s.settleCode, true); return; }
   if (currentRole === 'guide' && !isMySubmission(s)) { showToast('❌ 본인이 제출한 정산서만 열람할 수 있습니다.', true); return; }
@@ -6393,6 +6419,14 @@ async function openSubData(id, landTab, forceEdit, autoPrint) {
   // (_viewingSubId는 아래에서 잠시 null이 되므로 별도 플래그가 필요)
   window._viewOpening = true;
 
+  // 열람 표시(status/finalSeen)만 바꾸는 저장이지만, 내 목록이 오래된 것이면
+  // 그 옛 사본이 서버 최신본(어드민이 방금 넣은 지상비·환율 등)을 통째로 덮어쓴다.
+  // → 서버 최신본을 다시 읽고, 그 위에 열람 표시만 얹는다. 화면에 띄우는 내용도 최신본으로.
+  try {
+    await loadSubmissions();
+    const fresh = submissionsDB.find(x=>x.id===id);
+    if (fresh && fresh.fullData) s = fresh;
+  } catch(e) {}
   s.status = 'seen';
   // 가이드가 최종본을 열어봤으면 로그인 알림(1회성)을 끈다
   if (currentRole === 'guide' && s.sentToGuide) s.finalSeen = true;
@@ -6435,7 +6469,7 @@ async function openSubData(id, landTab, forceEdit, autoPrint) {
 
   window._viewOpening = false;
   window._viewReadOnly = readOnly;
-  window._viewOpenSnapshot = readOnly ? null : JSON.stringify(state);
+  window._viewOpenSnapshot = readOnly ? null : _viewSnapshot();
   document.body.classList.toggle('view-readonly', readOnly);
   // 열람 중에는 상단 💾저장/📤제출/📝새 보고서 버튼을 숨김 — 이 버튼들은 "내 작업중 데이터"용이라
   // 제출건을 열람하는 동안 잘못 누르면 수정 내용이 저장되지 않고 사라져 보이는 원인이 됨.
@@ -6551,7 +6585,7 @@ async function saveSubEdits() {
   if (state.info && state.info.settleCode && state.info.settleCode !== '-') s.settleCode = state.info.settleCode;
 
   await saveSubmissions();
-  window._viewOpenSnapshot = JSON.stringify(state);
+  window._viewOpenSnapshot = _viewSnapshot();
   showToast(_internal
     ? '🏢 회사 내부 수정이 저장되었습니다. (정산완료·전송 유지 · 가이드 알림 없음)'
     : '💾 수정내용이 저장되었습니다. (가이드 전송은 [📨 가이드 전송] 버튼)');
@@ -6559,9 +6593,8 @@ async function saveSubEdits() {
 
 function restoreMyData() {
   // 편집 중(읽기전용 아님) 열람 세션에서 저장하지 않은 변경사항이 있으면 확인
-  if (window._viewingSubId && !window._viewReadOnly && window._viewOpenSnapshot) {
-    const changed = JSON.stringify(state) !== window._viewOpenSnapshot;
-    if (changed && !confirm('저장하지 않은 수정 내용이 있습니다.\n저장하지 않고 닫으시겠습니까? (수정 내용이 사라집니다)')) return;
+  if (window._viewingSubId && _hasUnsavedView()) {
+    if (!confirm('저장하지 않은 수정 내용이 있습니다.\n(정산방법 체크 · 지상비 · 환율 포함)\n\n저장하지 않고 닫으시겠습니까? — 수정 내용이 사라집니다.')) return;
   }
   const banner = document.getElementById('viewBanner');
   if (banner) banner.remove();
