@@ -4337,7 +4337,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 6;   // 배포마다 +1 (구버전 탭 저장차단). v2~v5: KB고정/구분복귀/회사수정모드/코드별다운로드+월별접기/버튼줄바꿈 / v6: 인쇄→PDF저장 파일명을 코드연계(가이드정산서_260804-01)
+const G_APP_VERSION = 7;   // 배포마다 +1 (구버전 탭 저장차단). v6: 인쇄→PDF파일명 코드연계 / v7: 정산서 fields(지상비·정산방법) 유실방지 + 어드민 닫기 초기화
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5630,6 +5630,25 @@ function collectProfitFields() {
   };
 }
 
+// 화면(DOM)에서 저장용 fields를 모은다 — 제출본(fullData.fields)의 단일 출처.
+// 지상비·정산방법(체크)·쇼핑 체크는 state가 아니라 이 fields에만 들어 있어서,
+// 여기가 비면 그 항목들이 통째로 사라진다(2026-08-18 유실 신고).
+function collectSaveFields() {
+  const flds = {};
+  SAVE_FIELD_IDS.forEach(id => { const el=document.getElementById(id); if(el) flds[id]=el.value; });
+  ['incentive','guarantee','settle'].forEach(m => { const c=document.getElementById('chk-'+m); if(c) flds['_chk_settle_'+m]=c.checked; });
+  SHOP_KEYS.forEach(k => { const c=document.getElementById('chk-'+k); if(c) flds['_chk_'+k]=c.checked; });
+  return flds;
+}
+// fields에서 "정산방법 체크 / 지상비 입력"이 있었는지 요약 — 저장 전 유실 검사용
+function _fieldsDigest(f) {
+  f = f || {};
+  const methods = ['incentive','guarantee','settle'].filter(m => f['_chk_settle_'+m]);
+  const landIds = ['inc-land1','inc-land2','inc-land3','gu-land1','gu-land2','gu-land3','st-land1','st-land2','st-land3','gu-amount'];
+  const land = landIds.filter(id => { const v=f[id]; return v!==undefined && String(v).replace(/[^0-9]/g,'') !== ''; });
+  return { keys:Object.keys(f).length, methods, land:land.length };
+}
+
 // ══════════════════════════════════════════════════════
 //  가이드 → 어드민 제출
 // ══════════════════════════════════════════════════════
@@ -5671,11 +5690,7 @@ async function submitToAdmin() {
     ...collectProfitFields(),
     fullData: (() => {
       const fd = JSON.parse(JSON.stringify(state));
-      const flds = {};
-      SAVE_FIELD_IDS.forEach(id => { const el=document.getElementById(id); if(el) flds[id]=el.value; });
-      ['incentive','guarantee','settle'].forEach(m => { const c=document.getElementById('chk-'+m); if(c) flds['_chk_settle_'+m]=c.checked; });
-      SHOP_KEYS.forEach(k => { const c=document.getElementById('chk-'+k); if(c) flds['_chk_'+k]=c.checked; });
-      fd.fields = flds;
+      fd.fields = collectSaveFields();
       return fd;
     })(),
   };
@@ -6493,11 +6508,26 @@ async function saveSubEdits() {
     calcSettle(); calcSettleAdmin();
   } catch(e) {}
 
-  // 동기화된 state + fields를 fullData로 저장
-  const lsRaw = localStorage.getItem(LS_KEY_USER());
-  const lsFields = lsRaw ? (JSON.parse(lsRaw).fields || {}) : {};
+  // 동기화된 state + fields를 fullData로 저장.
+  // fields는 localStorage를 거치지 않고 화면에서 직접 모은다 — 예전엔 localStorage를 읽었는데,
+  // 저장 실패(용량초과 등)나 키 불일치로 그 값이 비면 지상비·정산방법이 통째로 날아갔다.
+  const newFields = collectSaveFields();
+  const prevDigest = _fieldsDigest(s.fullData && s.fullData.fields);
+  const nowDigest  = _fieldsDigest(newFields);
+  // ① 화면에서 아무것도 못 읽었는데 원본엔 값이 있었다 → 저장하면 통째 유실. 막는다.
+  if (nowDigest.keys === 0 && prevDigest.keys > 0) {
+    showToast('❌ 화면에서 정산 입력값을 읽지 못했습니다. 저장을 중단했습니다.\n새로고침 후 다시 열어 주세요.', true);
+    return;
+  }
+  // ② 정산방법 체크나 지상비가 있던 건이 "전부 사라진 상태"로 저장되려 하면 한 번 확인받는다.
+  if ((prevDigest.methods.length && !nowDigest.methods.length) || (prevDigest.land && !nowDigest.land)) {
+    const lost = [];
+    if (prevDigest.methods.length && !nowDigest.methods.length) lost.push(`· 정산방법 체크(${prevDigest.methods.join(', ')}) → 모두 해제됨`);
+    if (prevDigest.land && !nowDigest.land) lost.push('· 지상비 입력값 → 모두 비어 있음');
+    if (!confirm(`⚠ 이대로 저장하면 아래 내용이 사라집니다.\n\n${lost.join('\n')}\n\n그래도 저장할까요?\n(의도한 게 아니면 [취소] 후 새로고침하고 다시 여세요.)`)) return;
+  }
   s.fullData = JSON.parse(JSON.stringify(state));
-  s.fullData.fields = lsFields;
+  s.fullData.fields = newFields;
   s.adminEdited = true;
   s.adminEditedAt = new Date().toISOString();
   // 🏢 회사 내부 수정이면 감사기록만 남기고, 정산완료·전송·알림상태(settled/sentToGuide/finalSeen)는
@@ -6540,6 +6570,8 @@ function restoreMyData() {
   window._viewOpenSnapshot = null;
   window._internalCompanyEdit = false;   // 🏢 회사수정 모드 해제
   document.body.classList.remove('view-readonly');
+  // 열람하면서 숨겼던 상단 버튼(💾저장/📤제출/📝새 보고서) 복구 — 안 되돌려서 닫은 뒤 버튼이 사라져 있었다.
+  try { applyRoleUI(); } catch(e) {}
   if (currentRole === 'admin') {
     // 어드민: 임시 localStorage 삭제 + 모든 state 초기화
     localStorage.removeItem(LS_KEY_USER());
@@ -6552,6 +6584,18 @@ function restoreMyData() {
      'paxAdult','paxChild','paxTC','advancePay','productName',
      'shopCount','settleSeq','rateUSD','rateKRW','inc-rateUSD','inc-rateKRW'
     ].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    // 정산서 입력칸(지상비·보장금액 등)과 정산방법·쇼핑 체크도 비운다.
+    // 안 비우면 앞서 열었던 팀의 값이 화면에 남아, 다음에 여는 정산서에
+    // 그 값이 섞여 들어간다(그 항목이 없는 옛 제출본일 때 특히).
+    SAVE_FIELD_IDS.forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    ['incentive','guarantee','settle'].forEach(m => {
+      const c=document.getElementById('chk-'+m);
+      if(c){ c.checked=false; try{ toggleSettleMethod(m,false); }catch(e){} }
+    });
+    SHOP_KEYS.forEach(k => {
+      const c=document.getElementById('chk-'+k); if(c) c.checked=false;
+      const cat=document.getElementById('cat-'+k); if(cat) cat.style.display='none';
+    });
     initData();
     renderAll();
     rebuildTabBar();
