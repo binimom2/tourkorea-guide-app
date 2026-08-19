@@ -206,6 +206,11 @@ table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[type=number]{-moz-appearance:textfield;}
 table.subtbl input.numcell{text-align:center;}
+/* 복사 버튼이 붙는 칸(가이드 이름 등) — 이름은 …로 잘려도 버튼은 항상 보이게 */
+table.subtbl td.copycell{display:flex;align-items:center;gap:4px;overflow:visible;}
+table.subtbl td.copycell .cellcopy-v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+table.subtbl td.copycell .cellcopy{flex:0 0 auto;border:1px solid #dfe3ea;background:#fff;border-radius:4px;padding:0 4px;font-size:11px;line-height:16px;cursor:pointer;color:#6b7484;}
+table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
 .subtbl-empty{padding:16px;text-align:center;color:#b0b6c2;font-size:11.5px;}
 .subtbl-empty-row td{text-align:center;color:#c3c8d2;padding:10px;}
 .subtbl-summary-row td{border-top:1px solid #eceef3;color:#3457d5;font-weight:700;background:#f8f9fc;}
@@ -759,7 +764,7 @@ table.subtbl input.numcell{text-align:center;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-08-18-golfsort';
+const APP_VERSION='2026-08-19-showsort';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1136,7 +1141,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 7;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬
+const TRV_APP_VERSION = 8;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…'
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2600,7 +2605,7 @@ const SUBSECTIONS=[
     {k:'remark',label:'REMARK',type:'text',fw:340,fwMin:150,cls:'col-wide'},   // 호텔 PAYING처럼 전문이 다 보이게
   ]},
   {key:'guides',label:'GUIDES',reorderable:true,fields:[
-    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:200},
+    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:200,copy:true},   // 표에서 이름을 통째로 복사(⧉)
     {k:'phone',label:'PHONE',type:'text'},
     {k:'lguide',label:'L-GUIDE',type:'text',fw:200},
     {k:'cfm',label:'CFM',type:'checkbox'},
@@ -4566,6 +4571,7 @@ function dirSectionTable(sec,opts){
   let rows=(workingRes[sec.key]||[]).slice();
   if(sec.key==='flights') rows.sort((a,b)=>flightArrKey(a.arrival)-flightArrKey(b.arrival));
   if(sec.key==='golfs') rows.sort((a,b)=>golfSortKey(a).localeCompare(golfSortKey(b)));
+  if(sec.key==='shows') rows.sort((a,b)=>showSortKey(a).localeCompare(showSortKey(b)));
   if(opts.cfmOnly) rows=rows.filter(r=>r.cfm==='OK');
   const cols=sec.fields.filter(f=>!(opts.hideKeys||[]).includes(f.k));
   const head=cols.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('');
@@ -4608,6 +4614,7 @@ function subsecHtml(sec){
   const rows=workingRes[sec.key]||[];
   if(sec.key==='flights') rows.sort((a,b)=>flightArrKey(a.arrival)-flightArrKey(b.arrival)); // 도착시간 순 정렬(자정 넘김 +1일)
   if(sec.key==='golfs') rows.sort((a,b)=>golfSortKey(a).localeCompare(golfSortKey(b)));       // 골프는 날짜(+티오프) 순 정렬
+  if(sec.key==='shows') rows.sort((a,b)=>showSortKey(a).localeCompare(showSortKey(b)));       // 쇼/레스토랑/마사지도 날짜(+시간) 순 정렬
   const cols=sec.fields;
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
   const isEditingHere=subEditKey===sec.key;
@@ -4625,7 +4632,14 @@ function subsecHtml(sec){
     <div class="subtbl-wrap"><table class="subtbl"><thead><tr>${cols.map(c=>`<th${c.cls?` class="${c.cls}"`:''}${c.fwMin?` style="min-width:${c.fwMin}px;max-width:${c.fw}px;"`:(c.fw?` style="width:${c.fw}px;"`:'')}>${c.label}</th>`).join('')}<th>ACTIONS</th></tr></thead>
     <tbody>
     ${isEditingHere&&subEditIndex===-1?editRowHtml(-1):''}
-    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr${(hasCfm&&row.cfm!=='OK')?' class="sub-pending"':''}>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}${c.fwMin?` style="max-width:${c.fw}px;"`:''}>${escapeHtml(fmtVal(row[c.k],c))}</td>`).join('')}
+    ${rows.map((row,i)=>(isEditingHere&&subEditIndex===i)?editRowHtml(i):`<tr${(hasCfm&&row.cfm!=='OK')?' class="sub-pending"':''}>${cols.map(c=>{
+      const txt=escapeHtml(fmtVal(row[c.k],c));
+      // copy:true 칸은 값을 span으로 감싸고 ⧉ 버튼을 붙인다(칸이 좁아 …로 잘려도 전체를 복사할 수 있게)
+      const canCopy=c.copy&&row[c.k];
+      const cls=[c.cls,canCopy?'copycell':''].filter(Boolean).join(' ');
+      const inner=canCopy?`<span class="cellcopy-v">${txt}</span><button type="button" class="cellcopy" title="이름 복사" onclick="copyCellText(this)">⧉</button>`:txt;
+      return `<td${cls?` class="${cls}"`:''}${c.fwMin?` style="max-width:${c.fw}px;"`:''}>${inner}</td>`;
+    }).join('')}
       <td><div class="row-actions">${sec.reorderable?`<a class="act-move" onclick="moveSubRow('${sec.key}',${i},-1)"${i===0?' style="visibility:hidden;"':''}>▲</a><a class="act-move" onclick="moveSubRow('${sec.key}',${i},1)"${i===rows.length-1?' style="visibility:hidden;"':''}>▼</a>`:''}<a class="act-edit" onclick="editSubRow('${sec.key}',${i})">Edit</a><a class="act-del" onclick="delSubRow('${sec.key}',${i})">Del</a>${PAYING_SYNC[sec.key]?`<a class="act-baht" onclick="promptVendorBaht('${sec.key}',${i})">฿</a>`:''}</div></td>
     </tr>`).join('')}
     ${(!rows.length&&!isEditingHere)?`<tr class="subtbl-empty-row"><td colspan="${cols.length+1}">-</td></tr>`:''}
@@ -4667,6 +4681,31 @@ function golfSortKey(r){
   const d=(r&&r.date)?String(r.date):'9999-12-31';
   const t=(r&&r.teeup)?String(r.teeup).match(/(\d{1,2}):(\d{2})/):null;
   return d+' '+(t?String((+t[1])*60+(+t[2])).padStart(5,'0'):'99999');
+}
+// SHOW/RESTAURANT/MASSAGE 날짜 정렬 키. 같은 날짜면 TIME 순, 비어 있으면 맨 뒤(골프와 같은 규칙).
+// TIME 칸에 링크 등 시간이 아닌 값이 들어가 있으면 시간 없음으로 보고 뒤로 보낸다.
+function showSortKey(r){
+  const d=(r&&r.date)?String(r.date):'9999-12-31';
+  const t=(r&&r.time)?String(r.time).match(/(\d{1,2}):(\d{2})/):null;
+  return d+' '+(t?String((+t[1])*60+(+t[2])).padStart(5,'0'):'99999');
+}
+// 표 칸(⧉)에서 값 복사 — 칸이 좁아 …로 잘린 이름도 전체가 복사된다.
+function copyCellText(btn){
+  const host=btn.parentElement&&btn.parentElement.querySelector('.cellcopy-v');
+  const text=(host?host.textContent:'').trim();
+  if(!text||text==='-'){ showToast('복사할 내용이 없습니다'); return; }
+  const done=()=>showToast('📋 복사됨: '+text);
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done).catch(()=>copyCellFallback(text,done));
+  } else copyCellFallback(text,done);
+}
+function copyCellFallback(text,done){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.style.cssText='position:fixed;top:-1000px;opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove(); done();
+  }catch(e){ showToast('복사에 실패했습니다. 길게 눌러 직접 복사해 주세요',true); }
 }
 const FREE_FLIGHT_SENTINEL='__FREE__'; // 항공사 선택없음(편명 직접입력) 표시용 값
 // 서브섹션 인라인 편집용 입력요소 생성 (텍스트/숫자/날짜/select/코드연동 벤더 select)
@@ -4736,8 +4775,10 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
         +`<input type="text" id="${id}" value="${escapeAttr(val)}" placeholder="직접입력"${fwStyle}/>`
         +`<button type="button" title="목록 선택" onclick='vendorToSelect("${id}","${wrapId}",${keysJson},"${phone}")' style="padding:2px 6px;font-size:11px;cursor:pointer;">≡</button></span>`;
     }
+    // 목록 맨 위에 '직접입력'을 둔다 — 등록된 거래처가 없거나(쇼/레스토랑처럼) 아직 아무것도 안 고른
+    // 상태에서는 NONE을 다시 골라도 change가 안 걸려 이름을 아예 못 쓰던 문제가 있었다.
     return `<span id="${wrapId}" style="display:inline-flex;gap:3px;align-items:center;">`
-      +`<select id="${id}"${fwStyle} onchange='vendorSelChange(this,"${id}","${wrapId}",${keysJson},"${phone}")'><option value="">NONE</option>${optsHtml}</select></span>`;
+      +`<select id="${id}"${fwStyle} onchange='vendorSelChange(this,"${id}","${wrapId}",${keysJson},"${phone}")'><option value="">NONE</option><option value="${VENDOR_CUSTOM}">직접입력…</option>${optsHtml}</select></span>`;
   }
   if(f.type==='checkbox'){
     return `<input type="checkbox" id="${id}" ${val==='OK'?'checked':''} style="width:16px;height:16px;"/>`;
@@ -4768,14 +4809,16 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
   }
   return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}"/>`;
 }
-// vendor select: NONE 선택 시 텍스트 직접입력으로 전환, ≡ 버튼으로 목록 복귀
+// vendor select: NONE·직접입력 선택 시 텍스트 입력으로 전환, ≡ 버튼으로 목록 복귀
+const VENDOR_CUSTOM='__custom__';
 function vendorSelChange(sel,id,wrapId,keys,phone){
-  if(sel.value===''){ vendorToText(id,wrapId,keys,phone); return; }
+  if(sel.value===''||sel.value===VENDOR_CUSTOM){ vendorToText(id,wrapId,keys,phone); return; }
   if(phone){ onVendorPick((keys&&keys[keys.length-1])||'',sel.value,'sf-'+phone); }
 }
 function vendorToText(id,wrapId,keys,phone){
   const wrap=document.getElementById(wrapId); if(!wrap) return;
-  const cur=(document.getElementById(id)||{}).value||'';
+  let cur=(document.getElementById(id)||{}).value||'';
+  if(cur===VENDOR_CUSTOM) cur='';   // '직접입력…' 항목값이 그대로 입력칸에 들어가지 않게
   wrap.innerHTML=`<input type="text" id="${id}" value="${escapeAttr(cur)}" placeholder="직접입력"/>`
     +`<button type="button" title="목록 선택" onclick='vendorToSelect("${id}","${wrapId}",${JSON.stringify(keys)},"${phone}")' style="padding:2px 6px;font-size:11px;cursor:pointer;">≡</button>`;
   const inp=document.getElementById(id); if(inp) inp.focus();
@@ -4791,7 +4834,7 @@ function vendorToSelect(id,wrapId,keys,phone){
     if(keys.length>1){ const lbl=(VENDOR_CATEGORY_TABS.find(t=>t.key===key)||{}).label||key; optsHtml+=`<optgroup label="${escapeHtml(lbl)}">${inner}</optgroup>`; }
     else optsHtml+=inner;
   });
-  wrap.innerHTML=`<select id="${id}" onchange='vendorSelChange(this,"${id}","${wrapId}",${JSON.stringify(keys)},"${phone}")'><option value="">NONE</option>${optsHtml}</select>`;
+  wrap.innerHTML=`<select id="${id}" onchange='vendorSelChange(this,"${id}","${wrapId}",${JSON.stringify(keys)},"${phone}")'><option value="">NONE</option><option value="${VENDOR_CUSTOM}">직접입력…</option>${optsHtml}</select>`;
 }
 // 항공사 선택 시 해당 항공사 편명만 남기고 도착/출발 select를 다시 채움
 function filterFlightOptions(baseId,airlineCode,dirType){
