@@ -1412,15 +1412,15 @@
       <h3>📋 정산방법 선택</h3>
       <div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 20px;padding:4px 0 8px;">
         <label class="settle-method-label">
-          <input type="checkbox" id="chk-incentive" onchange="toggleSettleMethod('incentive',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
+          <input type="checkbox" id="chk-incentive" onchange="toggleSettleMethod('incentive',this.checked);saveData()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
           <span>인센티브</span>
         </label>
         <label class="settle-method-label">
-          <input type="checkbox" id="chk-guarantee" onchange="toggleSettleMethod('guarantee',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
+          <input type="checkbox" id="chk-guarantee" onchange="toggleSettleMethod('guarantee',this.checked);saveData()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
           <span>절대메꾸기</span>
         </label>
         <label class="settle-method-label">
-          <input type="checkbox" id="chk-settle" onchange="toggleSettleMethod('settle',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
+          <input type="checkbox" id="chk-settle" onchange="toggleSettleMethod('settle',this.checked);saveData()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
           <span>정산</span>
         </label>
       </div>
@@ -2155,13 +2155,17 @@ async function loadSubmissions() {
   } catch(e) { submissionsDB = []; }
   _setSubsBase(submissionsDB);   // 병합 기준 갱신
 }
-async function saveSubmissions() {
+// 저장 실패는 대개 「토큰 만료 직전」의 일시적 실패다. 예전엔 여기서 false만 돌려주고
+// 호출부가 그걸 무시한 채 "저장되었습니다"를 띄워, 사용자는 저장된 줄 알았지만 서버엔
+// 안 들어가 있었다(= "한 번에 저장이 안 된다"의 정체). 이제 여기서 자동으로 1회 재시도한다.
+async function saveSubmissions(_retry) {
   if (!await _gVersionOK()) return false;   // 구버전 탭이면 저장 차단(최신 데이터 덮어쓰기 방지)
   let server, fetched=true;
   try{ server = await _loadSubsRaw(); }catch(e){ fetched=false; }
   if(!fetched){
-    // 서버 최신본을 못 읽음 — 통짜 덮어쓰기는 위험하니 서버 저장은 보류(로컬만). 다시 저장하면 반영된다.
+    // 서버 최신본을 못 읽음 — 통짜 덮어쓰기는 위험하니 서버 저장은 보류(로컬만).
     localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
+    if(!_retry) return await _retrySaveSubmissions();   // 토큰 갱신 후 한 번 더
     showToast('⚠ 서버 최신본을 확인하지 못해 이 기기에만 저장했습니다. 잠시 후 다시 저장해 주세요.', true);
     return false;
   }
@@ -2169,8 +2173,19 @@ async function saveSubmissions() {
   localStorage.setItem(SUBS_KEY, JSON.stringify(submissionsDB));
   try{ await pushGuideBackup(SUBS_KEY, server); }catch(e){}   // 덮어쓰기 직전 서버본 백업(유실 대비)
   const ok = await syncToSupabase(SUBS_KEY, submissionsDB);
-  _setSubsBase(submissionsDB);   // 저장 후 현재를 다음 병합 기준으로
-  return ok;
+  if(!ok){
+    if(!_retry) return await _retrySaveSubmissions();
+    // 실패한 저장을 병합 기준(_subsBase)으로 삼으면 다음 저장 때 「내가 바꾼 게 없다」로 보여
+    // 서버에 영영 안 올라간다 → 성공했을 때만 갱신한다.
+    return false;
+  }
+  _setSubsBase(submissionsDB);   // 저장 성공 후에만 현재를 다음 병합 기준으로
+  return true;
+}
+async function _retrySaveSubmissions(){
+  try{ await sb.auth.refreshSession(); }catch(e){}
+  await new Promise(r=>setTimeout(r, 900));
+  return await saveSubmissions(true);
 }
 
 // ══════════════════════════════════════════════════════
@@ -4337,7 +4352,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 8;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준
+const G_APP_VERSION = 9;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5723,7 +5738,11 @@ async function submitToAdmin() {
   } else {
     submissionsDB.push(sub);
   }
-  await saveSubmissions();
+  if (!await saveSubmissions()) {
+    // 제출이 서버에 안 들어갔는데 "제출됨"으로 잠가버리면 가이드는 다시 낼 수도 없다.
+    alert('❌ 서버에 제출하지 못했습니다.\n\n· 입력한 내용은 화면에 그대로 있습니다.\n· 인터넷/로그인 상태를 확인한 뒤 [📤 제출]을 다시 눌러 주세요.\n· 지금 새로고침하면 사라질 수 있습니다.');
+    return;
+  }
   // 가이드: 제출과 동시에 본인 화면을 잠근다 (새 보고서를 시작하기 전까지 수정 불가)
   if (currentRole === 'guide') {
     if (state.info) { state.info.submitLocked = true; saveData(); }
@@ -5987,6 +6006,7 @@ async function toggleSubSettled(id) {
   try { await loadSubmissions(); } catch(e) {}
   const s = submissionsDB.find(x=>x.id===id);
   if (!s) return;
+  const _before = JSON.stringify(s);   // 서버 저장이 실패하면 화면 상태를 되돌리기 위한 원본
   const willSettle = !s.settled;
   if (willSettle) {
     // 정산완료 = 가이드에게 최종본 자동 전송 (별도 전송 버튼 없음).
@@ -6003,7 +6023,12 @@ async function toggleSubSettled(id) {
     s.settled = false;
     s.sentToGuide = false;
   }
-  await saveSubmissions();
+  if (!await saveSubmissions()) {
+    Object.assign(s, JSON.parse(_before));   // 서버에 못 넣었으면 화면 표시도 되돌린다(완료된 척 방지)
+    renderSubmissions();
+    alert('❌ 서버에 저장하지 못했습니다. 정산완료 처리가 되지 않았습니다.\n인터넷/로그인 상태를 확인한 뒤 다시 눌러 주세요.');
+    return;
+  }
   renderSubmissions();
   showToast(s.settled ? '✅ 정산완료 — 가이드에게 최종본이 전송되었습니다.' : '↩ 정산완료·전송이 함께 취소되었습니다.');
 }
@@ -6020,10 +6045,16 @@ async function sendSubToGuide(id) {
   if (!s) return;
   const again = !!s.sentToGuide;
   if (!confirm(`[${s.settleCode}] ${s.guideName}\n${again ? '수정된 최종본을 다시 보냅니다. 가이드에게 알림이 한 번 더 갑니다.' : '이 정산서를 가이드에게 보냅니다.'}\n계속하시겠습니까?`)) return;
+  const _before = JSON.stringify(s);
   s.sentToGuide = true;
   s.sentAt = new Date().toISOString();
   s.finalSeen = false;   // 가이드 로그인 시 알림이 한 번 뜨도록
-  await saveSubmissions();
+  if (!await saveSubmissions()) {
+    Object.assign(s, JSON.parse(_before));
+    renderSubmissions();
+    alert('❌ 서버에 저장하지 못했습니다. 전송되지 않았습니다.\n인터넷/로그인 상태를 확인한 뒤 다시 눌러 주세요.');
+    return;
+  }
   renderSubmissions();
   showToast(again ? '📨 최종본을 다시 보냈습니다.' : '📨 가이드에게 전송되었습니다.');
 }
@@ -6584,7 +6615,13 @@ async function saveSubEdits() {
   try { updateSettleCode(); } catch(e) {}
   if (state.info && state.info.settleCode && state.info.settleCode !== '-') s.settleCode = state.info.settleCode;
 
-  await saveSubmissions();
+  // 서버 저장 성공을 확인한 뒤에만 "저장됨"으로 처리한다.
+  // 예전엔 실패해도 성공 토스트를 덮어씌워서, 저장 안 된 걸 모른 채 닫거나 정산완료를 눌러
+  // 지상비·정산방법·환율이 통째로 사라졌다(= 절대메꾸기 건에서 반복 신고된 증상).
+  if (!await saveSubmissions()) {
+    alert('❌ 서버에 저장하지 못했습니다.\n\n· 화면에 입력한 값은 그대로 남아 있습니다.\n· 인터넷/로그인 상태를 확인한 뒤 [💾 수정저장]을 다시 눌러 주세요.\n· 지금 새로고침하거나 [닫기]를 누르면 입력한 내용이 사라집니다.');
+    return;   // _viewOpenSnapshot을 갱신하지 않는다 → 닫기·정산완료 안전망이 계속 작동
+  }
   window._viewOpenSnapshot = _viewSnapshot();
   showToast(_internal
     ? '🏢 회사 내부 수정이 저장되었습니다. (정산완료·전송 유지 · 가이드 알림 없음)'
