@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>어메이징 골프 · 태국 골프 전문 여행사</title>
-<meta name="description" content="태국 골프 전문 여행사. 파타야·방콕·후아힌·카오야이 골프장 62곳을 현지 직영으로 직접 수배하고 실시간으로 견적을 드립니다.">
-<meta property="og:title" content="어메이징 골프 · 태국 골프 전문 여행사">
+<title>위브투어타일랜드 · 태국 골프 전문 여행사</title>
+<meta name="description" content="위브투어타일랜드(We’ve Tour Thailand) — 태국 골프 전문 여행사. 파타야·방콕·후아힌·카오야이 골프장 62곳을 현지 직영으로 직접 수배하고 실시간으로 견적을 드립니다.">
+<meta property="og:title" content="위브투어타일랜드 (We’ve Tour Thailand) · 태국 골프 전문 여행사">
 <meta property="og:description" content="현지 직영 · 직수배 · 실시간 견적">
 <meta property="og:type" content="website">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -30,7 +30,8 @@ a{color:inherit}
 .nav .wrap{display:flex;align-items:center;gap:14px;height:60px}
 .brand{display:flex;align-items:baseline;gap:8px;text-decoration:none;white-space:nowrap}
 .brand b{font-size:19px;font-weight:900;letter-spacing:-.04em;color:var(--fairway)}
-.brand span{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--muted)}
+.brand span{font-size:11.5px;font-weight:700;letter-spacing:0;color:var(--muted)}
+@media(max-width:339px){.brand span{display:none}}   /* 아주 좁은 화면에서만 로고만 */
 .menu{display:flex;gap:2px;margin-left:auto}
 .menu a{padding:8px 12px;font-size:14px;font-weight:700;text-decoration:none;color:var(--fairway);border-radius:999px}
 .menu a:hover{background:rgba(18,58,43,.07)}
@@ -185,7 +186,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 
 <nav class="nav">
   <div class="wrap">
-    <a class="brand" href="#top"><b>AMAZING GOLF</b><span>THAILAND</span></a>
+    <a class="brand" href="#top"><b>We’ve Tour</b><span>위브투어타일랜드</span></a>
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
     <div class="menu" id="menu">
       <a href="#courses">골프장</a>
@@ -340,7 +341,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 
 <footer>
   <div class="wrap">
-    <b>AMAZING GOLF THAILAND</b>
+    <b>위브투어타일랜드 · We’ve Tour Thailand</b>
     <div class="frow" id="footRow"></div>
     <div class="staff"><a href="../index.html">직원용 견적 시스템 →</a></div>
   </div>
@@ -495,7 +496,8 @@ const SITE = {
     { k:"TEL",   v:"전화 문의",     s:"번호 입력 필요",   href:"#" },
     { k:"EMAIL", v:"이메일 문의",   s:"주소 입력 필요",   href:"#" }
   ],
-  footer: ["태국 현지 직영", "방콕 · 파타야", "상호/사업자번호 입력 필요"]
+  footer: ["골프 전문 여행사", "태국 현지 직영 · 직수배",
+           "파타야 · 방콕 · 후아힌 · 카오야이", "사업자등록번호 입력 필요"]
 };
 
 /* ── 렌더 ── */
