@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>위브투어타일랜드 · 사이트 관리</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../data.js"></script>
+<style>
+:root{
+  --fairway:#123A2B; --fairway-deep:#08170F; --fairway-mid:#1C5B42;
+  --paper:#F7F3E9; --marigold:#E8A33D; --ink:#15211C;
+  --line:rgba(18,58,43,.18); --muted:#5E6F66; --danger:#c0492f;
+  --font:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+.hidden{display:none!important}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink)}
+
+/* ── 로그인 ── */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(160deg,var(--fairway),var(--fairway-deep))}
+.lbox{background:var(--paper);border-radius:18px;padding:30px 26px;width:100%;max-width:360px;box-shadow:0 22px 60px rgba(0,0,0,.35)}
+.lbox h1{margin:0 0 3px;font-size:21px;font-weight:900;letter-spacing:-.04em}
+.lbox p.sub{margin:0 0 22px;font-size:13px;color:var(--muted)}
+.fld{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.fld label{font-size:11.5px;font-weight:800;color:var(--muted)}
+.fld input{padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:15px}
+.fld input:focus{outline:2px solid var(--marigold);outline-offset:1px}
+.lbtn{width:100%;background:var(--fairway);color:#fff;border:0;border-radius:10px;padding:13px;font-size:15px;font-weight:800;margin-top:6px}
+.lbtn:hover{background:var(--fairway-mid)}
+.lerr{margin-top:11px;font-size:13px;font-weight:700;color:var(--danger);min-height:18px}
+
+/* ── 헤더 ── */
+.top{position:sticky;top:0;z-index:40;background:var(--fairway);color:#fff}
+.top .in{max-width:1180px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.top b.brand{font-size:16px;font-weight:900;letter-spacing:-.03em}
+.top .who{margin-left:auto;font-size:12.5px;font-weight:700;color:rgba(255,255,255,.72);white-space:nowrap}
+.top a,.top button.lnk{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);color:#fff;
+  border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;text-decoration:none}
+.top a:hover,.top button.lnk:hover{background:rgba(255,255,255,.22)}
+
+/* ── 탭 ── */
+.tabs{max-width:1180px;margin:0 auto;padding:14px 16px 0;display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 18px;font-size:14px;font-weight:700;color:var(--fairway)}
+.tabs button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
+.subtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.subtabs button{background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 13px;font-size:13px;font-weight:700;color:var(--fairway)}
+.subtabs button.on{background:var(--marigold);border-color:var(--marigold);color:#2A1A00}
+
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px 16px 17px;margin-bottom:14px}
+.card > h2{margin:0 0 3px;font-size:15.5px;font-weight:800}
+.card > p.desc{margin:0 0 13px;font-size:12.5px;color:var(--muted)}
+
+/* ── 표 ── */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle}
+th{background:rgba(18,58,43,.06);font-size:11.5px;font-weight:800;color:var(--muted);white-space:nowrap;position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td input,td select,td textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13.5px}
+td input:focus,td select:focus,td textarea:focus{outline:2px solid var(--marigold);outline-offset:0}
+td textarea{resize:vertical;min-height:34px;line-height:1.45}
+.del{background:none;border:1px solid var(--line);border-radius:7px;color:var(--danger);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap}
+.del:hover{background:rgba(192,73,47,.09)}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
+.add{background:var(--fairway);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:13.5px;font-weight:800}
+.add:hover{background:var(--fairway-mid)}
+.save{background:var(--marigold);color:#2A1A00;border:0;border-radius:9px;padding:10px 22px;font-size:14px;font-weight:900}
+.save:hover{background:#f2b258}
+.ghost{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 15px;font-size:13.5px;font-weight:700;color:var(--fairway)}
+.srch{padding:8px 11px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;min-width:190px;background:#fff}
+.cnt{font-size:12.5px;font-weight:700;color:var(--muted)}
+
+/* ── 자유 입력 묶음 ── */
+.grid2{display:grid;gap:11px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:11.5px;font-weight:800;color:var(--muted)}
+.f input,.f textarea{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:14px}
+.f textarea{resize:vertical;min-height:74px;line-height:1.5}
+.f input:focus,.f textarea:focus{outline:2px solid var(--marigold);outline-offset:1px}
+.hint{font-size:12px;color:var(--muted);margin:5px 0 0}
+
+/* ── 계정 ── */
+.accnew{background:rgba(18,58,43,.05);border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:14px}
+.accnew .line{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end}
+.accnew .f{min-width:150px}
+.pwbox{display:flex;gap:6px}
+.pwbox input{flex:1;min-width:0}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em}
+.badge{font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;background:rgba(18,58,43,.1);color:var(--fairway);white-space:nowrap}
+.badge.fix{background:var(--marigold);color:#2A1A00}
+
+.noauth{text-align:center;padding:56px 20px}
+.noauth h2{margin:0 0 6px;font-size:19px;font-weight:900}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--fairway);color:#fff;
+  padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:700;z-index:80;opacity:0;transition:opacity .25s;pointer-events:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+.dirty{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="lbox">
+    <h1>위브투어타일랜드</h1>
+    <p class="sub">사이트 관리 · 어드민 전용</p>
+    <div class="fld"><label for="lid">아이디</label><input id="lid" autocomplete="username"></div>
+    <div class="fld"><label for="lpw">비밀번호</label><input id="lpw" type="password" autocomplete="current-password"></div>
+    <button class="lbtn" id="lbtn" type="button">로그인</button>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="top">
+    <div class="in">
+      <b class="brand">위브투어타일랜드 · 사이트 관리</b>
+      <a href="../index.html" target="_blank">사이트 보기 ↗</a>
+      <span class="who" id="who"></span>
+      <button class="lnk" id="outBtn" type="button">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="wrap" id="pane"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   위브투어타일랜드 사이트 관리 (어드민 전용)
+
+   다루는 데이터 (Supabase guide_data)
+     golf_site       사이트에 보이는 내용 전부 — 이 화면에서만 만든다
+     golf_codes      골프 코드 (요금관리 /golf/admin/ 과 같은 데이터를 쓴다)
+     golf_roles      골프 권한 {아이디:admin|manager|agent}
+     login_directory 아이디 → 로그인 이메일
+
+   로그인 계정 자체(아이디·비밀번호)는 브라우저에서 못 만든다.
+   서버 함수 /api/account (service_role)에 부탁한다.
+   ══════════════════════════════════════════════════════════════ */
+const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
+const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-auth',persistSession:true,autoRefreshToken:true}});
+
+const SITE_KEY='golf_site';
+const EMAIL_DOMAIN='@wevetour.app';          /* 이 화면에서 새로 만드는 계정의 이메일 */
+const ELEVATED_ADMIN_IDS=['lds1207'];        /* 명단과 무관하게 항상 어드민 — 잠금 방지 */
+
+let currentUser=null, GROLE='', S=null, C={}, R={}, dirty={};
+
+/* ── 알림 ── */
+let _tm=null;
+function toast(m){
+  const t=document.getElementById('toast');
+  t.textContent=m; t.classList.add('on');
+  clearTimeout(_tm); _tm=setTimeout(()=>t.classList.remove('on'),2600);
+}
+
+/* ══════ 저장 안전장치 ══════
+   ① 저장 직전 서버 최신본을 다시 읽어, 내가 불러온 뒤 남이 바꿨으면 물어본다
+   ② 덮어쓰기 직전 상태를 golf_bak_<키>_<0..9> 에 돌려가며 백업한다
+   (요금관리 /golf/admin/ 과 같은 방식 — 백업 슬롯도 같이 쓴다) */
+const BAK_SLOTS=10;
+const _base={};
+const _snap=v=>{ try{ return JSON.stringify(v===undefined?null:v); }catch(e){ return null; } };
+async function loadRaw(key){
+  const {data:row,error}=await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
+  if(error) throw error;
+  return (row&&row.data!==undefined&&row.data!==null)?row.data:null;
+}
+async function saveRaw(key,data){
+  try{
+    const {error}=await sb.from('guide_data').upsert({data_key:key,data,updated_at:new Date().toISOString()});
+    return !error;
+  }catch(e){ return false; }
+}
+async function pushBackup(key,val){
+  if(val===undefined||val===null) return;
+  let meta=[];
+  try{ meta=(await loadRaw('golf_bakmeta_'+key))||[]; }catch(e){ return; }
+  if(!Array.isArray(meta)) meta=[];
+  const sig=(_snap(val)||'').length;
+  if(meta.length&&meta[0].sig===sig) return;
+  const slot=meta.length?((meta[0].slot+1)%BAK_SLOTS):0;
+  if(!await saveRaw('golf_bak_'+key+'_'+slot,val)) return;
+  meta.unshift({slot,at:new Date().toISOString(),by:(currentUser&&currentUser.id)||'',sig});
+  await saveRaw('golf_bakmeta_'+key,meta.slice(0,BAK_SLOTS));
+}
+const KEY_LABEL={golf_site:'사이트 내용',golf_codes:'코드',golf_roles:'계정 권한'};
+async function saveSafe(key,data){
+  let server=null;
+  try{ server=await loadRaw(key); }
+  catch(e){ toast('⚠ 서버 연결 실패 — 저장하지 않았습니다'); return false; }
+  const b=_base[key], s=_snap(server);
+  if(b!=null && s!==b){
+    if(!confirm('['+(KEY_LABEL[key]||key)+']를 그 사이 다른 관리자가 바꿨습니다.\n\n'
+      +'지금 저장하면 그 내용이 사라집니다.\n(취소하면 저장하지 않습니다 — 새로고침해 최신 내용을 확인하세요)\n\n계속할까요?')) return false;
+  }
+  try{ await pushBackup(key,server); }catch(e){}
+  if(!await saveRaw(key,data)){ toast('❌ 저장 실패'); return false; }
+  _base[key]=_snap(data);
+  return true;
+}
+
+/* ══════ 로그인 ══════ */
+async function resolveEmail(typed){
+  const id=(typed||'').trim().toLowerCase();
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single();
+    if(row&&row.data&&row.data[id]) return row.data[id];
+  }catch(e){}
+  return id+EMAIL_DOMAIN;      /* 이 화면에서 만든 계정은 매핑표가 없어도 열린다 */
+}
+function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.login_name||'').toLowerCase(); }
+function golfRoleOf(u){
+  const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
+  if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
+  const r=R[id];
+  return (r==='admin'||r==='manager'||r==='agent')?r:'';
+}
+async function doLogin(){
+  const id=(document.getElementById('lid').value||'').trim();
+  const pw=(document.getElementById('lpw').value||'').trim();
+  const err=document.getElementById('lerr'), btn=document.getElementById('lbtn');
+  err.textContent='';
+  if(!id||!pw){ err.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  btn.textContent='로그인 중...'; btn.disabled=true;
+  try{
+    const email=await resolveEmail(id);
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(!error&&data&&data.session){ await afterAuth(data.user); return; }
+    err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.';
+  }catch(e){ err.textContent='로그인 중 오류가 발생했습니다.'; }
+  finally{ btn.textContent='로그인'; btn.disabled=false; }
+}
+document.getElementById('lbtn').onclick=doLogin;
+['lid','lpw'].forEach(i=>document.getElementById(i)
+  .addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); }));
+document.getElementById('outBtn').onclick=async()=>{
+  if(anyDirty()&&!confirm('저장하지 않은 변경이 있습니다. 그래도 나갈까요?')) return;
+  try{ await sb.auth.signOut(); }catch(e){}
+  location.reload();
+};
+
+async function afterAuth(user){
+  const m=(user&&user.user_metadata)||{};
+  currentUser={id:m.acc_id||m.login_name||'', name:m.name||m.acc_id||'관리자', email:user.email||''};
+  try{ const raw=await loadRaw('golf_roles'); R=(raw&&typeof raw==='object'&&!Array.isArray(raw))?raw:{}; _base['golf_roles']=_snap(raw); }
+  catch(e){ R={}; }
+  GROLE=golfRoleOf(user);
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('who').textContent=currentUser.name+(GROLE?' · '+GROLE:'');
+
+  if(GROLE!=='admin'){
+    document.getElementById('tabs').innerHTML='';
+    document.getElementById('pane').innerHTML=
+      '<div class="card noauth"><h2>접근 권한 없음</h2>'
+      +'<p style="color:var(--muted)">이 화면은 어드민만 사용할 수 있습니다.<br>'
+      +'권한이 필요하면 관리자에게 요청해 주세요.</p></div>';
+    return;
+  }
+  await loadAll();
+  drawTabs();
+}
+
+/* ══════ 데이터 불러오기 ══════ */
+function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
+async function loadAll(){
+  /* 사이트 내용 — 저장된 게 없으면 data.js의 기본값으로 시작한다 */
+  let raw=null;
+  try{ raw=await loadRaw(SITE_KEY); }catch(e){}
+  _base[SITE_KEY]=_snap(raw);
+  S=(raw&&typeof raw==='object'&&Array.isArray(raw.courses))?deepCopy(raw):deepCopy(window.SITE_DEFAULT);
+  /* 기본값에만 있는 항목(나중에 늘어난 칸)은 채워 준다 */
+  Object.keys(window.SITE_DEFAULT).forEach(k=>{ if(S[k]===undefined) S[k]=deepCopy(window.SITE_DEFAULT[k]); });
+
+  try{ const c=await loadRaw('golf_codes'); C=(c&&typeof c==='object')?deepCopy(c):{}; _base['golf_codes']=_snap(c); }
+  catch(e){ C={}; }
+  CODE_CATS.forEach(c=>{ if(!Array.isArray(C[c.key])) C[c.key]=[]; });
+}
+
+/* ══════ 값 읽고 쓰기 (경로 문자열) ══════
+   입력칸마다 data-p="courses.3.n" 같은 경로를 달아 두고 여기서 한 번에 처리한다. */
+function getPath(o,p){
+  return p.split('.').reduce((a,k)=>(a==null?a:a[/^\d+$/.test(k)?Number(k):k]),o);
+}
+function setPath(o,p,v){
+  const ks=p.split('.'); let cur=o;
+  for(let i=0;i<ks.length-1;i++){ const k=/^\d+$/.test(ks[i])?Number(ks[i]):ks[i]; cur=cur[k]; }
+  const last=ks[ks.length-1];
+  cur[/^\d+$/.test(last)?Number(last):last]=v;
+}
+function esc(s){ return String(s==null?'':s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function inp(path,val,ph,type){
+  return '<input data-p="'+esc(path)+'" type="'+(type||'text')+'" value="'+esc(val)+'"'
+    +(ph?' placeholder="'+esc(ph)+'"':'')+'>';
+}
+function ta(path,val,ph){
+  return '<textarea data-p="'+esc(path)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+'>'+esc(val)+'</textarea>';
+}
+/* 입력은 전부 여기서 받아 S에 반영한다 */
+document.getElementById('pane').addEventListener('input',e=>{
+  const el=e.target, p=el.dataset.p;
+  if(!p) return;
+  setPath(S,p,el.value);
+  markDirty('site');
+});
+function markDirty(k){
+  dirty[k]=true;
+  const b=document.getElementById('tab-'+k);
+  if(b&&!b.querySelector('.dirty')) b.insertAdjacentHTML('beforeend','<span class="dirty"></span>');
+}
+function clearDirty(k){
+  dirty[k]=false;
+  const b=document.getElementById('tab-'+k);
+  const d=b&&b.querySelector('.dirty'); if(d) d.remove();
+}
+function anyDirty(){ return Object.keys(dirty).some(k=>dirty[k]); }
+window.addEventListener('beforeunload',e=>{ if(anyDirty()){ e.preventDefault(); e.returnValue=''; } });
+
+/* ══════ 탭 ══════ */
+const TABS=[
+  {k:'site',   label:'사이트 내용'},
+  {k:'codes',  label:'코드관리'},
+  {k:'accounts',label:'계정관리'}
+];
+let tab='site';
+function drawTabs(){
+  document.getElementById('tabs').innerHTML=TABS.map(t=>
+    '<button id="tab-'+t.k+'" class="'+(t.k===tab?'on':'')+'">'+t.label
+    +(dirty[t.k]?'<span class="dirty"></span>':'')+'</button>').join('');
+  TABS.forEach(t=>{ document.getElementById('tab-'+t.k).onclick=()=>{ tab=t.k; drawTabs(); }; });
+  draw();
+}
+function draw(){
+  if(tab==='site') drawSite();
+  else if(tab==='codes') drawCodes();
+  else drawAccounts();
+}
+
+/* ══════════════ 사이트 내용 ══════════════ */
+const SUB=[
+  {k:'hero',   label:'첫 화면'},
+  {k:'courses',label:'골프장'},
+  {k:'hotels', label:'호텔'},
+  {k:'tours',  label:'기타투어'},
+  {k:'board',  label:'게시판'},
+  {k:'foot',   label:'연락처 · 푸터'}
+];
+let sub='hero', cSearch='', hSearch='';
+function drawSite(){
+  const p=document.getElementById('pane');
+  p.innerHTML='<div class="subtabs">'
+    +SUB.map(s=>'<button data-s="'+s.k+'" class="'+(s.k===sub?'on':'')+'">'+s.label+'</button>').join('')
+    +'</div><div id="subpane"></div>'
+    +'<div class="rowbtns"><button class="save" id="saveSite">저장</button>'
+    +'<button class="ghost" id="resetSite">기본값으로 되돌리기</button>'
+    +'<span class="cnt" id="siteNote"></span></div>';
+  p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
+  document.getElementById('saveSite').onclick=async()=>{
+    if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); drawTabs(); toast('✅ 저장했습니다 — 사이트에 바로 반영됩니다'); }
+  };
+  document.getElementById('resetSite').onclick=()=>{
+    if(!confirm('지금 화면의 모든 내용을 처음 기본값으로 되돌립니다.\n(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
+    S=deepCopy(window.SITE_DEFAULT); markDirty('site'); drawTabs();
+  };
+  const f={hero:subHero,courses:subCourses,hotels:subHotels,tours:subTours,board:subBoard,foot:subFoot}[sub];
+  f();
+}
+
+function subHero(){
+  const h=S.hero||(S.hero={});
+  document.getElementById('subpane').innerHTML=
+    '<div class="card"><h2>첫 화면</h2>'
+    +'<p class="desc">사이트를 열면 가장 먼저 보이는 부분입니다.</p>'
+    +'<div class="grid2">'
+    +'<div class="f"><label>윗줄 (작은 글씨)</label>'+inp('hero.eyebrow',h.eyebrow)+'</div>'
+    +'<div class="f"><label>큰 제목 — *별표* 안은 금색, 줄바꿈은 Enter</label>'+ta('hero.title',h.title)+'</div>'
+    +'<div class="f"><label>설명 문구</label>'+ta('hero.lead',h.lead)+'</div>'
+    +'<div class="f"><label>버튼 1 / 버튼 2</label>'
+      +'<div class="pwbox">'+inp('hero.cta1',h.cta1)+inp('hero.cta2',h.cta2)+'</div></div>'
+    +'</div>'
+    +'<p class="hint">강조 배지 (제목 아래 동그란 칸)</p>'
+    +'<div class="tblwrap"><table><thead><tr><th>내용</th><th style="width:70px"></th></tr></thead><tbody>'
+    +(h.keys||[]).map((k,i)=>'<tr><td>'+inp('hero.keys.'+i,k)+'</td>'
+      +'<td><button class="del" data-del="hero.keys" data-i="'+i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="herokey">＋ 배지 추가</button></div>'
+    +'</div>'
+
+    +'<div class="card"><h2>네 칸 강조 줄</h2>'
+    +'<p class="desc">첫 화면 바로 아래 어두운 띠에 들어가는 네 칸입니다.</p>'
+    +'<div class="tblwrap"><table><thead><tr><th style="width:180px">큰 글씨</th><th>작은 글씨</th><th style="width:70px"></th></tr></thead><tbody>'
+    +(S.trust||[]).map((t,i)=>'<tr><td>'+inp('trust.'+i+'.b',t.b)+'</td><td>'+inp('trust.'+i+'.s',t.s)+'</td>'
+      +'<td><button class="del" data-del="trust" data-i="'+i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="trust">＋ 칸 추가</button></div></div>'
+
+    +'<div class="card"><h2>각 섹션 제목</h2>'
+    +'<p class="desc">설명 문구 안의 <b>{n}</b>은 등록된 개수(골프장 62 등)로 자동으로 바뀝니다.</p>'
+    +Object.keys(S.sections||{}).map(k=>{
+      const s=S.sections[k];
+      return '<div class="grid2" style="margin-bottom:12px">'
+        +'<div class="f"><label>'+esc(k)+' — 영문 라벨 / 제목</label>'
+          +'<div class="pwbox">'+inp('sections.'+k+'.kicker',s.kicker)+inp('sections.'+k+'.h2',s.h2)+'</div></div>'
+        +'<div class="f"><label>설명</label>'+ta('sections.'+k+'.p',s.p)+'</div></div>';
+    }).join('')
+    +'</div>';
+  bindRowBtns();
+}
+
+function courseRow(c,i){
+  return '<tr><td>'+inp('courses.'+i+'.r',c.r,'파타야')+'</td>'
+    +'<td>'+inp('courses.'+i+'.n',c.n)+'</td>'
+    +'<td>'+inp('courses.'+i+'.h',c.h,'27홀')+'</td>'
+    +'<td>'+ta('courses.'+i+'.d',c.d)+'</td>'
+    +'<td>'+inp('courses.'+i+'.img',c.img||'','img/이름.jpg')+'</td>'
+    +'<td><button class="del" data-del="courses" data-i="'+i+'">삭제</button></td></tr>';
+}
+function subCourses(){
+  const rows=S.courses.map((c,i)=>({c,i}))
+    .filter(x=>!cSearch||((x.c.n||'')+(x.c.r||'')+(x.c.d||'')).toLowerCase().includes(cSearch.toLowerCase()));
+  document.getElementById('subpane').innerHTML=
+    '<div class="card"><h2>골프장</h2>'
+    +'<p class="desc">손님 화면의 골프장 카드입니다. 그린피·캐디피 같은 원가는 여기에 넣지 마세요 — 손님에게 그대로 보입니다.</p>'
+    +'<div class="rowbtns" style="margin:0 0 11px">'
+    +'<input class="srch" id="cSrch" placeholder="이름·지역·설명으로 찾기" value="'+esc(cSearch)+'">'
+    +'<span class="cnt">전체 '+S.courses.length+'곳'+(cSearch?' · 찾은 것 '+rows.length+'곳':'')+'</span></div>'
+    +'<div class="tblwrap"><table><thead><tr>'
+    +'<th style="width:96px">지역</th><th style="width:150px">이름</th><th style="width:76px">홀</th>'
+    +'<th>소개 문구</th><th style="width:140px">사진 경로</th><th style="width:64px"></th>'
+    +'</tr></thead><tbody>'+rows.map(x=>courseRow(x.c,x.i)).join('')+'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="course">＋ 골프장 추가</button></div></div>';
+  const s=document.getElementById('cSrch');
+  s.oninput=()=>{ cSearch=s.value; const at=s.selectionStart; subCourses();
+    const n=document.getElementById('cSrch'); n.focus(); n.setSelectionRange(at,at); };
+  bindRowBtns();
+}
+function subHotels(){
+  const rows=S.hotels.map((h,i)=>({h,i}))
+    .filter(x=>!hSearch||((x.h.n||'')+(x.h.r||'')+(x.h.d||'')).toLowerCase().includes(hSearch.toLowerCase()));
+  document.getElementById('subpane').innerHTML=
+    '<div class="card"><h2>호텔</h2>'
+    +'<p class="desc">요금·써차지는 넣지 마세요. 등급 칸에 4성 / 5성처럼 적으면 사진 위에 배지로 나옵니다.</p>'
+    +'<div class="rowbtns" style="margin:0 0 11px">'
+    +'<input class="srch" id="hSrch" placeholder="이름·지역으로 찾기" value="'+esc(hSearch)+'">'
+    +'<span class="cnt">전체 '+S.hotels.length+'곳'+(hSearch?' · 찾은 것 '+rows.length+'곳':'')+'</span></div>'
+    +'<div class="tblwrap"><table><thead><tr>'
+    +'<th style="width:110px">지역</th><th style="width:170px">이름</th><th style="width:76px">등급</th>'
+    +'<th>소개 문구</th><th style="width:140px">사진 경로</th><th style="width:64px"></th>'
+    +'</tr></thead><tbody>'
+    +rows.map(x=>'<tr><td>'+inp('hotels.'+x.i+'.r',x.h.r)+'</td>'
+      +'<td>'+inp('hotels.'+x.i+'.n',x.h.n)+'</td>'
+      +'<td>'+inp('hotels.'+x.i+'.g',x.h.g||'','5성')+'</td>'
+      +'<td>'+ta('hotels.'+x.i+'.d',x.h.d||'')+'</td>'
+      +'<td>'+inp('hotels.'+x.i+'.img',x.h.img||'','img/이름.jpg')+'</td>'
+      +'<td><button class="del" data-del="hotels" data-i="'+x.i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="hotel">＋ 호텔 추가</button></div>'
+    +'<div class="f" style="margin-top:14px"><label>호텔 목록 아래 안내 문구</label>'+ta('hotelNote',S.hotelNote)+'</div>'
+    +'</div>';
+  const s=document.getElementById('hSrch');
+  s.oninput=()=>{ hSearch=s.value; const at=s.selectionStart; subHotels();
+    const n=document.getElementById('hSrch'); n.focus(); n.setSelectionRange(at,at); };
+  bindRowBtns();
+}
+function subTours(){
+  document.getElementById('subpane').innerHTML=
+    '<div class="card"><h2>기타 투어</h2>'
+    +'<p class="desc">섬 투어 · 쇼 · 스파&amp;마사지 · 패스트트랙처럼 묶음으로 보여줍니다.</p>'
+    +(S.tours||[]).map((t,i)=>
+      '<div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px">'
+      +'<div class="grid2">'
+      +'<div class="f"><label>아이콘 / 묶음 이름</label><div class="pwbox">'
+        +inp('tours.'+i+'.icon',t.icon)+inp('tours.'+i+'.t',t.t)+'</div></div>'
+      +'<div class="f"><label>묶음 설명</label>'+inp('tours.'+i+'.d',t.d)+'</div></div>'
+      +'<div class="tblwrap" style="margin-top:10px"><table style="min-width:520px"><thead><tr>'
+      +'<th style="width:200px">항목</th><th>부가 설명</th><th style="width:64px"></th></tr></thead><tbody>'
+      +(t.items||[]).map((it,j)=>'<tr><td>'+inp('tours.'+i+'.items.'+j+'.n',it.n)+'</td>'
+        +'<td>'+inp('tours.'+i+'.items.'+j+'.s',it.s)+'</td>'
+        +'<td><button class="del" data-del="tours.'+i+'.items" data-i="'+j+'">삭제</button></td></tr>').join('')
+      +'</tbody></table></div>'
+      +'<div class="rowbtns"><button class="add" data-add="touritem" data-i="'+i+'">＋ 항목 추가</button>'
+      +'<button class="del" data-del="tours" data-i="'+i+'">이 묶음 삭제</button></div></div>').join('')
+    +'<div class="rowbtns"><button class="add" data-add="tour">＋ 묶음 추가</button></div></div>';
+  bindRowBtns();
+}
+function subBoard(){
+  document.getElementById('subpane').innerHTML=
+    '<div class="card"><h2>게시판</h2>'
+    +'<p class="desc">제목을 누르면 본문이 펼쳐집니다. 태그를 <b>공지</b>로 적으면 금색으로 표시됩니다.</p>'
+    +'<div class="tblwrap"><table><thead><tr>'
+    +'<th style="width:80px">태그</th><th style="width:230px">제목</th><th style="width:120px">날짜</th>'
+    +'<th>본문</th><th style="width:64px"></th></tr></thead><tbody>'
+    +(S.board||[]).map((b,i)=>'<tr><td>'+inp('board.'+i+'.tag',b.tag,'공지')+'</td>'
+      +'<td>'+inp('board.'+i+'.t',b.t)+'</td>'
+      +'<td>'+inp('board.'+i+'.d',b.d,'2026-08-21','date')+'</td>'
+      +'<td>'+ta('board.'+i+'.b',b.b)+'</td>'
+      +'<td><button class="del" data-del="board" data-i="'+i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="post">＋ 글 추가</button></div></div>';
+  bindRowBtns();
+}
+function subFoot(){
+  document.getElementById('subpane').innerHTML=
+    '<div class="card"><h2>연락처</h2>'
+    +'<p class="desc">「실시간 견적」 아래에 카드로 나옵니다. 링크 칸에 <b>tel:0212345678</b>, <b>mailto:주소</b>, 카카오 오픈채팅 주소를 넣으면 눌러서 바로 연결됩니다.</p>'
+    +'<div class="tblwrap"><table><thead><tr>'
+    +'<th style="width:96px">라벨</th><th style="width:170px">제목</th><th style="width:180px">아래 작은 글씨</th>'
+    +'<th>링크</th><th style="width:64px"></th></tr></thead><tbody>'
+    +(S.contact||[]).map((c,i)=>'<tr><td>'+inp('contact.'+i+'.k',c.k,'KAKAO')+'</td>'
+      +'<td>'+inp('contact.'+i+'.v',c.v)+'</td>'
+      +'<td>'+inp('contact.'+i+'.s',c.s)+'</td>'
+      +'<td>'+inp('contact.'+i+'.href',c.href,'tel:021234567')+'</td>'
+      +'<td><button class="del" data-del="contact" data-i="'+i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="contact">＋ 연락처 추가</button></div></div>'
+
+    +'<div class="card"><h2>맨 아래 (푸터)</h2>'
+    +'<p class="desc">상호 아래 한 줄로 이어 붙습니다. 사업자등록번호도 여기에 적으시면 됩니다.</p>'
+    +'<div class="tblwrap"><table><thead><tr><th>내용</th><th style="width:64px"></th></tr></thead><tbody>'
+    +(S.footer||[]).map((f,i)=>'<tr><td>'+inp('footer.'+i,f)+'</td>'
+      +'<td><button class="del" data-del="footer" data-i="'+i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="footer">＋ 줄 추가</button></div></div>';
+  bindRowBtns();
+}
+
+/* 추가·삭제 버튼은 모양이 다 같아서 한곳에서 묶어 처리한다 */
+const ADDERS={
+  course:  ()=>S.courses.push({r:S.regionOrder[0]||'파타야',n:'',h:'',d:''}),
+  hotel:   ()=>S.hotels.push({r:S.regionOrder[0]||'파타야',n:'',g:'',d:''}),
+  post:    ()=>S.board.unshift({tag:'공지',t:'',d:'',b:''}),
+  contact: ()=>S.contact.push({k:'',v:'',s:'',href:'#'}),
+  footer:  ()=>S.footer.push(''),
+  trust:   ()=>S.trust.push({b:'',s:''}),
+  herokey: ()=>(S.hero.keys=S.hero.keys||[]).push(''),
+  tour:    ()=>S.tours.push({icon:'✨',t:'',d:'',items:[]}),
+  touritem:i=>{ const t=S.tours[i]; (t.items=t.items||[]).push({n:'',s:''}); }
+};
+function bindRowBtns(){
+  const p=document.getElementById('pane');
+  p.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
+    ADDERS[b.dataset.add](Number(b.dataset.i));
+    markDirty('site'); drawTabs();
+  });
+  p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    const arr=getPath(S,b.dataset.del), i=Number(b.dataset.i);
+    const what=(arr[i]&&(arr[i].n||arr[i].t||arr[i].b))||'이 줄';
+    if(!confirm('「'+what+'」을(를) 지웁니다.\n(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
+    arr.splice(i,1); markDirty('site'); drawTabs();
+  });
+}
+
+/* ══════════════ 코드관리 ══════════════ */
+const CODE_CATS=[
+  {key:'region',label:'지역'},{key:'club',label:'골프장'},{key:'hotel',label:'호텔'},
+  {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'},{key:'handling',label:'핸들링차지'},
+  {key:'fx',label:'환율 (코드=통화, 라벨=1밧당 원화)'}
+];
+let ccat='region';
+function drawCodes(){
+  const list=C[ccat]||[];
+  document.getElementById('pane').innerHTML=
+    '<div class="subtabs">'+CODE_CATS.map(c=>
+      '<button data-c="'+c.key+'" class="'+(c.key===ccat?'on':'')+'">'+esc(c.label)
+      +' ('+((C[c.key]||[]).length)+')</button>').join('')+'</div>'
+    +'<div class="card"><h2>코드관리</h2>'
+    +'<p class="desc">골프 견적에서 쓰는 코드입니다. <b>요금관리(/golf/admin/)와 같은 데이터</b>라 한쪽에서 고치면 양쪽에 반영됩니다. 예약관리(/travel/)의 코드와는 완전히 별개입니다.</p>'
+    +'<div class="tblwrap"><table style="min-width:560px"><thead><tr>'
+    +'<th style="width:150px">코드</th><th>이름</th><th style="width:88px">사용</th><th style="width:64px"></th>'
+    +'</tr></thead><tbody>'
+    +list.map((x,i)=>'<tr>'
+      +'<td><input data-c="'+i+'" data-f="code" value="'+esc(x.code)+'"></td>'
+      +'<td><input data-c="'+i+'" data-f="label" value="'+esc(x.label)+'"></td>'
+      +'<td><select data-c="'+i+'" data-f="active">'
+        +'<option value="1"'+(x.active===false?'':' selected')+'>사용</option>'
+        +'<option value="0"'+(x.active===false?' selected':'')+'>중지</option></select></td>'
+      +'<td><button class="del" data-cdel="'+i+'">삭제</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" id="cAdd">＋ 코드 추가</button>'
+    +'<button class="save" id="cSave">저장</button></div></div>';
+
+  const p=document.getElementById('pane');
+  p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ ccat=b.dataset.c; drawCodes(); });
+  p.querySelectorAll('[data-c][data-f]').forEach(el=>el.oninput=()=>{
+    const i=Number(el.dataset.c), f=el.dataset.f;
+    C[ccat][i][f]= f==='active' ? (el.value==='1') : el.value;
+    markDirty('codes');
+  });
+  p.querySelectorAll('[data-cdel]').forEach(b=>b.onclick=()=>{
+    const i=Number(b.dataset.cdel);
+    if(!confirm('「'+((C[ccat][i]||{}).label||'')+'」 코드를 지웁니다.\n\n계속할까요?')) return;
+    C[ccat].splice(i,1); markDirty('codes'); drawTabs();
+  });
+  document.getElementById('cAdd').onclick=()=>{ C[ccat].push({code:'',label:'',active:true}); markDirty('codes'); drawTabs(); };
+  document.getElementById('cSave').onclick=async()=>{
+    if(await saveSafe('golf_codes',C)){ clearDirty('codes'); drawTabs(); toast('✅ 코드를 저장했습니다'); }
+  };
+}
+
+/* ══════════════ 계정관리 ══════════════
+   아이디·비밀번호는 브라우저에서 못 만든다 — 서버 함수 /api/account 가 대신 만든다.
+   권한(admin/manager/agent)은 guide_data/golf_roles 에 아이디별로 둔다.
+   ══════════════════════════════════════ */
+const ROLE_LABEL={admin:'어드민',manager:'매니저',agent:'에이전트'};
+async function api(action,payload){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session&&session.access_token;
+    if(!token) return {error:'로그인이 만료되었습니다. 다시 로그인해 주세요.'};
+    const r=await fetch('/api/account',{method:'POST',
+      headers:{'content-type':'application/json',Authorization:'Bearer '+token},
+      body:JSON.stringify(Object.assign({action},payload))});
+    return await r.json().catch(()=>({error:'서버 응답을 해석할 수 없습니다.'}));
+  }catch(e){ return {error:'서버 연결 실패: '+((e&&e.message)||e)}; }
+}
+function idToEmail(id){ return (id||'').trim().toLowerCase()+EMAIL_DOMAIN; }
+/* 8자리 — 헷갈리는 글자(0/O, 1/l/I)는 빼고 만든다 */
+function newPw(){
+  const cs='abcdefghjkmnpqrstuvwxyz23456789';
+  const a=new Uint32Array(8); crypto.getRandomValues(a);
+  return Array.from(a,n=>cs[n%cs.length]).join('');
+}
+async function upsertLoginDir(id,email){
+  let dir={};
+  try{ dir=(await loadRaw('login_directory'))||{}; }catch(e){}
+  dir[(id||'').toLowerCase()]=(email||'').toLowerCase();
+  await saveRaw('login_directory',dir);
+}
+async function removeLoginDir(id){
+  let dir={};
+  try{ dir=(await loadRaw('login_directory'))||{}; }catch(e){}
+  delete dir[(id||'').toLowerCase()];
+  await saveRaw('login_directory',dir);
+}
+
+function drawAccounts(){
+  const ids=Array.from(new Set(Object.keys(R).concat(ELEVATED_ADMIN_IDS).filter(Boolean)))
+    .sort((a,b)=>a.localeCompare(b,'ko'));
+  document.getElementById('pane').innerHTML=
+    '<div class="card"><h2>계정 만들기</h2>'
+    +'<p class="desc">아이디와 8자리 비밀번호로 로그인 계정을 만듭니다. 만들어진 비밀번호는 <b>이 자리에서만 보이니</b> 본인에게 바로 알려주세요.</p>'
+    +'<div class="accnew"><div class="line">'
+    +'<div class="f" style="flex:1 1 160px"><label>아이디 (영문·숫자)</label><input id="naId" placeholder="예: sooyoung"></div>'
+    +'<div class="f" style="flex:1 1 200px"><label>비밀번호 (8자리)</label>'
+      +'<div class="pwbox"><input id="naPw" class="mono" maxlength="32">'
+      +'<button class="ghost" id="naGen" type="button">새로 만들기</button></div></div>'
+    +'<div class="f" style="flex:0 0 130px"><label>권한</label><select id="naRole">'
+      +'<option value="agent">에이전트 (견적만)</option>'
+      +'<option value="manager">매니저 (견적·요금·코드)</option>'
+      +'<option value="admin">어드민 (모두)</option></select></div>'
+    +'<button class="add" id="naAdd" type="button">계정 만들기</button>'
+    +'</div><p class="hint">에이전트는 견적 화면만, 매니저는 요금·코드까지, 어드민은 이 화면까지 씁니다.</p></div>'
+    +'</div>'
+
+    +'<div class="card"><h2>계정 목록 <span class="cnt">· '+ids.length+'명</span></h2>'
+    +'<p class="desc">여기 없는 사람은 로그인해도 골프 화면이 열리지 않습니다.</p>'
+    +'<div class="tblwrap"><table style="min-width:640px"><thead><tr>'
+    +'<th style="width:170px">아이디</th><th style="width:190px">권한</th><th>비밀번호</th><th style="width:80px"></th>'
+    +'</tr></thead><tbody>'
+    +ids.map(id=>{
+      const fixed=ELEVATED_ADMIN_IDS.includes(id);
+      const role=fixed?'admin':(R[id]||'agent');
+      return '<tr><td><b>'+esc(id)+'</b>'+(fixed?' <span class="badge fix">고정</span>':'')+'</td>'
+        +'<td>'+(fixed?'<span class="badge">어드민</span>'
+          :'<select data-role="'+esc(id)+'">'+Object.keys(ROLE_LABEL).map(r=>
+            '<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLE_LABEL[r]+'</option>').join('')+'</select>')+'</td>'
+        +'<td><button class="ghost" data-pw="'+esc(id)+'">비밀번호 바꾸기</button></td>'
+        +'<td>'+(fixed?'':'<button class="del" data-adel="'+esc(id)+'">삭제</button>')+'</td></tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="save" id="rSave">권한 저장</button>'
+    +'<span class="cnt">권한을 바꾸면 저장을 눌러야 반영됩니다</span></div></div>';
+
+  const p=document.getElementById('pane');
+  document.getElementById('naGen').onclick=()=>{ document.getElementById('naPw').value=newPw(); };
+  document.getElementById('naPw').value=newPw();
+  document.getElementById('naAdd').onclick=addAccount;
+  p.querySelectorAll('[data-role]').forEach(s=>s.onchange=()=>{ R[s.dataset.role]=s.value; markDirty('accounts'); });
+  p.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>changePw(b.dataset.pw));
+  p.querySelectorAll('[data-adel]').forEach(b=>b.onclick=()=>delAccount(b.dataset.adel));
+  document.getElementById('rSave').onclick=async()=>{
+    if(await saveSafe('golf_roles',R)){ clearDirty('accounts'); drawTabs(); toast('✅ 권한을 저장했습니다'); }
+  };
+}
+
+async function addAccount(){
+  const id=(document.getElementById('naId').value||'').trim().toLowerCase();
+  const pw=(document.getElementById('naPw').value||'').trim();
+  const role=document.getElementById('naRole').value;
+  if(!/^[a-z0-9._-]{3,}$/.test(id)){ toast('⚠ 아이디는 영문·숫자로 3자 이상 적어 주세요'); return; }
+  if(pw.length<8){ toast('⚠ 비밀번호는 8자리 이상이어야 합니다'); return; }
+  if(R[id]||ELEVATED_ADMIN_IDS.includes(id)){ toast('⚠ 이미 있는 아이디입니다'); return; }
+  const btn=document.getElementById('naAdd');
+  btn.disabled=true; btn.textContent='만드는 중...';
+  const email=idToEmail(id);
+  const res=await api('create',{email,password:pw,metadata:{acc_id:id,login_name:id,name:id,role:'golf'}});
+  btn.disabled=false; btn.textContent='계정 만들기';
+  if(res.error){ alert('계정을 만들지 못했습니다.\n\n'+res.error); return; }
+  await upsertLoginDir(id,email);
+  R[id]=role;
+  if(!await saveSafe('golf_roles',R)){ alert('계정은 만들어졌지만 권한 저장에 실패했습니다.\n권한 저장을 다시 눌러 주세요.'); }
+  else clearDirty('accounts');
+  drawTabs();
+  alert('계정을 만들었습니다.\n\n아이디: '+id+'\n비밀번호: '+pw+'\n권한: '+ROLE_LABEL[role]
+    +'\n\n이 비밀번호는 다시 볼 수 없습니다. 본인에게 알려주세요.');
+  document.getElementById('naId').value='';
+}
+async function changePw(id){
+  const pw=prompt('「'+id+'」의 새 비밀번호 (8자리 이상)\n\n비워 두고 확인을 누르면 8자리로 자동 생성합니다.','');
+  if(pw===null) return;
+  const npw=pw.trim()||newPw();
+  if(npw.length<8){ toast('⚠ 8자리 이상이어야 합니다'); return; }
+  const res=await api('setPassword',{email:idToEmail(id),password:npw});
+  if(res.error){
+    /* 예전 계정은 이메일이 다를 수 있다 — 매핑표에서 찾아 한 번 더 시도한다 */
+    let dir={};
+    try{ dir=(await loadRaw('login_directory'))||{}; }catch(e){}
+    const alt=dir[id];
+    const res2=alt?await api('setPassword',{email:alt,password:npw}):{error:res.error};
+    if(res2.error){ alert('비밀번호를 바꾸지 못했습니다.\n\n'+res2.error); return; }
+  }
+  alert('「'+id+'」의 비밀번호를 바꿨습니다.\n\n새 비밀번호: '+npw+'\n\n본인에게 알려주세요.');
+}
+async function delAccount(id){
+  if(!confirm('「'+id+'」 계정을 지웁니다.\n\n로그인 계정 자체가 삭제되어 되돌릴 수 없습니다.\n\n계속할까요?')) return;
+  let dir={};
+  try{ dir=(await loadRaw('login_directory'))||{}; }catch(e){}
+  const email=dir[id]||idToEmail(id);
+  const res=await api('delete',{email});
+  if(res.error&&!/찾지 못/.test(res.error)){ alert('계정을 지우지 못했습니다.\n\n'+res.error); return; }
+  await removeLoginDir(id);
+  delete R[id];
+  if(await saveSafe('golf_roles',R)){ clearDirty('accounts'); }
+  drawTabs();
+  toast('🗑 「'+id+'」 계정을 지웠습니다');
+}
+
+/* ══════ 시작 ══════ */
+(async()=>{
+  try{
+    const {data}=await sb.auth.getSession();
+    if(data&&data.session) await afterAuth(data.session.user);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
