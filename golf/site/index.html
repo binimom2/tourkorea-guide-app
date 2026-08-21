@@ -142,6 +142,35 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .askout{margin-top:12px;font-size:13.5px;color:rgba(255,255,255,.85);white-space:pre-wrap;background:rgba(0,0,0,.2);border-radius:10px;padding:12px 14px;display:none}
 .askout.on{display:block}
 .askbtns{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+.askhint{margin:10px 0 0;font-size:12.5px;color:rgba(255,255,255,.6)}
+
+/* ── 손님 간편 로그인 ── */
+.loginbtn{background:none;border:1px solid var(--line);border-radius:999px;padding:8px 15px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer;white-space:nowrap;margin-left:6px}
+.loginbtn:hover{background:rgba(18,58,43,.07)}
+.loginbtn.on{background:rgba(18,58,43,.08);border-color:transparent}
+@media(max-width:860px){.loginbtn{margin-left:0;width:100%;margin-top:4px}}
+.mask{position:fixed;inset:0;z-index:200;background:rgba(8,23,15,.62);display:none;align-items:center;justify-content:center;padding:18px}
+.mask.on{display:flex}
+.modal{background:var(--paper);border-radius:18px;width:100%;max-width:392px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.36);max-height:90vh;overflow:auto}
+.modal h3{margin:0 0 4px;font-size:21px;font-weight:900;letter-spacing:-.04em}
+.modal .sub{margin:0 0 20px;font-size:13.5px;color:var(--muted);line-height:1.55}
+.kakao{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#FEE500;color:#191600;border:0;border-radius:11px;padding:14px;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer}
+.kakao:hover{filter:brightness(.96)}
+.orline{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:11.5px;font-weight:700}
+.orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line)}
+.mfield{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.mfield label{font-size:11.5px;font-weight:800;color:var(--muted)}
+.mfield input{font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+.mfield input:focus{outline:2px solid var(--marigold);outline-offset:1px}
+.mbtn{width:100%;background:var(--fairway);color:#fff;border:0;border-radius:11px;padding:13px;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.mbtn:hover{background:var(--fairway-mid)}
+.mbtn[disabled]{opacity:.5;cursor:default}
+.mnote{margin:14px 0 0;font-size:12px;color:var(--muted);line-height:1.6}
+.mmsg{margin:12px 0 0;font-size:13px;font-weight:700;color:var(--fairway);background:rgba(18,58,43,.07);border-radius:9px;padding:10px 12px;display:none;white-space:pre-wrap}
+.mmsg.on{display:block}
+.mmsg.bad{color:#8d2f1c;background:rgba(192,73,47,.1)}
+.mclose{float:right;background:none;border:0;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:0 2px;margin:-6px -4px 0 0}
+.hide{display:none!important}
 
 /* ── 푸터 ── */
 footer{background:var(--fairway-deep);color:rgba(255,255,255,.55);font-size:12.5px;padding:30px 0 34px}
@@ -163,6 +192,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
       <a href="#tours">기타투어</a>
       <a href="#board">게시판</a>
       <a href="#contact" class="navcta">실시간 견적</a>
+      <button class="loginbtn" id="loginBtn" type="button">로그인</button>
     </div>
   </div>
 </nav>
@@ -257,7 +287,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <label>박수<input type="number" id="qNights" min="0" placeholder="박"></label>
         <label>라운딩<input type="number" id="qRounds" min="0" placeholder="회"></label>
         <label>지역<input type="text" id="qRegion" placeholder="파타야 / 방콕"></label>
+        <label>성함<input type="text" id="qName" placeholder="예약자 성함"></label>
+        <label>연락처<input type="text" id="qTel" placeholder="연락 받으실 번호"></label>
       </div>
+      <p class="askhint" id="askHint">로그인하시면 성함·연락처가 자동으로 채워집니다.</p>
       <div class="askbtns">
         <button class="btn btn-gold" id="qMake" type="button">문의 내용 만들기</button>
         <button class="btn btn-ghost" id="qCopy" type="button">복사하기</button>
@@ -266,6 +299,42 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     </div>
   </div>
 </section>
+
+<!-- 손님 간편 로그인 -->
+<div class="mask" id="loginMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <button class="mclose" id="loginClose" type="button" aria-label="닫기">×</button>
+    <h3 id="loginTitle">간편 로그인</h3>
+    <p class="sub">로그인하시면 견적 요청이 한결 간편해지고,
+      다음에 오셔도 성함·연락처를 다시 적지 않으셔도 됩니다.</p>
+
+    <div id="loginForms">
+      <button class="kakao hide" id="kakaoBtn" type="button"><span>💬</span> 카카오로 시작하기</button>
+      <div class="orline hide" id="orLine">또는</div>
+
+      <div id="emailStep">
+        <div class="mfield">
+          <label for="emEmail">이메일</label>
+          <input type="email" id="emEmail" placeholder="name@example.com" autocomplete="email">
+        </div>
+        <button class="mbtn" id="emSend" type="button">인증번호 받기</button>
+      </div>
+
+      <div id="codeStep" class="hide">
+        <div class="mfield">
+          <label for="emCode">메일로 받으신 6자리 인증번호</label>
+          <input type="text" id="emCode" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+        </div>
+        <button class="mbtn" id="emVerify" type="button">로그인</button>
+        <p class="mnote"><a href="#" id="emBack">다른 이메일로 다시 받기</a></p>
+      </div>
+    </div>
+
+    <div class="mmsg" id="loginMsg"></div>
+    <p class="mnote">비밀번호는 따로 만들지 않으셔도 됩니다.
+      알려주신 연락처는 견적 상담 목적으로만 사용합니다.</p>
+  </div>
+</div>
 
 <footer>
   <div class="wrap">
@@ -427,6 +496,8 @@ function askText(){
   if(g("qPax"))    L.push("· 인원: " + g("qPax") + "명");
   if(g("qNights")) L.push("· 일정: " + g("qNights") + "박 " + (Number(g("qNights")) + 1) + "일");
   if(g("qRounds")) L.push("· 라운딩: " + g("qRounds") + "회");
+  if(g("qName"))   L.push("· 성함: " + g("qName"));
+  if(g("qTel"))    L.push("· 연락처: " + g("qTel"));
   if(L.length === 1) return null;
   L.push("", "위 일정으로 견적 부탁드립니다.");
   return L.join("\n");
@@ -443,6 +514,179 @@ $("#qCopy").onclick = async () => {
   catch(e){ $("#qCopy").textContent = "복사 실패 — 직접 선택해 주세요"; }
   setTimeout(() => { $("#qCopy").textContent = "복사하기"; }, 1800);
 };
+
+/* ────────────────────────────────────────────────────────────
+   손님 간편 로그인
+   ⚠ 직원용 Supabase(aplevsrmxkzghutihyvs)를 쓰지 않는다.
+      그쪽은 가이드정산서·예약관리와 같은 프로젝트라, 손님이 가입하면
+      authenticated 사용자가 되어 원가 요금표까지 읽힐 수 있다.
+      손님용은 반드시 별도 프로젝트의 URL/키를 넣을 것.
+   url/key가 비어 있으면 로그인 버튼은 「준비중」 안내만 띄운다.
+   ──────────────────────────────────────────────────────────── */
+const GUEST_AUTH = {
+  url:   "",      // 예: https://xxxxxxxx.supabase.co   (손님 전용 프로젝트)
+  key:   "",      // 해당 프로젝트의 publishable(anon) 키
+  kakao: true,    // 카카오 provider를 켜 두었으면 true
+  email: true     // 이메일 인증번호 로그인 사용
+};
+const GUEST_KEY = "golf_guest_profile";   // 성함·연락처 기억용
+
+let gsb = null, guest = null;
+
+function msg(t, bad){
+  const m = $("#loginMsg");
+  m.textContent = t || "";
+  m.classList.toggle("on", !!t);
+  m.classList.toggle("bad", !!bad);
+}
+function openLogin(){
+  $("#menu").classList.remove("open");   /* 모바일에서 메뉴가 열린 채 겹치지 않게 */
+  $("#loginMask").classList.add("on");
+  $("#kakaoBtn").classList.toggle("hide", !GUEST_AUTH.kakao);
+  $("#orLine").classList.toggle("hide", !(GUEST_AUTH.kakao && GUEST_AUTH.email));
+  $("#emailStep").classList.toggle("hide", !GUEST_AUTH.email);
+  $("#codeStep").classList.add("hide");
+  msg(ready() ? "" : "아직 로그인 준비 중입니다. 아래 연락처로 문의 주시면 바로 도와드리겠습니다.");
+}
+function closeLogin(){ $("#loginMask").classList.remove("on"); msg(""); }
+function ready(){ return !!(GUEST_AUTH.url && GUEST_AUTH.key); }
+
+/* supabase-js는 로그인을 실제로 쓸 때만 불러온다 — 첫 화면을 가볍게 */
+function loadSb(){
+  if(window.supabase) return Promise.resolve();
+  return new Promise((ok, no) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+    s.onload = ok; s.onerror = () => no(new Error("load"));
+    document.head.appendChild(s);
+  });
+}
+async function client(){
+  if(gsb) return gsb;
+  await loadSb();
+  gsb = window.supabase.createClient(GUEST_AUTH.url, GUEST_AUTH.key,
+    { auth:{ storageKey:"golf-guest-auth", persistSession:true, autoRefreshToken:true, detectSessionInUrl:true } });
+  return gsb;
+}
+
+/* 로그인 상태를 헤더와 견적 요청 칸에 반영 */
+function paint(){
+  const b = $("#loginBtn");
+  if(guest){
+    b.textContent = (guest.name || guest.email || "회원") + " · 로그아웃";
+    b.classList.add("on");
+    $("#askHint").textContent = "로그인 상태입니다. 성함·연락처는 고쳐 넣으셔도 됩니다.";
+  }else{
+    b.textContent = "로그인";
+    b.classList.remove("on");
+    $("#askHint").textContent = "로그인하시면 성함·연락처가 자동으로 채워집니다.";
+  }
+  prefill();
+}
+function prefill(){
+  let p = null;
+  try{ p = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); }catch(e){}
+  const n = $("#qName"), t = $("#qTel");
+  if(!n.value && guest && (guest.name || (p && p.name))) n.value = guest.name || p.name;
+  if(!t.value && p && p.tel) t.value = p.tel;
+}
+function remember(){
+  try{
+    localStorage.setItem(GUEST_KEY, JSON.stringify({
+      name: $("#qName").value.trim(), tel: $("#qTel").value.trim()
+    }));
+  }catch(e){}
+}
+function setGuest(user){
+  guest = user ? {
+    id: user.id,
+    email: user.email || "",
+    name: (user.user_metadata && (user.user_metadata.name || user.user_metadata.full_name
+           || user.user_metadata.preferred_username)) || ""
+  } : null;
+  paint();
+}
+
+/* 새로고침해도 로그인이 유지되게 — 설정돼 있을 때만 확인한다 */
+(async () => {
+  if(!ready()) return;
+  try{
+    const sb = await client();
+    const { data } = await sb.auth.getSession();
+    setGuest(data && data.session ? data.session.user : null);
+    sb.auth.onAuthStateChange((_e, s) => setGuest(s ? s.user : null));
+  }catch(e){}
+})();
+
+$("#loginBtn").onclick = async () => {
+  if(guest){
+    if(!confirm("로그아웃하시겠습니까?")) return;
+    try{ const sb = await client(); await sb.auth.signOut(); }catch(e){}
+    setGuest(null);
+    return;
+  }
+  openLogin();
+};
+$("#loginClose").onclick = closeLogin;
+$("#loginMask").onclick = e => { if(e.target === $("#loginMask")) closeLogin(); };
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeLogin(); });
+
+$("#kakaoBtn").onclick = async () => {
+  if(!ready()){ msg("아직 로그인 준비 중입니다.", true); return; }
+  try{
+    const sb = await client();
+    const { error } = await sb.auth.signInWithOAuth({
+      provider:"kakao", options:{ redirectTo: location.origin + location.pathname }
+    });
+    if(error) throw error;
+  }catch(e){ msg("카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.", true); }
+};
+
+let otpEmail = "";
+$("#emSend").onclick = async () => {
+  const em = $("#emEmail").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ msg("이메일 주소를 확인해 주세요.", true); return; }
+  if(!ready()){ msg("아직 로그인 준비 중입니다.", true); return; }
+  $("#emSend").disabled = true; msg("인증번호를 보내는 중입니다…");
+  try{
+    const sb = await client();
+    const { error } = await sb.auth.signInWithOtp({ email: em, options:{ shouldCreateUser:true } });
+    if(error) throw error;
+    otpEmail = em;
+    $("#emailStep").classList.add("hide");
+    $("#orLine").classList.add("hide");
+    $("#kakaoBtn").classList.add("hide");
+    $("#codeStep").classList.remove("hide");
+    msg(em + " 으로 인증번호를 보냈습니다.\n메일이 안 보이면 스팸함도 확인해 주세요.");
+    $("#emCode").focus();
+  }catch(e){ msg("인증번호를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.", true); }
+  $("#emSend").disabled = false;
+};
+$("#emVerify").onclick = async () => {
+  const code = $("#emCode").value.trim();
+  if(code.length < 6){ msg("6자리 인증번호를 입력해 주세요.", true); return; }
+  $("#emVerify").disabled = true; msg("확인 중입니다…");
+  try{
+    const sb = await client();
+    const { data, error } = await sb.auth.verifyOtp({ email: otpEmail, token: code, type:"email" });
+    if(error) throw error;
+    setGuest(data.user);
+    closeLogin();
+  }catch(e){ msg("인증번호가 맞지 않거나 시간이 지났습니다. 다시 받아 주세요.", true); }
+  $("#emVerify").disabled = false;
+};
+$("#emBack").onclick = e => {
+  e.preventDefault();
+  $("#codeStep").classList.add("hide");
+  $("#emailStep").classList.remove("hide");
+  $("#orLine").classList.toggle("hide", !(GUEST_AUTH.kakao && GUEST_AUTH.email));
+  $("#kakaoBtn").classList.toggle("hide", !GUEST_AUTH.kakao);
+  msg("");
+};
+
+$("#qName").addEventListener("change", remember);
+$("#qTel").addEventListener("change", remember);
+paint();
 
 /* 모바일 메뉴 */
 $("#burger").onclick = () => $("#menu").classList.toggle("open");
