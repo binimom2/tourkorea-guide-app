@@ -43,6 +43,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .top a,.top button.lnk{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);color:#fff;
   border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;text-decoration:none}
 .top a:hover,.top button.lnk:hover{background:rgba(255,255,255,.22)}
+/* 직원·어드민이 화면끼리 오갈 수 있게 — 손님 로그인과는 다른 문이다 */
+.jump{display:flex;gap:6px;flex-wrap:wrap}
 
 /* ── 탭 ── */
 .tabs{max-width:1180px;margin:0 auto;padding:14px 16px 0;display:flex;gap:6px;flex-wrap:wrap}
@@ -123,7 +125,11 @@ td textarea{resize:vertical;min-height:34px;line-height:1.45}
   <div class="top">
     <div class="in">
       <b class="brand">위브투어타일랜드 · 사이트 관리</b>
-      <a href="../index.html" target="_blank">사이트 보기 ↗</a>
+      <nav class="jump">
+        <a href="../index.html">🌐 손님 사이트</a>
+        <a href="/golf/">⛳ 견적</a>
+        <a href="/golf/admin/">🔧 요금·코드</a>
+      </nav>
       <span class="who" id="who"></span>
       <button class="lnk" id="outBtn" type="button">로그아웃</button>
     </div>
@@ -262,11 +268,13 @@ async function afterAuth(user){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('who').textContent=currentUser.name+(GROLE?' · '+GROLE:'');
 
-  if(GROLE!=='admin'){
+  /* 데이터 관리는 어드민과 직원(매니저)이 함께 본다.
+     계정 만들기만 어드민 몫이다 — 로그인 비밀번호를 만드는 일이라서. */
+  if(GROLE!=='admin'&&GROLE!=='manager'){
     document.getElementById('tabs').innerHTML='';
     document.getElementById('pane').innerHTML=
       '<div class="card noauth"><h2>접근 권한 없음</h2>'
-      +'<p style="color:var(--muted)">이 화면은 어드민만 사용할 수 있습니다.<br>'
+      +'<p style="color:var(--muted)">이 화면은 어드민과 직원 계정만 사용할 수 있습니다.<br>'
       +'권한이 필요하면 관리자에게 요청해 주세요.</p></div>';
     return;
   }
@@ -334,14 +342,17 @@ window.addEventListener('beforeunload',e=>{ if(anyDirty()){ e.preventDefault(); 
 const TABS=[
   {k:'site',   label:'사이트 내용'},
   {k:'codes',  label:'코드관리'},
-  {k:'accounts',label:'계정관리'}
+  {k:'accounts',label:'계정관리', adminOnly:true}
 ];
 let tab='site';
+function myTabs(){ return TABS.filter(t=>!t.adminOnly||GROLE==='admin'); }
 function drawTabs(){
-  document.getElementById('tabs').innerHTML=TABS.map(t=>
+  const ts=myTabs();
+  if(!ts.some(t=>t.k===tab)) tab=ts[0].k;
+  document.getElementById('tabs').innerHTML=ts.map(t=>
     '<button id="tab-'+t.k+'" class="'+(t.k===tab?'on':'')+'">'+t.label
     +(dirty[t.k]?'<span class="dirty"></span>':'')+'</button>').join('');
-  TABS.forEach(t=>{ document.getElementById('tab-'+t.k).onclick=()=>{ tab=t.k; drawTabs(); }; });
+  ts.forEach(t=>{ document.getElementById('tab-'+t.k).onclick=()=>{ tab=t.k; drawTabs(); }; });
   draw();
 }
 function draw(){

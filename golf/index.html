@@ -161,6 +161,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
       <span class="who" id="whoBadge"></span>
       <a onclick="newQuote()" style="cursor:pointer;">🆕 새 견적</a>
       <a href="/golf/admin/" id="adminLink" style="display:none;background:var(--fairway);color:var(--sand)">🔧 코드·요금 관리</a>
+      <a href="/golf/site/admin/" id="siteLink" style="display:none">🌐 사이트 관리</a>
       <a href="/travel/">← 예약관리</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
@@ -1313,7 +1314,10 @@ function startApp(user){
     return;
   }
   // 코드·요금 관리는 어드민과 매니저만. 에이전트는 견적 화면만 쓴다.
-  if(GROLE==='admin'||GROLE==='manager') document.getElementById('adminLink').style.display='';
+  if(GROLE==='admin'||GROLE==='manager'){
+    document.getElementById('adminLink').style.display='';
+    document.getElementById('siteLink').style.display='';   // 사이트 내용 관리도 같은 두 권한
+  }
   if(wb) wb.textContent=`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
   buildGuideOptions();

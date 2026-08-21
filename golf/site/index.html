@@ -152,6 +152,9 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .loginbtn{background:none;border:1px solid var(--line);border-radius:999px;padding:8px 15px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer;white-space:nowrap;margin-left:6px}
 .loginbtn:hover{background:rgba(18,58,43,.07)}
 .loginbtn.on{background:rgba(18,58,43,.08);border-color:transparent}
+/* 직원·어드민만 보이는 관리 버튼 — 손님 「로그인」과는 다른 문이다 */
+.staffbtn{background:var(--fairway);color:#fff;border-color:var(--fairway);text-decoration:none;display:inline-block}
+.staffbtn:hover{background:var(--fairway-mid)}
 @media(max-width:860px){.loginbtn{margin-left:0;width:100%;margin-top:4px}}
 .mask{position:fixed;inset:0;z-index:200;background:rgba(8,23,15,.62);display:none;align-items:center;justify-content:center;padding:18px}
 .mask.on{display:flex}
@@ -219,6 +222,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
       <a href="#board">게시판</a>
       <a href="#contact" class="navcta">실시간 견적</a>
       <button class="loginbtn" id="loginBtn" type="button">로그인</button>
+      <a class="loginbtn staffbtn hide" id="staffBtn" href="admin/">⚙ 관리</a>
     </div>
   </div>
 </nav>
@@ -735,6 +739,19 @@ $("#emBack").onclick = e => {
 $("#qName").addEventListener("change", remember);
 $("#qTel").addEventListener("change", remember);
 paint();
+
+/* 직원·어드민이 이 브라우저에서 업무 화면에 로그인해 뒀으면 「⚙ 관리」 버튼을 띄운다.
+   손님 「로그인」과는 별개의 문이다 — 손님은 이 버튼을 볼 일이 없다.
+   (업무용 세션은 Supabase가 localStorage의 gs-auth에 넣어 둔다) */
+(function(){
+  let has = false;
+  try{
+    const raw = localStorage.getItem("sb-" + SB_URL.split("//")[1].split(".")[0] + "-auth-token")
+             || localStorage.getItem("gs-auth");
+    has = !!(raw && JSON.parse(raw));
+  }catch(e){ has = false; }
+  if(has) $("#staffBtn").classList.remove("hide");
+})();
 
 /* 모바일 메뉴 */
 $("#burger").onclick = () => $("#menu").classList.toggle("open");
