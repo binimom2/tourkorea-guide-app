@@ -96,7 +96,9 @@ section:nth-of-type(even) .tabs button.on{background:var(--fairway);color:#fff}
 section:nth-of-type(even) .card{background:var(--paper)}
 .thumb{aspect-ratio:16/10;background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep));display:flex;align-items:center;justify-content:center;position:relative}
 .thumb i{font-style:normal;font-size:30px;font-weight:900;color:rgba(255,255,255,.9);letter-spacing:-.04em;text-align:center;padding:0 12px;line-height:1.15}
-.thumb .holes{position:absolute;top:9px;right:9px;background:var(--marigold);color:#2A1A00;font-size:11px;font-weight:900;border-radius:999px;padding:3px 9px}
+/* 사진이 있으면 이름 칸을 덮는다. 없으면 img가 스스로 사라져 이름 칸이 남는다. */
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb .holes{position:absolute;top:9px;right:9px;background:var(--marigold);color:#2A1A00;font-size:11px;font-weight:900;border-radius:999px;padding:3px 9px;z-index:2}
 .card .body{padding:13px 15px 15px;flex:1;display:flex;flex-direction:column;gap:5px}
 .card h3{margin:0;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
 .card .reg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em}
@@ -173,6 +175,28 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .mmsg.bad{color:#8d2f1c;background:rgba(192,73,47,.1)}
 .mclose{float:right;background:none;border:0;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:0 2px;margin:-6px -4px 0 0}
 .hide{display:none!important}
+
+/* ── 골프장·호텔 상세 ── */
+.card{cursor:pointer;text-align:left;font:inherit;color:inherit;padding:0;width:100%}
+.card:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
+.modal.wide{max-width:470px;padding:20px}
+.dthumb{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep));display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.dthumb i{font-style:normal;font-size:28px;font-weight:900;color:rgba(255,255,255,.9);letter-spacing:-.04em;text-align:center;padding:0 14px}
+.dthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dthumb .holes{position:absolute;top:10px;right:10px;background:var(--marigold);color:#2A1A00;font-size:11.5px;font-weight:900;border-radius:999px;padding:4px 10px;z-index:2}
+.dreg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em;margin-bottom:2px}
+.modal.wide h3{margin:0 0 12px}
+.dlist{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:7px}
+.dlist li{font-size:14px;color:var(--muted);padding-left:16px;position:relative;line-height:1.5}
+.dlist li::before{content:"·";position:absolute;left:4px;font-weight:900;color:var(--marigold)}
+.dlist li.none{padding-left:0;font-size:13.5px}
+.dlist li.none::before{content:""}
+
+/* 견적 요청 칸에 쌓이는 「관심 골프장」 */
+.wish{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.wish button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.wish button:hover{background:rgba(232,163,61,.28)}
+.wish button::after{content:" ✕";opacity:.6;font-size:11px}
 
 /* ── 푸터 ── */
 footer{background:var(--fairway-deep);color:rgba(255,255,255,.55);font-size:12.5px;padding:30px 0 34px}
@@ -293,6 +317,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <label>성함<input type="text" id="qName" placeholder="예약자 성함"></label>
         <label>연락처<input type="text" id="qTel" placeholder="연락 받으실 번호"></label>
       </div>
+      <div class="wish" id="wishBox"></div>
       <p class="askhint" id="askHint">로그인하시면 성함·연락처가 자동으로 채워집니다.</p>
       <div class="askbtns">
         <button class="btn btn-gold" id="qMake" type="button">문의 내용 만들기</button>
@@ -302,6 +327,18 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     </div>
   </div>
 </section>
+
+<!-- 골프장 · 호텔 상세 -->
+<div class="mask" id="detailMask">
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="dName">
+    <button class="mclose" id="detailClose" type="button" aria-label="닫기">×</button>
+    <div class="dthumb" id="dThumb"></div>
+    <div class="dreg" id="dReg"></div>
+    <h3 id="dName"></h3>
+    <ul class="dlist" id="dList"></ul>
+    <button class="mbtn" id="dQuote" type="button">이곳으로 견적 요청하기</button>
+  </div>
+</div>
 
 <!-- 손님 간편 로그인 -->
 <div class="mask" id="loginMask">
@@ -359,68 +396,75 @@ const SITE = {
      손님에게 의미 있는 것(홀 수·조 편성·카트 진입·휴장·라운딩 시간 제한)만 남겼다.
      지역·이름은 요금표와 같아야 견적기와 어긋나지 않는다. */
   regionOrder: ["파타야","방콕","후아힌","카오야이","칸차나부리"],
+
+  /* 사진 — img/ 폴더에 파일을 넣고 여기에 「이름: 경로」로 한 줄 적으면 카드에 붙는다.
+     이름은 아래 courses/hotels의 n과 정확히 같아야 한다. 사진이 없는 곳은 안 적으면 된다.
+     예)  "람차방": "img/람차방.jpg", */
+  photos: {
+  },
+
   courses: [
-    { r:"방콕", n:"알파인", h:"", d:"주말·공휴일은 12:00 이후 라운딩 · 조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무) · 매주 월요일 휴장" },
-    { r:"파타야", n:"람차방", h:"27홀", d:"조 편성 주중 5인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"시암올드", h:"", d:"비수기 월요일 휴장 · 조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"시암플랜/워터/롤링", h:"27+18홀", d:"플랜테이션 27홀 · 워터사이드 · 롤링힐스 · 조 편성 주중 5인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"찌짠", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"피닉스", h:"27홀", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"부라파", h:"36홀", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"파타나", h:"27홀", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"파타야", h:"", d:"조 편성 주중 5인 · 주말 오전4인 오후5인 · 카트 페어웨이 진입 가능(선택)" },
-    { r:"파타야", n:"트레져힐", h:"", d:"조 편성 주중 6인 · 주말 6인 · 카트 페어웨이 진입 가능(선택)" },
-    { r:"파타야", n:"뿌탈루앙", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(선택)" },
-    { r:"파타야", n:"그린우드", h:"27홀", d:"조 편성 주중 5인 · 주말 오전4인 오후5인 · 카트 페어웨이 진입 가능(선택)" },
-    { r:"파타야", n:"방프라", h:"", d:"조 편성 주중 오전5인 오후6인 · 주말 오전5인 오후6인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"시암방콕", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무) · 비수기 매주 월요일 휴장" },
-    { r:"파타야", n:"파타비아", h:"", d:"조 편성 주중 오전5인 오후6인 · 주말 오전5인 오후6인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"이스턴스타", h:"", d:"조 편성 주중 오전5인 오후6인 · 주말 오전5인 오후6인 · 카트 페어웨이 진입 가능(선택)" },
-    { r:"파타야", n:"헤르매스", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"카오키여우", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"카스카타", h:"36홀", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"세인트앤드류2000", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"라용그린밸리", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"수파프룩", h:"", d:"주말·공휴일은 11:30 이후 라운딩 · 조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 불가" },
-    { r:"방콕", n:"타이", h:"", d:"주말·공휴일은 11:30 이후 라운딩 · 조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무) · 매주 월요일 휴장" },
-    { r:"방콕", n:"타나시티", h:"", d:"조 편성 주중 5인 · 주말 오전 4인 오후 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
-    { r:"방콕", n:"레이크우드", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"파타야", n:"프리젠트밸리", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"방콕", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무) · 야간 라운딩 운영" },
-    { r:"방콕", n:"그린밸리", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"람루카", h:"36홀", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"므앙깨우", h:"", d:"조 편성 주중 5인 · 주말 4인 · 카트 페어웨이 진입 가능(선택)" },
-    { r:"방콕", n:"니칸티", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무) · 캐디팁 포함, 라운딩 전후 간단한 식사 제공" },
-    { r:"방콕", n:"판야인드라", h:"27홀", d:"조 편성 주중 6인 · 주말 6인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"로얄방파인", h:"", d:"조 편성 주중 5인 · 주말 4인 · 카트 페어웨이 진입 불가" },
-    { r:"방콕", n:"리버딜", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"리가시", h:"", d:"조 편성 주중 8인 · 주말 6인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"나바타니", h:"", d:"조 편성 주중 5인 · 주말 4인 · 카트 페어웨이 진입 가능(의무) · 매주 월요일 휴장" },
-    { r:"방콕", n:"서밋윈드밀", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 불가 · 야간 라운딩 운영(월요일 야간 휴장)" },
-    { r:"방콕", n:"라차캄", h:"18홀", d:"조 편성 주중 6인 · 주말 6인 · 카트 페어웨이 진입 가능(의무) · 아유타야 방면" },
-    { r:"방콕", n:"노턴랑싯", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무) · 아유타야 방면" },
-    { r:"방콕", n:"파인허스트", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 불가" },
-    { r:"방콕", n:"로얄레이크사이드", h:"", d:"조 편성 주중 5인 · 주말 5인" },
-    { r:"방콕", n:"수완", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무) · 후반 3홀 야간 조명" },
-    { r:"방콕", n:"피닉스골드방콕(구,수완나폼)", h:"", d:"조 편성 주중 5인 · 주말5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"더로얄골프(라끄라방)", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"빈티지", h:"", d:"조 편성 주중 5인 · 주말 오전 4인 오후 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
+    { r:"방콕", n:"알파인", h:"", d:"주말·공휴일은 12:00 이후 라운딩 · 조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무) · 매주 월요일 휴장" },
+    { r:"파타야", n:"람차방", h:"27홀", d:"조 편성 주중 5인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"시암올드", h:"", d:"비수기 월요일 휴장 · 조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"시암플랜/워터/롤링", h:"27+18홀", d:"플랜테이션 27홀 · 워터사이드 · 롤링힐스 · 조 편성 주중 5인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"찌짠", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"피닉스", h:"27홀", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"부라파", h:"36홀", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"파타나", h:"27홀", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"파타야", h:"", d:"조 편성 주중 5인·주말 오전4인 오후5인 · 카트 페어웨이 진입 가능(선택)" },
+    { r:"파타야", n:"트레져힐", h:"", d:"조 편성 주중 6인·주말 6인 · 카트 페어웨이 진입 가능(선택)" },
+    { r:"파타야", n:"뿌탈루앙", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(선택)" },
+    { r:"파타야", n:"그린우드", h:"27홀", d:"조 편성 주중 5인·주말 오전4인 오후5인 · 카트 페어웨이 진입 가능(선택)" },
+    { r:"파타야", n:"방프라", h:"", d:"조 편성 주중 오전5인 오후6인·주말 오전5인 오후6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"시암방콕", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무) · 비수기 매주 월요일 휴장" },
+    { r:"파타야", n:"파타비아", h:"", d:"조 편성 주중 오전5인 오후6인·주말 오전5인 오후6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"이스턴스타", h:"", d:"조 편성 주중 오전5인 오후6인·주말 오전5인 오후6인 · 카트 페어웨이 진입 가능(선택)" },
+    { r:"파타야", n:"헤르매스", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"카오키여우", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"카스카타", h:"36홀", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"세인트앤드류2000", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"라용그린밸리", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"수파프룩", h:"", d:"주말·공휴일은 11:30 이후 라운딩 · 조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 불가" },
+    { r:"방콕", n:"타이", h:"", d:"주말·공휴일은 11:30 이후 라운딩 · 조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무) · 매주 월요일 휴장" },
+    { r:"방콕", n:"타나시티", h:"", d:"조 편성 주중 5인·주말 오전 4인 오후 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
+    { r:"방콕", n:"레이크우드", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"파타야", n:"프리젠트밸리", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"방콕", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무) · 야간 라운딩 운영" },
+    { r:"방콕", n:"그린밸리", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"람루카", h:"36홀", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"므앙깨우", h:"", d:"조 편성 주중 5인·주말 4인 · 카트 페어웨이 진입 가능(선택)" },
+    { r:"방콕", n:"니칸티", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무) · 캐디팁 포함, 라운딩 전후 간단한 식사 제공" },
+    { r:"방콕", n:"판야인드라", h:"27홀", d:"조 편성 주중 6인·주말 6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"로얄방파인", h:"", d:"조 편성 주중 5인·주말 4인 · 카트 페어웨이 진입 불가" },
+    { r:"방콕", n:"리버딜", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"리가시", h:"", d:"조 편성 주중 8인·주말 6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"나바타니", h:"", d:"조 편성 주중 5인·주말 4인 · 카트 페어웨이 진입 가능(의무) · 매주 월요일 휴장" },
+    { r:"방콕", n:"서밋윈드밀", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 불가 · 야간 라운딩 운영(월요일 야간 휴장)" },
+    { r:"방콕", n:"라차캄", h:"18홀", d:"조 편성 주중 6인·주말 6인 · 카트 페어웨이 진입 가능(의무) · 아유타야 방면" },
+    { r:"방콕", n:"노턴랑싯", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무) · 아유타야 방면" },
+    { r:"방콕", n:"파인허스트", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 불가" },
+    { r:"방콕", n:"로얄레이크사이드", h:"", d:"조 편성 주중 5인·주말 5인" },
+    { r:"방콕", n:"수완", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무) · 후반 3홀 야간 조명" },
+    { r:"방콕", n:"피닉스골드방콕(구,수완나폼)", h:"", d:"조 편성 주중 5인·주말5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"더로얄골프(라끄라방)", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"빈티지", h:"", d:"조 편성 주중 5인·주말 오전 4인 오후 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
     { r:"방콕", n:"더로얄젬스시티(랑싯)", h:"", d:"조 편성 주중 5인 오후 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
-    { r:"방콕", n:"윈저파크", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
-    { r:"방콕", n:"로빈스우드", h:"", d:"매주 월요일 휴장 · 조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무) · 빠툼타니 방면" },
-    { r:"방콕", n:"반라캇", h:"", d:"조 편성 주중 5인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"방콕", n:"로터스밸리", h:"", d:"조 편성 주중 5인 · 주말 오전4인 오후 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"후아힌", n:"파인애플밸리(구,반얀)", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"후아힌", n:"블랙마운틴", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 불가" },
-    { r:"후아힌", n:"팜힐스", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"후아힌", n:"로얄후아힌", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"후아힌", n:"스프링필드로얄", h:"", d:"조 편성 주중 4인 · 주말 4인 (오후 주중주말5인 가능) · 카트 페어웨이 진입 가능(의무)" },
-    { r:"후아힌", n:"마제스틱크릭", h:"", d:"조 편성 주중 4인 · 주말 4인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"카오야이", n:"마운틴크릭", h:"", d:"조 편성 주중 6인 · 주말 6인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"카오야이", n:"카오야이골프", h:"", d:"조 편성 주중 6인 · 주말 6인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"카오야이", n:"란초찬", h:"", d:"조 편성 주중 6인 · 주말 5인 · 카트 페어웨이 진입 불가" },
-    { r:"카오야이", n:"토스카나", h:"", d:"조 편성 주중 5인 · 주말 5인 · 카트 페어웨이 진입 가능(의무)" },
-    { r:"카오야이", n:"스태리밸리(구,마이오존)", h:"", d:"조 편성 주중 6인 · 주말 6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"윈저파크", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(주말 의무)" },
+    { r:"방콕", n:"로빈스우드", h:"", d:"매주 월요일 휴장 · 조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무) · 빠툼타니 방면" },
+    { r:"방콕", n:"반라캇", h:"", d:"조 편성 주중 5인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"방콕", n:"로터스밸리", h:"", d:"조 편성 주중 5인·주말 오전4인 오후 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"후아힌", n:"파인애플밸리(구,반얀)", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"후아힌", n:"블랙마운틴", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 불가" },
+    { r:"후아힌", n:"팜힐스", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"후아힌", n:"로얄후아힌", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"후아힌", n:"스프링필드로얄", h:"", d:"조 편성 주중 4인·주말 4인 (오후 주중주말5인 가능) · 카트 페어웨이 진입 가능(의무)" },
+    { r:"후아힌", n:"마제스틱크릭", h:"", d:"조 편성 주중 4인·주말 4인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"카오야이", n:"마운틴크릭", h:"", d:"조 편성 주중 6인·주말 6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"카오야이", n:"카오야이골프", h:"", d:"조 편성 주중 6인·주말 6인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"카오야이", n:"란초찬", h:"", d:"조 편성 주중 6인·주말 5인 · 카트 페어웨이 진입 불가" },
+    { r:"카오야이", n:"토스카나", h:"", d:"조 편성 주중 5인·주말 5인 · 카트 페어웨이 진입 가능(의무)" },
+    { r:"카오야이", n:"스태리밸리(구,마이오존)", h:"", d:"조 편성 주중 6인·주말 6인 · 카트 페어웨이 진입 가능(의무)" },
     { r:"카오야이", n:"키리마야", h:"", d:"현재 코스 보수 중" },
   ],
 
@@ -521,27 +565,47 @@ function tabber(boxId, list, cur, onPick){
     + esc(x.r) + ' <b>' + x.n + '</b></button>').join("");
   box.querySelectorAll("button").forEach(b => b.onclick = () => onPick(b.dataset.r));
 }
-function cardOf(x, badge){
-  return '<article class="card">'
-    + '<div class="thumb"><i>' + esc(x.n) + '</i>'
-    + (badge ? '<span class="holes">' + esc(badge) + '</span>' : '') + '</div>'
+/* 사진이 실제로 있는 곳만 SITE.photos에 적어 둔다. 적혀 있지 않으면 이름이 적힌 초록 칸이 남는다.
+   (없는 파일을 일단 불러 보는 방식은 카드마다 404를 만들어서 쓰지 않는다.) */
+function thumbOf(x, badge){
+  const src = x.img || SITE.photos[x.n];
+  return '<div class="thumb"><i>' + esc(x.n) + '</i>'
+    + (src ? '<img loading="lazy" alt="' + esc(x.n) + '" src="' + esc(src)
+             + '" onerror="this.remove()">' : "")
+    + (badge ? '<span class="holes">' + esc(badge) + '</span>' : '') + '</div>';
+}
+/* 카드는 눌러서 상세를 여는 버튼이다 — 올렸을 때 떠오르기만 하고 안 눌리면 안 된다 */
+function cardOf(x, badge, kind, idx){
+  return '<button type="button" class="card" data-k="' + kind + '" data-i="' + idx + '">'
+    + thumbOf(x, badge)
     + '<div class="body"><div class="reg">' + esc(x.r) + '</div>'
     + '<h3>' + esc(x.n) + '</h3>'
-    + (x.d ? '<p>' + esc(x.d) + '</p>' : '') + '</div></article>';
+    + (x.d ? '<p>' + esc(x.d) + '</p>' : '') + '</div></button>';
+}
+function bindCards(boxId){
+  $(boxId).querySelectorAll(".card").forEach(b => b.onclick = () => {
+    const list = b.dataset.k === "c" ? SITE.courses : SITE.hotels;
+    openDetail(list[Number(b.dataset.i)], b.dataset.k);
+  });
 }
 
 let curReg  = "";
 let curHreg = "";
 function drawTabs(){ tabber("#regTabs", SITE.courses, curReg, r => { curReg = r; drawTabs(); drawCourses(); }); }
 function drawCourses(){
-  $("#courseCards").innerHTML =
-    SITE.courses.filter(c => c.r === curReg).map(c => cardOf(c, c.h)).join("");
+  /* 원본 인덱스를 들고 가야 상세를 열 때 맞는 항목을 집는다 */
+  $("#courseCards").innerHTML = SITE.courses
+    .map((c, i) => ({ c, i })).filter(x => x.c.r === curReg)
+    .map(x => cardOf(x.c, x.c.h, "c", x.i)).join("");
+  bindCards("#courseCards");
 }
 function drawHtabs(){ tabber("#hotelTabs", SITE.hotels, curHreg, r => { curHreg = r; drawHtabs(); drawHotels(); }); }
 function drawHotels(){
-  $("#hotelCards").innerHTML =
-    SITE.hotels.filter(h => h.r === curHreg).map(h => cardOf(h, h.g)).join("")
+  $("#hotelCards").innerHTML = SITE.hotels
+    .map((h, i) => ({ h, i })).filter(x => x.h.r === curHreg)
+    .map(x => cardOf(x.h, x.h.g, "h", x.i)).join("")
     + '<p style="grid-column:1/-1;margin:6px 0 0;font-size:13px;color:var(--muted)">' + esc(SITE.hotelNote) + '</p>';
+  bindCards("#hotelCards");
 }
 function drawTours(){
   $("#tourList").innerHTML = SITE.tours.map(t =>
@@ -573,6 +637,48 @@ curReg  = regionsOf(SITE.courses)[0].r;
 curHreg = regionsOf(SITE.hotels)[0].r;
 drawTabs(); drawCourses(); drawHtabs(); drawHotels(); drawTours(); drawBoard(); drawContact();
 
+/* ── 골프장·호텔 상세 ── */
+let dCur = null;
+function openDetail(x, kind){
+  if(!x) return;
+  dCur = x;
+  $("#dThumb").innerHTML = thumbOf(x, kind === "c" ? x.h : x.g)
+    .replace('<div class="thumb">', "").replace(/<\/div>$/, "");
+  $("#dReg").textContent  = x.r;
+  $("#dName").textContent = x.n;
+  /* 소개 문구는 「 · 」로 이어 붙여 둔 것이라, 다시 쪼개 한 줄씩 보여준다 */
+  const parts = (x.d || "").split(" · ").map(s => s.trim()).filter(Boolean);
+  $("#dList").innerHTML = parts.length
+    ? parts.map(p => "<li>" + esc(p) + "</li>").join("")
+    : '<li class="none">' + (kind === "h"
+        ? "객실 타입·조식 여부는 일정에 맞춰 안내드립니다."
+        : "코스 안내는 준비 중입니다. 문의 주시면 바로 알려드리겠습니다.") + "</li>";
+  $("#dQuote").textContent = kind === "c" ? "이 골프장으로 견적 요청하기" : "이 호텔로 견적 요청하기";
+  $("#detailMask").classList.add("on");
+}
+function closeDetail(){ $("#detailMask").classList.remove("on"); }
+$("#detailClose").onclick = closeDetail;
+$("#detailMask").onclick = e => { if(e.target === $("#detailMask")) closeDetail(); };
+
+/* 눌러 둔 곳은 「관심 골프장」으로 쌓이고 견적 요청 문구에 그대로 들어간다 */
+let wish = [];
+function drawWish(){
+  $("#wishBox").innerHTML = wish.map((w, i) =>
+    '<button type="button" data-i="' + i + '">' + esc(w) + '</button>').join("");
+  $("#wishBox").querySelectorAll("button").forEach(b => b.onclick = () => {
+    wish.splice(Number(b.dataset.i), 1); drawWish();
+  });
+}
+$("#dQuote").onclick = () => {
+  if(dCur){
+    if(wish.indexOf(dCur.n) < 0) wish.push(dCur.n);
+    if(!$("#qRegion").value.trim()) $("#qRegion").value = dCur.r;
+    drawWish();
+  }
+  closeDetail();
+  document.getElementById("contact").scrollIntoView({ behavior:"smooth" });
+};
+
 /* 견적 요청 문구 만들기 — 손님이 그대로 복사해 카톡으로 보낼 수 있게 */
 function askText(){
   const g = id => (document.getElementById(id).value || "").trim();
@@ -582,6 +688,7 @@ function askText(){
   if(g("qPax"))    L.push("· 인원: " + g("qPax") + "명");
   if(g("qNights")) L.push("· 일정: " + g("qNights") + "박 " + (Number(g("qNights")) + 1) + "일");
   if(g("qRounds")) L.push("· 라운딩: " + g("qRounds") + "회");
+  if(wish.length)  L.push("· 희망 골프장·호텔: " + wish.join(", "));
   if(g("qName"))   L.push("· 성함: " + g("qName"));
   if(g("qTel"))    L.push("· 연락처: " + g("qTel"));
   if(L.length === 1) return null;
@@ -715,7 +822,7 @@ $("#loginBtn").onclick = async () => {
 };
 $("#loginClose").onclick = closeLogin;
 $("#loginMask").onclick = e => { if(e.target === $("#loginMask")) closeLogin(); };
-document.addEventListener("keydown", e => { if(e.key === "Escape") closeLogin(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape"){ closeLogin(); closeDetail(); } });
 
 $("#kakaoBtn").onclick = async () => {
   if(!ready()){ msg("아직 로그인 준비 중입니다.", true); return; }
