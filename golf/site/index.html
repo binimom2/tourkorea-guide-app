@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>어메이징 골프 · 태국 골프 전문 여행사</title>
+<meta name="description" content="태국 골프 전문 여행사. 방콕·파타야 현지 직영 사무실에서 골프장을 직접 수배하고 실시간으로 견적을 드립니다.">
+<meta property="og:title" content="어메이징 골프 · 태국 골프 전문 여행사">
+<meta property="og:description" content="현지 직영 · 직수배 · 실시간 견적">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+/* 견적기(/golf/)와 같은 팔레트를 쓴다 — 손님 사이트와 내부 도구가 한 브랜드로 보이게 */
+:root{
+  --fairway:#123A2B; --fairway-deep:#08170F; --fairway-mid:#1C5B42;
+  --sand:#E9DFC8; --paper:#F7F3E9; --marigold:#E8A33D;
+  --ink:#15211C; --line:rgba(18,58,43,.16); --muted:#5E6F66;
+  --font:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;
+  --maxw:1120px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:64px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.62;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 18px}
+
+/* ── 상단 고정 헤더 ── */
+.nav{position:sticky;top:0;z-index:60;background:rgba(247,243,233,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.brand{display:flex;align-items:baseline;gap:8px;text-decoration:none;white-space:nowrap}
+.brand b{font-size:19px;font-weight:900;letter-spacing:-.04em;color:var(--fairway)}
+.brand span{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--muted)}
+.menu{display:flex;gap:2px;margin-left:auto}
+.menu a{padding:8px 12px;font-size:14px;font-weight:700;text-decoration:none;color:var(--fairway);border-radius:999px}
+.menu a:hover{background:rgba(18,58,43,.07)}
+.navcta{margin-left:10px;background:var(--fairway);color:#fff!important;padding:9px 18px!important;border-radius:999px;font-size:14px}
+.navcta:hover{background:var(--fairway-mid)!important}
+.burger{display:none;margin-left:auto;background:none;border:1px solid var(--line);border-radius:9px;padding:7px 11px;font-size:17px;cursor:pointer;line-height:1}
+@media(max-width:860px){
+  .menu{display:none;position:absolute;top:60px;left:0;right:0;background:var(--paper);border-bottom:1px solid var(--line);flex-direction:column;padding:10px 18px 16px;gap:2px}
+  .menu.open{display:flex}
+  .menu a{padding:12px 10px;font-size:15.5px}
+  .navcta{margin-left:0;text-align:center;margin-top:6px}
+  .burger{display:block}
+}
+
+/* ── 히어로 ── */
+.hero{position:relative;background:linear-gradient(160deg,var(--fairway) 0%,var(--fairway-deep) 100%);color:#fff;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(900px 420px at 78% 8%,rgba(232,163,61,.24),transparent 62%),
+  radial-gradient(700px 380px at 8% 96%,rgba(28,91,66,.7),transparent 60%);pointer-events:none}
+.hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
+.hero .eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.24em;color:var(--marigold);margin-bottom:14px}
+.hero h1{margin:0;font-size:clamp(29px,5.4vw,52px);font-weight:900;letter-spacing:-.045em;line-height:1.2}
+.hero h1 em{font-style:normal;color:var(--marigold)}
+.hero p.lead{margin:16px 0 0;font-size:clamp(15px,1.9vw,18px);color:rgba(255,255,255,.86);max-width:620px}
+.keys{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0}
+.keys span{border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:7px 15px;font-size:13px;font-weight:700;background:rgba(255,255,255,.07)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:999px;padding:14px 26px;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer;text-decoration:none}
+.btn-gold{background:var(--marigold);color:#2A1A00}
+.btn-gold:hover{background:#f2b258}
+.btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.34)}
+.btn-ghost:hover{background:rgba(255,255,255,.18)}
+
+/* ── 신뢰 배지 줄 ── */
+.trust{background:var(--fairway-deep);color:rgba(255,255,255,.82);border-top:1px solid rgba(255,255,255,.09)}
+.trust .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;padding-left:18px;padding-right:18px}
+.trust div{padding:18px 14px;text-align:center}
+.trust b{display:block;font-size:16.5px;font-weight:900;color:#fff;letter-spacing:-.02em}
+.trust small{font-size:12px;color:rgba(255,255,255,.6)}
+@media(max-width:700px){.trust .wrap{grid-template-columns:repeat(2,1fr)}}
+
+/* ── 공통 섹션 ── */
+section{padding:64px 0}
+section:nth-of-type(even){background:#fff}
+.sechead{margin-bottom:28px}
+.sechead .kicker{font-size:11.5px;font-weight:800;letter-spacing:.2em;color:var(--marigold);margin-bottom:8px}
+.sechead h2{margin:0;font-size:clamp(23px,3.4vw,33px);font-weight:900;letter-spacing:-.04em}
+.sechead p{margin:9px 0 0;color:var(--muted);font-size:15px;max-width:640px}
+
+/* ── 지역 탭 ── */
+.tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.tabs button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 18px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer}
+.tabs button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
+section:nth-of-type(even) .tabs button{background:var(--paper)}
+section:nth-of-type(even) .tabs button.on{background:var(--fairway);color:#fff}
+
+/* ── 카드 그리드 ── */
+.cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .16s ease,box-shadow .16s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(18,58,43,.1)}
+section:nth-of-type(even) .card{background:var(--paper)}
+.thumb{aspect-ratio:16/10;background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep));display:flex;align-items:center;justify-content:center;position:relative}
+.thumb i{font-style:normal;font-size:30px;font-weight:900;color:rgba(255,255,255,.9);letter-spacing:-.04em;text-align:center;padding:0 12px;line-height:1.15}
+.thumb .holes{position:absolute;top:9px;right:9px;background:var(--marigold);color:#2A1A00;font-size:11px;font-weight:900;border-radius:999px;padding:3px 9px}
+.card .body{padding:13px 15px 15px;flex:1;display:flex;flex-direction:column;gap:5px}
+.card h3{margin:0;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
+.card .reg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em}
+.card p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.55}
+
+/* ── 기타투어 ── */
+.tourcat{margin-bottom:26px}
+.tourcat h3{margin:0 0 4px;font-size:18px;font-weight:900;letter-spacing:-.03em;display:flex;align-items:center;gap:8px}
+.tourcat h3 em{font-style:normal;font-size:20px}
+.tourcat > p{margin:0 0 12px;color:var(--muted);font-size:13.5px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 15px;font-size:14px;font-weight:700}
+.pill small{display:block;font-weight:600;font-size:12px;color:var(--muted);margin-top:2px}
+section:nth-of-type(even) .pill{background:var(--paper)}
+
+/* ── 게시판 ── */
+.board{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+section:nth-of-type(even) .board{background:var(--paper)}
+.board .brow{display:flex;align-items:center;gap:12px;padding:14px 17px;border:0;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;width:100%;background:none;font:inherit;color:inherit}
+.board .brow:hover{background:rgba(18,58,43,.04)}
+.tag{flex:0 0 auto;font-size:11px;font-weight:900;border-radius:999px;padding:3px 10px;background:rgba(18,58,43,.09);color:var(--fairway)}
+.tag.notice{background:var(--marigold);color:#2A1A00}
+.brow .t{flex:1;min-width:0;font-size:14.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .d{flex:0 0 auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bbody{display:none;padding:2px 17px 18px;font-size:14px;color:var(--muted);white-space:pre-wrap;border-bottom:1px solid var(--line)}
+.bbody.open{display:block}
+.board .brow:last-of-type{border-bottom:0}
+
+/* ── 문의 ── */
+.contact{background:linear-gradient(160deg,var(--fairway) 0%,var(--fairway-deep) 100%);color:#fff}
+.contact .sechead h2{color:#fff}
+.contact .sechead p{color:rgba(255,255,255,.8)}
+.cbox{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:22px}
+.cbox a{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:20px;text-decoration:none;display:block}
+.cbox a:hover{background:rgba(255,255,255,.14)}
+.cbox b{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:6px}
+.cbox span{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.cbox small{display:block;font-size:12.5px;color:rgba(255,255,255,.62);margin-top:5px}
+.askbox{margin-top:22px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:20px}
+.askbox h3{margin:0 0 12px;font-size:16px;font-weight:800}
+.askgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.askgrid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:rgba(255,255,255,.72)}
+.askgrid input{font:inherit;font-size:14.5px;padding:9px 11px;border:1px solid rgba(255,255,255,.26);border-radius:8px;background:rgba(0,0,0,.18);color:#fff}
+.askgrid input:focus{outline:2px solid var(--marigold);outline-offset:1px}
+.askout{margin-top:12px;font-size:13.5px;color:rgba(255,255,255,.85);white-space:pre-wrap;background:rgba(0,0,0,.2);border-radius:10px;padding:12px 14px;display:none}
+.askout.on{display:block}
+.askbtns{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+
+/* ── 푸터 ── */
+footer{background:var(--fairway-deep);color:rgba(255,255,255,.55);font-size:12.5px;padding:30px 0 34px}
+footer b{color:#fff;font-size:14.5px;font-weight:800;letter-spacing:-.02em}
+footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
+.staff{margin-top:16px;font-size:11.5px}
+.staff a{color:rgba(255,255,255,.42);text-decoration:none;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 11px}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><b>AMAZING GOLF</b><span>THAILAND</span></a>
+    <button class="burger" id="burger" aria-label="메뉴">☰</button>
+    <div class="menu" id="menu">
+      <a href="#courses">골프장</a>
+      <a href="#hotels">호텔</a>
+      <a href="#tours">기타투어</a>
+      <a href="#board">게시판</a>
+      <a href="#contact" class="navcta">실시간 견적</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="eyebrow">현지 직영 · 직수배</div>
+    <h1>태국 골프,<br><em>현지에서 직접</em> 잡아드립니다</h1>
+    <p class="lead">방콕·파타야 현지 사무실에서 골프장·호텔·차량을 직접 수배합니다.
+      중간 대행사를 거치지 않아 티오프 확보가 빠르고, 요청 주시면 실시간으로 견적을 드립니다.</p>
+    <div class="keys">
+      <span>현지 직영 사무실</span><span>골프장 직수배</span><span>실시간 견적</span><span>한국어 응대</span>
+    </div>
+    <div class="cta">
+      <a class="btn btn-gold" href="#contact">실시간 견적 받기</a>
+      <a class="btn btn-ghost" href="#courses">골프장 둘러보기</a>
+    </div>
+  </div>
+</header>
+
+<div class="trust">
+  <div class="wrap">
+    <div><b>직영</b><small>현지 사무실 운영</small></div>
+    <div><b>직수배</b><small>골프장 직접 예약</small></div>
+    <div><b>실시간</b><small>요청 즉시 견적 회신</small></div>
+    <div><b>전담</b><small>출발부터 귀국까지</small></div>
+  </div>
+</div>
+
+<section id="courses">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="kicker">GOLF COURSES</div>
+      <h2>골프장</h2>
+      <p>저희가 직접 수배하는 코스입니다. 그린피·카트·캐디피는 시즌과 요일에 따라 달라져,
+         일정을 알려주시면 그때 요금으로 계산해 드립니다.</p>
+    </div>
+    <div class="tabs" id="regTabs"></div>
+    <div class="cards" id="courseCards"></div>
+  </div>
+</section>
+
+<section id="hotels">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="kicker">HOTELS</div>
+      <h2>호텔</h2>
+      <p>골프 일정에 맞춰 이동이 편한 호텔로 잡아드립니다. 아래는 자주 이용하는 등급이며,
+         원하시는 호텔이 있으면 그대로 수배해 드립니다.</p>
+    </div>
+    <div class="cards" id="hotelCards"></div>
+  </div>
+</section>
+
+<section id="tours">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="kicker">MORE THAN GOLF</div>
+      <h2>기타 투어</h2>
+      <p>라운딩 사이 남는 시간, 일행 중 골프를 안 치시는 분까지 함께 챙깁니다.</p>
+    </div>
+    <div id="tourList"></div>
+  </div>
+</section>
+
+<section id="board">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="kicker">NOTICE &amp; NEWS</div>
+      <h2>게시판</h2>
+      <p>시즌 요금 변동, 골프장 휴장, 현지 소식을 올립니다.</p>
+    </div>
+    <div class="board" id="boardList"></div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="kicker">REAL-TIME QUOTE</div>
+      <h2>실시간 견적</h2>
+      <p>출발일 · 인원 · 박수 · 라운딩 횟수만 알려주시면 됩니다.
+         현지에서 바로 확인해 정확한 금액으로 회신드립니다.</p>
+    </div>
+    <div class="cbox" id="contactBox"></div>
+
+    <div class="askbox">
+      <h3>견적 요청 내용 만들기</h3>
+      <div class="askgrid">
+        <label>출발일<input type="date" id="qDate"></label>
+        <label>인원<input type="number" id="qPax" min="1" placeholder="명"></label>
+        <label>박수<input type="number" id="qNights" min="0" placeholder="박"></label>
+        <label>라운딩<input type="number" id="qRounds" min="0" placeholder="회"></label>
+        <label>지역<input type="text" id="qRegion" placeholder="파타야 / 방콕"></label>
+      </div>
+      <div class="askbtns">
+        <button class="btn btn-gold" id="qMake" type="button">문의 내용 만들기</button>
+        <button class="btn btn-ghost" id="qCopy" type="button">복사하기</button>
+      </div>
+      <div class="askout" id="qOut"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <b>AMAZING GOLF THAILAND</b>
+    <div class="frow" id="footRow"></div>
+    <div class="staff"><a href="../index.html">직원용 견적 시스템 →</a></div>
+  </div>
+</footer>
+
+<script>
+/* ────────────────────────────────────────────────────────────
+   사이트 내용은 전부 이 SITE 객체에 있다.
+   요금표(Supabase golf_pricing)는 원가라서 손님 사이트에 붙이지 않는다.
+   내용을 고칠 때는 이 블록만 고치면 된다.
+   ──────────────────────────────────────────────────────────── */
+const SITE = {
+  /* 골프장 — 요금표(golf_pricing)에 등록된 코스와 같은 이름을 쓴다.
+     h(홀 수)는 요금표 비고에 적혀 있던 곳만 넣었다.
+     d(소개 문구)는 손님용이라 사실 확인 후 다듬어 주세요. */
+  regions: ["파타야","방콕"],
+  courses: [
+    { r:"방콕", n:"수파프룩",   h:"",     d:"방콕 근교, 부담 없는 그린피로 한 라운드 더 넣기 좋은 코스." },
+    { r:"방콕", n:"시암방콕",   h:"",     d:"관리 상태가 고른 방콕권 코스. 단체 티오프 배정이 수월합니다." },
+    { r:"방콕", n:"알파인",     h:"",     d:"방콕을 대표하는 명문 코스. 성수기에는 티오프가 빠르게 마감됩니다." },
+    { r:"방콕", n:"카스카타",   h:"36홀", d:"36홀 규모. 하루에 두 코스를 돌아보실 수 있습니다." },
+
+    { r:"파타야", n:"그린우드",         h:"27홀", d:"27홀 구성이라 조 편성이 유연합니다. 파타야 시내에서 가깝습니다." },
+    { r:"파타야", n:"람차방",           h:"27홀", d:"세 개 나인으로 나뉜 27홀 코스. 파타야 인기 코스 중 하나입니다." },
+    { r:"파타야", n:"라용그린밸리",     h:"",     d:"라용 방면의 넓은 코스. 수요일 스포츠데이 요금이 있습니다." },
+    { r:"파타야", n:"방프라",           h:"",     d:"파타야 북쪽, 이동이 짧아 첫날·마지막날 라운딩으로 좋습니다." },
+    { r:"파타야", n:"부라파",           h:"36홀", d:"36홀 대형 코스. 대인원 단체도 한 번에 배정됩니다." },
+    { r:"파타야", n:"뿌탈루앙",         h:"",     d:"합리적인 요금대라 일정에 한 라운드 더 넣기 좋습니다." },
+    { r:"파타야", n:"세인트앤드류2000", h:"",     d:"기복 있는 코스. 월요일 스포츠데이 요금이 있습니다." },
+    { r:"파타야", n:"시암올드",         h:"",     d:"시암 컨트리클럽 올드코스. 비수기 월요일은 휴장합니다." },
+    { r:"파타야", n:"시암플랜/워터/롤링", h:"",   d:"플랜테이션(27홀)·워터사이드·롤링힐스를 함께 운영합니다." },
+    { r:"파타야", n:"이스턴스타",       h:"",     d:"라용 방면 코스. 오전·오후 요금이 나뉘어 있습니다." },
+    { r:"파타야", n:"찌짠",             h:"",     d:"카오찌짠 부처상 인근 코스. 카트 진입이 의무입니다." },
+    { r:"파타야", n:"카오키여우",       h:"",     d:"산 쪽 지형을 살린 코스. 카트 진입이 의무입니다." },
+    { r:"파타야", n:"트레져힐",         h:"",     d:"요금 부담이 가장 적은 편이라 라운드 추가에 자주 씁니다." },
+    { r:"파타야", n:"파타나",           h:"27홀", d:"27홀 구성. 화요일 스포츠데이 요금이 있습니다." },
+    { r:"파타야", n:"파타비아",         h:"",     d:"시내에서 가까워 이동 시간이 짧습니다. 카트 진입이 의무입니다." },
+    { r:"파타야", n:"파타야",           h:"",     d:"파타야 컨트리클럽. 목요일 스포츠데이 요금이 있습니다." },
+    { r:"파타야", n:"피닉스",           h:"27홀", d:"27홀 구성. 파타야에서 오래 사랑받아 온 코스입니다." },
+    { r:"파타야", n:"헤르매스",         h:"",     d:"조용하게 라운딩하기 좋은 코스. 카트 진입이 의무입니다." }
+  ],
+
+  /* 호텔 — 실제 제휴 호텔명이 정해지면 여기에 넣으면 됩니다. */
+  hotels: [
+    { r:"방콕",   n:"방콕 시내 4성",   d:"쇼핑·식사 이동이 편한 시내 중심. 2인 1실 기준으로 잡아드립니다." },
+    { r:"방콕",   n:"방콕 시내 5성",   d:"공항 이동과 조식이 모두 편한 상위 등급 호텔." },
+    { r:"파타야", n:"파타야 비치 4성", d:"해변 도보권. 골프장 이동 차량이 호텔 앞까지 들어옵니다." },
+    { r:"파타야", n:"파타야 비치 5성", d:"오션뷰 객실 위주. 일행 중 비골퍼가 있을 때 만족도가 높습니다." }
+  ],
+  hotelNote: "※ 위 등급은 예시입니다. 원하시는 호텔·풀빌라가 있으면 그대로 수배해 드립니다.",
+
+  /* 기타 투어 */
+  tours: [
+    { icon:"🏝", t:"섬 투어", d:"라운딩 없는 날, 배 타고 나가 반나절 쉬어 가는 일정.", items:[
+      { n:"산호섬(꼬란)",       s:"스피드보트 · 반나절" },
+      { n:"사멧섬",             s:"파타야 출발 · 종일" },
+      { n:"방콕 근교 수상시장", s:"오전 출발 · 반나절" }
+    ]},
+    { icon:"🎭", t:"쇼", d:"저녁 시간에 넣기 좋은 공연. 좌석은 미리 잡아드립니다.", items:[
+      { n:"알카자쇼", s:"파타야 · 좌석 지정" },
+      { n:"티파니쇼", s:"파타야 · 좌석 지정" },
+      { n:"칼립소쇼", s:"방콕 · 디너 포함 가능" }
+    ]},
+    { icon:"💆", t:"스파 & 마사지", d:"라운딩 끝나고 바로 들어가시게 예약해 둡니다.", items:[
+      { n:"타이 마사지", s:"2시간 기준" },
+      { n:"오일 스파",   s:"2~3시간 코스" },
+      { n:"발 마사지",   s:"1시간 · 호텔 인근" }
+    ]},
+    { icon:"🛂", t:"패스트트랙", d:"입국 심사 줄을 건너뛰고 바로 나오십니다.", items:[
+      { n:"수완나품 입국 패스트트랙", s:"도착 게이트 미팅" },
+      { n:"돈므앙 입국 패스트트랙",   s:"도착 게이트 미팅" },
+      { n:"출국 패스트트랙",          s:"체크인 카운터 동행" }
+    ]}
+  ],
+
+  /* 게시판 — 나중에 관리화면에서 쓰도록 바꿀 수 있습니다. */
+  board: [
+    { tag:"공지", t:"성수기(11~2월) 티오프 조기 마감 안내", d:"2026-08-21",
+      b:"11월부터 2월까지는 방콕·파타야 인기 코스의 티오프가 한 달 전에 마감됩니다.\n일정이 정해지시면 가급적 빨리 알려주시면 원하시는 시간대로 잡아드리겠습니다." },
+    { tag:"요금", t:"2026 하반기 그린피 적용 안내", d:"2026-08-01",
+      b:"골프장별 시즌 요금이 갱신되었습니다. 견적 요청 주시면 해당 날짜 기준으로 계산해 드립니다." },
+    { tag:"현지", t:"골프장 휴장·정비 일정", d:"2026-07-15",
+      b:"코스 정비로 일부 골프장이 임시 휴장할 수 있습니다. 예약 확정 전에 확인해 드립니다." }
+  ],
+
+  /* 연락처 — 실제 번호/아이디로 바꿔 주세요. */
+  contact: [
+    { k:"KAKAO", v:"카카오톡 상담", s:"아이디 입력 필요", href:"#" },
+    { k:"TEL",   v:"전화 문의",     s:"번호 입력 필요",   href:"#" },
+    { k:"EMAIL", v:"이메일 문의",   s:"주소 입력 필요",   href:"#" }
+  ],
+  footer: ["태국 현지 직영", "방콕 · 파타야", "상호/사업자번호 입력 필요"]
+};
+
+/* ── 렌더 ── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+let curReg = SITE.regions[0];
+function drawTabs(){
+  $("#regTabs").innerHTML = SITE.regions.map(r =>
+    '<button data-r="'+esc(r)+'" class="'+(r===curReg?"on":"")+'">'+esc(r)+'</button>').join("");
+  $("#regTabs").querySelectorAll("button").forEach(b => b.onclick = () => {
+    curReg = b.dataset.r; drawTabs(); drawCourses();
+  });
+}
+function drawCourses(){
+  $("#courseCards").innerHTML = SITE.courses.filter(c => c.r === curReg).map(c =>
+    '<article class="card">'
+    + '<div class="thumb"><i>' + esc(c.n) + '</i>'
+    + (c.h ? '<span class="holes">' + esc(c.h) + '</span>' : '') + '</div>'
+    + '<div class="body"><div class="reg">' + esc(c.r) + '</div>'
+    + '<h3>' + esc(c.n) + '</h3><p>' + esc(c.d) + '</p></div></article>').join("");
+}
+function drawHotels(){
+  $("#hotelCards").innerHTML = SITE.hotels.map(h =>
+    '<article class="card"><div class="thumb"><i>' + esc(h.n) + '</i></div>'
+    + '<div class="body"><div class="reg">' + esc(h.r) + '</div>'
+    + '<h3>' + esc(h.n) + '</h3><p>' + esc(h.d) + '</p></div></article>').join("")
+    + '<p style="grid-column:1/-1;margin:6px 0 0;font-size:13px;color:var(--muted)">' + esc(SITE.hotelNote) + '</p>';
+}
+function drawTours(){
+  $("#tourList").innerHTML = SITE.tours.map(t =>
+    '<div class="tourcat"><h3><em>' + t.icon + '</em>' + esc(t.t) + '</h3>'
+    + '<p>' + esc(t.d) + '</p><div class="pills">'
+    + t.items.map(i => '<div class="pill">' + esc(i.n) + '<small>' + esc(i.s) + '</small></div>').join("")
+    + '</div></div>').join("");
+}
+function drawBoard(){
+  $("#boardList").innerHTML = SITE.board.map((p,i) =>
+    '<button class="brow" data-i="' + i + '" type="button">'
+    + '<span class="tag' + (p.tag === "공지" ? " notice" : "") + '">' + esc(p.tag) + '</span>'
+    + '<span class="t">' + esc(p.t) + '</span>'
+    + '<span class="d">' + esc(p.d) + '</span></button>'
+    + '<div class="bbody" id="bb' + i + '">' + esc(p.b) + '</div>').join("");
+  $("#boardList").querySelectorAll(".brow").forEach(b => b.onclick = () => {
+    document.getElementById("bb" + b.dataset.i).classList.toggle("open");
+  });
+}
+function drawContact(){
+  $("#contactBox").innerHTML = SITE.contact.map(c =>
+    '<a href="' + esc(c.href) + '"><b>' + esc(c.k) + '</b><span>' + esc(c.v) + '</span>'
+    + '<small>' + esc(c.s) + '</small></a>').join("");
+  $("#footRow").innerHTML = SITE.footer.map(f => "<span>" + esc(f) + "</span>").join("");
+}
+drawTabs(); drawCourses(); drawHotels(); drawTours(); drawBoard(); drawContact();
+
+/* 견적 요청 문구 만들기 — 손님이 그대로 복사해 카톡으로 보낼 수 있게 */
+function askText(){
+  const g = id => (document.getElementById(id).value || "").trim();
+  const L = ["[태국 골프 견적 요청]"];
+  if(g("qDate"))   L.push("· 출발일: " + g("qDate"));
+  if(g("qRegion")) L.push("· 지역: " + g("qRegion"));
+  if(g("qPax"))    L.push("· 인원: " + g("qPax") + "명");
+  if(g("qNights")) L.push("· 일정: " + g("qNights") + "박 " + (Number(g("qNights")) + 1) + "일");
+  if(g("qRounds")) L.push("· 라운딩: " + g("qRounds") + "회");
+  if(L.length === 1) return null;
+  L.push("", "위 일정으로 견적 부탁드립니다.");
+  return L.join("\n");
+}
+$("#qMake").onclick = () => {
+  const t = askText(), out = $("#qOut");
+  out.textContent = t || "출발일·인원·박수 중 하나 이상 적어 주세요.";
+  out.classList.add("on");
+};
+$("#qCopy").onclick = async () => {
+  const t = askText();
+  if(!t){ $("#qMake").click(); return; }
+  try{ await navigator.clipboard.writeText(t); $("#qCopy").textContent = "복사됨 ✓"; }
+  catch(e){ $("#qCopy").textContent = "복사 실패 — 직접 선택해 주세요"; }
+  setTimeout(() => { $("#qCopy").textContent = "복사하기"; }, 1800);
+};
+
+/* 모바일 메뉴 */
+$("#burger").onclick = () => $("#menu").classList.toggle("open");
+$("#menu").querySelectorAll("a").forEach(a => a.onclick = () => $("#menu").classList.remove("open"));
+</script>
+</body>
+</html>
