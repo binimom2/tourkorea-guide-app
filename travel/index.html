@@ -140,10 +140,10 @@ table.rlist tr{cursor:pointer;}
 #costTable .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.4;text-align:right;margin-top:5px;}
 #costTable .cost-upd .cost-upd-by{color:#6b7484;font-weight:700;}
 .rlist tr.golf-grp-1 td:not(.cost-sum-col):not(.name-col){background:#f4f7fc;}   /* 관광·식당 등 시즌 없는 표: 항목별 줄무늬 */
-/* 원가서 골프장·호텔: 시즌별 고정색 — 성수기 연그린 / 비수기 연분홍 / 평수기 연파랑. 합계칸(노랑)은 그대로 유지 */
-.rlist tr.season-peak td:not(.cost-sum-col):not(.name-col){background:#e6f6ea;}
-.rlist tr.season-off td:not(.cost-sum-col):not(.name-col){background:#fdecf1;}
-.rlist tr.season-mid td:not(.cost-sum-col):not(.name-col){background:#eaf2fd;}
+/* 원가서 골프장·호텔: 시즌별 고정색 — 성수기 분홍(강조) / 비수기 연그린 / 평수기 연파랑. 합계칸(노랑)은 그대로 유지 */
+.rlist tr.season-peak td:not(.cost-sum-col):not(.name-col){background:#fce8ef;}
+.rlist tr.season-off td:not(.cost-sum-col):not(.name-col){background:#edf7f0;}
+.rlist tr.season-mid td:not(.cost-sum-col):not(.name-col){background:#eff5fd;}
 .rlist tr.season-etc td:not(.cost-sum-col):not(.name-col){background:#fff;}
 .rlist tr td.name-col{background:#fff;}   /* 골프장·호텔명, 지역 병합칸은 시즌색을 따르지 않고 흰색 */
 .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
@@ -2991,7 +2991,7 @@ function costUpdNote(o){
 }
 /* 시즌 필터 — 고른 시즌의 줄만 남기고, 그 시즌이 없는 항목은 숨김.
    원본 데이터는 건드리지 않고 복사본으로만 걸러서 수정/삭제는 원래 항목에 정상 적용됨 */
-/* 시즌별 행 배경색 클래스 — 성수기 연그린 / 비수기 연분홍 / 평수기 연파랑 / 그 외 흰색 */
+/* 시즌별 행 배경색 클래스 — 성수기 분홍(강조) / 비수기 연그린 / 평수기 연파랑 / 그 외 흰색 */
 function seasonRowCls(v){
   const s=String(v||"");
   if(/성수기/.test(s)) return "season-peak";
@@ -3000,7 +3000,7 @@ function seasonRowCls(v){
   return "season-etc";
 }
 /* 상세보기 모달의 시즌 머리줄 색 — 표 배경색과 같은 계열로 맞춤 */
-const SEASON_HD={"season-peak":{bg:"#e6f6ea",fg:"#1a6b3a"},"season-off":{bg:"#fdecf1",fg:"#a3446a"},"season-mid":{bg:"#eaf2fd",fg:"#3c5a86"},"season-etc":{bg:"#eef2f9",fg:"#3c5a86"}};
+const SEASON_HD={"season-peak":{bg:"#fce8ef",fg:"#a3446a"},"season-off":{bg:"#edf7f0",fg:"#1a6b3a"},"season-mid":{bg:"#eff5fd",fg:"#3c5a86"},"season-etc":{bg:"#eef2f9",fg:"#3c5a86"}};
 function seasonHd(v){ return SEASON_HD[seasonRowCls(v)]||SEASON_HD["season-etc"]; }
 function applySeasonFilter(list,key){
   const el=document.getElementById('cf-season');
