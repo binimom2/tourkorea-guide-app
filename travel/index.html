@@ -139,9 +139,12 @@ table.rlist tr{cursor:pointer;}
 /* 최종수정 — 별도 칸 대신 수정/상세보기/삭제 아래에 작게(날짜·시각·아이디) */
 #costTable .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.4;text-align:right;margin-top:5px;}
 #costTable .cost-upd .cost-upd-by{color:#6b7484;font-weight:700;}
-/* 원가서 골프장: 골프장별 번갈아 배색(구분용) + 성수기 줄 연한 초록. 합계칸(노랑)은 그대로 유지 */
-.rlist tr.golf-grp-1 td:not(.cost-sum-col){background:#f4f7fc;}
-.rlist tr.golf-peak td:not(.cost-sum-col){background:#e6f6ea;}
+.rlist tr.golf-grp-1 td:not(.cost-sum-col){background:#f4f7fc;}   /* 관광·식당 등 시즌 없는 표: 항목별 줄무늬 */
+/* 원가서 골프장·호텔: 시즌별 고정색 — 성수기 연그린 / 비수기 연분홍 / 평수기 연파랑. 합계칸(노랑)은 그대로 유지 */
+.rlist tr.season-peak td:not(.cost-sum-col){background:#e6f6ea;}
+.rlist tr.season-off td:not(.cost-sum-col){background:#fdecf1;}
+.rlist tr.season-mid td:not(.cost-sum-col){background:#eaf2fd;}
+.rlist tr.season-etc td:not(.cost-sum-col){background:#fff;}
 .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
 .badge-proc-FINAL{background:#e2f7ec;color:#1a8a52;}
 .badge-proc-NEW,.badge-proc-H-AMEND,.badge-proc-G-AMEND,.badge-proc-E-AMEND{background:#fdf3de;color:#a3720c;}
@@ -430,6 +433,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
     <select id="cf-season" style="width:110px;" onchange="renderCostTable()">
       <option value="">전체 시즌</option>
       <option value="비수기">비수기</option>
+      <option value="평수기">평수기</option>
       <option value="성수기">성수기</option>
     </select>
     <input type="text" class="search" id="cf-search" placeholder="이름 검색 — 여러 개는 쉼표로 (예: 알파인, 반얀트리)" style="min-width:230px;" oninput="renderCostTable()"/>
@@ -2986,6 +2990,17 @@ function costUpdNote(o){
 }
 /* 시즌 필터 — 고른 시즌의 줄만 남기고, 그 시즌이 없는 항목은 숨김.
    원본 데이터는 건드리지 않고 복사본으로만 걸러서 수정/삭제는 원래 항목에 정상 적용됨 */
+/* 시즌별 행 배경색 클래스 — 성수기 연그린 / 비수기 연분홍 / 평수기 연파랑 / 그 외 흰색 */
+function seasonRowCls(v){
+  const s=String(v||"");
+  if(/성수기/.test(s)) return "season-peak";
+  if(/평수기/.test(s)) return "season-mid";
+  if(/비수기/.test(s)) return "season-off";
+  return "season-etc";
+}
+/* 상세보기 모달의 시즌 머리줄 색 — 표 배경색과 같은 계열로 맞춤 */
+const SEASON_HD={"season-peak":{bg:"#e6f6ea",fg:"#1a6b3a"},"season-off":{bg:"#fdecf1",fg:"#a3446a"},"season-mid":{bg:"#eaf2fd",fg:"#3c5a86"},"season-etc":{bg:"#eef2f9",fg:"#3c5a86"}};
+function seasonHd(v){ return SEASON_HD[seasonRowCls(v)]||SEASON_HD["season-etc"]; }
 function applySeasonFilter(list,key){
   const el=document.getElementById('cf-season');
   const sf=(el&&el.value||'').trim();
@@ -3062,8 +3077,8 @@ function renderGolfTable(){
     const n=ss.length;
     const grp=gi%2;                                   // 골프장별로 번갈아 배색(구분용)
     ss.forEach((s,si)=>{
-      const peak=/성수기/.test(String(s.season||'')); // 성수기 줄은 연한 초록
-      html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
+      const scls=seasonRowCls(s.season);              // 시즌별 고정색(성수기 그린/비수기 연분홍/평수기 연파랑)
+      html+=`<tr class="golf-grp-${grp} ${scls}">`;
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||c.name||'-')}</b></td>`
              +`<td rowspan="${n}" class="num" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
@@ -3156,7 +3171,7 @@ function golfSeasonBlockHtml(s,i){
       </div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
-      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시즌</label>${golfSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
+      <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시즌</label>${golfSelTextHtml(i,'season',s.season||'',['비수기','평수기','성수기'],'예: 송크란 할증')}</div>
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>시작일</label>${golfSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${golfSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
       ${money}
@@ -3234,7 +3249,7 @@ function openGolfDetail(i){
   const TD='padding:7px 8px;text-align:right;font-size:13px;color:#1f2a44;font-variant-numeric:tabular-nums;';
 
   const blocks=(c.seasons||[]).map(s=>{
-    const peak=/성수기/.test(String(s.season||''));
+    const sh=seasonHd(s.season);
     // 18홀/9홀을 가로 2줄로 묶어서 표시
     const rate=`<table style="width:100%;border-collapse:collapse;">
       <tr><th style="${TH}text-align:left;width:52px;"></th>
@@ -3257,8 +3272,8 @@ function openGolfDetail(i){
         ${box('주중18홀',fmtSum(golfSum18wd(s)))}${box('주말18홀',fmtSum(golfSum18we(s)))}
         ${box('주중27홀',fmtSum(golfSum27wd(s)))}${box('주말27홀',fmtSum(golfSum27we(s)))}</div>`;
     return `<div style="border:1px solid #e5e9f0;border-radius:12px;overflow:hidden;margin-top:10px;">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${peak?'#e6f6ea':'#eef2f9'};border-bottom:1px solid #e5e9f0;">
-        <span style="font-size:11.5px;font-weight:700;color:${peak?'#1a6b3a':'#3c5a86'};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${sh.bg};border-bottom:1px solid #e5e9f0;">
+        <span style="font-size:11.5px;font-weight:700;color:${sh.fg};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
         <span style="font-size:12px;color:#4a5570;">${escapeHtml(costPeriod(s))}</span>
       </div>
       <div style="padding:10px;">${rate}${sums}</div>
@@ -3340,9 +3355,9 @@ function renderHotelTable(){
     let rowNo=0;
     ss.forEach((s,si)=>{
       const rooms=roomsOf[si];
-      const peak=/성수기/.test(String(s.season||''));
+      const scls=seasonRowCls(s.season);              // 시즌별 고정색(성수기 그린/비수기 연분홍/평수기 연파랑)
       rooms.forEach((rm,ri)=>{
-        html+=`<tr class="golf-grp-${grp}${peak?' golf-peak':''}">`;
+        html+=`<tr class="golf-grp-${grp} ${scls}">`;
         if(rowNo===0){   // 호텔명·지역: 이 호텔 전체 높이만큼 병합
           html+=`<td rowspan="${total}" style="vertical-align:middle;"><b>${escapeHtml(h.name||'-')}</b></td>`
                +`<td rowspan="${total}" class="num" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
@@ -3458,7 +3473,7 @@ function hotelSeasonBlockHtml(s,i){
       </div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
-      <div class="f-row" style="${t}"><label>시즌</label>${hotelSelTextHtml(i,'season',s.season||'',['비수기','성수기'],'예: 송크란 할증')}</div>
+      <div class="f-row" style="${t}"><label>시즌</label>${hotelSelTextHtml(i,'season',s.season||'',['비수기','평수기','성수기'],'예: 송크란 할증')}</div>
       <div class="f-row" style="${t}"><label>시작일</label>${hotelSelTextHtml(i,'dateFrom',s.dateFrom||'',seasonDateOptions('from'),'예: 2026-04-01')}</div>
       <div class="f-row" style="${t}"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
     </div>
@@ -3568,7 +3583,7 @@ function openHotelDetail(i){
   const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['호텔명',h.name||'-'],['지역',h.region||'-']].map(x=>line(x[0],x[1])).join('');
   const ss=(h.seasons||[]).map((s,i)=>{
-    const peak=/성수기/.test(String(s.season||''));
+    const sh=seasonHd(s.season);
     const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
     // 기간 아래 룸타입들을 가로 표로
     const tbl=`<table style="width:100%;border-collapse:collapse;">
@@ -3587,8 +3602,8 @@ function openHotelDetail(i){
     </table>
     ${(s.remarkCommon&&s.remark)?`<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;"><div style="font-size:10.5px;color:#8892a0;font-weight:700;margin-bottom:3px;">비고 (이 기간 공통)</div>${renderRemark(s.remark)}</div>`:''}`;
     return `<div style="border:1px solid #e5e9f0;border-radius:12px;overflow:hidden;margin-top:10px;">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${peak?'#e6f6ea':'#eef2f9'};border-bottom:1px solid #e5e9f0;">
-        <span style="font-size:11.5px;font-weight:700;color:${peak?'#1a6b3a':'#3c5a86'};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:${sh.bg};border-bottom:1px solid #e5e9f0;">
+        <span style="font-size:11.5px;font-weight:700;color:${sh.fg};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
         <span style="font-size:12px;color:#4a5570;">${escapeHtml(costPeriod(s))}</span>
       </div>
       <div style="padding:8px;">${tbl}</div>
