@@ -145,7 +145,7 @@ table.rlist tr{cursor:pointer;}
 .rlist tr.season-off td:not(.cost-sum-col):not(.name-col){background:#edf7f0;}
 .rlist tr.season-mid td:not(.cost-sum-col):not(.name-col){background:#eff5fd;}
 .rlist tr.season-etc td:not(.cost-sum-col):not(.name-col){background:#fff;}
-.rlist tr td.name-col{background:#fff;}   /* 골프장·호텔명, 지역 병합칸은 시즌색을 따르지 않고 흰색 */
+.rlist tr td.name-col{background:#fff;}   /* 이름·지역·관리 병합칸은 시즌색을 따르지 않고 흰색 */
 .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
 .badge-proc-FINAL{background:#e2f7ec;color:#1a8a52;}
 .badge-proc-NEW,.badge-proc-H-AMEND,.badge-proc-G-AMEND,.badge-proc-E-AMEND{background:#fdf3de;color:#a3720c;}
@@ -3093,7 +3093,7 @@ function renderGolfTable(){
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum27we(s)))}</td>`;
       if(si===0){
         html+=`<td rowspan="${n}" class="remark-col" style="vertical-align:middle;">${c.remark?renderRemark(c.remark):'-'}</td>`
-             +`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div>${costUpdNote(c)}</td>`;
+             +`<td rowspan="${n}" class="name-col" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div>${costUpdNote(c)}</td>`;
       }
       html+='</tr>';
     });
@@ -3378,7 +3378,7 @@ function renderHotelTable(){
           html+=`<td class="remark-col">${rm.remark?renderRemark(rm.remark):'-'}</td>`;
         }
         if(rowNo===0){
-          html+=`<td rowspan="${total}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div>${costUpdNote(h)}</td>`;
+          html+=`<td rowspan="${total}" class="name-col" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openHotelEditor(${idx})">수정</a><a class="act-edit" onclick="openHotelDetail(${idx})">상세보기</a><a class="act-del" onclick="delHotel(${idx})">삭제</a></div>${costUpdNote(h)}</td>`;
         }
         html+='</tr>';
         rowNo++;
