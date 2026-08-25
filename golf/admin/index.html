@@ -1377,7 +1377,16 @@ function renderCodeList(){
   /* 환율은 「코드=통화 / 라벨=이름」이 아니라 「통화 / 1밧당 원화」다.
      일반 코드 입력칸을 그대로 쓰면 뭘 적어야 하는지 알 수 없어서 칸을 따로 안내한다. */
   const isFx=(gcTab==='fx');
-  if(isFx) c.appendChild(el('p','desc','1밧이 몇 원인지 적어주세요(예: 46). 「사용중」인 첫 항목을 견적서 한화 표기에 씁니다.'));
+  if(isFx){
+    c.appendChild(el('p','desc','1밧이 몇 원인지 적어주세요(예: 46). 「사용중」인 첫 항목을 견적서 한화 표기에 씁니다.'));
+    /* 네이버(하나은행 고시) 환율은 참고용이다. 값을 누르면 아래 입력칸에 들어갈 뿐 바로 저장되지 않는다
+       — 실제 적용가는 여기에 마진을 얹은 값이라 사람이 정해야 한다. */
+    const nv=el('div');
+    nv.style.cssText='margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#f8fafc;font-size:13px;line-height:1.9';
+    const nb=el('button','btn','🔄 네이버 환율 가져오기'); nb.onclick=loadNaverFx; nv.appendChild(nb);
+    const out=el('div'); out.id='fxNvOut'; out.style.marginTop='6px'; nv.appendChild(out);
+    c.appendChild(nv);
+  }
   const add=el('div','caddrow');
   const ic=document.createElement('input'); ic.className='wcode'; ic.id='gc-code';
   const il=document.createElement('input'); il.className='wlabel'; il.id='gc-label';
@@ -1425,8 +1434,45 @@ async function addCode(){
   if(!code||!label){ gToast('⚠ 코드와 라벨을 입력하세요'); return; }
   if(gcTab==='fx'&&!(parseFloat(label)>0)){ gToast('⚠ 1밧당 원화를 숫자로 적어주세요 (예: 46)'); return; }
   GC[gcTab]=GC[gcTab]||[];
-  if(GC[gcTab].find(x=>x.code===code)){ gToast('⚠ 이미 있는 코드'); return; }
+  const dup=GC[gcTab].find(x=>x.code===code);
+  if(dup){
+    if(gcTab!=='fx'){ gToast('⚠ 이미 있는 코드'); return; }
+    // 환율은 통화가 하나뿐이라, 같은 통화를 다시 적는 건 「새 환율로 갱신」이라는 뜻이다
+    dup.label=label; await saveCodes(); renderCodeList(); gToast('✅ 환율 갱신됨 (1밧 = '+label+'원)'); return;
+  }
   GC[gcTab].push({ code, label }); await saveCodes(); ic.value=''; il.value=''; renderCodeList(); ic.focus(); gToast('✅ 추가됨');
+}
+
+/* 네이버(하나은행 고시) 환율 가져오기 — CORS 때문에 서버(/api/fx)가 대신 받아 온다.
+   가져온 값은 보여주고 입력칸에 넣어줄 뿐, 저장은 사람이 ＋추가를 눌러야 된다. */
+async function loadNaverFx(){
+  const out=document.getElementById('fxNvOut'); if(!out) return;
+  out.innerHTML=''; out.appendChild(el('span','desc','불러오는 중…'));
+  let d=null;
+  try{ const r=await fetch('/api/fx?code=FX_THBKRW',{cache:'no-store'}); d=await r.json(); }catch(e){}
+  out.innerHTML='';
+  if(!d||!d.ok){
+    const w=el('div',null,'⚠ '+((d&&d.error)||'네이버 환율을 가져오지 못했습니다. 잠시 뒤 다시 눌러보시고, 급하면 직접 적어주세요.'));
+    w.style.color='#c0492f'; out.appendChild(w); return;
+  }
+  const hd=el('div',null,`${d.date} · ${d.source} · 태국 THB`); hd.style.cssText='color:var(--muted);font-size:12.5px'; out.appendChild(hd);
+  const row=el('div'); row.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:4px';
+  [['매매기준율',d.base],['현찰 살 때',d.cashBuy],['현찰 팔 때',d.cashSell]].forEach(([nm,v])=>{
+    if(!(v>0)) return;
+    const b=el('button','btn',`${nm} ${v}`);
+    b.style.cssText='background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:600';
+    b.title='누르면 아래 입력칸에 넣습니다';
+    b.onclick=()=>{ const il=document.getElementById('gc-label'); if(!il) return; il.value=String(v); il.focus(); gToast('입력칸에 넣었습니다 — ＋추가를 눌러야 저장됩니다'); };
+    row.appendChild(b);
+  });
+  out.appendChild(row);
+  // 지금 견적에 쓰는 값과의 차이(=우리 마진)를 같이 보여준다 — 무심코 낮춰 적는 걸 막는다
+  const cur=parseFloat((((GC.fx||[]).filter(x=>x.active!==false)[0])||{}).label);
+  if(cur>0&&d.cashBuy>0){
+    const diff=Math.round((cur-d.cashBuy)*100)/100;
+    const cm=el('div',null,`지금 적용 중: 1밧 = ${cur}원 (현찰 살 때 ${d.cashBuy} 대비 ${diff>=0?'+':''}${diff}원)`);
+    cm.style.cssText='color:var(--muted);font-size:12.5px;margin-top:4px'; out.appendChild(cm);
+  }
 }
 async function moveCode(i,d){ const l=GC[gcTab], j=i+d; if(j<0||j>=l.length) return; [l[i],l[j]]=[l[j],l[i]]; await saveCodes(); renderCodeList(); }
 async function toggleCode(i){ const it=GC[gcTab][i]; it.active = it.active===false ? true : false; await saveCodes(); renderCodeList(); }
