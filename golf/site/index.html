@@ -207,6 +207,39 @@ footer b{color:#fff;font-size:14.5px;font-weight:800;letter-spacing:-.02em}
 footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .staff{margin-top:16px;font-size:11.5px}
 .staff a{color:rgba(255,255,255,.42);text-decoration:none;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 11px}
+
+/* ── 1차 화면: 종류 고르기(골프장·호텔·스파·차량…) ── */
+.catpick{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}
+.catpick button{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font:inherit;font-size:15px;font-weight:800;color:var(--fairway);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
+.catpick button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(18,58,43,.10)}
+.catpick button em{font-style:normal;font-size:20px;line-height:1}
+.catpick button small{font-weight:700;font-size:12px;opacity:.55}
+.catpick button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
+.catpick button.on small{opacity:.75}
+.card .en{margin:0;font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:-.01em}
+.cardnote{grid-column:1/-1;margin:6px 0 0;font-size:13px;color:var(--muted)}
+
+/* ── 2차 화면: 상세(사진 여러 장) ── */
+.modal.wide{max-width:720px}
+.den{margin:0 0 3px;font-size:13px;font-weight:600;color:var(--muted)}
+.gal{display:grid;grid-template-columns:1.55fr 1fr;gap:8px;margin:14px 0 16px}
+.gal .gmain,.gal .gsub{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep));cursor:zoom-in}
+.gal .gmain{aspect-ratio:4/3}
+.gal .gside{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gal .gsub{aspect-ratio:1/1}
+.gal img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.gal i{font-style:normal;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;font-size:26px;font-weight:900;color:rgba(255,255,255,.9);letter-spacing:-.04em}
+.gal .gmore{position:absolute;inset:0;background:rgba(8,23,15,.55);color:#fff;display:flex;align-items:center;justify-content:center;gap:3px;font-size:15px;font-weight:800}
+.gal .holes{position:absolute;top:10px;left:10px;background:var(--marigold);color:#2A1A00;font-size:11.5px;font-weight:900;border-radius:999px;padding:4px 10px;z-index:2}
+@media(max-width:560px){ .gal{grid-template-columns:1fr} .gal .gside{grid-template-columns:repeat(4,1fr)} }
+
+/* 사진 크게 보기 */
+.lbox{position:fixed;inset:0;z-index:300;background:rgba(6,16,11,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:20px}
+.lbox.on{display:flex}
+.lbox img{max-width:min(1100px,94vw);max-height:78vh;border-radius:12px;object-fit:contain}
+.lbox .lnav{display:flex;align-items:center;gap:18px;color:#fff;font-size:14px;font-weight:700}
+.lbox .lnav button{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:999px;width:42px;height:42px;font-size:19px;cursor:pointer}
+.lbox .lclose{position:absolute;top:16px;right:20px;background:none;border:0;color:#fff;font-size:30px;line-height:1;cursor:pointer}
 </style>
 </head>
 <body>
@@ -216,8 +249,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     <a class="brand" href="#top"><b>We’ve Tour</b><span>위브투어타일랜드</span></a>
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
     <div class="menu" id="menu">
-      <a href="#courses">골프장</a>
-      <a href="#hotels">호텔</a>
+      <!-- 골프장·호텔… 종류 메뉴는 data.js의 cats로 그린다(#catNav 자리에 채워진다) -->
+      <span id="catNav" style="display:contents"></span>
       <a href="#tours">기타투어</a>
       <a href="#board">게시판</a>
       <a href="#contact" class="navcta">실시간 견적</a>
@@ -235,21 +268,18 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   <div class="wrap" id="trustBox"></div>
 </div>
 
-<section id="courses">
+<!-- 1차 화면: 종류(골프장·호텔·…)를 고르면 그 목록이 아래 카드로 깔린다.
+     카드를 누르면 2차 화면(상세)이 열린다. 종류는 data.js의 cats에서 온다. -->
+<section id="catalog">
   <div class="wrap">
-    <div class="sechead" id="sh-courses"></div>
+    <div class="sechead" id="sh-catalog"></div>
+    <div class="catpick" id="catPick"></div>
     <div class="tabs" id="regTabs"></div>
-    <div class="cards" id="courseCards"></div>
+    <div class="cards" id="itemCards"></div>
   </div>
 </section>
-
-<section id="hotels">
-  <div class="wrap">
-    <div class="sechead" id="sh-hotels"></div>
-    <div class="tabs" id="hotelTabs"></div>
-    <div class="cards" id="hotelCards"></div>
-  </div>
-</section>
+<!-- 예전 주소(#courses·#hotels)로 들어오신 분도 그대로 열리게 자리만 남겨 둔다 -->
+<span id="courses"></span><span id="hotels"></span>
 
 <section id="tours">
   <div class="wrap">
@@ -296,11 +326,23 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 <div class="mask" id="detailMask">
   <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="dName">
     <button class="mclose" id="detailClose" type="button" aria-label="닫기">×</button>
-    <div class="dthumb" id="dThumb"></div>
     <div class="dreg" id="dReg"></div>
     <h3 id="dName"></h3>
+    <p class="den" id="dEn"></p>
+    <div class="gal" id="dGal"></div>
     <ul class="dlist" id="dList"></ul>
     <button class="mbtn" id="dQuote" type="button">이곳으로 견적 요청하기</button>
+  </div>
+</div>
+
+<!-- 사진 크게 보기 -->
+<div class="lbox" id="lbox">
+  <button class="lclose" id="lboxClose" type="button" aria-label="닫기">×</button>
+  <img id="lboxImg" alt="">
+  <div class="lnav">
+    <button type="button" id="lboxPrev" aria-label="이전 사진">‹</button>
+    <span id="lboxNum"></span>
+    <button type="button" id="lboxNext" aria-label="다음 사진">›</button>
   </div>
 </div>
 
@@ -380,45 +422,85 @@ function tabber(boxId, list, cur, onPick){
 }
 /* 사진이 실제로 있는 곳만 SITE.photos에 적어 둔다. 적혀 있지 않으면 이름이 적힌 초록 칸이 남는다.
    (없는 파일을 일단 불러 보는 방식은 카드마다 404를 만들어서 쓰지 않는다.) */
+/* ── 종류(골프장·호텔·스파·차량…) ──
+   data.js의 cats에 한 줄 늘리면 손님 화면의 종류 버튼도 같이 늘어난다.
+   아직 항목을 하나도 안 넣은 종류는 손님에게 빈 화면을 보이느니 아예 안 보여준다. */
+function itemsOf(k){
+  if(k === "courses") return SITE.courses || [];
+  if(k === "hotels")  return SITE.hotels  || [];
+  return (SITE.items && SITE.items[k]) || [];
+}
+const CATS_FALLBACK = [
+  { k:"courses", ic:"⛳", t:"골프장", u:"곳" },
+  { k:"hotels",  ic:"🏨", t:"호텔",   u:"곳" }
+];
+function catList(){
+  const cs = (Array.isArray(SITE.cats) && SITE.cats.length) ? SITE.cats : CATS_FALLBACK;
+  const on = cs.filter(c => c && c.k && c.on !== false && itemsOf(c.k).length);
+  return on.length ? on : CATS_FALLBACK.filter(c => itemsOf(c.k).length);
+}
+function catOf(k){ return catList().filter(c => c.k === k)[0] || catList()[0] || CATS_FALLBACK[0]; }
+/* 골프장은 h(홀 수), 호텔은 g(등급) 칸을 쓰던 것을 그대로 살린다 */
+function badgeOf(x){ return x.b || x.h || x.g || ""; }
+/* 사진 — 대표 한 장(img, 또는 photos에 이름으로 적어 둔 것) + imgs에 적어 둔 나머지 */
+function picsOf(x){
+  return [x.img || (SITE.photos || {})[x.n]].concat(x.imgs || [])
+    .map(s => String(s || "").trim())
+    .filter((s, i, all) => s && all.indexOf(s) === i);
+}
+/* 사진이 실제로 있는 곳만 SITE.photos·imgs에 적어 둔다. 적혀 있지 않으면 이름이 적힌 초록 칸이 남는다.
+   (없는 파일을 일단 불러 보는 방식은 카드마다 404를 만들어서 쓰지 않는다.) */
 function thumbOf(x, badge){
-  const src = x.img || SITE.photos[x.n];
+  const src = picsOf(x)[0];
   return '<div class="thumb"><i>' + esc(x.n) + '</i>'
     + (src ? '<img loading="lazy" alt="' + esc(x.n) + '" src="' + esc(src)
              + '" onerror="this.remove()">' : "")
     + (badge ? '<span class="holes">' + esc(badge) + '</span>' : '') + '</div>';
 }
 /* 카드는 눌러서 상세를 여는 버튼이다 — 올렸을 때 떠오르기만 하고 안 눌리면 안 된다 */
-function cardOf(x, badge, kind, idx){
-  return '<button type="button" class="card" data-k="' + kind + '" data-i="' + idx + '">'
-    + thumbOf(x, badge)
-    + '<div class="body"><div class="reg">' + esc(x.r) + '</div>'
+function cardOf(x, kind, idx){
+  return '<button type="button" class="card" data-k="' + esc(kind) + '" data-i="' + idx + '">'
+    + thumbOf(x, badgeOf(x))
+    + '<div class="body"><div class="reg">' + esc(x.r || "") + '</div>'
     + '<h3>' + esc(x.n) + '</h3>'
+    + (x.e ? '<p class="en">' + esc(x.e) + '</p>' : '')
     + (x.d ? '<p>' + esc(x.d) + '</p>' : '') + '</div></button>';
 }
 function bindCards(boxId){
   $(boxId).querySelectorAll(".card").forEach(b => b.onclick = () => {
-    const list = b.dataset.k === "c" ? SITE.courses : SITE.hotels;
-    openDetail(list[Number(b.dataset.i)], b.dataset.k);
+    openDetail(itemsOf(b.dataset.k)[Number(b.dataset.i)], b.dataset.k);
   });
 }
 
-let curReg  = "";
-let curHreg = "";
-function drawTabs(){ tabber("#regTabs", SITE.courses, curReg, r => { curReg = r; drawTabs(); drawCourses(); }); }
-function drawCourses(){
-  /* 원본 인덱스를 들고 가야 상세를 열 때 맞는 항목을 집는다 */
-  $("#courseCards").innerHTML = SITE.courses
-    .map((c, i) => ({ c, i })).filter(x => x.c.r === curReg)
-    .map(x => cardOf(x.c, x.c.h, "c", x.i)).join("");
-  bindCards("#courseCards");
+let curCat = "courses";
+let curReg = "";
+/* 1차 화면 — 종류 고르기. 위 메뉴줄도 같은 목록으로 그린다. */
+function drawCatPick(){
+  const list = catList();
+  $("#catPick").innerHTML = list.map(c =>
+    '<button type="button" data-k="' + esc(c.k) + '" class="' + (c.k === curCat ? "on" : "") + '">'
+    + '<em>' + esc(c.ic || "") + '</em>' + esc(c.t)
+    + ' <small>' + itemsOf(c.k).length + esc(c.u || "곳") + '</small></button>').join("");
+  $("#catPick").querySelectorAll("button").forEach(b => b.onclick = () => pickCat(b.dataset.k));
+  $("#catNav").innerHTML = list.map(c =>
+    '<a href="#catalog" data-k="' + esc(c.k) + '">' + esc(c.t) + '</a>').join("");
+  $("#catNav").querySelectorAll("a").forEach(a => a.onclick = () => pickCat(a.dataset.k));
 }
-function drawHtabs(){ tabber("#hotelTabs", SITE.hotels, curHreg, r => { curHreg = r; drawHtabs(); drawHotels(); }); }
-function drawHotels(){
-  $("#hotelCards").innerHTML = SITE.hotels
-    .map((h, i) => ({ h, i })).filter(x => x.h.r === curHreg)
-    .map(x => cardOf(x.h, x.h.g, "h", x.i)).join("")
-    + '<p style="grid-column:1/-1;margin:6px 0 0;font-size:13px;color:var(--muted)">' + esc(SITE.hotelNote) + '</p>';
-  bindCards("#hotelCards");
+function pickCat(k){
+  if(!k || !itemsOf(k).length) return;
+  curCat = k;
+  curReg = (regionsOf(itemsOf(k))[0] || {}).r || "";
+  drawCatPick(); drawHeads(); drawTabs(); drawItems();
+}
+function drawTabs(){ tabber("#regTabs", itemsOf(curCat), curReg, r => { curReg = r; drawTabs(); drawItems(); }); }
+function drawItems(){
+  /* 원본 인덱스를 들고 가야 상세를 열 때 맞는 항목을 집는다 */
+  const note = curCat === "hotels" ? (SITE.hotelNote || "") : "";
+  $("#itemCards").innerHTML = itemsOf(curCat)
+      .map((x, i) => ({ x, i })).filter(o => o.x.r === curReg)
+      .map(o => cardOf(o.x, curCat, o.i)).join("")
+    + (note ? '<p class="cardnote">' + esc(note) + '</p>' : "");
+  bindCards("#itemCards");
 }
 function drawTours(){
   $("#tourList").innerHTML = SITE.tours.map(t =>
@@ -457,26 +539,33 @@ function drawHero(){
     + '<div class="keys">' + (h.keys || []).map(k => "<span>" + esc(k) + "</span>").join("") + "</div>"
     + '<div class="cta">'
     + '<a class="btn btn-gold" href="#contact">' + esc(h.cta1 || "실시간 견적 받기") + "</a>"
-    + '<a class="btn btn-ghost" href="#courses">' + esc(h.cta2 || "골프장 둘러보기") + "</a></div>";
+    + '<a class="btn btn-ghost" href="#catalog">' + esc(h.cta2 || "골프장 둘러보기") + "</a></div>";
   $("#trustBox").innerHTML = (SITE.trust || []).map(t =>
     "<div><b>" + esc(t.b) + "</b><small>" + esc(t.s) + "</small></div>").join("");
 }
 /* 섹션 제목·설명. 설명 안의 {n}은 그 섹션의 개수로 바뀐다. */
+function headHtml(s, n){
+  return '<div class="kicker">' + esc(s.kicker || "") + "</div>"
+    + "<h2>" + esc(s.h2 || "") + "</h2>"
+    + "<p>" + esc(s.p || "").replace("{n}", "<b>" + n + "</b>") + "</p>";
+}
 function drawHeads(){
-  const cnt = { courses: SITE.courses.length, hotels: SITE.hotels.length };
   Object.keys(SITE.sections || {}).forEach(k => {
     const s = SITE.sections[k], box = document.getElementById("sh-" + k);
-    if(!box || !s) return;
-    box.innerHTML = '<div class="kicker">' + esc(s.kicker || "") + "</div>"
-      + "<h2>" + esc(s.h2 || "") + "</h2>"
-      + "<p>" + esc(s.p || "").replace("{n}", "<b>" + (cnt[k] || 0) + "</b>") + "</p>";
+    if(!box || !s) return;      // 골프장·호텔은 아래 한 칸(#sh-catalog)에서 종류별로 바뀐다
+    box.innerHTML = headHtml(s, itemsOf(k).length);
   });
+  /* 1차 화면 제목은 지금 고른 종류의 것으로 바뀐다. 새로 만든 종류는 이름만 크게 띄운다. */
+  const c = catOf(curCat);
+  const s = (SITE.sections || {})[curCat] || { kicker: c.t, h2: c.t, p: "" };
+  $("#sh-catalog").innerHTML = headHtml(s, itemsOf(curCat).length);
 }
 function renderAll(){
-  drawHero(); drawHeads();
-  curReg  = regionsOf(SITE.courses)[0].r;
-  curHreg = regionsOf(SITE.hotels)[0].r;
-  drawTabs(); drawCourses(); drawHtabs(); drawHotels(); drawTours(); drawBoard(); drawContact();
+  drawHero();
+  if(!catList().some(c => c.k === curCat)) curCat = (catList()[0] || {}).k || "courses";
+  curReg = (regionsOf(itemsOf(curCat))[0] || {}).r || "";
+  drawCatPick(); drawHeads(); drawTabs(); drawItems();
+  drawTours(); drawBoard(); drawContact();
 }
 renderAll();
 
@@ -497,27 +586,74 @@ renderAll();
 })();
 
 /* ── 골프장·호텔 상세 ── */
-let dCur = null;
+let dCur = null, dPics = [];
+/* 「이 골프장으로 / 이 호텔로」 — 받침이 있으면 '으로' */
+function ro(w){
+  const c = (w || "").charCodeAt((w || "").length - 1) - 0xAC00;
+  return (c >= 0 && c < 11172 && c % 28 !== 0) ? "으로" : "로";
+}
 function openDetail(x, kind){
   if(!x) return;
-  dCur = x;
-  $("#dThumb").innerHTML = thumbOf(x, kind === "c" ? x.h : x.g)
-    .replace('<div class="thumb">', "").replace(/<\/div>$/, "");
-  $("#dReg").textContent  = x.r;
-  $("#dName").textContent = x.n;
+  dCur = x; dPics = picsOf(x);
+  const cat = catOf(kind), bd = badgeOf(x);
+  $("#dReg").textContent  = x.r || "";
+  $("#dName").textContent = x.n || "";
+  $("#dEn").textContent   = x.e || "";
+  $("#dEn").style.display = x.e ? "" : "none";
+  /* 사진 — 큰 것 한 장 + 옆에 네 장, 그보다 많으면 마지막 칸에 「+N」이 뜨고 눌러서 넘겨 본다.
+     한 장도 없으면 이름이 적힌 초록 칸으로 대신한다(빈 칸이 남지 않게). */
+  const gal = $("#dGal");
+  if(!dPics.length){
+    gal.style.gridTemplateColumns = "1fr";
+    gal.innerHTML = '<div class="gmain" style="cursor:default"><i>' + esc(x.n) + '</i>'
+      + (bd ? '<span class="holes">' + esc(bd) + '</span>' : '') + '</div>';
+  } else {
+    const side = dPics.slice(1, 5);
+    gal.style.gridTemplateColumns = side.length ? "" : "1fr";
+    gal.innerHTML =
+      '<div class="gmain" data-p="0"><img alt="' + esc(x.n) + '" src="' + esc(dPics[0]) + '">'
+      + (bd ? '<span class="holes">' + esc(bd) + '</span>' : '') + '</div>'
+      + (side.length ? '<div class="gside">' + side.map((s, i) =>
+          '<div class="gsub" data-p="' + (i + 1) + '"><img loading="lazy" alt="" src="' + esc(s) + '">'
+          + (i === 3 && dPics.length > 5 ? '<span class="gmore">' + (dPics.length - 5) + ' ›</span>' : "")
+          + '</div>').join("") + '</div>' : "");
+    gal.querySelectorAll("[data-p]").forEach(g => g.onclick = () => openLbox(Number(g.dataset.p)));
+  }
   /* 소개 문구는 「 · 」로 이어 붙여 둔 것이라, 다시 쪼개 한 줄씩 보여준다 */
   const parts = (x.d || "").split(" · ").map(s => s.trim()).filter(Boolean);
   $("#dList").innerHTML = parts.length
     ? parts.map(p => "<li>" + esc(p) + "</li>").join("")
-    : '<li class="none">' + (kind === "h"
+    : '<li class="none">' + (kind === "hotels"
         ? "객실 타입·조식 여부는 일정에 맞춰 안내드립니다."
-        : "코스 안내는 준비 중입니다. 문의 주시면 바로 알려드리겠습니다.") + "</li>";
-  $("#dQuote").textContent = kind === "c" ? "이 골프장으로 견적 요청하기" : "이 호텔로 견적 요청하기";
+        : "안내는 준비 중입니다. 문의 주시면 바로 알려드리겠습니다.") + "</li>";
+  $("#dQuote").textContent = "이 " + (cat.t || "곳") + ro(cat.t || "곳") + " 견적 요청하기";
   $("#detailMask").classList.add("on");
 }
 function closeDetail(){ $("#detailMask").classList.remove("on"); }
 $("#detailClose").onclick = closeDetail;
 $("#detailMask").onclick = e => { if(e.target === $("#detailMask")) closeDetail(); };
+
+/* 사진 크게 보기 — 좌우로 넘기고, ESC나 바깥을 누르면 닫힌다 */
+let lbi = 0;
+function openLbox(i){
+  if(!dPics.length) return;
+  const n = dPics.length;
+  lbi = ((i || 0) % n + n) % n;
+  $("#lboxImg").src = dPics[lbi];
+  $("#lboxNum").textContent = (lbi + 1) + " / " + n;
+  $("#lbox").classList.add("on");
+}
+function closeLbox(){ $("#lbox").classList.remove("on"); $("#lboxImg").removeAttribute("src"); }
+$("#lboxClose").onclick = closeLbox;
+$("#lbox").onclick = e => { if(e.target === $("#lbox")) closeLbox(); };
+$("#lboxPrev").onclick = e => { e.stopPropagation(); openLbox(lbi - 1); };
+$("#lboxNext").onclick = e => { e.stopPropagation(); openLbox(lbi + 1); };
+document.addEventListener("keydown", e => {
+  if(!$("#lbox").classList.contains("on")) return;
+  if(e.key === "Escape")     closeLbox();
+  if(e.key === "ArrowLeft")  openLbox(lbi - 1);
+  if(e.key === "ArrowRight") openLbox(lbi + 1);
+});
 
 /* 눌러 둔 곳은 「관심 골프장」으로 쌓이고 견적 요청 문구에 그대로 들어간다 */
 let wish = [];

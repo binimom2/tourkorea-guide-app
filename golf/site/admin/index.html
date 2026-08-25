@@ -322,7 +322,15 @@ function ta(path,val,ph){
 document.getElementById('pane').addEventListener('input',e=>{
   const el=e.target, p=el.dataset.p;
   if(!p) return;
-  setPath(S,p,el.value);
+  if(el.dataset.bool){                 // 체크칸(손님에게 보이기 등)
+    setPath(S,p,el.checked);
+  }else if(el.dataset.pics){           // 사진칸 — 첫 줄이 대표(img), 나머지가 imgs
+    const list=el.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const o=getPath(S,p);
+    if(o){ o.img=list[0]||''; o.imgs=list.slice(1); }
+  }else{
+    setPath(S,p,el.value);
+  }
   markDirty('site');
 });
 function markDirty(k){
@@ -362,19 +370,33 @@ function draw(){
 }
 
 /* ══════════════ 사이트 내용 ══════════════ */
-const SUB=[
-  {k:'hero',   label:'첫 화면'},
-  {k:'courses',label:'골프장'},
-  {k:'hotels', label:'호텔'},
-  {k:'tours',  label:'기타투어'},
-  {k:'board',  label:'게시판'},
-  {k:'foot',   label:'연락처 · 푸터'}
-];
-let sub='hero', cSearch='', hSearch='';
+/* 골프장·호텔·스파·차량… 「종류」는 데이터(S.cats)에서 온다 — 종류를 추가하면 여기 메뉴도 늘어난다 */
+function catsAll(){
+  if(!Array.isArray(S.cats) || !S.cats.length)
+    S.cats=[{k:'courses',ic:'⛳',t:'골프장',u:'곳',on:true},{k:'hotels',ic:'🏨',t:'호텔',u:'곳',on:true}];
+  return S.cats;
+}
+/* courses·hotels는 원래 쓰던 자리에, 새로 만든 종류는 items 아래에 담긴다 */
+function itemsArr(k){
+  if(k==='courses') return (S.courses=S.courses||[]);
+  if(k==='hotels')  return (S.hotels =S.hotels ||[]);
+  S.items=S.items||{};
+  if(!Array.isArray(S.items[k])) S.items[k]=[];
+  return S.items[k];
+}
+function itemsPath(k,i){ return (k==='courses'||k==='hotels') ? k+'.'+i : 'items.'+k+'.'+i; }
+function subs(){
+  return [{k:'hero',label:'첫 화면'}]
+    .concat(catsAll().map(c=>({k:'cat:'+c.k, label:(c.ic?c.ic+' ':'')+(c.t||c.k)+(c.on===false?' (숨김)':'')})))
+    .concat([{k:'cats',label:'＋ 종류 관리'},{k:'tours',label:'기타투어'},
+             {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'}]);
+}
+let sub='hero', iSearch={};
 function drawSite(){
-  const p=document.getElementById('pane');
+  const p=document.getElementById('pane'), SUB=subs();
+  if(!SUB.some(s=>s.k===sub)) sub='hero';
   p.innerHTML='<div class="subtabs">'
-    +SUB.map(s=>'<button data-s="'+s.k+'" class="'+(s.k===sub?'on':'')+'">'+s.label+'</button>').join('')
+    +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
     +'</div><div id="subpane"></div>'
     +'<div class="rowbtns"><button class="save" id="saveSite">저장</button>'
     +'<button class="ghost" id="resetSite">기본값으로 되돌리기</button>'
@@ -387,8 +409,8 @@ function drawSite(){
     if(!confirm('지금 화면의 모든 내용을 처음 기본값으로 되돌립니다.\n(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
     S=deepCopy(window.SITE_DEFAULT); markDirty('site'); drawTabs();
   };
-  const f={hero:subHero,courses:subCourses,hotels:subHotels,tours:subTours,board:subBoard,foot:subFoot}[sub];
-  f();
+  if(sub.indexOf('cat:')===0) subItems(sub.slice(4));
+  else ({hero:subHero,cats:subCats,tours:subTours,board:subBoard,foot:subFoot}[sub]||subHero)();
 }
 
 function subHero(){
@@ -432,59 +454,90 @@ function subHero(){
   bindRowBtns();
 }
 
-function courseRow(c,i){
-  return '<tr><td>'+inp('courses.'+i+'.r',c.r,'파타야')+'</td>'
-    +'<td>'+inp('courses.'+i+'.n',c.n)+'</td>'
-    +'<td>'+inp('courses.'+i+'.h',c.h,'27홀')+'</td>'
-    +'<td>'+ta('courses.'+i+'.d',c.d)+'</td>'
-    +'<td>'+inp('courses.'+i+'.img',c.img||'','img/이름.jpg')+'</td>'
-    +'<td><button class="del" data-del="courses" data-i="'+i+'">삭제</button></td></tr>';
+/* 사진은 한 칸에 줄마다 하나씩 적는다 — 첫 줄이 카드에 나오는 대표 사진,
+   나머지는 상세(2차) 화면의 사진들이 된다. */
+function picsTa(path,x){
+  const v=[x.img||''].concat(x.imgs||[]).filter(Boolean).join('\n');
+  return '<textarea data-p="'+esc(path)+'" data-pics="1" rows="3" '
+    +'placeholder="img/이름.jpg&#10;img/이름-2.jpg&#10;(한 줄에 한 장 · 첫 줄이 대표 사진)">'+esc(v)+'</textarea>';
 }
-function subCourses(){
-  const rows=S.courses.map((c,i)=>({c,i}))
-    .filter(x=>!cSearch||((x.c.n||'')+(x.c.r||'')+(x.c.d||'')).toLowerCase().includes(cSearch.toLowerCase()));
+/* 골프장·호텔·스파·차량… 모두 같은 표로 편집한다. 종류가 늘어나도 이 함수 하나면 된다. */
+function subItems(k){
+  const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'};
+  const arr=itemsArr(k), q=iSearch[k]||'';
+  const rows=arr.map((x,i)=>({x,i})).filter(o=>!q
+    ||((o.x.n||'')+(o.x.r||'')+(o.x.e||'')+(o.x.d||'')).toLowerCase().includes(q.toLowerCase()));
+  /* 배지 칸은 원래 쓰던 이름을 그대로 쓴다 — 골프장 h(홀), 호텔 g(등급), 나머지는 b */
+  const bk = k==='hotels'?'g' : k==='courses'?'h' : 'b';
+  const bl = k==='hotels'?'등급' : k==='courses'?'홀' : '배지';
+  const bp = k==='hotels'?'5성' : k==='courses'?'27홀' : '';
+  const u  = cat.u||'곳';
   document.getElementById('subpane').innerHTML=
-    '<div class="card"><h2>골프장</h2>'
-    +'<p class="desc">손님 화면의 골프장 카드입니다. 그린피·캐디피 같은 원가는 여기에 넣지 마세요 — 손님에게 그대로 보입니다.</p>'
+    '<div class="card"><h2>'+esc((cat.ic?cat.ic+' ':'')+(cat.t||k))+'</h2>'
+    +'<p class="desc">손님 화면 1차 목록에 깔리는 카드입니다. 카드를 누르면 2차 상세가 열리고, '
+    +'「사진」에 적은 것이 상세의 사진 여러 장으로 나옵니다. 요금·원가는 넣지 마세요 — 손님에게 그대로 보입니다.</p>'
     +'<div class="rowbtns" style="margin:0 0 11px">'
-    +'<input class="srch" id="cSrch" placeholder="이름·지역·설명으로 찾기" value="'+esc(cSearch)+'">'
-    +'<span class="cnt">전체 '+S.courses.length+'곳'+(cSearch?' · 찾은 것 '+rows.length+'곳':'')+'</span></div>'
+    +'<input class="srch" id="iSrch" placeholder="이름·지역·설명으로 찾기" value="'+esc(q)+'">'
+    +'<span class="cnt">전체 '+arr.length+u+(q?' · 찾은 것 '+rows.length+u:'')+'</span></div>'
     +'<div class="tblwrap"><table><thead><tr>'
-    +'<th style="width:96px">지역</th><th style="width:150px">이름</th><th style="width:76px">홀</th>'
-    +'<th>소개 문구</th><th style="width:140px">사진 경로</th><th style="width:64px"></th>'
-    +'</tr></thead><tbody>'+rows.map(x=>courseRow(x.c,x.i)).join('')+'</tbody></table></div>'
-    +'<div class="rowbtns"><button class="add" data-add="course">＋ 골프장 추가</button></div></div>';
-  const s=document.getElementById('cSrch');
-  s.oninput=()=>{ cSearch=s.value; const at=s.selectionStart; subCourses();
-    const n=document.getElementById('cSrch'); n.focus(); n.setSelectionRange(at,at); };
+    +'<th style="width:92px">지역</th><th style="width:140px">이름</th>'
+    +'<th style="width:150px">영문 이름</th><th style="width:70px">'+bl+'</th>'
+    +'<th>소개 문구</th><th style="width:170px">사진</th><th style="width:62px"></th>'
+    +'</tr></thead><tbody>'
+    +rows.map(o=>{ const p=itemsPath(k,o.i);
+      return '<tr><td>'+inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')+'</td>'
+        +'<td>'+inp(p+'.n',o.x.n||'')+'</td>'
+        +'<td>'+inp(p+'.e',o.x.e||'','Siam Country Club')+'</td>'
+        +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
+        +'<td>'+ta(p+'.d',o.x.d||'')+'</td>'
+        +'<td>'+picsTa(p,o.x)+'</td>'
+        +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
+    +(k==='hotels'?'<div class="f" style="margin-top:14px"><label>호텔 목록 아래 안내 문구</label>'+ta('hotelNote',S.hotelNote)+'</div>':'')
+    +'</div>';
+  const s=document.getElementById('iSrch');
+  s.oninput=()=>{ iSearch[k]=s.value; const at=s.selectionStart; subItems(k);
+    const n=document.getElementById('iSrch'); n.focus(); n.setSelectionRange(at,at); };
   bindRowBtns();
 }
-function subHotels(){
-  const rows=S.hotels.map((h,i)=>({h,i}))
-    .filter(x=>!hSearch||((x.h.n||'')+(x.h.r||'')+(x.h.d||'')).toLowerCase().includes(hSearch.toLowerCase()));
+/* 종류 자체를 늘리는 화면 — 스파·차량·요트처럼 나중에 붙일 것들 */
+function subCats(){
+  const cs=catsAll();
   document.getElementById('subpane').innerHTML=
-    '<div class="card"><h2>호텔</h2>'
-    +'<p class="desc">요금·써차지는 넣지 마세요. 등급 칸에 4성 / 5성처럼 적으면 사진 위에 배지로 나옵니다.</p>'
-    +'<div class="rowbtns" style="margin:0 0 11px">'
-    +'<input class="srch" id="hSrch" placeholder="이름·지역으로 찾기" value="'+esc(hSearch)+'">'
-    +'<span class="cnt">전체 '+S.hotels.length+'곳'+(hSearch?' · 찾은 것 '+rows.length+'곳':'')+'</span></div>'
+    '<div class="card"><h2>종류 관리</h2>'
+    +'<p class="desc">손님이 1차 화면에서 고르는 종류입니다. 여기에 한 줄 추가하면 위 메뉴에 그 종류의 표가 생기고, '
+    +'항목을 한 개라도 넣고 「손님에게 보이기」를 켜면 손님 화면에도 나옵니다.</p>'
     +'<div class="tblwrap"><table><thead><tr>'
-    +'<th style="width:110px">지역</th><th style="width:170px">이름</th><th style="width:76px">등급</th>'
-    +'<th>소개 문구</th><th style="width:140px">사진 경로</th><th style="width:64px"></th>'
+    +'<th style="width:64px">그림</th><th style="width:150px">이름</th><th style="width:70px">단위</th>'
+    +'<th style="width:130px">저장 이름</th><th style="width:110px">항목 수</th>'
+    +'<th style="width:120px">손님에게 보이기</th><th style="width:62px"></th>'
     +'</tr></thead><tbody>'
-    +rows.map(x=>'<tr><td>'+inp('hotels.'+x.i+'.r',x.h.r)+'</td>'
-      +'<td>'+inp('hotels.'+x.i+'.n',x.h.n)+'</td>'
-      +'<td>'+inp('hotels.'+x.i+'.g',x.h.g||'','5성')+'</td>'
-      +'<td>'+ta('hotels.'+x.i+'.d',x.h.d||'')+'</td>'
-      +'<td>'+inp('hotels.'+x.i+'.img',x.h.img||'','img/이름.jpg')+'</td>'
-      +'<td><button class="del" data-del="hotels" data-i="'+x.i+'">삭제</button></td></tr>').join('')
+    +cs.map((c,i)=>'<tr><td>'+inp('cats.'+i+'.ic',c.ic||'','⛳')+'</td>'
+      +'<td>'+inp('cats.'+i+'.t',c.t||'','스파·마사지')+'</td>'
+      +'<td>'+inp('cats.'+i+'.u',c.u||'곳','곳')+'</td>'
+      +'<td>'+(c.k==='courses'||c.k==='hotels'
+          ? '<span class="cnt">'+esc(c.k)+' (고정)</span>'
+          : inp('cats.'+i+'.k',c.k||'','spa'))+'</td>'
+      +'<td><span class="cnt">'+itemsArr(c.k).length+(c.u||'곳')+'</span></td>'
+      +'<td><label style="display:flex;align-items:center;gap:7px;font-size:13px">'
+        +'<input type="checkbox" data-p="cats.'+i+'.on" data-bool="1"'+(c.on!==false?' checked':'')+'> 보이기</label></td>'
+      +'<td>'+(c.k==='courses'||c.k==='hotels' ? ''
+          : '<button class="del" data-delcat="'+esc(c.k)+'">삭제</button>')+'</td></tr>').join('')
     +'</tbody></table></div>'
-    +'<div class="rowbtns"><button class="add" data-add="hotel">＋ 호텔 추가</button></div>'
-    +'<div class="f" style="margin-top:14px"><label>호텔 목록 아래 안내 문구</label>'+ta('hotelNote',S.hotelNote)+'</div>'
+    +'<div class="rowbtns"><button class="add" data-add="cat">＋ 종류 추가</button></div>'
+    +'<p class="desc" style="margin-top:12px">※ 「저장 이름」은 영문 소문자로 짓고 한 번 정하면 바꾸지 마세요 — '
+    +'바꾸면 그 종류에 넣어 둔 항목이 사라진 것처럼 보입니다. 골프장·호텔은 바꿀 수 없습니다.</p>'
     +'</div>';
-  const s=document.getElementById('hSrch');
-  s.oninput=()=>{ hSearch=s.value; const at=s.selectionStart; subHotels();
-    const n=document.getElementById('hSrch'); n.focus(); n.setSelectionRange(at,at); };
+  document.getElementById('subpane').querySelectorAll('[data-delcat]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.delcat, n=itemsArr(k).length;
+    if(!confirm('「'+k+'」 종류를 지웁니다.'+(n?'\n안에 있는 '+n+'개 항목도 같이 지워집니다.':'')
+      +'\n(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
+    S.cats=catsAll().filter(c=>c.k!==k);
+    if(S.items) delete S.items[k];
+    sub='cats'; markDirty('site'); drawTabs();
+  });
   bindRowBtns();
 }
 function subTours(){
@@ -551,8 +604,20 @@ function subFoot(){
 
 /* 추가·삭제 버튼은 모양이 다 같아서 한곳에서 묶어 처리한다 */
 const ADDERS={
-  course:  ()=>S.courses.push({r:S.regionOrder[0]||'파타야',n:'',h:'',d:''}),
-  hotel:   ()=>S.hotels.push({r:S.regionOrder[0]||'파타야',n:'',g:'',d:''}),
+  /* 종류(골프장·호텔·스파…)에 항목 한 줄 추가 — 어느 종류인지는 버튼의 data-k에 적혀 온다 */
+  item: (i,k)=>{
+    const key=k||'courses';
+    const row={r:(S.regionOrder&&S.regionOrder[0])||'파타야',n:'',e:'',d:''};
+    row[key==='hotels'?'g':key==='courses'?'h':'b']='';
+    itemsArr(key).push(row);
+  },
+  /* 새 종류 — 저장 이름은 겹치지 않게 cat1, cat2… 로 만들어 두고 관리자가 고쳐 쓴다 */
+  cat: ()=>{
+    let n=1; while(catsAll().some(c=>c.k==='cat'+n)) n++;
+    catsAll().push({k:'cat'+n,ic:'✨',t:'',u:'곳',on:false});
+    S.items=S.items||{}; S.items['cat'+n]=[];
+    sub='cats';
+  },
   post:    ()=>S.board.unshift({tag:'공지',t:'',d:'',b:''}),
   contact: ()=>S.contact.push({k:'',v:'',s:'',href:'#'}),
   footer:  ()=>S.footer.push(''),
@@ -564,7 +629,7 @@ const ADDERS={
 function bindRowBtns(){
   const p=document.getElementById('pane');
   p.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
-    ADDERS[b.dataset.add](Number(b.dataset.i));
+    ADDERS[b.dataset.add](Number(b.dataset.i), b.dataset.k);
     markDirty('site'); drawTabs();
   });
   p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
