@@ -102,7 +102,7 @@ export async function onRequest(context) {
   }
 
   /* ── 사진 보기 — 손님이 봐야 하므로 로그인 없이 연다 ── */
-  if (action === 'f' && request.method === 'GET') {
+  if (action === 'f' && (request.method === 'GET' || request.method === 'HEAD')) {   /* HEAD도 받는다 — 링크 검사·크롤러가 HEAD로 물어본다 */
     const key = safeKey(ROOT + seg.slice(1).map(decodeURIComponent).join('/'));
     if (!key) return json({ error: '잘못된 경로' }, 400);
     const obj = await bucket.get(key);
