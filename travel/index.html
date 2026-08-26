@@ -769,7 +769,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-08-26-hotelsort';
+const APP_VERSION='2026-08-26-suggest';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1146,7 +1146,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 9;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬
+const TRV_APP_VERSION = 10;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -4822,15 +4822,39 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
   const typeAttr=isNum?'text':f.type;
   const extra=isNum?' inputmode="numeric" class="numcell"':(f.type==='date'?' lang="en"':'');
   // fwMin이 있으면 그 폭에서 시작해 입력한 만큼만 fw까지 늘어난다(PAYING·REMARK)
+  /* 자유롭게 적는 칸(REMARK·PAYING·전화번호 등)은 이미 다른 예약에 적어 둔 값을 자동완성으로 보여 준다.
+     예전엔 브라우저가 기억해 주던 것인데, 칸이 글자 수만큼 늘어나게 바뀐 뒤로 글쇠를 칠 때마다
+     칸 폭이 변해 브라우저 목록이 닫혀 버렸다. 그래서 앱이 직접 목록을 들고 있는다. */
+  const dl=suggestDatalist(sectionKey,f);
   if(f.fw&&f.fwMin){
-    return `<input type="${typeAttr}"${extra} class="ag-input" id="${id}" value="${escapeAttr(val)}"`
+    return `<input type="${typeAttr}"${extra} class="ag-input" id="${id}" value="${escapeAttr(val)}"${dl.attr}`
       +` data-ag-min="${f.fwMin}" data-ag-max="${f.fw}" oninput="autoGrowInput(this)"`
-      +` style="min-width:0;width:${f.fwMin}px;box-sizing:border-box;"/>`;
+      +` style="min-width:0;width:${f.fwMin}px;box-sizing:border-box;"/>`+dl.html;
   }
   if(f.fw){
-    return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}" style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`;
+    return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}"${dl.attr} style="min-width:0;width:${f.fw}px;box-sizing:border-box;"/>`+dl.html;
   }
-  return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}"/>`;
+  return `<input type="${typeAttr}"${extra} id="${id}" value="${escapeAttr(val)}"${dl.attr}/>`+dl.html;
+}
+/* 이 섹션의 이 칸에 지금까지 실제로 적힌 값들을 모아 자동완성 목록으로 만든다.
+   저장된 예약 전체 + 지금 편집 중인 예약을 함께 본다(방금 윗줄에 적은 것도 바로 뜨게).
+   글자로 적는 칸에만 붙인다 — 날짜·숫자·체크박스에는 소용이 없다. */
+function suggestDatalist(sectionKey,f){
+  const NONE={attr:'',html:''};
+  if(!sectionKey||!f||f.fixed) return NONE;
+  if(f.type&&f.type!=='text'&&f.type!=='textarea') return NONE;
+  const seen=new Set();
+  const take=row=>{ const v=String((row&&row[f.k])||'').trim(); if(v&&v!=='-') seen.add(v); };
+  (reservations||[]).forEach(r=>(r&&r[sectionKey]||[]).forEach(take));
+  ((workingRes&&workingRes[sectionKey])||[]).forEach(take);
+  if(!seen.size) return NONE;
+  /* 너무 많으면 목록이 무거워진다 — 자주 쓰는 것이 앞에 오도록 가나다순으로 자르고 200개까지만 */
+  const vals=[...seen].sort((a,b)=>a.localeCompare(b,'ko')).slice(0,200);
+  const dlId=`dl-sf-${sectionKey}-${f.k}`;
+  return {
+    attr:` list="${dlId}"`,
+    html:`<datalist id="${dlId}">${vals.map(v=>`<option value="${escapeAttr(v)}"></option>`).join('')}</datalist>`
+  };
 }
 // vendor select: NONE·직접입력 선택 시 텍스트 입력으로 전환, ≡ 버튼으로 목록 복귀
 const VENDOR_CUSTOM='__custom__';
@@ -4898,14 +4922,19 @@ function _agTextWidth(el){
            +(parseFloat(cs.borderLeftWidth)||0)+(parseFloat(cs.borderRightWidth)||0);
   return _agRuler.offsetWidth+pad+10;   // 커서 여유
 }
-function autoGrowInput(el){
+function autoGrowInput(el,force){
   if(!el) return;
   const min=parseFloat(el.dataset.agMin)||90;
   const max=parseFloat(el.dataset.agMax)||min;
-  el.style.width=Math.round(Math.min(max,Math.max(min,_agTextWidth(el))))+'px';
+  const want=Math.round(Math.min(max,Math.max(min,_agTextWidth(el))));
+  /* 글쇠를 칠 때마다 칸 폭이 1~2px씩 바뀌면 자동완성 목록이 그때마다 닫힌다.
+     눈에 띄게 달라질 때만 넓힌다(처음 그릴 때는 force로 정확히 맞춘다). */
+  const cur=parseFloat(el.style.width)||min;
+  if(!force&&Math.abs(want-cur)<10) return;
+  el.style.width=want+'px';
 }
 function applyAutoGrow(){
-  document.querySelectorAll('#subsecHost input.ag-input').forEach(autoGrowInput);
+  document.querySelectorAll('#subsecHost input.ag-input').forEach(el=>autoGrowInput(el,true));
 }
 function handleSubRowFocusOut(e,sectionKey,index){
   const rowEl=e.currentTarget;
