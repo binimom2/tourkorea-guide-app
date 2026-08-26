@@ -769,7 +769,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-08-19-showsort';
+const APP_VERSION='2026-08-26-hotelsort';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1146,7 +1146,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 8;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…'
+const TRV_APP_VERSION = 9;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -4587,6 +4587,7 @@ function dirSectionTable(sec,opts){
   let rows=(workingRes[sec.key]||[]).slice();
   if(sec.key==='flights') rows.sort((a,b)=>flightArrKey(a.arrival)-flightArrKey(b.arrival));
   if(sec.key==='golfs') rows.sort((a,b)=>golfSortKey(a).localeCompare(golfSortKey(b)));
+  if(sec.key==='hotels') rows.sort((a,b)=>hotelSortKey(a).localeCompare(hotelSortKey(b)));   // 호텔은 체크인 날짜 순 정렬
   if(sec.key==='shows') rows.sort((a,b)=>showSortKey(a).localeCompare(showSortKey(b)));
   if(opts.cfmOnly) rows=rows.filter(r=>r.cfm==='OK');
   const cols=sec.fields.filter(f=>!(opts.hideKeys||[]).includes(f.k));
@@ -4630,6 +4631,7 @@ function subsecHtml(sec){
   const rows=workingRes[sec.key]||[];
   if(sec.key==='flights') rows.sort((a,b)=>flightArrKey(a.arrival)-flightArrKey(b.arrival)); // 도착시간 순 정렬(자정 넘김 +1일)
   if(sec.key==='golfs') rows.sort((a,b)=>golfSortKey(a).localeCompare(golfSortKey(b)));       // 골프는 날짜(+티오프) 순 정렬
+  if(sec.key==='hotels') rows.sort((a,b)=>hotelSortKey(a).localeCompare(hotelSortKey(b)));   // 호텔은 체크인 날짜 순 정렬
   if(sec.key==='shows') rows.sort((a,b)=>showSortKey(a).localeCompare(showSortKey(b)));       // 쇼/레스토랑/마사지도 날짜(+시간) 순 정렬
   const cols=sec.fields;
   const summary=sec.summaryFn?sec.summaryFn(rows):'';
@@ -4697,6 +4699,11 @@ function golfSortKey(r){
   const d=(r&&r.date)?String(r.date):'9999-12-31';
   const t=(r&&r.teeup)?String(r.teeup).match(/(\d{1,2}):(\d{2})/):null;
   return d+' '+(t?String((+t[1])*60+(+t[2])).padStart(5,'0'):'99999');
+}
+// HOTEL 체크인 날짜 정렬 키. 같은 날이면 호텔명 순, 체크인이 비어 있으면 맨 뒤.
+function hotelSortKey(r){
+  const d=(r&&r.chkin)?String(r.chkin):'9999-12-31';
+  return d+' '+String((r&&r.hotel)||'');
 }
 // SHOW/RESTAURANT/MASSAGE 날짜 정렬 키. 같은 날짜면 TIME 순, 비어 있으면 맨 뒤(골프와 같은 규칙).
 // TIME 칸에 링크 등 시간이 아닌 값이 들어가 있으면 시간 없음으로 보고 뒤로 보낸다.
