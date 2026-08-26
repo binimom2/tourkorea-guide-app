@@ -107,6 +107,10 @@ td textarea{resize:vertical;min-height:34px;line-height:1.45}
 #toast.on{opacity:1}
 .dirty{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-left:6px;vertical-align:middle}
 
+/* 손님 화면에서 감춰 둔 줄 — 자료는 남아 있으니 지운 것처럼 보이면 안 된다 */
+tr.offrow{background:#FAFAFA}
+tr.offrow td:not(:first-child){opacity:.42}
+
 /* 사진칸 — 미리보기 + 올리기 + 주소 목록 */
 .picbox{display:flex;flex-direction:column;gap:6px;min-width:190px}
 .picbox.drop{outline:2px dashed var(--fairway);outline-offset:3px;border-radius:8px}
@@ -342,6 +346,9 @@ document.getElementById('pane').addEventListener('input',e=>{
   if(!p) return;
   if(el.dataset.bool){                 // 체크칸(손님에게 보이기 등)
     setPath(S,p,el.checked);
+    /* 항목 「보이기」는 표 전체를 다시 그리지 않고 그 줄과 숫자만 고친다
+       — 62줄을 다시 그리면 보고 있던 자리가 위로 튄다 */
+    if(el.dataset.itemon) refreshItemOn(el);
   }else if(el.dataset.pics){           // 사진칸 — 첫 줄이 대표(img), 나머지가 imgs
     const list=el.value.split('\n').map(s=>s.trim()).filter(Boolean);
     const o=getPath(S,p);
@@ -351,6 +358,18 @@ document.getElementById('pane').addEventListener('input',e=>{
   }
   markDirty('site');
 });
+/* 「보이기」를 끄고 켤 때 그 줄 색과 숨김 개수만 새로 그린다 */
+function refreshItemOn(el){
+  const tr=el.closest('tr');
+  if(tr) tr.classList.toggle('offrow',!el.checked);
+  const cnt=document.getElementById('iCnt');
+  if(!cnt) return;
+  const k=cnt.dataset.k, u=cnt.dataset.u||'곳';
+  const arr=itemsArr(k);
+  const hid=arr.filter(x=>x&&x.on===false).length;
+  const base='전체 '+arr.length+u;
+  cnt.innerHTML=base+(hid?' · <b style="color:var(--danger)">숨김 '+hid+u+'</b>':'');
+}
 function markDirty(k){
   dirty[k]=true;
   const b=document.getElementById('tab-'+k);
@@ -615,20 +634,27 @@ function subItems(k){
   const bl = k==='hotels'?'등급' : k==='courses'?'홀' : '배지';
   const bp = k==='hotels'?'5성' : k==='courses'?'27홀' : '';
   const u  = cat.u||'곳';
+  const hid = arr.filter(x=>x&&x.on===false).length;   // 손님 화면에서 감춰 둔 것
   document.getElementById('subpane').innerHTML=
     '<div class="card"><h2>'+esc((cat.ic?cat.ic+' ':'')+(cat.t||k))+'</h2>'
     +'<p class="desc">손님 화면 1차 목록에 깔리는 카드입니다. 카드를 누르면 2차 상세가 열리고, '
     +'「사진」에 적은 것이 상세의 사진 여러 장으로 나옵니다. 요금·원가는 넣지 마세요 — 손님에게 그대로 보입니다.</p>'
     +'<div class="rowbtns" style="margin:0 0 11px">'
     +'<input class="srch" id="iSrch" placeholder="이름·지역·설명으로 찾기" value="'+esc(q)+'">'
-    +'<span class="cnt">전체 '+arr.length+u+(q?' · 찾은 것 '+rows.length+u:'')+'</span></div>'
+    +'<span class="cnt" id="iCnt" data-k="'+esc(k)+'" data-u="'+esc(u)+'">전체 '+arr.length+u+(q?' · 찾은 것 '+rows.length+u:'')
+      +(hid?' · <b style="color:var(--danger)">숨김 '+hid+u+'</b>':'')+'</span></div>'
     +'<div class="tblwrap"><table><thead><tr>'
+    +'<th style="width:58px">보이기</th>'
     +'<th style="width:92px">지역</th><th style="width:140px">이름</th>'
     +'<th style="width:150px">영문 이름</th><th style="width:70px">'+bl+'</th>'
     +'<th>소개 문구</th><th style="width:170px">사진</th><th style="width:62px"></th>'
     +'</tr></thead><tbody>'
     +rows.map(o=>{ const p=itemsPath(k,o.i);
-      return '<tr><td>'+inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')+'</td>'
+      /* 체크를 풀면 손님 화면에서만 빠진다 — 자료(사진·문구)는 그대로 남는다 */
+      return '<tr'+(o.x.on===false?' class="offrow"':'')+'>'
+        +'<td style="text-align:center"><input type="checkbox" data-p="'+esc(p)+'.on" data-bool="1" data-itemon="1"'
+          +(o.x.on===false?'':' checked')+' title="끄면 손님 화면에서 감춰집니다"></td>'
+        +'<td>'+inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')+'</td>'
         +'<td>'+inp(p+'.n',o.x.n||'')+'</td>'
         +'<td>'+inp(p+'.e',o.x.e||'','Siam Country Club')+'</td>'
         +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'

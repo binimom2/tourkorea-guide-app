@@ -524,9 +524,12 @@ function tabber(boxId, list, cur, onPick){
    data.js의 cats에 한 줄 늘리면 손님 화면의 종류 버튼도 같이 늘어난다.
    아직 항목을 하나도 안 넣은 종류는 손님에게 빈 화면을 보이느니 아예 안 보여준다. */
 function itemsOf(k){
-  if(k === "courses") return SITE.courses || [];
-  if(k === "hotels")  return SITE.hotels  || [];
-  return (SITE.items && SITE.items[k]) || [];
+  const all = k === "courses" ? (SITE.courses || [])
+            : k === "hotels"  ? (SITE.hotels  || [])
+            : ((SITE.items && SITE.items[k]) || []);
+  /* 관리 화면에서 「보이기」를 끈 것은 손님에게 안 나온다 — 자료(사진·문구)는 그대로 남아 있다.
+     여기서 한 번만 걸러 두면 카드·지역탭·개수·상세가 전부 같은 목록을 본다. */
+  return all.filter(x => x && x.on !== false);
 }
 const CATS_FALLBACK = [
   { k:"courses", ic:"⛳", t:"골프장", u:"곳" },
