@@ -970,10 +970,10 @@ function flattenRegions(){
       seasons.forEach(s=>{
         CR.push({ region:r.name, name:c.name||'', note:c.note||'', label:s.label||'비수기', from:s.from||'', to:s.to||'',
           gf18wd:s.gf18?.wd??null, gf18we:s.gf18?.we??null, caddie:s.caddie??0, cart:s.cart??0,
-          gf9wd:s.gf9?.wd??null, gf9we:s.gf9?.we??null, caddie9:s.caddie9??0, cart9:s.cart9??0 });
+          gf9wd:s.gf9?.wd??null, gf9we:s.gf9?.we??null, caddie9:s.caddie9??0, cart9:s.cart9??0, margin:s.margin??100 });
       });
     });
-    (r.hotels||[]).forEach(h=>HR.push({ region:r.name, name:h.name||'', perNight:h.perNight??0, note:h.note||'' }));
+    (r.hotels||[]).forEach(h=>HR.push({ region:r.name, name:h.name||'', perNight:h.perNight??0, margin:h.margin??100, note:h.note||'' }));
   });
 }
 function regroupRegions(){
@@ -985,9 +985,9 @@ function regroupRegions(){
     if(row.note) c.note=row.note;
     c.seasons.push({ label:row.label||'', from:row.from||'', to:row.to||'',
       gf18:{wd:row.gf18wd??null,we:row.gf18we??null}, caddie:row.caddie??0, cart:row.cart??0,
-      gf9:{wd:row.gf9wd??null,we:row.gf9we??null}, caddie9:row.caddie9??0, cart9:row.cart9??0 });
+      gf9:{wd:row.gf9wd??null,we:row.gf9we??null}, caddie9:row.caddie9??0, cart9:row.cart9??0, margin:row.margin??100 });
   });
-  HR.forEach(h=>{ const reg=(h.region||'').trim(); if(!reg) return; ensure(reg).hotels.push({name:(h.name||'').trim(),perNight:h.perNight??0,note:h.note||''}); });
+  HR.forEach(h=>{ const reg=(h.region||'').trim(); if(!reg) return; ensure(reg).hotels.push({name:(h.name||'').trim(),perNight:h.perNight??0,margin:h.margin??100,note:h.note||''}); });
   return regions;
 }
 function regionSelect(obj){
@@ -1017,10 +1017,10 @@ function golfSection(){
   const fcnt=el('span','desc'); fcnt.id='gtCount'; fcnt.style.cssText='font-size:12px;white-space:nowrap';
   fbar.appendChild(fin); fbar.appendChild(fcnt); c.appendChild(fbar);
   const wrap=el('div','gtwrap'); const tbl=document.createElement('table'); tbl.className='gt';
-  tbl.innerHTML='<thead><tr>'+['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="gtbody"></tbody>';
+  tbl.innerHTML='<thead><tr>'+['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','마진','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="gtbody"></tbody>';
   wrap.appendChild(tbl); c.appendChild(wrap);
   const addC=el('button','btn ghost sm','＋ 골프장 줄 추가'); addC.style.marginTop='9px';
-  addC.onclick=()=>{ CR.push({region:'방콕',name:'',note:'',label:'비수기',from:'',to:'',gf18wd:null,gf18we:null,caddie:0,cart:0,gf9wd:null,gf9we:null,caddie9:0,cart9:0});
+  addC.onclick=()=>{ CR.push({region:'방콕',name:'',note:'',label:'비수기',from:'',to:'',gf18wd:null,gf18we:null,caddie:0,cart:0,gf9wd:null,gf9we:null,caddie9:0,cart9:0,margin:100});
     _gtFilter=''; const fi=document.getElementById('gtFilter'); if(fi) fi.value='';   // 새 줄이 필터에 가려지지 않게
     _touch(); renderGolfBody(); };
   c.appendChild(addC);
@@ -1029,10 +1029,10 @@ function golfSection(){
 function hotelSection(){
   const c=card('🏨 호텔','한 줄에 숙소 하나. 1박 요금 기준입니다.');
   const hwrap=el('div','gtwrap'); const htbl=document.createElement('table'); htbl.className='gt'; htbl.style.minWidth='620px';
-  htbl.innerHTML='<thead><tr>'+['지역','숙소명','1박요금','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="htbody"></tbody>';
+  htbl.innerHTML='<thead><tr>'+['지역','숙소명','1박요금','마진','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="htbody"></tbody>';
   hwrap.appendChild(htbl); c.appendChild(hwrap);
   const addH=el('button','btn ghost sm','＋ 호텔 줄 추가'); addH.style.marginTop='9px';
-  addH.onclick=()=>{ HR.push({region:'방콕',name:'',perNight:0,note:'2인 1실 기준 1박'}); _touch(); renderHotelBody(); };
+  addH.onclick=()=>{ HR.push({region:'방콕',name:'',perNight:0,margin:100,note:'2인 1실 기준 1박'}); _touch(); renderHotelBody(); };
   c.appendChild(addH);
   return c;
 }
@@ -1066,6 +1066,7 @@ function renderGolfBody(){
     tr.appendChild(tdw(numCell(row,'gf9we',true)));
     tr.appendChild(tdw(numCell(row,'caddie9',true)));
     tr.appendChild(tdw(numCell(row,'cart9',true)));
+    tr.appendChild(tdw(numCell(row,'margin',false)));   // 손님가에 얹는 마진(밧) — 비우면 0
     tr.appendChild(tdw(txtCell(row,'note','cnote')));
     const x=document.createElement('td'); x.className='cx'; x.textContent='✕'; x.title='이 줄 삭제';
     x.onclick=()=>{ if(!confirm(`[${row.name||'이름없음'} · ${row.label||''}] 줄을 삭제할까요?`)) return; CR.splice(i,1); _touch(); renderGolfBody(); };
@@ -1080,6 +1081,7 @@ function renderHotelBody(){
     tr.appendChild(tdw(regionSelect(row)));
     tr.appendChild(tdw(txtCell(row,'name','cname')));
     tr.appendChild(tdw(numCell(row,'perNight',false)));
+    tr.appendChild(tdw(numCell(row,'margin',false)));   // 1실 1박당 마진(밧)
     tr.appendChild(tdw(txtCell(row,'note','cnote')));
     const x=document.createElement('td'); x.className='cx'; x.textContent='✕';
     x.onclick=()=>{ if(!confirm(`[${row.name||'이름없음'}] 숙소 줄을 삭제할까요?`)) return; HR.splice(i,1); _touch(); renderHotelBody(); };
@@ -1174,13 +1176,13 @@ async function downloadGolfXlsx(){
     const wb=new ExcelJS.Workbook(); wb.created=new Date();
 
     _gxSheet(wb,'골프장',
-      ['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','메모'],
+      ['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','마진','메모'],
       CR.map(r=>[r.region||'',r.name||'',r.label||'',r.from||'',r.to||'',
         _gxNum(r.gf18wd),_gxNum(r.gf18we),_gxNum(r.caddie),_gxNum(r.cart),
-        _gxNum(r.gf9wd),_gxNum(r.gf9we),_gxNum(r.caddie9),_gxNum(r.cart9),r.note||'']));
+        _gxNum(r.gf9wd),_gxNum(r.gf9we),_gxNum(r.caddie9),_gxNum(r.cart9),_gxNum(r.margin),r.note||'']));
 
-    _gxSheet(wb,'숙소',['지역','숙소명','1박요금','메모'],
-      HR.map(h=>[h.region||'',h.name||'',_gxNum(h.perNight),h.note||'']));
+    _gxSheet(wb,'숙소',['지역','숙소명','1박요금','마진','메모'],
+      HR.map(h=>[h.region||'',h.name||'',_gxNum(h.perNight),_gxNum(h.margin),h.note||'']));
 
     // 차량: 지역 조합마다 열 하나
     const vgs=G.vehicleGroups||[];

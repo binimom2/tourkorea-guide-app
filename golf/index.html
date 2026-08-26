@@ -323,6 +323,9 @@ const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 /* 한화는 백원 단위를 남기지 않는다 — 천원 단위로 무조건 올림.
    583,200원 → 584,000원. 손님에게 나가는 금액이라 내리지 않고 항상 올린다. */
 const krwUp=n=>Math.ceil(n/1000)*1000;
+/* 손님가에 얹는 마진(밧). 요금표의 각 줄 '마진' 칸에서 오고, 비어 있으면 100밧.
+   손님 사이트(/api/golf-price)와 같은 규칙이라야 두 곳 금액이 어긋나지 않는다. */
+const MG=v=>(Number.isFinite(+v)&&+v>=0)?+v:100;
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
@@ -661,7 +664,8 @@ function calc(){
     else if(st.holes==='27') unit = (u18!=null&&u9!=null) ? u18+u9 : null;   // 18홀 + 9홀
     else if(st.holes==='36') unit = u18!=null ? u18*2 : null;                // 18홀 2회
     if(unit==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
-    lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(unit)} × ${pax}명`,v:unit*pax});
+    const gU=unit+MG(ss.margin);   // 손님가 = 원가 + 요금표의 마진
+    lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(gU)} × ${pax}명`,v:gU*pax});
   });
   // 2) 차량 (선택한 지역 조합의 기간값 + 1박추가 확장)
   const amDep=!!($('#amDep')&&$('#amDep').checked);   // 오전 출발 = 첫날부터 온종일
@@ -697,7 +701,8 @@ function calc(){
     const nn=hotelNightsOf(r); if(!nn) return;
     const rt=hotelRoom[r.region]||'twin';
     const rms=roomCount(pax,rt);
-    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 × ${won(h.perNight)}`,v:h.perNight*nn*rms});
+    const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
+    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
   const per=Math.round(total/pax);
@@ -1257,7 +1262,7 @@ async function loadPricing(){
         if(fs && fs.gf18!==undefined){
           const conv={}, hot={};
           Object.entries(d.regions).forEach(([reg,rv])=>{
-            conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'', s:(c.seasons||[]).map(s=>({ from:s.from, to:s.to, g18:[s.gf18?.wd??null,s.gf18?.we??null], cad:s.caddie||0, crt:s.cart||0, g9:(s.gf9&&(s.gf9.wd!=null||s.gf9.we!=null))?[s.gf9.wd??null,s.gf9.we??null]:null, cad9:s.caddie9||0, crt9:s.cart9||0 })) }));
+            conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'', s:(c.seasons||[]).map(s=>({ from:s.from, to:s.to, g18:[s.gf18?.wd??null,s.gf18?.we??null], cad:s.caddie||0, crt:s.cart||0, g9:(s.gf9&&(s.gf9.wd!=null||s.gf9.we!=null))?[s.gf9.wd??null,s.gf9.we??null]:null, cad9:s.caddie9||0, crt9:s.cart9||0, margin:s.margin })) }));
             if(rv.hotels&&rv.hotels.length) hot[reg]=rv.hotels;
           });
           Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
