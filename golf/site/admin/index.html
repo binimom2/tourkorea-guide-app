@@ -160,7 +160,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-a
 
 const SITE_KEY='golf_site';
 const EMAIL_DOMAIN='@wevetour.app';          /* 이 화면에서 새로 만드는 계정의 이메일 */
-const ELEVATED_ADMIN_IDS=['lds1207'];        /* 명단과 무관하게 항상 어드민 — 잠금 방지 */
+const ELEVATED_ADMIN_IDS=['lds1207','sooyoung'];        /* 명단과 무관하게 항상 어드민 — 잠금 방지 */
 
 let currentUser=null, GROLE='', S=null, C={}, R={}, dirty={};
 
@@ -227,7 +227,7 @@ async function resolveEmail(typed){
   }catch(e){}
   return id+EMAIL_DOMAIN;      /* 이 화면에서 만든 계정은 매핑표가 없어도 열린다 */
 }
-function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.login_name||'').toLowerCase(); }
+function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.login_name||((u&&u.email)||'').split('@')[0]||'').toLowerCase(); }
 function golfRoleOf(u){
   const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
   if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
