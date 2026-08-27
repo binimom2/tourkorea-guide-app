@@ -103,6 +103,8 @@ section:nth-of-type(even) .card{background:var(--paper)}
 .card h3{margin:0;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
 .card .reg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em}
 .card p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.55}
+/* 관리 화면에서 줄을 나눠 적은 소개 문구는 그 줄바꿈을 살린다 */
+.keep{white-space:pre-line}
 
 /* ── 기타투어 ── */
 .tourcat{margin-bottom:26px}
@@ -378,8 +380,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <h3 id="dName"></h3>
         <p class="den" id="dEn"></p>
         <div class="gal" id="dGal"></div>
-        <div class="dsect inc" id="dIncBox"><b>포함사항</b><p id="dInc"></p></div>
-        <div class="dsect exc" id="dExcBox"><b>불포함사항</b><p id="dExc"></p></div>
+        <div class="dsect inc" id="dIncBox"><b>포함사항</b><p class="keep" id="dInc"></p></div>
+        <div class="dsect exc" id="dExcBox"><b>불포함사항</b><p class="keep" id="dExc"></p></div>
         <div class="dsect note"><b>안내사항</b><ul class="dlist" id="dList"></ul></div>
       </div>
       <!-- 오른쪽 실시간 견적 패널 — 라운드·인원·날짜를 고르면 서버가 그 날짜 요금으로 계산해 준다 -->
@@ -566,7 +568,8 @@ function cardOf(x, kind, idx){
     + '<div class="body"><div class="reg">' + esc(x.r || "") + '</div>'
     + '<h3>' + esc(x.n) + '</h3>'
     + (x.e ? '<p class="en">' + esc(x.e) + '</p>' : '')
-    + (x.d ? '<p>' + esc(x.d) + '</p>' : '')
+    /* 관리 화면에서 줄을 나눠 적은 그대로 보여 준다 — 한 줄로 이어 붙이면 읽기 어렵다 */
+    + (x.d ? '<p class="keep">' + esc(x.d) + '</p>' : '')
     + priceHtml(p, kind)
     + '</div></button>';
 }
@@ -733,8 +736,9 @@ function openDetail(x, kind){
           + '</div>').join("") + '</div>' : "");
     gal.querySelectorAll("[data-p]").forEach(g => g.onclick = () => openLbox(Number(g.dataset.p)));
   }
-  /* 소개 문구는 「 · 」로 이어 붙여 둔 것이라, 다시 쪼개 한 줄씩 보여준다 */
-  const parts = (x.d || "").split(" · ").map(s => s.trim()).filter(Boolean);
+  /* 소개 문구를 한 줄씩 쪼개 보여준다 — 줄을 나눠 적었으면 그 줄대로,
+     예전처럼 「 · 」로 이어 적었으면 그 자리에서 쪼갠다. 둘 다 받는다. */
+  const parts = (x.d || "").split(/\r?\n|\s·\s/).map(s => s.trim()).filter(Boolean);
   $("#dList").innerHTML = parts.length
     ? parts.map(p => "<li>" + esc(p) + "</li>").join("")
     : '<li class="none">' + (kind === "hotels"
