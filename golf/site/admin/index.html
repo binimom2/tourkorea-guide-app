@@ -357,6 +357,11 @@ function ta(path,val,ph,cls){
   return '<textarea data-p="'+esc(path)+'"'+(cls?' class="'+esc(cls)+'"':'')
     +(ph?' placeholder="'+esc(ph)+'"':'')+'>'+esc(val)+'</textarea>';
 }
+/* 「방콕 · 파타야 · 후아힌」처럼 한 줄로 적고 목록으로 저장하는 칸 */
+function inpList(path,arr,ph){
+  return '<input data-p="'+esc(path)+'" data-list="1" type="text" value="'+esc((arr||[]).join(' · '))+'"'
+    +(ph?' placeholder="'+esc(ph)+'"':'')+'>';
+}
 /* 입력은 전부 여기서 받아 S에 반영한다 */
 document.getElementById('pane').addEventListener('input',e=>{
   const el=e.target, p=el.dataset.p;
@@ -366,6 +371,8 @@ document.getElementById('pane').addEventListener('input',e=>{
     /* 항목 「보이기」는 표 전체를 다시 그리지 않고 그 줄과 숫자만 고친다
        — 62줄을 다시 그리면 보고 있던 자리가 위로 튄다 */
     if(el.dataset.itemon) refreshItemOn(el);
+  }else if(el.dataset.list){           // 지역 차례처럼 「·」로 이어 적고 목록으로 저장하는 칸
+    setPath(S,p,el.value.split(/[·,]/).map(s=>s.trim()).filter(Boolean));
   }else if(el.dataset.pics){           // 사진칸 — 첫 줄이 대표(img), 나머지가 imgs
     const list=el.value.split('\n').map(s=>s.trim()).filter(Boolean);
     const o=getPath(S,p);
@@ -446,6 +453,8 @@ function subs(){
              {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'}]);
 }
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
+/* 지역순 보기는 처음부터 켜져 있다 — 62곳을 지역별로 나눠 봐야 찾기 쉽다. 끄면 넣은 차례대로. */
+function sortOn(k){ return iSort[k]!==false; }
 function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
   if(!SUB.some(s=>s.k===sub)) sub='hero';
@@ -657,7 +666,7 @@ function itemRows(k){
   /* 「지역」 머리글을 누르면 지역끼리 모아서 보여 준다 — 보기만 바뀌고 저장되는 순서는 그대로다.
      지역 안에서는 원래 넣은 순서를 지킨다(sort가 안정 정렬이라 그대로 남는다).
      regionOrder(파타야·방콕·후아힌…)에 적힌 차례를 따르고, 거기 없는 지역은 뒤에 붙인다. */
-  if(iSort[k]){
+  if(sortOn(k)){
     const rOrd=r=>{ const L=S.regionOrder||[], i=L.indexOf(r||''); return i<0?999:i; };
     rows.sort((a,b)=>{ const d=rOrd(a.x.r)-rOrd(b.x.r); if(d) return d;
       return (a.x.r||'').localeCompare(b.x.r||'','ko'); });
@@ -683,7 +692,7 @@ function incExcDef(k){
 }
 function itemBodyHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
-  const {rows}=itemRows(k), {bk,bp}=itemBadge(k), sortR=!!iSort[k];
+  const {rows}=itemRows(k), {bk,bp}=itemBadge(k), sortR=sortOn(k);
   const dft=incExcDef(k);
   let last=null;
   return rows.map(o=>{ const p=itemsPath(k,o.i);
@@ -720,7 +729,7 @@ function redrawItems(k){
 }
 function subItems(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'};
-  const u=cat.u||'곳', {bl}=itemBadge(k), sortR=!!iSort[k], dft=incExcDef(k);
+  const u=cat.u||'곳', {bl}=itemBadge(k), sortR=sortOn(k), dft=incExcDef(k);
   document.getElementById('subpane').innerHTML=
     '<div class="card"><h2>'+esc((cat.ic?cat.ic+' ':'')+(cat.t||k))+'</h2>'
     +'<p class="desc">손님 화면 1차 목록에 깔리는 카드입니다. 카드를 누르면 2차 상세가 열리고, '
@@ -742,8 +751,12 @@ function subItems(k){
     +'<th style="width:175px">사진</th><th style="width:62px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
+    /* 지역 차례 — 손님 화면과 「지역순 보기」가 이 차례를 따른다. 골프장·호텔이 같이 쓴다 */
+    +'<div class="f" style="margin-top:16px"><label>지역 차례 — 손님 화면과 위 「지역」 모아 보기가 '
+      +'이 차례대로 늘어놓습니다 (골프장·호텔 공용, 가운뎃점으로 구분)</label>'
+      +inpList('regionOrder',S.regionOrder,'방콕 · 파타야 · 후아힌')+'</div>'
     /* 표에서 비워 둔 줄에 나갈 문구 — 여기서 한 번 고치면 그 종류 전체에 적용된다 */
-    +'<div class="f" style="margin-top:16px"><label>기본 포함사항 — 위 표의 「포함사항」을 비워 둔 '
+    +'<div class="f" style="margin-top:11px"><label>기본 포함사항 — 위 표의 「포함사항」을 비워 둔 '
       +esc(cat.t||k)+'은 전부 이 문구가 손님에게 나갑니다</label>'
       +ta('incExc.'+k+'.inc',dft.inc)+'</div>'
     +'<div class="f" style="margin-top:11px"><label>기본 불포함사항 — 위 표의 「불포함사항」을 비워 둔 '
@@ -754,9 +767,9 @@ function subItems(k){
   const s=document.getElementById('iSrch');
   s.oninput=()=>{ iSearch[k]=s.value; redrawItems(k); };
   document.getElementById('iSortR').onclick=()=>{
-    iSort[k]=!iSort[k];
+    iSort[k]=!sortOn(k);
     const b=document.getElementById('iSortR');
-    b.classList.toggle('on',!!iSort[k]); b.textContent='지역 '+(iSort[k]?'▲':'⇅');
+    b.classList.toggle('on',sortOn(k)); b.textContent='지역 '+(sortOn(k)?'▲':'⇅');
     redrawItems(k);
   };
   /* 전부 끄기·켜기 — 표에 보이는 줄에만 건다. 찾기로 걸러 둔 상태면 걸러진 줄만 바뀐다.
