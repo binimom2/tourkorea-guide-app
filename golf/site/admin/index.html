@@ -61,7 +61,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 
 /* ── 표 ── */
 .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;min-width:720px}
+table{border-collapse:collapse;width:100%;min-width:1020px}
 th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle}
 th{background:rgba(18,58,43,.06);font-size:11.5px;font-weight:800;color:var(--muted);white-space:nowrap;position:sticky;top:0}
 tr:last-child td{border-bottom:0}
@@ -656,16 +656,27 @@ function itemCntHTML(k){
   return '전체 '+arr.length+u+(q?' · 찾은 것 '+rows.length+u:'')
     +(hid?' · <b style="color:var(--danger)">숨김 '+hid+u+'</b>':'');
 }
+/* 종류별 「포함사항·불포함사항」 기본 문구. 처음 보는 종류면 공통 문구로 한 벌 만들어 둔다.
+   각 줄의 칸을 비워 두면 손님 화면에는 이 문구가 나간다. */
+function incExcDef(k){
+  S.incExc=S.incExc||{};
+  if(!S.incExc[k]){
+    const D=window.SITE_DEFAULT.incExc||{}, g=D[k]||D._||{};
+    S.incExc[k]={inc:g.inc||'',exc:g.exc||''};
+  }
+  return S.incExc[k];
+}
 function itemBodyHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
   const {rows}=itemRows(k), {bk,bp}=itemBadge(k), sortR=!!iSort[k];
+  const dft=incExcDef(k);
   let last=null;
   return rows.map(o=>{ const p=itemsPath(k,o.i);
     /* 지역순으로 볼 때는 지역이 바뀌는 자리마다 「파타야 · 19곳」 같은 묶음줄을 끼운다 */
     let grp='';
     if(sortR&&(o.x.r||'')!==last){ last=o.x.r||'';
       const cnt=rows.filter(z=>(z.x.r||'')===last).length;
-      grp='<tr class="grp"><td colspan="8">'+esc(last||'지역 없음')+' · '+cnt+u+'</td></tr>'; }
+      grp='<tr class="grp"><td colspan="10">'+esc(last||'지역 없음')+' · '+cnt+u+'</td></tr>'; }
     /* 체크를 풀면 손님 화면에서만 빠진다 — 자료(사진·문구)는 그대로 남는다 */
     return grp+'<tr'+(o.x.on===false?' class="offrow"':'')+'>'
       +'<td style="text-align:center"><input type="checkbox" data-p="'+esc(p)+'.on" data-bool="1" data-itemon="1"'
@@ -675,6 +686,9 @@ function itemBodyHTML(k){
       +'<td>'+inp(p+'.e',o.x.e||'','Siam Country Club')+'</td>'
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
       +'<td>'+ta(p+'.d',o.x.d||'')+'</td>'
+      /* 비워 두면 흐린 글씨(기본 문구)가 그대로 손님에게 나간다 — 다른 곳만 적으면 된다 */
+      +'<td>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</td>'
+      +'<td>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
       +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>';
   }).join('');
@@ -688,7 +702,7 @@ function redrawItems(k){
 }
 function subItems(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'};
-  const u=cat.u||'곳', {bl}=itemBadge(k), sortR=!!iSort[k];
+  const u=cat.u||'곳', {bl}=itemBadge(k), sortR=!!iSort[k], dft=incExcDef(k);
   document.getElementById('subpane').innerHTML=
     '<div class="card"><h2>'+esc((cat.ic?cat.ic+' ':'')+(cat.t||k))+'</h2>'
     +'<p class="desc">손님 화면 1차 목록에 깔리는 카드입니다. 카드를 누르면 2차 상세가 열리고, '
@@ -702,9 +716,18 @@ function subItems(k){
       +' title="지역끼리 모아 보기 ⇄ 넣은 차례대로 보기 (보기만 바뀝니다)">지역 '+(sortR?'▲':'⇅')+'</button></th>'
     +'<th style="width:140px">이름</th>'
     +'<th style="width:150px">영문 이름</th><th style="width:70px">'+bl+'</th>'
-    +'<th>소개 문구</th><th style="width:170px">사진</th><th style="width:62px"></th>'
+    +'<th>소개 문구</th>'
+    +'<th style="width:150px">포함사항</th><th style="width:190px">불포함사항</th>'
+    +'<th style="width:170px">사진</th><th style="width:62px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
+    /* 표에서 비워 둔 줄에 나갈 문구 — 여기서 한 번 고치면 그 종류 전체에 적용된다 */
+    +'<div class="f" style="margin-top:16px"><label>기본 포함사항 — 위 표의 「포함사항」을 비워 둔 '
+      +esc(cat.t||k)+'은 전부 이 문구가 손님에게 나갑니다</label>'
+      +ta('incExc.'+k+'.inc',dft.inc)+'</div>'
+    +'<div class="f" style="margin-top:11px"><label>기본 불포함사항 — 위 표의 「불포함사항」을 비워 둔 '
+      +esc(cat.t||k)+'은 전부 이 문구가 나갑니다</label>'
+      +ta('incExc.'+k+'.exc',dft.exc)+'</div>'
     +(k==='hotels'?'<div class="f" style="margin-top:14px"><label>호텔 목록 아래 안내 문구</label>'+ta('hotelNote',S.hotelNote)+'</div>':'')
     +'</div>';
   const s=document.getElementById('iSrch');
@@ -715,6 +738,14 @@ function subItems(k){
     b.classList.toggle('on',!!iSort[k]); b.textContent='지역 '+(iSort[k]?'▲':'⇅');
     redrawItems(k);
   };
+  /* 기본 문구를 고치면 표에서 비워 둔 칸의 흐린 글씨도 바로 따라 바뀐다.
+     표를 다시 그리지 않고 흐린 글씨만 갈아 끼운다 — 다시 그리면 한글 조합이 끊긴다. */
+  ['inc','exc'].forEach(f=>{
+    const box=document.querySelector('[data-p="incExc.'+k+'.'+f+'"]'); if(!box) return;
+    box.addEventListener('input',()=>{
+      document.querySelectorAll('#iBody [data-p$=".'+f+'"]').forEach(t=>t.placeholder=box.value);
+    });
+  });
   bindRowBtns();
 }
 /* 종류 자체를 늘리는 화면 — 스파·차량·요트처럼 나중에 붙일 것들 */
