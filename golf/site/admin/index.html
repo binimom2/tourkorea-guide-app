@@ -61,15 +61,24 @@ input,select,textarea{font:inherit;color:var(--ink)}
 
 /* ── 표 ── */
 .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;min-width:1330px}
+table{border-collapse:collapse;width:100%;min-width:1020px}
 th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle}
 th{background:rgba(18,58,43,.06);font-size:11.5px;font-weight:800;color:var(--muted);white-space:nowrap;position:sticky;top:0}
 tr:last-child td{border-bottom:0}
 td input,td select,td textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13.5px}
 td input:focus,td select:focus,td textarea:focus{outline:2px solid var(--marigold);outline-offset:0}
 td textarea{resize:vertical;min-height:34px;line-height:1.45}
-/* 소개 문구·포함사항·불포함사항처럼 긴 글을 적는 칸은 더 높게 잡는다 */
+/* 소개 문구처럼 긴 글을 적는 칸은 더 높게 잡는다 */
 td textarea.big{min-height:80px}
+/* 포함·불포함사항은 그 줄 「아래」에 한 줄을 더 깔아 넓게 적는다.
+   위 줄과 한 덩어리로 보이도록 사이 선을 지우고 아래 줄만 선을 남긴다. */
+tr.mainrow td{border-bottom:0;padding-bottom:2px}
+tr.subrow td{padding:0 6px 11px}
+.ierow{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding-left:58px}
+.iecell{display:flex;flex-direction:column;gap:3px}
+.iecell b{font-size:11px;font-weight:800;color:var(--muted)}
+.iecell textarea{min-height:50px}
+tr.subrow.offrow td{opacity:.42}
 .del{background:none;border:1px solid var(--line);border-radius:7px;color:var(--danger);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap}
 .del:hover{background:rgba(192,73,47,.09)}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
@@ -369,7 +378,10 @@ document.getElementById('pane').addEventListener('input',e=>{
 /* 「보이기」를 끄고 켤 때 그 줄 색과 숨김 개수만 새로 그린다 */
 function refreshItemOn(el){
   const tr=el.closest('tr');
-  if(tr) tr.classList.toggle('offrow',!el.checked);
+  /* 한 항목이 두 줄(위: 이름·소개, 아래: 포함·불포함)이라 둘 다 같이 흐려져야 한다 */
+  if(tr){ tr.classList.toggle('offrow',!el.checked);
+    const sub=tr.nextElementSibling;
+    if(sub&&sub.classList.contains('subrow')) sub.classList.toggle('offrow',!el.checked); }
   const cnt=document.getElementById('iCnt');
   if(!cnt) return;
   cnt.innerHTML=itemCntHTML(cnt.dataset.k);   /* 찾기 중이면 「찾은 것 N곳」도 같이 유지된다 */
@@ -679,9 +691,10 @@ function itemBodyHTML(k){
     let grp='';
     if(sortR&&(o.x.r||'')!==last){ last=o.x.r||'';
       const cnt=rows.filter(z=>(z.x.r||'')===last).length;
-      grp='<tr class="grp"><td colspan="10">'+esc(last||'지역 없음')+' · '+cnt+u+'</td></tr>'; }
+      grp='<tr class="grp"><td colspan="8">'+esc(last||'지역 없음')+' · '+cnt+u+'</td></tr>'; }
+    const off=o.x.on===false?' offrow':'';   // 체크를 끈 줄은 위·아래 줄 모두 흐리게
     /* 체크를 풀면 손님 화면에서만 빠진다 — 자료(사진·문구)는 그대로 남는다 */
-    return grp+'<tr'+(o.x.on===false?' class="offrow"':'')+'>'
+    return grp+'<tr class="mainrow'+off+'">'
       +'<td style="text-align:center"><input type="checkbox" data-p="'+esc(p)+'.on" data-bool="1" data-itemon="1"'
         +(o.x.on===false?'':' checked')+' title="끄면 손님 화면에서 감춰집니다"></td>'
       +'<td>'+inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')+'</td>'
@@ -689,11 +702,13 @@ function itemBodyHTML(k){
       +'<td>'+inp(p+'.e',o.x.e||'','Siam Country Club')+'</td>'
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
       +'<td>'+ta(p+'.d',o.x.d||'','','big')+'</td>'
-      /* 비워 두면 흐린 글씨(기본 문구)가 그대로 손님에게 나간다 — 다른 곳만 적으면 된다 */
-      +'<td>'+ta(p+'.inc',o.x.inc||'',dft.inc,'big')+'</td>'
-      +'<td>'+ta(p+'.exc',o.x.exc||'',dft.exc,'big')+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
-      +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>';
+      +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>'
+      /* 아래 줄 — 포함·불포함사항. 비워 두면 흐린 글씨(기본 문구)가 그대로 손님에게 나간다 */
+      +'<tr class="subrow'+off+'"><td colspan="8"><div class="ierow">'
+        +'<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
+        +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
+      +'</div></td></tr>';
   }).join('');
 }
 /* 찾기·지역순 토글처럼 「본문만」 바뀔 때 — 찾기칸은 건드리지 않는다(한글 조합 유지) */
@@ -720,12 +735,11 @@ function subItems(k){
     +'<th style="width:58px">보이기</th>'
     +'<th style="width:92px"><button class="sortth'+(sortR?' on':'')+'" id="iSortR" type="button"'
       +' title="지역끼리 모아 보기 ⇄ 넣은 차례대로 보기 (보기만 바뀝니다)">지역 '+(sortR?'▲':'⇅')+'</button></th>'
-    +'<th style="width:132px">이름</th>'
-    +'<th style="width:140px">영문 이름</th><th style="width:64px">'+bl+'</th>'
-    /* 글이 긴 세 칸은 폭을 못 박아 둔다 — 안 그러면 칸이 늘 때마다 소개 문구만 짓눌린다 */
-    +'<th style="width:250px">소개 문구</th>'
-    +'<th style="width:180px">포함사항</th><th style="width:210px">불포함사항</th>'
-    +'<th style="width:170px">사진</th><th style="width:62px"></th>'
+    +'<th style="width:145px">이름</th>'
+    +'<th style="width:155px">영문 이름</th><th style="width:68px">'+bl+'</th>'
+    /* 포함·불포함사항은 이 줄이 아니라 바로 아래 줄에 넓게 깔린다 */
+    +'<th>소개 문구</th>'
+    +'<th style="width:175px">사진</th><th style="width:62px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
     /* 표에서 비워 둔 줄에 나갈 문구 — 여기서 한 번 고치면 그 종류 전체에 적용된다 */
