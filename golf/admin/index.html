@@ -15,6 +15,10 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.5}
 .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 140px}
+/* 사이트 관리 안에 끼워 넣었을 때 — 바깥 화면에 이미 여백이 있어 위쪽을 줄인다 */
+.embed body{background:transparent}
+.embed .wrap{max-width:none;padding:4px 2px 60px}
+.embed .head{border-bottom:0;padding-bottom:0;margin-bottom:12px;justify-content:flex-end}
 
 /* 로그인 */
 #login{position:fixed;inset:0;background:var(--fairway-deep);display:flex;align-items:center;justify-content:center;z-index:50}
@@ -139,12 +143,13 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 
 <!-- 앱 -->
 <div class="wrap hidden" id="app">
-  <header class="head">
-    <div>
+  <!-- 사이트 관리 안에 끼워 넣을 때(?embed=1)는 제목 쪽만 감춘다 — 제목이 두 겹이 된다 -->
+  <header class="head" id="gHead">
+    <div id="gTitle">
       <div class="eyebrow">THAILAND GOLF · ADMIN</div>
       <h1>코드 및 요금표</h1>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="gNav">
       <span class="who" id="who"></span>
       <button class="link" onclick="downloadGolfXlsx()" id="gxlsBtn">📥 엑셀</button>
       <!-- 🔍 데이터 보기: 평소 볼 일이 없어 버튼만 숨김.
@@ -158,6 +163,19 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
   </header>
+  <script>
+  /* 사이트 관리 화면 안에 끼워 넣은 경우(?embed=1) — 바깥에 이미 있는 것들을 지운다.
+     제목·손님 사이트·사이트 관리·로그아웃은 바깥 화면 몫이고, 여기서는 요금표만 보이면 된다.
+     주소창으로 직접 열면(=평소) 아무것도 달라지지 않는다. */
+  if(new URLSearchParams(location.search).get('embed')==='1'){
+    document.documentElement.classList.add('embed');
+    addEventListener('DOMContentLoaded',()=>{
+      ['gTitle','siteAdminLink'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); });
+      document.querySelectorAll('#gNav a[href="/golf/site/"]').forEach(e=>e.remove());
+      document.querySelectorAll('#gNav button').forEach(b=>{ if(/로그아웃/.test(b.textContent)) b.remove(); });
+    });
+  }
+  </script>
   <div id="codesPane"></div>
   <div id="editor"></div>
 </div>
