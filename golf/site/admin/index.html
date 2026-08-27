@@ -61,13 +61,15 @@ input,select,textarea{font:inherit;color:var(--ink)}
 
 /* ── 표 ── */
 .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;min-width:1020px}
+table{border-collapse:collapse;width:100%;min-width:1330px}
 th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle}
 th{background:rgba(18,58,43,.06);font-size:11.5px;font-weight:800;color:var(--muted);white-space:nowrap;position:sticky;top:0}
 tr:last-child td{border-bottom:0}
 td input,td select,td textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13.5px}
 td input:focus,td select:focus,td textarea:focus{outline:2px solid var(--marigold);outline-offset:0}
 td textarea{resize:vertical;min-height:34px;line-height:1.45}
+/* 소개 문구·포함사항·불포함사항처럼 긴 글을 적는 칸은 더 높게 잡는다 */
+td textarea.big{min-height:80px}
 .del{background:none;border:1px solid var(--line);border-radius:7px;color:var(--danger);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap}
 .del:hover{background:rgba(192,73,47,.09)}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
@@ -342,8 +344,9 @@ function inp(path,val,ph,type){
   return '<input data-p="'+esc(path)+'" type="'+(type||'text')+'" value="'+esc(val)+'"'
     +(ph?' placeholder="'+esc(ph)+'"':'')+'>';
 }
-function ta(path,val,ph){
-  return '<textarea data-p="'+esc(path)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+'>'+esc(val)+'</textarea>';
+function ta(path,val,ph,cls){
+  return '<textarea data-p="'+esc(path)+'"'+(cls?' class="'+esc(cls)+'"':'')
+    +(ph?' placeholder="'+esc(ph)+'"':'')+'>'+esc(val)+'</textarea>';
 }
 /* 입력은 전부 여기서 받아 S에 반영한다 */
 document.getElementById('pane').addEventListener('input',e=>{
@@ -685,10 +688,10 @@ function itemBodyHTML(k){
       +'<td>'+inp(p+'.n',o.x.n||'')+'</td>'
       +'<td>'+inp(p+'.e',o.x.e||'','Siam Country Club')+'</td>'
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
-      +'<td>'+ta(p+'.d',o.x.d||'')+'</td>'
+      +'<td>'+ta(p+'.d',o.x.d||'','','big')+'</td>'
       /* 비워 두면 흐린 글씨(기본 문구)가 그대로 손님에게 나간다 — 다른 곳만 적으면 된다 */
-      +'<td>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</td>'
-      +'<td>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</td>'
+      +'<td>'+ta(p+'.inc',o.x.inc||'',dft.inc,'big')+'</td>'
+      +'<td>'+ta(p+'.exc',o.x.exc||'',dft.exc,'big')+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
       +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>';
   }).join('');
@@ -709,15 +712,19 @@ function subItems(k){
     +'「사진」에 적은 것이 상세의 사진 여러 장으로 나옵니다. 요금·원가는 넣지 마세요 — 손님에게 그대로 보입니다.</p>'
     +'<div class="rowbtns" style="margin:0 0 11px">'
     +'<input class="srch" id="iSrch" placeholder="이름·지역·설명으로 찾기" value="'+esc(iSearch[k]||'')+'">'
-    +'<span class="cnt" id="iCnt" data-k="'+esc(k)+'" data-u="'+esc(u)+'">'+itemCntHTML(k)+'</span></div>'
+    +'<span class="cnt" id="iCnt" data-k="'+esc(k)+'" data-u="'+esc(u)+'">'+itemCntHTML(k)+'</span>'
+    /* 하나씩 켜 가며 채울 때 쓴다 — 지금 표에 보이는 줄에만 걸린다(찾기 중이면 그 줄만) */
+    +'<button class="ghost" id="iAllOff" type="button">전부 끄기</button>'
+    +'<button class="ghost" id="iAllOn" type="button">전부 켜기</button></div>'
     +'<div class="tblwrap"><table><thead><tr>'
     +'<th style="width:58px">보이기</th>'
     +'<th style="width:92px"><button class="sortth'+(sortR?' on':'')+'" id="iSortR" type="button"'
       +' title="지역끼리 모아 보기 ⇄ 넣은 차례대로 보기 (보기만 바뀝니다)">지역 '+(sortR?'▲':'⇅')+'</button></th>'
-    +'<th style="width:140px">이름</th>'
-    +'<th style="width:150px">영문 이름</th><th style="width:70px">'+bl+'</th>'
-    +'<th>소개 문구</th>'
-    +'<th style="width:150px">포함사항</th><th style="width:190px">불포함사항</th>'
+    +'<th style="width:132px">이름</th>'
+    +'<th style="width:140px">영문 이름</th><th style="width:64px">'+bl+'</th>'
+    /* 글이 긴 세 칸은 폭을 못 박아 둔다 — 안 그러면 칸이 늘 때마다 소개 문구만 짓눌린다 */
+    +'<th style="width:250px">소개 문구</th>'
+    +'<th style="width:180px">포함사항</th><th style="width:210px">불포함사항</th>'
     +'<th style="width:170px">사진</th><th style="width:62px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
@@ -738,6 +745,19 @@ function subItems(k){
     b.classList.toggle('on',!!iSort[k]); b.textContent='지역 '+(iSort[k]?'▲':'⇅');
     redrawItems(k);
   };
+  /* 전부 끄기·켜기 — 표에 보이는 줄에만 건다. 찾기로 걸러 둔 상태면 걸러진 줄만 바뀐다.
+     저장을 눌러야 손님 화면에 반영된다(다른 편집과 같다). */
+  [['iAllOff',false],['iAllOn',true]].forEach(([id,val])=>{
+    document.getElementById(id).onclick=()=>{
+      const {rows}=itemRows(k);
+      const what=(iSearch[k]?'지금 찾은 ':'')+rows.length+u;
+      if(!confirm(what+'을(를) 전부 '+(val?'켭니다':'끕니다')+'.\n'
+        +(val?'':'끄면 손님 화면에서 사라집니다 — 자료는 그대로 남습니다.\n')
+        +'(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
+      rows.forEach(o=>{ o.x.on=val; });
+      markDirty('site'); redrawItems(k);
+    };
+  });
   /* 기본 문구를 고치면 표에서 비워 둔 칸의 흐린 글씨도 바로 따라 바뀐다.
      표를 다시 그리지 않고 흐린 글씨만 갈아 끼운다 — 다시 그리면 한글 조합이 끊긴다. */
   ['inc','exc'].forEach(f=>{
