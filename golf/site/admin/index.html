@@ -78,7 +78,6 @@ tr.subrow td{padding:0 6px 11px}
 .iecell{display:flex;flex-direction:column;gap:3px}
 .iecell b{font-size:11px;font-weight:800;color:var(--muted)}
 .iecell textarea{min-height:50px}
-tr.subrow.offrow td{opacity:.42}
 .del{background:none;border:1px solid var(--line);border-radius:7px;color:var(--danger);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap}
 .del:hover{background:rgba(192,73,47,.09)}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
@@ -123,9 +122,11 @@ tr.grp td{background:rgba(18,58,43,.045);font-size:12px;font-weight:800;color:va
 #toast.on{opacity:1}
 .dirty{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-left:6px;vertical-align:middle}
 
-/* 손님 화면에서 감춰 둔 줄 — 자료는 남아 있으니 지운 것처럼 보이면 안 된다 */
+/* 손님 화면에서 감춰 둔 줄 — 자료는 남아 있으니 지운 것처럼 보이면 안 된다.
+   글자를 흐리게 하지 않는다: 전부 꺼 두고 하나씩 채우는 일이 많아, 흐려지면 표를 못 읽는다.
+   꺼진 줄은 바탕색과 왼쪽 띠로만 알린다(체크칸에도 이미 드러난다). */
 tr.offrow{background:#FAFAFA}
-tr.offrow td:not(:first-child){opacity:.42}
+tr.mainrow.offrow td:first-child{box-shadow:inset 3px 0 0 var(--marigold)}
 
 /* 사진칸 — 미리보기 + 올리기 + 주소 목록 */
 .picbox{display:flex;flex-direction:column;gap:6px;min-width:190px}
