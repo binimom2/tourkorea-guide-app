@@ -836,8 +836,12 @@ function incExcDef(k){
    금액은 **그린피+캐디+카트를 합친 한 숫자**(밧)다 — 사장님이 그렇게 쓰기로 정했다.
    자료는 golf_site가 아니라 **요금표(golf_pricing)** 쪽에 넣는다. golf_site는
    손님도 읽을 수 있게 열려 있어서, 거기 두면 원가가 그대로 새어 나간다. */
-const RATE_PARTS=['주중','주말','태국휴일'];
+/* 태국휴일은 주말과 요금이 같다(사장님 확인) — 그래서 칸을 하나로 묶었다.
+   견적에서 날짜를 볼 때 토·일과 태국휴일을 똑같이 「주말·휴일」로 친다. */
+const RATE_PARTS=['주중','주말·휴일'];
 const RATE_TIMES=['종일','오전','오후'];
+/* 예전에 「주말」·「태국휴일」로 따로 적힌 것이 있으면 묶어서 보여 준다 */
+function normPart(v){ return (v==='주말'||v==='태국휴일'||v==='주말·휴일')?'주말·휴일':'주중'; }
 /* 이 항목의 요금 줄들을 꺼내 온다. 없으면 빈 배열을 만들어 둔다. */
 function ratesOf(k,x){
   if(!P) return null;
@@ -856,7 +860,7 @@ function rateRowHTML(k,idx,r){
     +'<input type="date" data-rf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
     +'<span class="rtil">~</span>'
     +'<input type="date" data-rf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
-    +'<select data-rf="part">'+sel(r.part||'주중',RATE_PARTS)+'</select>'
+    +'<select data-rf="part">'+sel(normPart(r.part),RATE_PARTS)+'</select>'
     +'<select data-rf="time">'+sel(r.time||'종일',RATE_TIMES)+'</select>'
     +'<input type="number" data-rf="p18" value="'+esc(n(r.p18))+'" placeholder="18홀" min="0">'
     +'<input type="number" data-rf="p9" value="'+esc(n(r.p9))+'" placeholder="9홀" min="0">'
@@ -915,7 +919,7 @@ document.getElementById('pane').addEventListener('click',e=>{
   if(add){
     /* 마지막 줄의 기간을 물려받는다 — 같은 기간에 오전·오후를 잇달아 넣는 일이 많다 */
     const last=o.rates[o.rates.length-1]||{};
-    o.rates.push({from:last.from||'',to:last.to||'',part:last.part||'주중',time:'종일',p18:'',p9:''});
+    o.rates.push({from:last.from||'',to:last.to||'',part:normPart(last.part),time:'종일',p18:'',p9:''});
   }else{
     const row=e.target.closest('.rrow'); if(!row) return;
     o.rates.splice(Number(row.dataset.ri),1);
