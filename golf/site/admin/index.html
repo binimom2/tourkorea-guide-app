@@ -74,10 +74,20 @@ td textarea.big{min-height:80px}
    위 줄과 한 덩어리로 보이도록 사이 선을 지우고 아래 줄만 선을 남긴다. */
 tr.mainrow td{border-bottom:0;padding-bottom:2px}
 tr.subrow td{padding:0 6px 11px}
-.ierow{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding-left:58px}
+.ierow{display:grid;grid-template-columns:1fr 1fr 280px;gap:11px;padding-left:58px}
 .iecell{display:flex;flex-direction:column;gap:3px}
-.iecell b{font-size:11px;font-weight:800;color:var(--muted)}
+.iecell b{font-size:11px;font-weight:800;color:var(--muted);display:flex;gap:8px;align-items:baseline}
+.iecell b a{font-size:10.5px;font-weight:800;color:var(--fairway-mid);text-decoration:none}
+.iecell b a:hover{text-decoration:underline}
 .iecell textarea{min-height:50px}
+/* 요금 칸 — 읽기 전용이라 입력칸과 다르게 보이도록 바탕을 깔고 테두리를 점선으로 */
+.pbox{min-height:50px;padding:7px 9px;border:1px dashed var(--line);border-radius:7px;
+  background:rgba(18,58,43,.035);display:flex;flex-direction:column;gap:3px}
+.pbox span{font-size:11.5px;line-height:1.45}
+.preg{font-weight:800;color:var(--fairway)}
+.pln{color:var(--ink);font-variant-numeric:tabular-nums}
+.pno{font-weight:800;color:var(--danger)}
+.pmute{color:var(--muted)}
 .del{background:none;border:1px solid var(--line);border-radius:7px;color:var(--danger);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap}
 .del:hover{background:rgba(192,73,47,.09)}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
@@ -209,6 +219,9 @@ const EMAIL_DOMAIN='@wevetour.app';          /* 이 화면에서 새로 만드�
 const ELEVATED_ADMIN_IDS=['lds1207','sooyoung'];        /* 명단과 무관하게 항상 어드민 — 잠금 방지 */
 
 let currentUser=null, GROLE='', S=null, C={}, R={}, dirty={};
+/* P = 요금표(golf_pricing) **읽기 전용 사본**, PIDX = 이름으로 찾기 좋게 편 것.
+   이 화면은 요금을 저장하지 않는다 — 요금 정본은 /golf/admin/ 이다. */
+let P=null, PIDX={courses:{},hotels:{}};
 
 /* ── 알림 ── */
 let _tm=null;
@@ -342,6 +355,44 @@ async function loadAll(){
   try{ const c=await loadRaw('golf_codes'); C=(c&&typeof c==='object')?deepCopy(c):{}; _base['golf_codes']=_snap(c); }
   catch(e){ C={}; }
   CODE_CATS.forEach(c=>{ if(!Array.isArray(C[c.key])) C[c.key]=[]; });
+
+  /* 요금표(golf_pricing) — 자료를 넣으면서 요금이 들어와 있는지 곁눈질로 보라고 읽어만 온다.
+     이 화면에서는 **절대 고치지도 저장하지도 않는다** — 요금은 /golf/admin/ 이 정본이다. */
+  try{ const g=await loadRaw('golf_pricing'); P=(g&&typeof g==='object'&&g.regions)?g:null; }
+  catch(e){ P=null; }
+  buildPriceIndex();
+}
+/* 요금표는 지역 > 골프장이름 으로 담겨 있다. 이름으로 바로 찾을 수 있게 펴 둔다.
+   사이트와 요금표의 **이름이 정확히 같아야** 이어진다 — 다르면 「요금표에 없음」으로 뜬다. */
+function buildPriceIndex(){
+  PIDX={courses:{},hotels:{}};
+  if(!P||!P.regions) return;
+  const key=s=>String(s||'').replace(/\s+/g,'').toLowerCase();
+  Object.keys(P.regions).forEach(reg=>{
+    const r=P.regions[reg]||{};
+    (r.courses||[]).forEach(c=>{ if(c&&c.name) PIDX.courses[key(c.name)]={reg,c}; });
+    (r.hotels ||[]).forEach(h=>{ if(h&&h.name) PIDX.hotels [key(h.name)]={reg,h}; });
+  });
+}
+/* 한 항목의 요금을 사람이 읽는 몇 줄로 만든다. 없으면 null */
+function priceNote(k,x){
+  if(!P) return null;                       // 요금표를 아직 못 읽었다
+  const key=String(x&&x.n||'').replace(/\s+/g,'').toLowerCase();
+  if(!key) return null;
+  const n=v=>Number(v||0).toLocaleString();
+  if(k==='hotels'){
+    const hit=PIDX.hotels[key]; if(!hit) return {none:true};
+    return {reg:hit.reg,lines:['1박 '+n(hit.h.perNight)+'밧'+(hit.h.margin?' · 마진 '+n(hit.h.margin):'')]};
+  }
+  if(k!=='courses') return null;            // 스파·차량 등은 요금표가 따로 없다
+  const hit=PIDX.courses[key]; if(!hit) return {none:true};
+  const ss=hit.c.seasons||[];
+  if(!ss.length) return {reg:hit.reg,lines:[],empty:true};
+  return {reg:hit.reg,lines:ss.map(s=>{
+    const g=s.gf18||{};
+    return (s.label||'시즌')+' 18홀 그린피 주중 '+n(g.wd)+' / 주말 '+n(g.we)
+      +' · 캐디 '+n(s.caddie)+' · 카트 '+n(s.cart)+(s.margin?' · 마진 '+n(s.margin):'');
+  })};
 }
 
 /* ══════ 값 읽고 쓰기 (경로 문자열) ══════
@@ -379,6 +430,8 @@ document.getElementById('pane').addEventListener('input',e=>{
     /* 항목 「보이기」는 표 전체를 다시 그리지 않고 그 줄과 숫자만 고친다
        — 62줄을 다시 그리면 보고 있던 자리가 위로 튄다 */
     if(el.dataset.itemon) refreshItemOn(el);
+  }else if(el.dataset.pname){          // 이름칸 — 요금표와 이어지는 기준이라 따로 표시하지 않는다
+    setPath(S,p,el.value);             // (다 치고 칸을 벗어날 때 요금 칸만 새로 그린다)
   }else if(el.dataset.list){           // 지역 차례처럼 「·」로 이어 적고 목록으로 저장하는 칸
     setPath(S,p,el.value.split(/[·,]/).map(s=>s.trim()).filter(Boolean));
   }else if(el.dataset.pics){           // 사진칸 — 첫 줄이 대표(img), 나머지가 imgs
@@ -414,6 +467,19 @@ function clearDirty(k){
   const d=b&&b.querySelector('.dirty'); if(d) d.remove();
   if(k==='site'&&typeof showDirtyNote==='function') showDirtyNote();
 }
+/* 이름을 다 치고 칸을 벗어나면 그 줄의 요금 칸만 새로 그린다.
+   글자마다 다시 그리면 한글 조합이 끊기므로 change(=칸을 벗어날 때)에서만 한다. */
+document.getElementById('pane').addEventListener('change',e=>{
+  const el=e.target; if(!el.dataset||!el.dataset.pname) return;
+  const cnt=document.getElementById('iCnt'); if(!cnt) return;
+  const k=cnt.dataset.k, tr=el.closest('tr'), sub=tr&&tr.nextElementSibling;
+  if(!sub||!sub.classList.contains('subrow')) return;
+  const old=sub.querySelector('.pcell'); if(!old) return;
+  const item=getPath(S,el.dataset.p.replace(/\.n$/,''));
+  const box=document.createElement('div'); box.innerHTML=priceCell(k,item);
+  old.replaceWith(box.firstChild);
+  cnt.innerHTML=itemCntHTML(k);
+});
 function anyDirty(){ return Object.keys(dirty).some(k=>dirty[k]); }
 window.addEventListener('beforeunload',e=>{ if(anyDirty()){ e.preventDefault(); e.returnValue=''; } });
 
@@ -709,8 +775,11 @@ function itemCntHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
   const {arr,q,rows}=itemRows(k);
   const hid=arr.filter(x=>x&&x.on===false).length;   // 손님 화면에서 감춰 둔 것
+  /* 요금표에 안 들어와 있는 곳이 몇 곳인지 한눈에 — 자료 넣으면서 같이 챙기라고 */
+  const noP=P?arr.filter(x=>{ const r=priceNote(k,x); return r&&(r.none||r.empty); }).length:0;
   return '전체 '+arr.length+u+(q?' · 찾은 것 '+rows.length+u:'')
-    +(hid?' · <b style="color:var(--danger)">숨김 '+hid+u+'</b>':'');
+    +(hid?' · <b style="color:var(--danger)">숨김 '+hid+u+'</b>':'')
+    +(noP?' · <b style="color:var(--danger)">요금 없음 '+noP+u+'</b>':'');
 }
 /* 종류별 「포함사항·불포함사항」 기본 문구. 처음 보는 종류면 공통 문구로 한 벌 만들어 둔다.
    각 줄의 칸을 비워 두면 손님 화면에는 이 문구가 나간다. */
@@ -721,6 +790,19 @@ function incExcDef(k){
     S.incExc[k]={inc:g.inc||'',exc:g.exc||''};
   }
   return S.incExc[k];
+}
+/* 요금 요약 칸 — 읽기만 한다. 고치려면 요금표(/golf/admin/)로 가야 한다.
+   이어지는 기준은 **이름이 똑같은가**뿐이라, 안 맞으면 그 사실을 크게 알려 준다. */
+function priceCell(k,x){
+  const r=priceNote(k,x);
+  let body;
+  if(r===null) body='<span class="pmute">'+(P===null?'요금표를 못 읽었습니다':'이 종류는 요금표가 없습니다')+'</span>';
+  else if(r.none) body='<span class="pno">요금표에 「'+esc(x.n||'이름 없음')+'」이 없습니다</span>';
+  else if(r.empty) body='<span class="pno">요금표에 있지만 시즌 요금이 비어 있습니다</span>';
+  else body='<span class="preg">'+esc(r.reg)+'</span>'
+    +r.lines.map(l=>'<span class="pln">'+esc(l)+'</span>').join('');
+  return '<div class="iecell pcell"><b>요금 <a href="/golf/admin/" target="_blank" rel="noopener">요금표 열기 ↗</a></b>'
+    +'<div class="pbox">'+body+'</div></div>';
 }
 function itemBodyHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
@@ -739,16 +821,18 @@ function itemBodyHTML(k){
       +'<td style="text-align:center"><input type="checkbox" data-p="'+esc(p)+'.on" data-bool="1" data-itemon="1"'
         +(o.x.on===false?'':' checked')+' title="끄면 손님 화면에서 감춰집니다"></td>'
       +'<td>'+inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')+'</td>'
-      +'<td>'+inp(p+'.n',o.x.n||'')+'</td>'
+      +'<td>'+inp(p+'.n',o.x.n||'').replace('<input','<input data-pname="1"')+'</td>'
       +'<td>'+inp(p+'.e',o.x.e||'','Siam Country Club')+'</td>'
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
       +'<td>'+ta(p+'.d',o.x.d||'','','big')+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
       +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>'
-      /* 아래 줄 — 포함·불포함사항. 비워 두면 흐린 글씨(기본 문구)가 그대로 손님에게 나간다 */
+      /* 아래 줄 — 포함·불포함사항(비워 두면 흐린 글씨=기본 문구가 손님에게 나간다)과
+         요금표에 뭐가 들어와 있는지 곁눈질용 요약. 요금은 여기서 못 고친다. */
       +'<tr class="subrow'+off+'"><td colspan="8"><div class="ierow">'
         +'<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
         +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
+        +priceCell(k,o.x)
       +'</div></td></tr>';
   }).join('');
 }
