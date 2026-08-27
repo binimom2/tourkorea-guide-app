@@ -154,9 +154,12 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .loginbtn{background:none;border:1px solid var(--line);border-radius:999px;padding:8px 15px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer;white-space:nowrap;margin-left:6px}
 .loginbtn:hover{background:rgba(18,58,43,.07)}
 .loginbtn.on{background:rgba(18,58,43,.08);border-color:transparent}
-/* 직원·어드민만 보이는 관리 버튼 — 손님 「로그인」과는 다른 문이다 */
-.staffbtn{background:var(--fairway);color:#fff;border-color:var(--fairway);text-decoration:none;display:inline-block}
-.staffbtn:hover{background:var(--fairway-mid)}
+/* 직원·어드민만 보이는 관리 버튼 — 손님 「로그인」과는 다른 문이다.
+   `.menu a`가 글자색을 초록으로 잡고 있어 그냥 .staffbtn 으로는 안 먹는다
+   (.menu a 가 0,1,1 로 더 세다). 그래서 .menu 를 앞에 붙여 같이 이긴다. */
+.staffbtn,.menu a.staffbtn{background:var(--fairway);color:#fff;border-color:var(--fairway);
+  text-decoration:none;display:inline-block}
+.staffbtn:hover,.menu a.staffbtn:hover{background:var(--fairway-mid);color:#fff}
 @media(max-width:860px){.loginbtn{margin-left:0;width:100%;margin-top:4px}}
 .mask{position:fixed;inset:0;z-index:200;background:rgba(8,23,15,.62);display:none;align-items:center;justify-content:center;padding:18px}
 .mask.on{display:flex}
