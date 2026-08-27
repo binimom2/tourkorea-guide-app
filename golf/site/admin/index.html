@@ -84,6 +84,13 @@ tr.subrow td{padding:0 6px 11px}
 .add{background:var(--fairway);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:13.5px;font-weight:800}
 .add:hover{background:var(--fairway-mid)}
 .save{background:var(--marigold);color:#2A1A00;border:0;border-radius:9px;padding:10px 22px;font-size:14px;font-weight:900}
+/* 저장 줄은 화면 아래에 붙어 다닌다 — 62줄 표에서 한 줄 고칠 때마다 맨 아래까지
+   내려갔다 오는 것이 번거롭다. 목록 끝에 있던 것을 그 자리에 둔 채 붙여만 둔 것이라
+   표가 짧으면 원래 자리에 그대로 보인다. */
+.savebar{position:sticky;bottom:0;z-index:30;margin:14px -16px -16px;padding:11px 16px;
+  background:var(--paper);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(18,58,43,.07)}
+.savebar .warn{font-size:12.5px;font-weight:800;color:var(--danger)}
+.savebar .tip{font-size:12px;font-weight:700;color:var(--muted)}
 .save:hover{background:#f2b258}
 .ghost{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 15px;font-size:13.5px;font-weight:700;color:var(--fairway)}
 .srch{padding:8px 11px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;min-width:190px;background:#fff}
@@ -399,11 +406,13 @@ function markDirty(k){
   dirty[k]=true;
   const b=document.getElementById('tab-'+k);
   if(b&&!b.querySelector('.dirty')) b.insertAdjacentHTML('beforeend','<span class="dirty"></span>');
+  if(k==='site'&&typeof showDirtyNote==='function') showDirtyNote();
 }
 function clearDirty(k){
   dirty[k]=false;
   const b=document.getElementById('tab-'+k);
   const d=b&&b.querySelector('.dirty'); if(d) d.remove();
+  if(k==='site'&&typeof showDirtyNote==='function') showDirtyNote();
 }
 function anyDirty(){ return Object.keys(dirty).some(k=>dirty[k]); }
 window.addEventListener('beforeunload',e=>{ if(anyDirty()){ e.preventDefault(); e.returnValue=''; } });
@@ -456,19 +465,41 @@ function subs(){
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
 /* 지역순 보기는 처음부터 켜져 있다 — 62곳을 지역별로 나눠 봐야 찾기 쉽다. 끄면 넣은 차례대로. */
 function sortOn(k){ return iSort[k]!==false; }
+/* 저장 줄에 「저장 안 한 변경이 있습니다」를 띄운다 — 붙어 다니는 줄이라 늘 눈에 든다 */
+function showDirtyNote(){
+  const n=document.getElementById('siteDirty'); if(!n) return;
+  n.textContent = dirty['site'] ? '● 저장 안 한 변경이 있습니다' : '';
+}
+async function saveSite(){
+  const b=document.getElementById('saveSite');
+  if(b&&b.disabled) return;              // 두 번 눌러 두 번 저장되는 것을 막는다
+  if(b){ b.disabled=true; b.textContent='저장 중…'; }
+  try{
+    if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); drawTabs();
+      toast('✅ 저장했습니다 — 사이트에 바로 반영됩니다'); }
+  } finally { const c=document.getElementById('saveSite');
+    if(c){ c.disabled=false; c.textContent='저장'; } showDirtyNote(); }
+}
+/* Ctrl+S — 한 곳 고치고 바로 저장하는 일이 잦다. 브라우저 「페이지 저장」은 막는다 */
+document.addEventListener('keydown',e=>{
+  if(!(e.key==='s'||e.key==='S')||!(e.ctrlKey||e.metaKey)||e.altKey) return;
+  if(!document.getElementById('saveSite')) return;   // 사이트 내용 화면일 때만
+  e.preventDefault(); saveSite();
+});
 function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
   if(!SUB.some(s=>s.k===sub)) sub='hero';
   p.innerHTML='<div class="subtabs">'
     +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
     +'</div><div id="subpane"></div>'
-    +'<div class="rowbtns"><button class="save" id="saveSite">저장</button>'
+    +'<div class="rowbtns savebar"><button class="save" id="saveSite">저장</button>'
+    +'<span class="warn" id="siteDirty"></span>'
     +'<button class="ghost" id="resetSite">기본값으로 되돌리기</button>'
-    +'<span class="cnt" id="siteNote"></span></div>';
+    +'<span class="cnt" id="siteNote"></span>'
+    +'<span class="tip">Ctrl+S 로도 저장됩니다</span></div>';
   p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
-  document.getElementById('saveSite').onclick=async()=>{
-    if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); drawTabs(); toast('✅ 저장했습니다 — 사이트에 바로 반영됩니다'); }
-  };
+  document.getElementById('saveSite').onclick=saveSite;
+  showDirtyNote();
   document.getElementById('resetSite').onclick=()=>{
     if(!confirm('지금 화면의 모든 내용을 처음 기본값으로 되돌립니다.\n(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
     S=deepCopy(window.SITE_DEFAULT); markDirty('site'); drawTabs();
