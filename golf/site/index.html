@@ -244,6 +244,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .card .pinc{font-size:11.5px;color:var(--muted);font-weight:600}
 .card .pnum{font-size:20px;font-weight:900;letter-spacing:-.04em;color:var(--ink)}
 .card .pnum em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted);margin-left:1px}
+/* 밧은 한화 아래 한 줄 — 곁들이는 값이라 작고 흐리게 */
+.card .pnum .pbt{display:block;font-size:12.5px;font-weight:800;color:var(--muted);letter-spacing:-.02em;margin-top:1px}
+.card .pask{font-size:15px;font-weight:800;color:var(--fairway)}
 
 /* ── 상세: 왼쪽 사진·설명 + 오른쪽 견적 패널 ── */
 .modal.detail{max-width:1020px;padding:22px}
@@ -266,7 +269,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-holes{display:grid;gap:7px}
 .qp-holes button{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:9px;font:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .qp-holes button b{display:block;font-size:14.5px;font-weight:800}
-.qp-holes button span{font-size:12px;color:var(--muted)}
+.qp-holes button span{font-size:12px;color:var(--muted);display:block}
+.qp-holes button span i{font-style:normal;display:block;font-size:11px;opacity:.85}
 .qp-holes button.on{border-color:var(--fairway);background:#F1F8F3}
 .qp-pax{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:8px}
 .qp-pax button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 0;font:inherit;font-size:17px;cursor:pointer}
@@ -277,6 +281,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-price .k{font-size:12px;color:var(--muted);font-weight:600}
 .qp-price .v{font-size:27px;font-weight:900;letter-spacing:-.05em;line-height:1.15;margin-top:2px}
 .qp-price .v em{font-style:normal;font-size:13.5px;font-weight:700;color:var(--muted);margin-left:2px}
+/* 밧 표기 — 한화 바로 아래, 곁들이는 값이라 한 단계 작게 */
+.qp-price .vbt{font-size:15px;font-weight:800;color:var(--muted);letter-spacing:-.03em;margin-top:1px}
 .qp-price .sum{font-size:13.5px;font-weight:800;color:var(--fairway);margin-top:5px}
 .qp-price .ask{font-size:13.5px;color:var(--muted);line-height:1.55}
 .qp-price .fx{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45}
@@ -488,10 +494,13 @@ const esc = s => String(s == null ? "" : s)
 const API = location.hostname === "localhost" ? "https://tourkorea-guide-app.pages.dev" : "";
 const PRICE = { courses:{}, hotels:{}, fx:null, loaded:false };
 const pkey = (r, n) => String(r || "") + "|" + String(n || "");
+/* 이름만으로도 찾을 수 있게 해 둔다 — 사이트와 요금표의 지역 표기가 어긋나도 요금이 끊기지 않게 */
+const nkey = (n) => "n|" + String(n || "").replace(/\s+/g, "").toLowerCase();
 function priceOf(x, kind){
   if(!x) return null;
   const bag = kind === "hotels" ? PRICE.hotels : kind === "courses" ? PRICE.courses : null;
-  return bag ? (bag[pkey(x.r, x.n)] || null) : null;
+  if(!bag) return null;
+  return bag[pkey(x.r, x.n)] || bag[nkey(x.n)] || null;
 }
 /* 요금은 화면을 먼저 그린 뒤에 붙는다 — 요금 서버가 느리거나 죽어도 사이트는 그대로 보인다 */
 async function loadPrices(){
@@ -499,8 +508,10 @@ async function loadPrices(){
     const r = await fetch(API + "/api/golf-price");
     const j = await r.json();
     if(!j || !j.ok) return;
-    (j.courses || []).forEach(c => PRICE.courses[pkey(c.region, c.name)] = c);
-    (j.hotels  || []).forEach(h => PRICE.hotels [pkey(h.region, h.name)] = h);
+    (j.courses || []).forEach(c => { PRICE.courses[pkey(c.region, c.name)] = c;
+                                     if(!PRICE.courses[nkey(c.name)]) PRICE.courses[nkey(c.name)] = c; });
+    (j.hotels  || []).forEach(h => { PRICE.hotels [pkey(h.region, h.name)] = h;
+                                     if(!PRICE.hotels [nkey(h.name)]) PRICE.hotels [nkey(h.name)] = h; });
     PRICE.fx = j.fx || null;
     PRICE.loaded = true;
     drawItems();   // 카드에 요금줄을 붙여 다시 그린다
@@ -570,20 +581,30 @@ function cardOf(x, kind, idx){
     + thumbOf(x, badgeOf(x))
     + '<div class="body"><div class="reg">' + esc(x.r || "") + '</div>'
     + '<h3>' + esc(x.n) + '</h3>'
-    + (x.e ? '<p class="en">' + esc(x.e) + '</p>' : '')
-    /* 관리 화면에서 줄을 나눠 적은 그대로 보여 준다 — 한 줄로 이어 붙이면 읽기 어렵다 */
-    + (x.d ? '<p class="keep">' + esc(x.d) + '</p>' : '')
+    /* 골프장·호텔 카드는 「이름 · 포함사항 · 최저가」 셋만 둔다(사장님 지시).
+       영문 이름과 소개 문구는 카드를 누르면 열리는 상세에 그대로 남아 있다.
+       다른 종류(스파·투어…)는 아직 요금이 없으므로 예전처럼 설명을 보여 준다. */
+    + ((kind === "courses" || kind === "hotels") ? ''
+       : (x.e ? '<p class="en">' + esc(x.e) + '</p>' : '')
+         + (x.d ? '<p class="keep">' + esc(x.d) + '</p>' : ''))
     + priceHtml(p, kind)
     + '</div></button>';
 }
-/* 카드 아래 요금줄. 요금이 아직 등록되지 않은 곳은 아무것도 붙이지 않는다 —
-   「0원」이나 「미정」이 붙으면 안 파는 곳처럼 보인다. */
+/* 카드 아래 요금줄 — 「그린피+캐디+카트 포함 / 94,700원~ / ฿2,150~」.
+   한화는 서버가 네이버(하나은행 고시) «현찰 살때»로 환산한 값이고,
+   밧은 마진까지 얹은 «손님가»다. 원가·항목별 금액은 이 화면에 오지 않는다.
+   요금이 아직 안 들어온 곳은 「요금 문의」로 둔다 — 0원이나 빈칸은 안 파는 곳처럼 보인다. */
 function priceHtml(p, kind){
-  const v = p && (kind === "hotels" ? p.fromKrw : p.from18);
-  if(!v) return "";
-  return '<div class="price"><span class="pinc">'
-    + (kind === "hotels" ? "1박 · 1실 기준" : "그린피+캐디+카트 포함") + '</span>'
-    + '<span class="pnum">' + v.toLocaleString("ko-KR") + '<em>원~</em></span></div>';
+  if(kind !== "courses" && kind !== "hotels") return "";
+  const krw = p && (kind === "hotels" ? p.fromKrw   : p.from18);
+  const bt  = p && (kind === "hotels" ? p.fromBaht  : p.from18Baht);
+  const inc = kind === "hotels" ? "1박 · 1실 기준" : "그린피+캐디+카트 포함";
+  return '<div class="price"><span class="pinc">' + inc + '</span>'
+    + (krw
+       ? '<span class="pnum">' + krw.toLocaleString("ko-KR") + '<em>원~</em>'
+         + (bt ? '<b class="pbt">฿' + bt.toLocaleString("ko-KR") + '~</b>' : '') + '</span>'
+       : '<span class="pask">요금 문의</span>')
+    + '</div>';
 }
 function bindCards(boxId){
   $(boxId).querySelectorAll(".card").forEach(b => b.onclick = () => {
@@ -777,13 +798,19 @@ function openPanel(x, kind){
   const wrap = $("#qpHoleWrap");
   if(kind === "courses" && p){
     wrap.style.display = "";
+    /* 27홀 = 18홀 + 9홀, 36홀 = 18홀 × 2. 등록된 홀수로 만들 수 있는 것만 낸다.
+       여기 값은 카드와 같은 «최저가»고, 날짜를 고르면 서버가 그날 값으로 다시 계산한다. */
     const opts = [];
-    if(p.from18) opts.push(["18", "18홀", p.from18]);
-    if(p.from9)  opts.push(["9",  "9홀",  p.from9]);
+    if(p.from18) opts.push(["18", "18홀", p.from18, p.from18Baht]);
+    if(p.from9)  opts.push(["9",  "9홀",  p.from9,  p.from9Baht]);
+    if(p.from18 && p.from9)
+      opts.push(["27", "27홀", p.from18 + p.from9, (p.from18Baht || 0) + (p.from9Baht || 0)]);
+    if(p.from18) opts.push(["36", "36홀", p.from18 * 2, (p.from18Baht || 0) * 2]);
     qpHoles = opts.length ? opts[0][0] : "18";
-    $("#qpHoles").innerHTML = opts.map(([v, t, kr]) =>
+    $("#qpHoles").innerHTML = opts.map(([v, t, kr, bt]) =>
       '<button type="button" data-h="' + v + '" class="' + (v === qpHoles ? "on" : "") + '">'
-      + '<b>' + t + '</b><span>' + kr.toLocaleString("ko-KR") + '원~</span></button>').join("");
+      + '<b>' + t + '</b><span>' + kr.toLocaleString("ko-KR") + '원~'
+      + (bt ? '<i>฿' + bt.toLocaleString("ko-KR") + '~</i>' : '') + '</span></button>').join("");
     $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
       qpHoles = b.dataset.h;
       $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
@@ -815,11 +842,18 @@ async function qpCalc(){
   }
   /* 날짜 전 — 카드와 같은 최저가를 보여 준다 */
   if(!date || qpKind !== "courses"){
-    const base = qpKind === "hotels" ? p.fromKrw : (qpHoles === "9" ? p.from9 : p.from18);
+    /* 홀수에 맞춘 최저가 — 27홀은 18+9, 36홀은 18×2 */
+    const pick = (v18, v9) => qpHoles === "9"  ? v9
+                            : qpHoles === "27" ? (v18 && v9 ? v18 + v9 : 0)
+                            : qpHoles === "36" ? (v18 ? v18 * 2 : 0) : v18;
+    const base   = qpKind === "hotels" ? p.fromKrw  : pick(p.from18, p.from9);
+    const baseBt = qpKind === "hotels" ? p.fromBaht : pick(p.from18Baht, p.from9Baht);
     if(!base){ qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.</div>'); return; }
     qpBox('<div class="k">' + (qpKind === "hotels" ? "1실 1박 기준 · 최저가" : "1인 기준 · " + qpHoles + "홀 최저가") + '</div>'
       + '<div class="v">' + base.toLocaleString("ko-KR") + '<em>원~</em></div>'
-      + (qpKind === "hotels" ? "" : '<div class="sum">' + qpPax + '인 합계: ' + (base * qpPax).toLocaleString("ko-KR") + '원</div>')
+      + (baseBt ? '<div class="vbt">฿' + baseBt.toLocaleString("ko-KR") + '~</div>' : '')
+      + (qpKind === "hotels" ? "" : '<div class="sum">' + qpPax + '인 합계: ' + (base * qpPax).toLocaleString("ko-KR") + '원'
+          + (baseBt ? ' · ฿' + (baseBt * qpPax).toLocaleString("ko-KR") : '') + '</div>')
       + '<div class="ask" style="margin-top:6px">날짜를 고르시면 그날 요금으로 계산해 드립니다.</div>'
       + fxNote());
     return;
@@ -841,7 +875,9 @@ async function qpCalc(){
     }
     qpBox('<div class="k">1인 기준 · ' + esc(j.date) + ' ' + (j.we ? "주말·공휴일" : "주중") + (j.season ? " · " + esc(j.season) : "") + '</div>'
       + '<div class="v">' + j.perKrw.toLocaleString("ko-KR") + '<em>원</em></div>'
-      + '<div class="sum">' + j.pax + '인 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원</div>'
+      + (j.perBaht ? '<div class="vbt">฿' + j.perBaht.toLocaleString("ko-KR") + '</div>' : '')
+      + '<div class="sum">' + j.pax + '인 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
+        + (j.totalBaht ? ' · ฿' + j.totalBaht.toLocaleString("ko-KR") : '') + '</div>'
       + fxNote());
   }catch(e){
     if(my !== qpSeq) return;
