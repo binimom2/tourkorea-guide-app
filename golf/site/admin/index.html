@@ -112,6 +112,9 @@ tr.subrow td{padding:0 6px 11px}
 #ratesFrame{width:100%;border:0;display:block;min-height:600px;background:transparent}
 .del{background:none;border:1px solid var(--line);border-radius:7px;color:var(--danger);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap}
 .del:hover{background:rgba(192,73,47,.09)}
+/* 줄 복사 — 삭제 단추 바로 위에 놓는다. 시암처럼 요금은 같고 코스만 다른 곳을 빨리 늘리려고 */
+.cpy{background:none;border:1px solid var(--line);border-radius:7px;color:var(--fairway);font-size:12px;font-weight:800;padding:6px 9px;white-space:nowrap;display:block;width:100%;margin-bottom:5px}
+.cpy:hover{background:rgba(18,58,43,.08)}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
 .add{background:var(--fairway);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:13.5px;font-weight:800}
 .add:hover{background:var(--fairway-mid)}
@@ -938,6 +941,41 @@ document.getElementById('pane').addEventListener('input',e=>{
   r[f]=(f==='p18'||f==='p9') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
   markDirty('rates');
 });
+/* ── 줄 복사 ──
+   시암처럼 「요금·사진·문구는 다 같고 코스 이름만 다른」 곳이 많다. 한 곳을 다 채운 뒤
+   복사를 누르면 그 줄을 통째로(요금 줄까지) 베껴 바로 아래에 새 줄로 넣는다.
+   이름만 새로 받는다 — 사이트와 요금표를 잇는 기준이 **이름**이라 겹치면 안 된다. */
+function nameKey(s){ return String(s||'').replace(/\s+/g,'').toLowerCase(); }
+function copyItem(k,i){
+  const arr=itemsArr(k), src=arr[i]; if(!src) return;
+  const rates=ratesOf(k,src)||[];
+  const nm=prompt('「'+(src.n||'이름 없음')+'」을(를) 그대로 베껴 새로 만듭니다.\n'
+    +'지역·영문이름·소개문구·사진·포함사항'+(rates.length?' · 요금 '+rates.length+'줄':'')+'이 그대로 따라옵니다.\n'
+    +'(저장을 눌러야 실제로 반영됩니다)\n\n새 이름을 적어 주세요:', (src.n||'')+' 2');
+  if(nm===null) return;                       // 취소
+  const name=String(nm).trim();
+  if(!name){ alert('이름을 적어야 합니다.'); return; }
+  if(arr.some(x=>nameKey(x&&x.n)===nameKey(name))){
+    alert('「'+name+'」은(는) 이미 있습니다. 다른 이름으로 해 주세요.'); return; }
+  const row=deepCopy(src); row.n=name;
+  arr.splice(i+1,0,row);
+  markDirty('site');
+  /* 요금은 golf_site가 아니라 요금표(golf_pricing) 쪽에 있다 — 거기에도 자리를 만들어 베낀다 */
+  if(rates.length){
+    const o=ensureRateHome(k,row);
+    o.rates=deepCopy(rates);
+    markDirty('rates');
+  }
+  /* 찾기로 걸러 둔 상태인데 새 이름이 안 걸리면 새 줄이 안 보인다 — 찾기를 푼다 */
+  const q=iSearch[k]||'';
+  if(q && !((row.r||'')+(row.n||'')+(row.e||'')+(row.d||'')).toLowerCase().includes(q.toLowerCase()))
+    iSearch[k]='';
+  drawTabs();
+  /* 새로 생긴 줄의 이름칸으로 데려다 준다 */
+  const el=document.querySelector('[data-p="'+itemsPath(k,i+1)+'.n"]');
+  if(el){ el.scrollIntoView({block:'center'}); el.focus(); }
+  toast('📋 「'+name+'」(으)로 베껴 넣었습니다 — 저장을 눌러 주세요');
+}
 function itemBodyHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
   const {rows}=itemRows(k), {bk,bp}=itemBadge(k), sortR=sortOn(k);
@@ -960,7 +998,9 @@ function itemBodyHTML(k){
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
       +'<td>'+ta(p+'.d',o.x.d||'','','big')+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
-      +'<td><button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>'
+      +'<td><button class="cpy" data-copy="'+esc(k)+'" data-i="'+o.i+'" '
+        +'title="이 줄을 요금까지 그대로 베껴 바로 아래에 새로 만듭니다">복사</button>'
+        +'<button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>'
       /* 아래 줄 — 포함·불포함사항(비워 두면 흐린 글씨=기본 문구가 손님에게 나간다)과
          요금표에 뭐가 들어와 있는지 곁눈질용 요약. 요금은 여기서 못 고친다. */
       +'<tr class="subrow'+off+'"><td colspan="8"><div class="ierow">'
@@ -998,7 +1038,7 @@ function subItems(k){
     +'<th style="width:155px">영문 이름</th><th style="width:68px">'+bl+'</th>'
     /* 포함·불포함사항은 이 줄이 아니라 바로 아래 줄에 넓게 깔린다 */
     +'<th>소개 문구</th>'
-    +'<th style="width:175px">사진</th><th style="width:62px"></th>'
+    +'<th style="width:175px">사진</th><th style="width:74px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
     /* 지역 차례 — 손님 화면과 「지역순 보기」가 이 차례를 따른다. 골프장·호텔이 같이 쓴다 */
@@ -1174,6 +1214,9 @@ function bindRowBtns(){
   p.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
     ADDERS[b.dataset.add](Number(b.dataset.i), b.dataset.k);
     markDirty('site'); drawTabs();
+  });
+  p.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{
+    copyItem(b.dataset.copy, Number(b.dataset.i));
   });
   p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
     const arr=getPath(S,b.dataset.del), i=Number(b.dataset.i);
