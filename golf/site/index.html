@@ -270,7 +270,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-holes button{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:9px;font:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .qp-holes button b{display:block;font-size:14.5px;font-weight:800}
 .qp-holes button span{font-size:12px;color:var(--muted);display:block}
-.qp-holes button span i{font-style:normal;display:block;font-size:11px;opacity:.85}
+/* 밧은 한화 뒤 괄호로 같은 줄에 — 「173,000원~ (3,930바트)」 */
+.qp-holes button span i{font-style:normal;font-size:11.5px;opacity:.85;margin-left:4px;white-space:nowrap}
 .qp-holes button.on{border-color:var(--fairway);background:#F1F8F3}
 .qp-pax{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:8px}
 .qp-pax button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 0;font:inherit;font-size:17px;cursor:pointer}
