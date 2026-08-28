@@ -93,10 +93,13 @@ tr.subrow td{padding:0 6px 11px}
 /* 요금 줄 — 기간 · 구분 · 시간 · 18홀 · 9홀 한 줄. 「＋」로 얼마든지 더한다. */
 .rhint{font-weight:700;color:var(--muted)}
 .rlist{display:flex;flex-direction:column;gap:4px}
-.rhead,.rrow{display:grid;grid-template-columns:112px 10px 112px 84px 74px 88px 88px 26px;
+.rhead,.rrow{display:grid;grid-template-columns:234px 84px 74px 88px 88px 26px;
   gap:5px;align-items:center}
-.rhead{grid-template-columns:234px 84px 74px 88px 88px 26px;font-size:10.5px;font-weight:800;
-  color:var(--muted);padding:0 1px}
+.rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
+/* 기간 칸 — 위는 「자주 쓰는 기간」 고르기, 아래는 날짜 두 개.
+   달력을 매번 여는 게 일이라, 한 번 담아 둔 기간을 골라 쓰는 길을 위에 뒀다. */
+.rper{display:flex;flex-direction:column;gap:3px;min-width:0}
+.rper .rdate{display:grid;grid-template-columns:1fr 10px 1fr;gap:4px;align-items:center}
 .rrow input,.rrow select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
 .rrow input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
@@ -584,7 +587,9 @@ async function saveSite(){
       if(await saveSafe(PRICE_KEY,P)){ clearDirty('rates'); msg.push('요금'); } else ok=false;
     }
     drawTabs();
+    /* 저장이 막혔을 때 아무 말도 없으면 저장된 줄 안다 — 특히 요금만 실패했을 때 */
     if(ok) toast(msg.length?('✅ '+msg.join('·')+' 저장했습니다'):'저장할 변경이 없습니다');
+    else toast('⚠ '+(msg.length?msg.join('·')+'만 저장되고 나머지는 ':'')+'저장되지 않았습니다 — 화면 위 표시를 확인해 주세요');
   } finally { const c=document.getElementById('saveSite');
     if(c){ c.disabled=false; c.textContent='저장'; } showDirtyNote(); }
 }
@@ -866,13 +871,40 @@ function ratesOf(k,x){
   if(!Array.isArray(o.rates)) o.rates=[];
   return o.rates;
 }
+/* ── 자주 쓰는 기간 ──
+   같은 기간을 62곳에 되풀이해 넣는다. 달력을 줄마다 두 번 여는 게 큰 일이라,
+   한 번 쓴 기간을 목록에 담아 두고 드롭다운으로 고른다.
+   목록은 요금표(golf_pricing)의 ratePeriods에 같이 저장된다. */
+function ratePeriods(){
+  if(!P) return [];
+  if(!Array.isArray(P.ratePeriods)) P.ratePeriods=[];
+  return P.ratePeriods;
+}
+const perKey=(f,t)=>(f||'')+'~'+(t||'');
+/* 마지막으로 쓴 기간 — 요금줄이 하나도 없는 골프장에 첫 줄을 더할 때 물려준다 */
+let lastPeriod={from:'',to:''};
+function rememberPeriod(f,t){ if(f||t) lastPeriod={from:f||'',to:t||''}; }
+function periodSelHTML(r){
+  const list=ratePeriods(), cur=perKey(r.from,r.to);
+  return '<select data-rper="1" title="자주 쓰는 기간에서 고르기 — 달력을 안 눌러도 됩니다">'
+    +'<option value="">기간 고르기…</option>'
+    +list.map(p=>{ const kk=perKey(p.from,p.to);
+      return '<option value="'+esc(kk)+'"'+(kk===cur?' selected':'')+'>'
+        +esc(p.label||kk)+'</option>'; }).join('')
+    +'<option value="__add">＋ 지금 이 줄의 기간을 목록에 담기</option>'
+    +(list.length?'<option value="__del">－ 목록에서 지우기…</option>':'')
+    +'</select>';
+}
 function rateRowHTML(k,idx,r){
   const n=v=>(v===''||v==null)?'':v;
   const sel=(cur,list)=>list.map(v=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
   return '<div class="rrow" data-ri="'+idx+'">'
-    +'<input type="date" data-rf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
-    +'<span class="rtil">~</span>'
-    +'<input type="date" data-rf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
+    +'<div class="rper">'+periodSelHTML(r)
+      +'<div class="rdate">'
+      +'<input type="date" data-rf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
+      +'<span class="rtil">~</span>'
+      +'<input type="date" data-rf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
+      +'</div></div>'
     +'<select data-rf="part">'+sel(normPart(r.part),RATE_PARTS)+'</select>'
     +'<select data-rf="time">'+sel(r.time||'종일',RATE_TIMES)+'</select>'
     +'<input type="number" data-rf="p18" value="'+esc(n(r.p18))+'" placeholder="18홀" min="0">'
@@ -936,8 +968,9 @@ document.getElementById('pane').addEventListener('click',e=>{
   if(!item) return;
   const o=ensureRateHome(k,item);
   if(add){
-    /* 마지막 줄의 기간을 물려받는다 — 같은 기간에 오전·오후를 잇달아 넣는 일이 많다 */
-    const last=o.rates[o.rates.length-1]||{};
+    /* 기간은 물려받는다 — 같은 기간에 오전·오후를 잇달아 넣는 일이 많다.
+       이 골프장에 줄이 하나도 없으면 방금 다른 골프장에서 쓴 기간을 가져온다. */
+    const last=o.rates[o.rates.length-1]||lastPeriod;
     o.rates.push({from:last.from||'',to:last.to||'',part:normPart(last.part),time:'종일',p18:'',p9:''});
   }else{
     const row=e.target.closest('.rrow'); if(!row) return;
@@ -955,7 +988,43 @@ document.getElementById('pane').addEventListener('input',e=>{
   const item=(itemsArr(k)||[]).filter(z=>String(z.n||'')===name)[0]; if(!item) return;
   const o=ensureRateHome(k,item), r=o.rates[Number(row.dataset.ri)]; if(!r) return;
   r[f]=(f==='p18'||f==='p9') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
+  if(f==='from'||f==='to') rememberPeriod(r.from,r.to);
   markDirty('rates');
+});
+/* 「기간 고르기」 드롭다운 — 고르면 그 줄의 시작·끝 날짜가 한 번에 채워진다 */
+document.getElementById('pane').addEventListener('change',e=>{
+  const sel=e.target; if(!sel.dataset||!sel.dataset.rper) return;
+  const cell=sel.closest('.pcell'), row=sel.closest('.rrow');
+  if(!cell||!row) return;
+  const k=cell.dataset.pk, name=cell.dataset.pn;
+  const item=(itemsArr(k)||[]).filter(z=>String(z.n||'')===name)[0]; if(!item) return;
+  const o=ensureRateHome(k,item), r=o.rates[Number(row.dataset.ri)]; if(!r) return;
+  const v=sel.value;
+  if(v==='__add'){
+    if(!r.from&&!r.to){ alert('먼저 이 줄의 기간을 넣어 주세요.\n그 기간이 목록에 담깁니다.'); redrawRateCell(cell); return; }
+    const list=ratePeriods(), kk=perKey(r.from,r.to);
+    if(list.some(p=>perKey(p.from,p.to)===kk)) alert('이미 목록에 있는 기간입니다.');
+    else{
+      const lbl=prompt('이 기간을 뭐라고 부를까요?\n(비워 두면 날짜가 그대로 이름이 됩니다)\n\n'+kk,'');
+      if(lbl===null){ redrawRateCell(cell); return; }
+      list.push({from:r.from||'',to:r.to||'',label:String(lbl).trim()});
+      rememberPeriod(r.from,r.to);
+      markDirty('rates');
+      toast('✅ 기간을 목록에 담았습니다 — 이제 다른 골프장에서 골라 쓰시면 됩니다');
+    }
+  }else if(v==='__del'){
+    const list=ratePeriods();
+    const pick=prompt('지울 기간의 번호를 적어 주세요.\n\n'
+      +list.map((p,i)=>(i+1)+'. '+(p.label?p.label+' ('+perKey(p.from,p.to)+')':perKey(p.from,p.to))).join('\n'),'');
+    const i=Number(pick)-1;
+    if(list[i]){ list.splice(i,1); markDirty('rates'); toast('🗑 기간을 목록에서 지웠습니다'); }
+  }else if(v){
+    const [f,t]=v.split('~');
+    r.from=f||''; r.to=t||'';
+    rememberPeriod(r.from,r.to);
+    markDirty('rates');
+  }
+  redrawRateCell(cell);
 });
 /* ── 줄 복사 ──
    시암처럼 「요금·사진·문구는 다 같고 코스 이름만 다른」 곳이 많다. 한 곳을 다 채운 뒤
@@ -996,7 +1065,10 @@ function copyItem(k,i){
   /* 새로 생긴 줄의 이름칸으로 데려다 준다 */
   const el=document.querySelector('[data-p="'+itemsPath(k,i+1)+'.n"]');
   if(el){ el.scrollIntoView({block:'center'}); el.focus(); }
-  toast('📋 「'+name+'」(으)로 베껴 넣었습니다 — 저장을 눌러 주세요');
+  /* 요금이 몇 줄 따라왔는지 꼭 말해 준다 — 안 따라온 것을 모르고 넘어가면 안 된다 */
+  const got=nRate?('요금 '+nRate+'줄 포함'):nSeason?('옛 요금표 '+nSeason+'줄 포함')
+    :(home?'※ 원본에 요금이 없어 요금은 안 따라왔습니다':'※ 원본이 요금표에 없어 요금은 안 따라왔습니다');
+  toast('📋 「'+name+'」(으)로 베껴 넣었습니다 · '+got+' — 저장을 눌러 주세요');
 }
 function itemBodyHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
