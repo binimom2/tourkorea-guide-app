@@ -798,11 +798,11 @@ function openPanel(x, kind){
   const wrap = $("#qpHoleWrap");
   if(kind === "courses" && p){
     wrap.style.display = "";
-    /* 27홀 = 18홀 + 9홀, 36홀 = 18홀 × 2. 등록된 홀수로 만들 수 있는 것만 낸다.
+    /* 손님이 고르는 라운드는 **18홀 · 27홀 · 36홀 셋뿐**이다(사장님 확인).
+       9홀은 따로 팔지 않는다 — 27홀(18+9)을 셈할 때 쓰는 값일 뿐이라 단추로 내지 않는다.
        여기 값은 카드와 같은 «최저가»고, 날짜를 고르면 서버가 그날 값으로 다시 계산한다. */
     const opts = [];
     if(p.from18) opts.push(["18", "18홀", p.from18, p.from18Baht]);
-    if(p.from9)  opts.push(["9",  "9홀",  p.from9,  p.from9Baht]);
     if(p.from18 && p.from9)
       opts.push(["27", "27홀", p.from18 + p.from9, (p.from18Baht || 0) + (p.from9Baht || 0)]);
     if(p.from18) opts.push(["36", "36홀", p.from18 * 2, (p.from18Baht || 0) * 2]);
@@ -842,9 +842,8 @@ async function qpCalc(){
   }
   /* 날짜 전 — 카드와 같은 최저가를 보여 준다 */
   if(!date || qpKind !== "courses"){
-    /* 홀수에 맞춘 최저가 — 27홀은 18+9, 36홀은 18×2 */
-    const pick = (v18, v9) => qpHoles === "9"  ? v9
-                            : qpHoles === "27" ? (v18 && v9 ? v18 + v9 : 0)
+    /* 홀수에 맞춘 최저가 — 27홀은 18+9, 36홀은 18×2 (9홀은 따로 팔지 않는다) */
+    const pick = (v18, v9) => qpHoles === "27" ? (v18 && v9 ? v18 + v9 : 0)
                             : qpHoles === "36" ? (v18 ? v18 * 2 : 0) : v18;
     const base   = qpKind === "hotels" ? p.fromKrw  : pick(p.from18, p.from9);
     const baseBt = qpKind === "hotels" ? p.fromBaht : pick(p.from18Baht, p.from9Baht);
