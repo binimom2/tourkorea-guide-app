@@ -244,8 +244,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .card .pinc{font-size:11.5px;color:var(--muted);font-weight:600}
 .card .pnum{font-size:20px;font-weight:900;letter-spacing:-.04em;color:var(--ink)}
 .card .pnum em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted);margin-left:1px}
-/* 밧은 한화 아래 한 줄 — 곁들이는 값이라 작고 흐리게 */
-.card .pnum .pbt{display:block;font-size:12.5px;font-weight:800;color:var(--muted);letter-spacing:-.02em;margin-top:1px}
+/* 밧은 한화 뒤 괄호로 같은 줄에 — 「172,000원~ (3,930바트)」. 자리가 좁으면 아래로 내려간다 */
+.card .pnum .pbt{font-size:12.5px;font-weight:800;color:var(--muted);letter-spacing:-.02em;margin-left:5px;white-space:nowrap}
 .card .pask{font-size:15px;font-weight:800;color:var(--fairway)}
 
 /* ── 상세: 왼쪽 사진·설명 + 오른쪽 견적 패널 ── */
@@ -281,8 +281,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-price .k{font-size:12px;color:var(--muted);font-weight:600}
 .qp-price .v{font-size:27px;font-weight:900;letter-spacing:-.05em;line-height:1.15;margin-top:2px}
 .qp-price .v em{font-style:normal;font-size:13.5px;font-weight:700;color:var(--muted);margin-left:2px}
-/* 밧 표기 — 한화 바로 아래, 곁들이는 값이라 한 단계 작게 */
-.qp-price .vbt{font-size:15px;font-weight:800;color:var(--muted);letter-spacing:-.03em;margin-top:1px}
+/* 밧 표기 — 한화 뒤 괄호로 「172,000원 (3,930바트)」, 곁들이는 값이라 한 단계 작게 */
+.qp-price .vbt{font-size:14px;font-weight:800;color:var(--muted);letter-spacing:-.03em;margin-left:5px;white-space:nowrap}
 .qp-price .sum{font-size:13.5px;font-weight:800;color:var(--fairway);margin-top:5px}
 .qp-price .ask{font-size:13.5px;color:var(--muted);line-height:1.55}
 .qp-price .fx{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45}
@@ -602,7 +602,7 @@ function priceHtml(p, kind){
   return '<div class="price"><span class="pinc">' + inc + '</span>'
     + (krw
        ? '<span class="pnum">' + krw.toLocaleString("ko-KR") + '<em>원~</em>'
-         + (bt ? '<b class="pbt">฿' + bt.toLocaleString("ko-KR") + '~</b>' : '') + '</span>'
+         + (bt ? '<b class="pbt">(' + bt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</span>'
        : '<span class="pask">요금 문의</span>')
     + '</div>';
 }
@@ -810,7 +810,7 @@ function openPanel(x, kind){
     $("#qpHoles").innerHTML = opts.map(([v, t, kr, bt]) =>
       '<button type="button" data-h="' + v + '" class="' + (v === qpHoles ? "on" : "") + '">'
       + '<b>' + t + '</b><span>' + kr.toLocaleString("ko-KR") + '원~'
-      + (bt ? '<i>฿' + bt.toLocaleString("ko-KR") + '~</i>' : '') + '</span></button>').join("");
+      + (bt ? '<i>(' + bt.toLocaleString("ko-KR") + '바트)</i>' : '') + '</span></button>').join("");
     $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
       qpHoles = b.dataset.h;
       $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
@@ -850,10 +850,10 @@ async function qpCalc(){
     const baseBt = qpKind === "hotels" ? p.fromBaht : pick(p.from18Baht, p.from9Baht);
     if(!base){ qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.</div>'); return; }
     qpBox('<div class="k">' + (qpKind === "hotels" ? "1실 1박 기준 · 최저가" : "1인 기준 · " + qpHoles + "홀 최저가") + '</div>'
-      + '<div class="v">' + base.toLocaleString("ko-KR") + '<em>원~</em></div>'
-      + (baseBt ? '<div class="vbt">฿' + baseBt.toLocaleString("ko-KR") + '~</div>' : '')
+      + '<div class="v">' + base.toLocaleString("ko-KR") + '<em>원~</em>'
+        + (baseBt ? '<b class="vbt">(' + baseBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + (qpKind === "hotels" ? "" : '<div class="sum">' + qpPax + '인 합계: ' + (base * qpPax).toLocaleString("ko-KR") + '원'
-          + (baseBt ? ' · ฿' + (baseBt * qpPax).toLocaleString("ko-KR") : '') + '</div>')
+          + (baseBt ? ' (' + (baseBt * qpPax).toLocaleString("ko-KR") + '바트)' : '') + '</div>')
       + '<div class="ask" style="margin-top:6px">날짜를 고르시면 그날 요금으로 계산해 드립니다.</div>'
       + fxNote());
     return;
@@ -874,10 +874,10 @@ async function qpCalc(){
       return;
     }
     qpBox('<div class="k">1인 기준 · ' + esc(j.date) + ' ' + (j.we ? "주말·공휴일" : "주중") + (j.season ? " · " + esc(j.season) : "") + '</div>'
-      + '<div class="v">' + j.perKrw.toLocaleString("ko-KR") + '<em>원</em></div>'
-      + (j.perBaht ? '<div class="vbt">฿' + j.perBaht.toLocaleString("ko-KR") + '</div>' : '')
+      + '<div class="v">' + j.perKrw.toLocaleString("ko-KR") + '<em>원</em>'
+        + (j.perBaht ? '<b class="vbt">(' + j.perBaht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + '<div class="sum">' + j.pax + '인 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
-        + (j.totalBaht ? ' · ฿' + j.totalBaht.toLocaleString("ko-KR") : '') + '</div>'
+        + (j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + fxNote());
   }catch(e){
     if(my !== qpSeq) return;
