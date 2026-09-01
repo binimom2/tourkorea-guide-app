@@ -4364,7 +4364,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 10;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적
+const G_APP_VERSION = 11;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -6211,7 +6211,7 @@ function renderShareEditor() {
     const tag = !nm ? '<span style="width:44px;"></span>'
       : (accNames.includes(nm)
           ? '<span style="font-size:10px;color:#1a8a60;width:44px;text-align:center;flex-shrink:0;">등록</span>'
-          : '<span style="font-size:10px;color:#b45309;width:44px;text-align:center;flex-shrink:0;">프리랜서</span>');
+          : '<span style="font-size:10px;color:#b45309;width:44px;text-align:center;flex-shrink:0;" title="계정이 없는 프리랜서 — 배분에는 들어가지만 현금정산이라 정산수첩에는 올라가지 않습니다">프리랜서<br>현금</span>');
     return `<div style="display:flex;gap:5px;align-items:center;margin-bottom:6px;">
       <span style="font-size:11px;color:#888;width:34px;flex-shrink:0;">${i===0?'작성자':(i+1)+'번'}</span>
       <input id="shr-name-${i}" list="shr-guide-list" value="${nm.replace(/"/g,'&quot;')}" placeholder="가이드명" onchange="shareRecalc()"
@@ -6246,7 +6246,8 @@ function renderShareEditor() {
     </div>
     ${diffLine}
     <div style="font-size:11px;color:var(--text-sub);margin-top:8px;line-height:1.6;">
-      · 계정이 없는 <b>프리랜서</b>도 이름을 직접 적으면 정산수첩에 올라갑니다(로그인은 없으니 어드민만 봅니다).<br>
+      · 계정이 없는 <b>프리랜서</b>도 이름을 적어 넣으세요 — 배분(N분의 1) 계산에는 들어가지만,<br>
+      &nbsp;&nbsp;현장에서 현금으로 바로 정산하므로 <b>정산수첩에는 올라가지 않습니다</b>.<br>
       · 회사수익·환차손익·월별 정산서관리 엑셀은 나누지 않습니다.<br>
       · 정산서 열람·알림은 <b>작성자</b>에게만 갑니다.
     </div>
@@ -6344,14 +6345,13 @@ function _buildLedgerData() {
   // 어드민이 [완료]를 누르기 전(작성·수정 중)에는 금액이 잡히면 안 되고,
   // 같은 정산코드로 제출본+수정본이 남아 있어도 확정본만 집계돼 중복도 막힌다.
   // 차터(가이드 2명 이상)로 배분표가 짜인 건은 각자 몫만 자기 수첩에 올린다.
-  // 배분에 이름이 오른 사람은 계정이 없어도(프리랜서) 수첩에 보여야 하므로 따로 모아 둔다.
-  const shareNames = new Set();
+  // 프리랜서는 N/1 계산에는 들어가지만 소속이 아니라 현장에서 현금으로 바로 정산하므로
+  // 수첩엔 올리지 않는다 — 계정 없는 이름은 아래 계정 필터가 그대로 걸러 준다.
   submissionsDB.filter(s=>s.settled).forEach(s=>{
     const shares = _sharesOf(s);
     if (shares) {
       const tag = ` · 차터 ${shares.length}인 배분`;
       shares.forEach(sh=>{
-        shareNames.add(sh.name);
         const g = ensure(sh.name, sh.name, sh.username);
         g.settleTotal += (sh.amount||0);
         g.settlements.push({ settleCode: (s.settleCode||'')+tag, amount: sh.amount||0, date: _settleDateOf(s) });
@@ -6385,13 +6385,10 @@ function _buildLedgerData() {
   const guideNames = new Set(
     getAccounts().filter(a=>a.role==='guide').map(a=>(a.name||'').trim()).filter(Boolean)
   );
-  // 단 차터 배분에 이름이 오른 프리랜서는 계정이 없어도 남긴다 —
-  // 여기서 걸러버리면 프리랜서에게 줘야 할 돈이 장부에서 통째로 사라진다.
+  // 차터 배분에 오른 프리랜서도 여기서 함께 빠진다 — 현금으로 바로 정산하므로 누적할 게 없다.
   if (guideNames.size) {
     Object.keys(byGuide).forEach(k=>{
-      const nm = (byGuide[k].guideName||'').trim();
-      if (!guideNames.has(nm) && !shareNames.has(nm)) delete byGuide[k];
-      else if (!guideNames.has(nm)) byGuide[k].freelance = true;   // 계정 없는 프리랜서 표시
+      if (!guideNames.has((byGuide[k].guideName||'').trim())) delete byGuide[k];
     });
   }
 
@@ -6435,7 +6432,7 @@ function renderGuideLedger() {
     totalCumulative += cumulative;
     html += `<div class="sub-card" style="cursor:pointer;" onclick="selectLedgerGuide('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="sc-code">${g.guideName}${g.freelance?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">프리랜서</span>':''}</div>
+        <div class="sc-code">${g.guideName}</div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:11px;color:#888;">누적분</div>
           <div style="font-size:15px;font-weight:800;color:${cumulative>0?'#c0392b':'#1a8a60'};">฿${fmtNum(cumulative)}</div>
@@ -6538,7 +6535,7 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
   return `
     ${backBtn}
     <div class="sub-card">
-      <div class="sc-code" style="font-size:16px;">${g.guideName}${g.freelance?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">프리랜서</span>':''}</div>
+      <div class="sc-code" style="font-size:16px;">${g.guideName}</div>
       <div class="sc-meta">이월금 ฿${fmtNum(carry)} · 정산금액 ฿${fmtNum(g.settleTotal)}${g.returnTotal?` <span style="color:#c0392b;">(반품 -฿${fmtNum(g.returnTotal)} 반영)</span>`:''} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
       <div style="margin-top:8px;text-align:right;">
         <span style="font-size:12px;color:#888;">누적분&nbsp;</span>
