@@ -1833,6 +1833,18 @@
   </div>
 </div>
 
+<!-- ═══ 차터 가이드 배분 모달 (어드민 전용) ═══ -->
+<div class="cfg-modal" id="shareModal">
+  <div class="cfg-box" style="max-width:480px;">
+    <div class="cfg-head">
+      <span>👥 가이드 정산금 배분</span>
+      <button onclick="closeShareModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body" id="shareBody"></div>
+  </div>
+</div>
+<datalist id="shr-guide-list"></datalist>
+
 <!-- ═══ 내 정산서 모음 모달 (가이드 전용) ═══ -->
 <div class="cfg-modal" id="myDocsModal">
   <div class="cfg-box" style="max-width:620px;">
@@ -4352,7 +4364,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 9;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도
+const G_APP_VERSION = 10;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5797,7 +5809,7 @@ function renderSubmissions() {
               <div>
                 <div class="sc-code">${s.settleCode} ${currentRole==='guide'
                     ? (s.sentToGuide ? '<span class="sub-badge settled">최종본</span>' : '<span class="sub-badge" style="background:#e5e7eb;color:#555;">⏳ 정산 진행중</span>')
-                    : `<span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}${s.sentToGuide?' <span class="sub-badge" style="background:#ede9fe;color:#5b21b6;">📨 전송됨</span>':''}`}</div>
+                    : `<span class="sub-badge ${s.status==='new'?'new':'seen'}">${s.status==='new'?'NEW':'확인'}</span>${s.adminEdited?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">✏ 수정본</span>':''}${s.settled?' <span class="sub-badge settled">정산완료</span>':''}${s.sentToGuide?' <span class="sub-badge" style="background:#ede9fe;color:#5b21b6;">📨 전송됨</span>':''}${_sharesOf(s)?' <span class="sub-badge" style="background:#e0f2fe;color:#075985;">👥 '+s.guideShares.length+'인 배분</span>':''}`}</div>
                 <div class="sc-meta">${s.guideName} · ${s.productName||'-'} · 쇼핑 ${s.shopCount}회 · ${s.paxTotal}명</div>
                 <div class="sc-meta">제출: ${(s.submittedAt||'').slice(0,16).replace('T',' ')}</div>
               </div>
@@ -5808,6 +5820,7 @@ function renderSubmissions() {
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#455a64;color:#fff;border:none;" title="가이드 정산서 PDF 저장(인쇄→PDF로 저장)" onclick="openSubData('${s.id}', null, false, 'guide')">📄 가이드</button><button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#5d4037;color:#fff;border:none;" title="회사 정산서 PDF 저장(인쇄→PDF로 저장)" onclick="openSubData('${s.id}', null, false, 'admin')">📄 회사</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${s.settled?'#e5e7eb':'#1e88e5'};color:${s.settled?'#555':'#fff'};border:none;" onclick="toggleSubSettled('${s.id}')">${s.settled?'↩ 완료취소':'✅ 완료+전송'}</button>` : ''}
                 ${(currentRole==='admin' && s.settled) ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#00897b;color:#fff;border:none;" title="완료취소 없이 회사부분만 수정 · 가이드 알림 없음" onclick="openSubData('${s.id}', null, true)">🏢 회사수정</button>` : ''}
+                ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:${_sharesOf(s)?'#0277bd':'#6d4c41'};color:#fff;border:none;" title="차터 등 한 팀에 가이드가 2명 이상 나간 경우 — 가이드정산금을 나눠 각자 정산수첩에 올린다" onclick="openShareModal('${s.id}')">👥 배분</button>` : ''}
                 ${currentRole==='admin' ? `<button class="cfg-add-btn" style="font-size:11px;padding:5px 10px;background:#e53935;color:#fff;border:none;" onclick="deleteSubData('${s.id}')">🗑 삭제</button>` : ''}
               </div>
             </div>
@@ -6113,6 +6126,202 @@ function _carryOf(key) {
   return { amount:c.amount||0, date:c.date||'' };
 }
 
+// ══════════════════════════════════════════════════════
+//  차터 배분 — 한 팀(정산코드 1개)에 가이드가 2명 이상 나간 경우
+// ══════════════════════════════════════════════════════
+// 정산서는 한 명이 쓰지만, 가이드정산금은 어드민이 정산 후 참여 가이드를 찍어 나눠 담는다.
+//   s.guideShares = [{name, username, amount}]   ← 없으면 예전 그대로 s.guideName 한 명에게 전액
+// 회사수익·환차손익·월별 정산서관리 엑셀은 건드리지 않는다. 나뉘는 건 가이드정산금 하나뿐.
+// 차터엔 계정 없는 프리랜서가 섞이므로 계정 목록으로 이름을 제한하지 않는다.
+function _sharesOf(s) {
+  const arr = s && s.guideShares;
+  if (!Array.isArray(arr) || arr.length < 2) return null;
+  const out = arr
+    .map(x => ({ name:(x.name||'').trim(), username:x.username||'', amount:Math.round(x.amount||0) }))
+    .filter(x => x.name);
+  return out.length >= 2 ? out : null;
+}
+// 균등분배(N분의 1). 안 떨어지는 나머지는 첫 사람(작성자)이 받아 총합이 1밧도 어긋나지 않게 한다.
+function _splitEqual(total, n) {
+  if (n <= 0) return [];
+  const base = Math.trunc(total / n);
+  const arr = new Array(n).fill(base);
+  arr[0] = total - base * (n - 1);
+  return arr;
+}
+function _guideAccNames() {
+  return getAccounts().filter(a=>a.role==='guide').map(a=>(a.name||'').trim()).filter(Boolean);
+}
+function _usernameOfGuide(name) {
+  const nm = (name||'').trim();
+  const a = getAccounts().find(x=>x.role==='guide' && (x.name||'').trim()===nm);
+  return a ? a.id : '';
+}
+
+async function openShareModal(id) {
+  if (currentRole !== 'admin') return;
+  // 오래된 목록으로 저장하면 남의 최신 수정이 지워진다 → 서버 최신본을 먼저 읽는다.
+  try { await loadSubmissions(); } catch(e) {}
+  try { await syncAccountsFromSupabase(); } catch(e) {}
+  const s = submissionsDB.find(x=>x.id===id);
+  if (!s) { alert('정산서를 찾지 못했습니다.'); return; }
+  const total = Math.round(s.guideSettle||0);
+  const cur = _sharesOf(s);
+  const list = cur ? cur.map(x=>({...x}))
+                   : [{ name:(s.guideName||'').trim(), username:s.username||'', amount: total }];
+  window._shareEdit = { id, total, code:s.settleCode||'', hadShares: !!cur, list };
+  const dl = document.getElementById('shr-guide-list');
+  if (dl) dl.innerHTML = _guideAccNames().map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  renderShareEditor();
+  document.getElementById('shareModal').style.display='flex';
+}
+function closeShareModal() {
+  document.getElementById('shareModal').style.display='none';
+  window._shareEdit = null;
+}
+// 재렌더 전에 화면 입력값을 상태로 걷어온다 (안 그러면 방금 친 이름·금액이 날아간다)
+function _shareReadInputs() {
+  const st = window._shareEdit; if (!st) return;
+  st.list.forEach((r,i)=>{
+    const n = document.getElementById('shr-name-'+i);
+    const a = document.getElementById('shr-amt-'+i);
+    if (n) { const v=(n.value||'').trim(); if (v !== r.name) { r.name = v; r.username = _usernameOfGuide(v); } }
+    if (a) r.amount = Math.round(parseFloat((a.value||'').replace(/[^0-9.\-]/g,'')) || 0);
+  });
+}
+function shareAddRow()  { _shareReadInputs(); window._shareEdit.list.push({name:'',username:'',amount:0}); renderShareEditor(); }
+function shareDelRow(i) { _shareReadInputs(); window._shareEdit.list.splice(i,1); renderShareEditor(); }
+function shareRecalc()  { _shareReadInputs(); renderShareEditor(); }
+function shareSplitEqual() {
+  _shareReadInputs();
+  const st = window._shareEdit; if (!st || !st.list.length) return;
+  const amts = _splitEqual(st.total, st.list.length);
+  st.list.forEach((r,i)=>{ r.amount = amts[i]; });
+  renderShareEditor();
+}
+
+function renderShareEditor() {
+  const st = window._shareEdit; if (!st) return;
+  const accNames = _guideAccNames();
+  const sum  = st.list.reduce((a,r)=>a+(r.amount||0),0);
+  const diff = st.total - sum;
+
+  const rows = st.list.map((r,i)=>{
+    const nm = (r.name||'').trim();
+    const tag = !nm ? '<span style="width:44px;"></span>'
+      : (accNames.includes(nm)
+          ? '<span style="font-size:10px;color:#1a8a60;width:44px;text-align:center;flex-shrink:0;">등록</span>'
+          : '<span style="font-size:10px;color:#b45309;width:44px;text-align:center;flex-shrink:0;">프리랜서</span>');
+    return `<div style="display:flex;gap:5px;align-items:center;margin-bottom:6px;">
+      <span style="font-size:11px;color:#888;width:34px;flex-shrink:0;">${i===0?'작성자':(i+1)+'번'}</span>
+      <input id="shr-name-${i}" list="shr-guide-list" value="${nm.replace(/"/g,'&quot;')}" placeholder="가이드명" onchange="shareRecalc()"
+             style="flex:1;min-width:60px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+      ${tag}
+      <input id="shr-amt-${i}" value="${r.amount||''}" inputmode="numeric" placeholder="금액(฿)" onchange="shareRecalc()"
+             style="width:86px;flex-shrink:0;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;text-align:right;">
+      ${st.list.length>1
+        ? `<button onclick="shareDelRow(${i})" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:13px;width:18px;flex-shrink:0;">✕</button>`
+        : '<span style="width:18px;flex-shrink:0;"></span>'}
+    </div>`;
+  }).join('');
+
+  // 합계만 맞으면 통과시키면, 이름을 안 적었거나 금액 0인 사람이 조용히 빠진 채 저장된다.
+  const blank = st.list.some(r=>!(r.name||'').trim());
+  const zero  = st.list.some(r=>!r.amount);
+  const diffLine = diff !== 0
+    ? `<div style="font-size:12px;color:#c0392b;font-weight:700;">⚠ 배분 합계 ฿${fmtNum(sum)} · 차액 ฿${fmtNum(diff)} — 맞아야 저장됩니다</div>`
+    : (blank || zero)
+      ? `<div style="font-size:12px;color:#b45309;font-weight:700;">⚠ ${blank?'이름이 빈 칸이':'금액이 0인 가이드가'} 있습니다 — [÷ 균등분배]를 누르거나 직접 채워 주세요</div>`
+      : `<div style="font-size:12px;color:#1a8a60;font-weight:700;">✓ 배분 합계 ฿${fmtNum(sum)} — 가이드정산금과 일치</div>`;
+
+  document.getElementById('shareBody').innerHTML = `
+    <div style="background:#f1f5f9;border-radius:8px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:800;">${st.code}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px;">가이드정산금 <b style="color:#1a6b8a;">฿${fmtNum(st.total)}</b> 를 나눠 각자 정산수첩에 올립니다.</div>
+    </div>
+    ${rows}
+    <div style="display:flex;gap:6px;margin:10px 0 8px;flex-wrap:wrap;">
+      <button onclick="shareAddRow()" style="background:#455a64;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">＋ 가이드 추가</button>
+      <button onclick="shareSplitEqual()" style="background:#1e88e5;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">÷ 균등분배 (${st.list.length}분의 1)</button>
+    </div>
+    ${diffLine}
+    <div style="font-size:11px;color:var(--text-sub);margin-top:8px;line-height:1.6;">
+      · 계정이 없는 <b>프리랜서</b>도 이름을 직접 적으면 정산수첩에 올라갑니다(로그인은 없으니 어드민만 봅니다).<br>
+      · 회사수익·환차손익·월별 정산서관리 엑셀은 나누지 않습니다.<br>
+      · 정산서 열람·알림은 <b>작성자</b>에게만 갑니다.
+    </div>
+    <div style="display:flex;gap:6px;margin-top:12px;">
+      ${st.hadShares ? `<button onclick="clearShares()" style="flex:0 0 auto;background:#e5e7eb;color:#555;border:none;border-radius:6px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;">배분 해제</button>` : ''}
+      <button onclick="saveShares()" style="flex:1;background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;">💾 배분 저장</button>
+    </div>`;
+}
+
+async function saveShares() {
+  _shareReadInputs();
+  const st = window._shareEdit; if (!st) return;
+  const list = st.list
+    .map(r=>({ name:(r.name||'').trim(), username:r.username||'', amount:Math.round(r.amount||0) }));
+  // 이름 빈 칸·금액 0을 그냥 걸러내면 그 사람 몫이 말없이 사라진다 → 저장을 막고 채우게 한다.
+  if (list.some(r=>!r.name)) {
+    alert('이름이 비어 있는 칸이 있습니다.\n가이드명을 적거나 ✕로 그 줄을 지운 뒤 저장해 주세요.');
+    return;
+  }
+  if (list.some(r=>!r.amount)) {
+    alert('배분 금액이 0인 가이드가 있습니다.\n[÷ 균등분배]를 누르거나 금액을 직접 넣어 주세요.\n(정산금을 받지 않는 사람이면 ✕로 그 줄을 지워 주세요.)');
+    return;
+  }
+  if (list.length < 2) {
+    alert('차터 배분은 가이드가 2명 이상일 때만 저장됩니다.\n1명이면 [배분 해제]를 눌러 주세요.');
+    return;
+  }
+  const names = list.map(r=>r.name);
+  if (new Set(names).size !== names.length) { alert('같은 가이드 이름이 두 번 들어 있습니다.'); return; }
+  const sum = list.reduce((a,r)=>a+r.amount,0);
+  if (sum !== st.total) {
+    alert(`배분 합계 ฿${fmtNum(sum)} 가 가이드정산금 ฿${fmtNum(st.total)} 와 다릅니다.\n차액 ฿${fmtNum(st.total-sum)}\n\n[÷ 균등분배]를 누르거나 금액을 맞춘 뒤 저장해 주세요.`);
+    return;
+  }
+  try { await loadSubmissions(); } catch(e) {}
+  const s = submissionsDB.find(x=>x.id===st.id);
+  if (!s) { alert('정산서를 찾지 못했습니다. 창을 닫고 다시 열어 주세요.'); return; }
+  // 배분표를 짜는 사이 다른 기기에서 정산금이 바뀌었을 수 있다 → 합계가 어긋난 채 저장되는 걸 막는다.
+  if (Math.round(s.guideSettle||0) !== st.total) {
+    alert(`이 정산서의 가이드정산금이 ฿${fmtNum(st.total)} → ฿${fmtNum(Math.round(s.guideSettle||0))} 로 바뀌었습니다.\n창을 닫고 [👥 배분]을 다시 열어 주세요.`);
+    return;
+  }
+  const _before = JSON.parse(JSON.stringify(s));
+  s.guideShares = list;
+  s.sharesAt = new Date().toISOString();
+  if (!await saveSubmissions()) {
+    Object.keys(s).forEach(k=>{ if (!(k in _before)) delete s[k]; });
+    Object.assign(s, _before);
+    alert('❌ 서버에 저장하지 못했습니다. 배분이 저장되지 않았습니다.\n인터넷/로그인 상태를 확인한 뒤 다시 눌러 주세요.');
+    return;
+  }
+  closeShareModal();
+  renderSubmissions();
+  showToast(`👥 ${list.length}명 배분 저장 — 각자 정산수첩에 나눠 올라갑니다.`);
+}
+
+async function clearShares() {
+  const st = window._shareEdit; if (!st) return;
+  if (!confirm('배분을 해제하면 가이드정산금 전액이 작성자 한 명에게 돌아갑니다.\n계속할까요?')) return;
+  try { await loadSubmissions(); } catch(e) {}
+  const s = submissionsDB.find(x=>x.id===st.id);
+  if (!s) { alert('정산서를 찾지 못했습니다.'); return; }
+  const _before = JSON.parse(JSON.stringify(s));
+  delete s.guideShares;
+  delete s.sharesAt;
+  if (!await saveSubmissions()) {
+    Object.assign(s, _before);
+    alert('❌ 서버에 저장하지 못했습니다. 배분이 그대로 남아 있습니다.');
+    return;
+  }
+  closeShareModal();
+  renderSubmissions();
+  showToast('↩ 배분이 해제되었습니다.');
+}
+
 function _buildLedgerData() {
   // 가이드별 집계: guideName(이름) 기준으로 통합.
   // 계정의 내부 id(username)는 계정을 재생성하면 바뀔 수 있어 예전 제출건과 어긋날 수 있지만,
@@ -6134,7 +6343,21 @@ function _buildLedgerData() {
   // 정산완료(settled) 처리된 건만 수첩에 올린다 — 월별 엑셀과 같은 기준.
   // 어드민이 [완료]를 누르기 전(작성·수정 중)에는 금액이 잡히면 안 되고,
   // 같은 정산코드로 제출본+수정본이 남아 있어도 확정본만 집계돼 중복도 막힌다.
+  // 차터(가이드 2명 이상)로 배분표가 짜인 건은 각자 몫만 자기 수첩에 올린다.
+  // 배분에 이름이 오른 사람은 계정이 없어도(프리랜서) 수첩에 보여야 하므로 따로 모아 둔다.
+  const shareNames = new Set();
   submissionsDB.filter(s=>s.settled).forEach(s=>{
+    const shares = _sharesOf(s);
+    if (shares) {
+      const tag = ` · 차터 ${shares.length}인 배분`;
+      shares.forEach(sh=>{
+        shareNames.add(sh.name);
+        const g = ensure(sh.name, sh.name, sh.username);
+        g.settleTotal += (sh.amount||0);
+        g.settlements.push({ settleCode: (s.settleCode||'')+tag, amount: sh.amount||0, date: _settleDateOf(s) });
+      });
+      return;
+    }
     const k = keyOf(s);
     const g = ensure(k, s.guideName, s.username);
     g.settleTotal += (s.guideSettle||0);
@@ -6162,9 +6385,13 @@ function _buildLedgerData() {
   const guideNames = new Set(
     getAccounts().filter(a=>a.role==='guide').map(a=>(a.name||'').trim()).filter(Boolean)
   );
+  // 단 차터 배분에 이름이 오른 프리랜서는 계정이 없어도 남긴다 —
+  // 여기서 걸러버리면 프리랜서에게 줘야 할 돈이 장부에서 통째로 사라진다.
   if (guideNames.size) {
     Object.keys(byGuide).forEach(k=>{
-      if (!guideNames.has((byGuide[k].guideName||'').trim())) delete byGuide[k];
+      const nm = (byGuide[k].guideName||'').trim();
+      if (!guideNames.has(nm) && !shareNames.has(nm)) delete byGuide[k];
+      else if (!guideNames.has(nm)) byGuide[k].freelance = true;   // 계정 없는 프리랜서 표시
     });
   }
 
@@ -6208,7 +6435,7 @@ function renderGuideLedger() {
     totalCumulative += cumulative;
     html += `<div class="sub-card" style="cursor:pointer;" onclick="selectLedgerGuide('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="sc-code">${g.guideName}</div>
+        <div class="sc-code">${g.guideName}${g.freelance?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">프리랜서</span>':''}</div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:11px;color:#888;">누적분</div>
           <div style="font-size:15px;font-weight:800;color:${cumulative>0?'#c0392b':'#1a8a60'};">฿${fmtNum(cumulative)}</div>
@@ -6311,7 +6538,7 @@ function renderLedgerDetailPage(key, g, isAdmin, showBackBtn) {
   return `
     ${backBtn}
     <div class="sub-card">
-      <div class="sc-code" style="font-size:16px;">${g.guideName}</div>
+      <div class="sc-code" style="font-size:16px;">${g.guideName}${g.freelance?' <span class="sub-badge" style="background:#fef3c7;color:#92400e;">프리랜서</span>':''}</div>
       <div class="sc-meta">이월금 ฿${fmtNum(carry)} · 정산금액 ฿${fmtNum(g.settleTotal)}${g.returnTotal?` <span style="color:#c0392b;">(반품 -฿${fmtNum(g.returnTotal)} 반영)</span>`:''} · 지급액 ฿${fmtNum(g.paidTotal)}</div>
       <div style="margin-top:8px;text-align:right;">
         <span style="font-size:12px;color:#888;">누적분&nbsp;</span>
@@ -6855,7 +7082,9 @@ async function downloadSettleExcel() {
     const ri=r.number;
     _txt(ws.getCell(ri,1),idx+1);
     _txt(ws.getCell(ri,2),s.settleCode||'');
-    _txt(ws.getCell(ri,3),s.guideName||'');
+    // 차터 배분 건은 누가 더 나갔는지 보이게 '외N'을 붙인다 (금액은 회사 기준이라 나누지 않는다)
+    const _shr=_sharesOf(s);
+    _txt(ws.getCell(ri,3),(s.guideName||'')+(_shr?` 외${_shr.length-1}`:''));
     _txt(ws.getCell(ri,4),s.productName||'');
     _txt(ws.getCell(ri,5),s.shopCount||0);
     _txt(ws.getCell(ri,6),s.paxTotal||0);
