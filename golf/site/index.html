@@ -15,6 +15,8 @@
   --fairway:#123A2B; --fairway-deep:#08170F; --fairway-mid:#1C5B42;
   --sand:#E9DFC8; --paper:#F7F3E9; --marigold:#E8A33D;
   --ink:#15211C; --line:rgba(18,58,43,.16); --muted:#5E6F66;
+  /* 포함·불포함·안내사항처럼 손님이 꼭 읽어야 하는 본문 — 흐린 회색(--muted)은 너무 연해서 진한 회색을 따로 둔다 */
+  --ink-soft:#374840;
   --font:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;
   --maxw:1120px;
 }
@@ -195,9 +197,9 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .dreg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em;margin-bottom:2px}
 .modal.wide h3{margin:0 0 12px}
 .dlist{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:7px}
-.dlist li{font-size:14px;color:var(--muted);padding-left:16px;position:relative;line-height:1.5}
+.dlist li{font-size:14px;color:var(--ink-soft);padding-left:16px;position:relative;line-height:1.5}
 .dlist li::before{content:"·";position:absolute;left:4px;font-weight:900;color:var(--marigold)}
-.dlist li.none{padding-left:0;font-size:13.5px}
+.dlist li.none{padding-left:0;font-size:13.5px;color:var(--muted)}   /* 「등록된 안내 없음」 자리표시는 그대로 흐리게 */
 .dlist li.none::before{content:""}
 
 /* 견적 요청 칸에 쌓이는 「관심 골프장」 */
@@ -254,7 +256,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .dleft{min-width:0}
 .dsect{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
 .dsect>b{display:block;font-size:13px;font-weight:900;margin-bottom:6px}
-.dsect p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.6}
+.dsect p{margin:0;font-size:13.5px;color:var(--ink-soft);line-height:1.6}
 .dsect.inc{background:#F1F8F3;border-color:#CFE6D6}
 .dsect.exc{background:#FDF3F3;border-color:#F0D6D6}
 .dsect.note{background:#FEFAEF;border-color:#F0E2C0}
