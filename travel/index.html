@@ -4341,6 +4341,32 @@ function _xlCell(v,type){
   if(type==='number'){ const n=Number(v); return isNaN(n)?String(v):n; }
   return String(v);
 }
+// 맨 아랫줄 합계: 숫자가 들어있는 열(인원·PAX·금액 등)을 자동으로 찾아 더한다.
+// CURRENCY 열이 있으면 통화별로 한 줄씩 만든다(THB+KRW를 한 칸에 더하는 일 방지).
+function _xlTotalRows(header,rows){
+  if(!rows.length) return [];
+  const numCols=[];
+  for(let i=1;i<header.length;i++){ if(rows.some(r=>typeof r[i]==='number')) numCols.push(i); }
+  if(!numCols.length) return [];
+  const mk=(label,src)=>{
+    const t=new Array(header.length).fill('');
+    t[0]=label;
+    numCols.forEach(i=>{ t[i]=src.reduce((a,r)=>a+(typeof r[i]==='number'?r[i]:0),0); });
+    return t;
+  };
+  const ci=header.findIndex(h=>String(h).trim().toUpperCase()==='CURRENCY');
+  if(ci>=0){
+    const key=r=>String(r[ci]||'').trim()||'(통화없음)';
+    const curs=[]; rows.forEach(r=>{ const c=key(r); if(!curs.includes(c)) curs.push(c); });
+    return curs.map(c=>{
+      const src=rows.filter(r=>key(r)===c);
+      const t=mk(`합계 ${c} (${src.length}건)`,src);
+      t[ci]=c;
+      return t;
+    });
+  }
+  return [mk(`합계 (${rows.length}건)`,rows)];
+}
 function _xlSheet(wb,name,header,rows){
   const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});
   ws.addRow(header);
@@ -4350,14 +4376,27 @@ function _xlSheet(wb,name,header,rows){
   hd.alignment={vertical:'middle',horizontal:'center'};
   hd.height=22;
   hd.eachCell(c=>{ c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4A85'}}; });
+  // ── 맨 아래 합계 줄 ──
+  const totals=_xlTotalRows(header,rows);
+  totals.forEach(t=>{
+    const tr=ws.addRow(t);
+    tr.font={bold:true,size:10,color:{argb:'FF1F4A85'}};
+    tr.eachCell({includeEmpty:true},c=>{
+      c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEAF0FA'}};
+      c.border={top:{style:'medium',color:{argb:'FF1F4A85'}}};
+      if(typeof c.value==='number') c.numFmt='#,##0';
+    });
+  });
   // 열 너비: 머리글/값 중 가장 긴 것에 맞춤(한글은 폭을 넓게 계산)
   const w=n=>String(n==null?'':n).split('').reduce((a,ch)=>a+(ch.charCodeAt(0)>127?2:1),0);
+  const allRows=rows.concat(totals);
   header.forEach((h,i)=>{
     let mx=w(h);
-    rows.forEach(r=>{ const v=w(r[i]); if(v>mx) mx=v; });
+    allRows.forEach(r=>{ const v=w(r[i]); if(v>mx) mx=v; });
     ws.getColumn(i+1).width=Math.min(Math.max(mx+3,7),52);
   });
-  ws.autoFilter={from:{row:1,column:1},to:{row:1,column:header.length}};
+  // 필터 범위는 데이터 줄까지만(합계 줄이 필터에 딸려 들어가지 않게)
+  ws.autoFilter={from:{row:1,column:1},to:{row:1+rows.length,column:header.length}};
   return ws;
 }
 async function downloadListXlsx(){
