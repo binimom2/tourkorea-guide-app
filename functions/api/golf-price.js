@@ -132,6 +132,11 @@ function roomBaht(r, we) {
   return we ? (wk != null ? wk : wd) : (wd != null ? wd : wk);
 }
 const roomMargin = (rm, h) => marginOf(blank(rm && rm.margin) ? (h && h.margin) : rm.margin);
+/* ── 추가요금 (2026-09-03 사장님 요청) ──
+   `extraPax` = 3인째부터 한 사람 1박당 · `extraBed` = 엑스트라베드 한 개 1박당 (밧).
+   기간을 안 나눈다 — 호텔이 시즌마다 바꾸는 값이 아니다.
+   **마진을 얹지 않는다.** 마진 100밧은 「1실 1박당」이라 객실 값에 이미 한 번 들어가 있다. */
+const extraOf = (rm, k) => posNum(rm && rm[k]);
 /* 그 객실의 최저가 — 기본요금 줄만 본다(써차지는 「~」에 안 넣는다) */
 function roomLowest(rm, h) {
   let lo = null;
@@ -209,9 +214,15 @@ export async function onRequestGet({ env }) {
          내려보내는 것은 «손님가»(마진 얹은 값)뿐이다. 원가·마진 액수는 여기서 나가지 않는다. */
       const rooms = [];
       roomsOf(h).forEach((rm) => {
+        /* 추가요금은 요금이 아직 없는 객실에도 붙여 보낸다 — 「엑스트라베드 얼마?」만 물어보는 손님이 있다 */
+        const ex = {};
+        [['extraPax', 'pax'], ['extraBed', 'bed']].forEach(([k, nm]) => {
+          const v2 = extraOf(rm, k);
+          if (v2 != null) { ex[nm + 'Krw'] = krwUp(v2 * fx.rate); ex[nm + 'Baht'] = v2; }
+        });
         const lo = roomLowest(rm, h);
-        if (lo == null) { rooms.push({ t: rm.t }); return; }    // 요금 미등록 객실은 이름만
-        rooms.push({ t: rm.t, fromKrw: krwUp(lo * fx.rate), fromBaht: lo });
+        if (lo == null) { rooms.push(Object.assign({ t: rm.t }, ex)); return; }   // 요금 미등록 객실은 이름만
+        rooms.push(Object.assign({ t: rm.t, fromKrw: krwUp(lo * fx.rate), fromBaht: lo }, ex));
         if (v == null || lo < v) v = lo;                        // 카드의 「~」는 제일 싼 객실 값
       });
       if (!(v > 0) && !rooms.length) return;
@@ -327,6 +338,8 @@ async function hotelPost(B, env) {
   const date = String(B.date || '');
   const nights = Math.max(1, Math.min(30, Math.round(+B.nights || 1)));
   const rooms = Math.max(1, Math.min(20, Math.round(+B.rooms || 1)));
+  const exPax = Math.max(0, Math.min(20, Math.round(+B.extraPax || 0)));   // 3인째부터 사람 수
+  const exBed = Math.max(0, Math.min(20, Math.round(+B.extraBed || 0)));   // 엑스트라베드 개수
   if (!name) return json({ ok: false, error: '호텔을 골라 주세요' }, 400);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ ok: false, error: '체크인 날짜를 골라 주세요' }, 400);
 
@@ -372,13 +385,20 @@ async function hotelPost(B, env) {
     sumKrw += krwUp(v * fx.rate);            // 밤마다 천원 단위로 올린다 — 표에 적힌 값과 같아진다
   }
 
+  /* 추가 인원·엑스트라베드 — 한 밤에 한 사람(한 개)씩 붙는다. 마진은 안 얹는다(위 설명). */
+  const paxB = extraOf(room, 'extraPax') || 0, bedB = extraOf(room, 'extraBed') || 0;
+  const exBaht = paxB * exPax * nights + bedB * exBed * nights;
+  const exKrw = krwUp(paxB * fx.rate) * exPax * nights + krwUp(bedB * fx.rate) * exBed * nights;
+
   return json({
     ok: true,
     hotel: hotel.name, region, room: room.t, date, nights, rooms,
     checkout: addDays(date, nights),
-    /* 1박 평균 — 밤마다 값이 다르면 합계를 박수로 나눈 값이다(합계가 정본) */
+    /* 1박 평균 — 밤마다 값이 다르면 합계를 박수로 나눈 값이다(합계가 정본). 객실 값만이다. */
     perKrw: Math.round(sumKrw / nights), perBaht: Math.round(sumBaht / nights),
-    totalKrw: sumKrw * rooms, totalBaht: sumBaht * rooms,
+    extraPax: exPax, extraBed: exBed, extraKrw: exKrw, extraBaht: exBaht,
+    roomsKrw: sumKrw * rooms, roomsBaht: sumBaht * rooms,
+    totalKrw: sumKrw * rooms + exKrw, totalBaht: sumBaht * rooms + exBaht,
     sur: anySur,
     note: (anySur ? '고르신 날짜에 특별일 추가요금이 붙어 있습니다. ' : '')
       + (same ? '' : '성수기·주말이 섞여 밤마다 요금이 다릅니다 — 합계가 정확한 금액입니다.'),

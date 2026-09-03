@@ -214,6 +214,10 @@ table.rooms td.rt{font-weight:800;color:var(--ink)}
 /* 객실 이름 아래 작은 줄 — 에어컨·Wi-Fi·금고처럼 그 객실에 딸린 것들 */
 .rinc{display:block;font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted);
   line-height:1.45;margin-top:2px;max-width:280px}
+/* 3인 이용·엑스트라베드 추가요금 — 객실값과 헷갈리지 않게 색을 달리한다 */
+.rex{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:var(--fairway-mid);
+  line-height:1.45;margin-top:2px}
+.rex em{font-style:normal;font-weight:600;color:var(--muted)}
 /* 객실 사진 — 누르면 크게 열린다. 여러 장이면 오른쪽 아래에 장수가 붙는다. */
 .rth{position:relative;width:56px;height:42px;border-radius:7px;overflow:hidden;flex:none;
   background:#E8EEE9;cursor:zoom-in;display:block}
@@ -305,6 +309,14 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-pax button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 0;font:inherit;font-size:17px;cursor:pointer}
 .qp-pax button:hover{border-color:var(--fairway)}
 .qp-pax span{text-align:center;font-size:15.5px;font-weight:800}
+/* 추가 인원·엑스트라베드 — 인원 칸보다 작게, 요금은 옆에 흐리게 */
+.qp-exrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.qp-exrow>span{font-size:12.5px;font-weight:700;line-height:1.35}
+.qp-exrow>span b{display:block;font-size:11.5px;font-weight:700;color:var(--muted)}
+.qp-ex{display:grid;grid-template-columns:30px 46px 30px;align-items:center;gap:4px;flex:none}
+.qp-ex button{background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:4px 0;font:inherit;font-size:14px;cursor:pointer}
+.qp-ex button:hover{border-color:var(--fairway)}
+.qp-ex span{text-align:center;font-size:13px;font-weight:800}
 .dpanel input[type=date]{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;background:#fff;color:inherit}
 .qp-price{margin:14px 0 12px;background:var(--paper);border-radius:12px;padding:13px 14px;min-height:86px}
 .qp-price .k{font-size:12px;color:var(--muted);font-weight:600}
@@ -313,6 +325,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 밧 표기 — 한화 뒤 괄호로 「172,000원 (3,930바트)」, 곁들이는 값이라 한 단계 작게 */
 .qp-price .vbt{font-size:14px;font-weight:800;color:var(--muted);letter-spacing:-.03em;margin-left:5px;white-space:nowrap}
 .qp-price .sum{font-size:13.5px;font-weight:800;color:var(--fairway);margin-top:5px}
+.qp-price .exline{font-size:12px;font-weight:700;color:var(--muted);margin-top:4px;line-height:1.4}
 .qp-price .ask{font-size:13.5px;color:var(--muted);line-height:1.55}
 .qp-price .fx{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45}
 .dpanel .mbtn{margin-top:4px}
@@ -451,6 +464,26 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
             <button type="button" id="qpNMinus" aria-label="박수 줄이기">−</button>
             <span id="qpNightN">2박</span>
             <button type="button" id="qpNPlus" aria-label="박수 늘리기">＋</button>
+          </div>
+        </div>
+        <!-- 호텔에서, 그 객실에 추가요금이 적혀 있을 때만 나온다 -->
+        <div id="qpExtraWrap" style="display:none">
+          <div class="qp-lab">추가 (1박당)</div>
+          <div class="qp-exrow" id="qpExPaxRow">
+            <span>3인 이용 <b id="qpExPaxP"></b></span>
+            <div class="qp-ex">
+              <button type="button" data-ex="pax" data-d="-1" aria-label="줄이기">−</button>
+              <span id="qpExPaxN">0명</span>
+              <button type="button" data-ex="pax" data-d="1" aria-label="늘리기">＋</button>
+            </div>
+          </div>
+          <div class="qp-exrow" id="qpExBedRow">
+            <span>엑스트라베드 <b id="qpExBedP"></b></span>
+            <div class="qp-ex">
+              <button type="button" data-ex="bed" data-d="-1" aria-label="줄이기">−</button>
+              <span id="qpExBedN">0개</span>
+              <button type="button" data-ex="bed" data-d="1" aria-label="늘리기">＋</button>
+            </div>
           </div>
         </div>
         <div class="qp-lab" id="qpDateLab">날짜 선택</div>
@@ -809,6 +842,14 @@ function roomPriceOf(x, t){
   const list = (p && Array.isArray(p.rooms)) ? p.rooms : [];
   return list.filter(r => rkey(r.t) === rkey(t))[0] || null;
 }
+/* 「3인 이용 +23,000원 · 엑스트라베드 +18,000원 (1박당)」 — 적어 둔 것만 나온다 */
+function exLine(rp){
+  if(!rp) return "";
+  const L = [];
+  if(rp.paxKrw) L.push("3인 이용 +" + rp.paxKrw.toLocaleString("ko-KR") + "원");
+  if(rp.bedKrw) L.push("엑스트라베드 +" + rp.bedKrw.toLocaleString("ko-KR") + "원");
+  return L.length ? "<i class='rex'>" + L.join(" · ") + " <em>(1박당)</em></i>" : "";
+}
 function drawRooms(x, kind){
   const box = $("#dRoomBox"), rooms = kind === "hotels" ? roomsOf(x) : [];
   if(!rooms.length){ box.style.display = "none"; return; }
@@ -823,9 +864,10 @@ function drawRooms(x, kind){
             + "<img loading='lazy' alt='' src='" + esc(pics[i][0]) + "' onerror=\"this.parentNode.remove()\">"
             + (pics[i].length > 1 ? "<b>" + pics[i].length + "</b>" : "") + "</span>"
           : "")
-      /* 객실 이름 아래에 그 객실에 딸린 것들(에어컨·Wi-Fi·금고…)을 작게 붙인다 */
+      /* 객실 이름 아래에 그 객실에 딸린 것들(에어컨·Wi-Fi·금고…)과 추가요금을 작게 붙인다 */
       + "<span>" + esc(r.t)
       + ((r.inc || "").trim() ? "<i class='rinc'>" + esc(r.inc.trim()) + "</i>" : "")
+      + exLine(rp)
       + "</span></div></td>"
       + "<td class='rsub'>" + esc(r.size || "") + "</td>"
       + "<td class='rsub'>" + esc(r.view || "") + "</td>"
@@ -905,10 +947,11 @@ function openDetail(x, kind){
    고른 날짜의 요금은 서버가 계산한다(원가·밧은 이 화면에 오지 않는다).
    날짜를 아직 안 골랐으면 카드와 같은 «최저가»를 보여 준다. */
 let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
-/* 호텔용 — 고른 객실 타입 · 박수 · 객실 수. 골프장은 쓰지 않는다. */
-let qpRoom = "", qpNights = 2, qpRooms = 1;
+/* 호텔용 — 고른 객실 타입 · 박수 · 객실 수 · 추가 인원 · 엑스트라베드. 골프장은 쓰지 않는다. */
+let qpRoom = "", qpNights = 2, qpRooms = 1, qpEx = { pax:0, bed:0 };
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
+  qpEx = { pax:0, bed:0 };          // 다른 곳을 열 때마다 0에서 시작한다
   $("#qpReg").textContent  = x.r || "";
   $("#qpName").textContent = x.n || "";
   $("#qpEn").textContent   = x.e || "";
@@ -957,6 +1000,7 @@ function openPanel(x, kind){
     $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
       qpRoom = b.dataset.room;
       $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
+      drawExtra();          // 객실마다 추가요금이 다르다
       qpCalc();
     });
   } else {
@@ -970,8 +1014,31 @@ function openPanel(x, kind){
   $("#qpDateLab").textContent = isH ? "체크인 날짜" : "날짜 선택";
   $("#qpNightWrap").style.display = isH ? "" : "none";
   $("#qpNightN").textContent = qpNights + "박";
+  drawExtra();
   drawCnt();
   qpCalc();
+}
+/* 추가 인원·엑스트라베드 — 그 객실에 요금이 적혀 있을 때만 보여 준다 */
+function exPriceOf(){
+  const rp = qpKind === "hotels" && qpRoom ? roomPriceOf(qpItem, qpRoom) : null;
+  return {
+    pax: rp && rp.paxKrw ? { krw: rp.paxKrw, baht: rp.paxBaht } : null,
+    bed: rp && rp.bedKrw ? { krw: rp.bedKrw, baht: rp.bedBaht } : null
+  };
+}
+function drawExtra(){
+  const e = exPriceOf();
+  $("#qpExtraWrap").style.display = (e.pax || e.bed) ? "" : "none";
+  [["pax", "명"], ["bed", "개"]].forEach(([k, u]) => {
+    const has = !!e[k];
+    const row = $("#qpEx" + (k === "pax" ? "Pax" : "Bed") + "Row");
+    row.style.display = has ? "" : "none";
+    if(!has){ qpEx[k] = 0; return; }
+    $("#qpEx" + (k === "pax" ? "Pax" : "Bed") + "P").textContent =
+      "1" + u + "당 " + e[k].krw.toLocaleString("ko-KR") + "원"
+      + (e[k].baht ? " (" + e[k].baht.toLocaleString("ko-KR") + "바트)" : "");
+    $("#qpEx" + (k === "pax" ? "Pax" : "Bed") + "N").textContent = qpEx[k] + u;
+  });
 }
 /* ± 단추 하나로 골프는 인원, 호텔은 객실 수를 센다 */
 function drawCnt(){
@@ -990,6 +1057,15 @@ function setNights(n){
   qpCalc();
 }
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
+/* 고른 추가 인원·엑스트라베드의 값 — 한 밤에 한 사람(한 개)씩 붙는다.
+   서버가 셈한 값과 같은 규칙이다(마진은 안 붙는다 — 1실 1박 마진에 이미 들어 있다). */
+function extraSum(){
+  const e = exPriceOf();
+  let krw = 0, baht = 0; const lab = [];
+  if(e.pax && qpEx.pax){ krw += e.pax.krw * qpEx.pax * qpNights; baht += (e.pax.baht||0) * qpEx.pax * qpNights; lab.push("3인 이용 " + qpEx.pax + "명"); }
+  if(e.bed && qpEx.bed){ krw += e.bed.krw * qpEx.bed * qpNights; baht += (e.bed.baht||0) * qpEx.bed * qpNights; lab.push("엑스트라베드 " + qpEx.bed + "개"); }
+  return { krw, baht, label: lab.join(" · ") + (lab.length ? " × " + qpNights + "박" : "") };
+}
 function fxNote(){
   return PRICE.fx
     ? '<div class="fx">' + PRICE.fx.date + ' ' + PRICE.fx.basis + ' 1밧 = ' + PRICE.fx.rate + '원 기준</div>'
@@ -1014,15 +1090,17 @@ async function qpCalc(){
     const baseBt = qpKind === "hotels" ? (rp ? rp.fromBaht : p.fromBaht) : pick(p.from18Baht, p.from9Baht);
     if(!base){ qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.<br>「견적 요청에 담기」를 눌러 주세요.</div>'); return; }
     const cnt = qpKind === "hotels" ? qpRooms * qpNights : qpPax;
+    const ex = extraSum();
     qpBox('<div class="k">' + (qpKind === "hotels"
             ? (qpRoom ? esc(qpRoom) + " · " : "") + "1실 1박 기준 · 최저가"
             : "1인 기준 · " + qpHoles + "홀 최저가") + '</div>'
       + '<div class="v">' + base.toLocaleString("ko-KR") + '<em>원~</em>'
         + (baseBt ? '<b class="vbt">(' + baseBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
+      + (ex.krw ? '<div class="exline">' + esc(ex.label) + ': ' + ex.krw.toLocaleString("ko-KR") + '원</div>' : '')
       + '<div class="sum">'
         + (qpKind === "hotels" ? qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '인 합계: ')
-        + (base * cnt).toLocaleString("ko-KR") + '원'
-        + (baseBt ? ' (' + (baseBt * cnt).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
+        + (base * cnt + ex.krw).toLocaleString("ko-KR") + '원'
+        + (baseBt ? ' (' + (baseBt * cnt + ex.baht).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + '<div class="ask" style="margin-top:6px">'
         + (qpKind === "hotels" ? "체크인 날짜를 고르시면 그날 요금으로 계산해 드립니다."
                                : "날짜를 고르시면 그날 요금으로 계산해 드립니다.") + '</div>'
@@ -1038,7 +1116,8 @@ async function qpCalc(){
       headers: { "content-type": "application/json" },
       body: JSON.stringify(qpKind === "hotels"
         ? { kind:"hotel", region: qpItem.r, hotel: qpItem.n, room: qpRoom,
-            date, nights: qpNights, rooms: qpRooms }
+            date, nights: qpNights, rooms: qpRooms,
+            extraPax: qpEx.pax, extraBed: qpEx.bed }
         : { region: qpItem.r, course: qpItem.n, holes: qpHoles, date, pax: qpPax })
     });
     const j = await r.json();
@@ -1054,6 +1133,11 @@ async function qpCalc(){
           + esc(j.date) + ' 체크인 ' + j.nights + '박</div>'
         + '<div class="v">' + j.perKrw.toLocaleString("ko-KR") + '<em>원</em>'
           + (j.perBaht ? '<b class="vbt">(' + j.perBaht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
+        + (j.extraKrw ? '<div class="exline">'
+            + (j.extraPax ? '3인 이용 ' + j.extraPax + '명' : '')
+            + (j.extraPax && j.extraBed ? ' · ' : '')
+            + (j.extraBed ? '엑스트라베드 ' + j.extraBed + '개' : '')
+            + ' × ' + j.nights + '박: ' + j.extraKrw.toLocaleString("ko-KR") + '원</div>' : '')
         + '<div class="sum">' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
           + (j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
         + (j.note ? '<div class="ask" style="margin-top:6px">' + esc(j.note) + '</div>' : '')
@@ -1075,6 +1159,11 @@ $("#qpMinus").onclick  = () => setCnt(curCnt() - 1);
 $("#qpPlus").onclick   = () => setCnt(curCnt() + 1);
 $("#qpNMinus").onclick = () => setNights(qpNights - 1);
 $("#qpNPlus").onclick  = () => setNights(qpNights + 1);
+$("#qpExtraWrap").querySelectorAll("[data-ex]").forEach(b => b.onclick = () => {
+  const k = b.dataset.ex;
+  qpEx[k] = Math.max(0, Math.min(20, qpEx[k] + Number(b.dataset.d)));
+  drawExtra(); qpCalc();
+});
 $("#qpDate").onchange = qpCalc;
 function closeDetail(){ $("#detailMask").classList.remove("on"); }
 $("#detailClose").onclick = closeDetail;

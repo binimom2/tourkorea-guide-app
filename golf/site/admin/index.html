@@ -128,6 +128,9 @@ tr.subrow td{padding:0 6px 11px}
 .rminc{display:flex;align-items:center;gap:7px;margin-top:6px}
 .rminc>label{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 .rminc input{flex:1;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;min-width:0}
+/* 추가요금 줄 — 숫자 두 칸이라 늘어나지 않게 폭을 준다 */
+.rmex>span{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.rmex input{flex:none;width:92px;text-align:right;font-variant-numeric:tabular-nums}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
 .rmhd,.rmrate{display:grid;grid-template-columns:234px 108px 88px 88px 22px;gap:5px;align-items:center}
@@ -1202,6 +1205,14 @@ function roomRowHTML(x,i,rm,j,pr){
     +'<div class="rminc"><label>포함·편의시설</label>'
       +'<input data-mf="inc" value="'+esc(rm.inc||'')+'" '
       +'placeholder="에어컨 · LCD TV · 무료 Wi-Fi · 차와 커피 · 헤어드라이어 · 금고"></div>'
+    /* 추가요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
+       기간을 안 나눈다(시즌마다 바꾸는 값이 아니다). 마진은 안 붙는다 — 1실 1박 100밧이 이미 객실에 들어 있다. */
+    +'<div class="rminc rmex"><label>추가요금</label>'
+      +'<span>3인 이용(1인 1박)</span>'
+      +'<input type="number" min="0" data-rmx="extraPax" value="'+esc(pr&&pr.extraPax!=null?pr.extraPax:'')+'" placeholder="밧">'
+      +'<span>엑스트라베드(1개 1박)</span>'
+      +'<input type="number" min="0" data-rmx="extraBed" value="'+esc(pr&&pr.extraBed!=null?pr.extraBed:'')+'" placeholder="밧">'
+      +'</div>'
     +'<div class="rmbody">'
       +'<div class="rmrates">'+roomRatesHTML(rates,rm)+'</div>'
       +'<div class="rmpic"><label>이 객실 사진</label>'+picsTa(picPath,picShim)+'</div>'
@@ -1281,6 +1292,17 @@ document.getElementById('pane').addEventListener('input',e=>{
   markDirty('rates');
   /* 기본요금 ⇄ 써차지를 바꾸면 줄 색과 안내 글자가 같이 바뀌어야 한다 */
   if(f==='sur') redrawRoomRates(row,x);
+});
+/* ── 객실 추가요금(3인 이용·엑스트라베드) — 요금표 쪽에 넣는다 ── */
+document.getElementById('pane').addEventListener('input',e=>{
+  const f=e.target.dataset&&e.target.dataset.rmx; if(!f) return;
+  const cell=e.target.closest('.rcell'), row=e.target.closest('.rmrow');
+  if(!cell||!row) return;
+  const x=hotelByName(cell.dataset.rn); if(!x) return;
+  const rm=siteRoomsOf(x)[Number(row.dataset.mi)]; if(!rm||!String(rm.t||'').trim()) return;
+  const pr=priceRoomOf(x,rm.t);
+  pr[f]=(e.target.value===''?'':Number(e.target.value));
+  markDirty('rates');
 });
 /* 객실 요금줄의 「기간 고르기」 — 골프장 쪽과 같은 목록을 쓴다 */
 document.getElementById('pane').addEventListener('change',e=>{
