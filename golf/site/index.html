@@ -211,6 +211,9 @@ table.rooms th{font-size:11.5px;font-weight:800;color:var(--muted);text-align:le
 table.rooms td{padding:9px 8px;border-top:1px solid var(--line);vertical-align:middle;line-height:1.4}
 table.rooms td.rt{font-weight:800;color:var(--ink)}
 .rtwrap{display:flex;align-items:center;gap:9px}
+/* 객실 이름 아래 작은 줄 — 에어컨·Wi-Fi·금고처럼 그 객실에 딸린 것들 */
+.rinc{display:block;font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted);
+  line-height:1.45;margin-top:2px;max-width:280px}
 /* 객실 사진 — 누르면 크게 열린다. 여러 장이면 오른쪽 아래에 장수가 붙는다. */
 .rth{position:relative;width:56px;height:42px;border-radius:7px;overflow:hidden;flex:none;
   background:#E8EEE9;cursor:zoom-in;display:block}
@@ -820,7 +823,10 @@ function drawRooms(x, kind){
             + "<img loading='lazy' alt='' src='" + esc(pics[i][0]) + "' onerror=\"this.parentNode.remove()\">"
             + (pics[i].length > 1 ? "<b>" + pics[i].length + "</b>" : "") + "</span>"
           : "")
-      + "<span>" + esc(r.t) + "</span></div></td>"
+      /* 객실 이름 아래에 그 객실에 딸린 것들(에어컨·Wi-Fi·금고…)을 작게 붙인다 */
+      + "<span>" + esc(r.t)
+      + ((r.inc || "").trim() ? "<i class='rinc'>" + esc(r.inc.trim()) + "</i>" : "")
+      + "</span></div></td>"
       + "<td class='rsub'>" + esc(r.size || "") + "</td>"
       + "<td class='rsub'>" + esc(r.view || "") + "</td>"
       + "<td class='rsub'>" + esc(r.bed || "") + "</td>"

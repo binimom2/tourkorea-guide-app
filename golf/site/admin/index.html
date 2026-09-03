@@ -125,6 +125,9 @@ tr.subrow td{padding:0 6px 11px}
 .rmcpy:hover{background:rgba(18,58,43,.08)}
 .rmdel,.rmrdel{background:none;border:0;color:var(--danger);font-size:13px;font-weight:900;cursor:pointer;padding:2px}
 .rmdel:hover,.rmrdel:hover{background:rgba(192,73,47,.1);border-radius:5px}
+.rminc{display:flex;align-items:center;gap:7px;margin-top:6px}
+.rminc>label{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
+.rminc input{flex:1;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;min-width:0}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
 .rmhd,.rmrate{display:grid;grid-template-columns:234px 108px 88px 88px 22px;gap:5px;align-items:center}
@@ -1194,6 +1197,11 @@ function roomRowHTML(x,i,rm,j,pr){
       +'<button type="button" class="rmcpy" title="이 객실을 요금까지 그대로 하나 더">복사</button>'
       +'<button type="button" class="rmdel" title="이 객실 지우기">✕</button>'
     +'</div>'
+    /* 그 객실에 딸린 것들 — 손님 화면에서 객실 이름 밑에 작게 붙는다.
+       조식은 위 「조식」 체크로 따로 나가므로 여기 또 적지 않아도 된다. */
+    +'<div class="rminc"><label>포함·편의시설</label>'
+      +'<input data-mf="inc" value="'+esc(rm.inc||'')+'" '
+      +'placeholder="에어컨 · LCD TV · 무료 Wi-Fi · 차와 커피 · 헤어드라이어 · 금고"></div>'
     +'<div class="rmbody">'
       +'<div class="rmrates">'+roomRatesHTML(rates,rm)+'</div>'
       +'<div class="rmpic"><label>이 객실 사진</label>'+picsTa(picPath,picShim)+'</div>'
