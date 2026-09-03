@@ -1134,6 +1134,15 @@ function priceRoomsRO(x){
 function findRoom(list,t){ return list.filter(z=>nameKey(z.t)===nameKey(t))[0]||null; }
 /* 써차지 줄인가 — 서버(golf-price.js)의 isSur과 같은 판정이어야 한다 */
 function isSurRate(r){ return !!r && (r.sur===true||r.sur===1||r.sur==='1'); }
+/* 추가 인원 요금 — 처음에 extraPax(3인)·extraBed(엑스트라베드)로 넣어 둔 값도 읽는다.
+   서버(golf-price.js)의 EXTRA_OLD와 같아야 한다. */
+const EXTRA_OLD={extraAdult:'extraPax',extraChild:'extraBed'};
+function exVal(pr,k){
+  if(!pr) return '';
+  if(pr[k]!=null&&pr[k]!=='') return pr[k];
+  const o=pr[EXTRA_OLD[k]];
+  return (o!=null&&o!=='')?o:'';
+}
 /* 고칠 때 쓴다 — 요금표에 자리가 없으면 만든다 */
 function priceRoomOf(x,t){
   const o=ensureRateHome('hotels',x);
@@ -1205,13 +1214,15 @@ function roomRowHTML(x,i,rm,j,pr){
     +'<div class="rminc"><label>포함·편의시설</label>'
       +'<input data-mf="inc" value="'+esc(rm.inc||'')+'" '
       +'placeholder="에어컨 · LCD TV · 무료 Wi-Fi · 차와 커피 · 헤어드라이어 · 금고"></div>'
-    /* 추가요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
-       기간을 안 나눈다(시즌마다 바꾸는 값이 아니다). 마진은 안 붙는다 — 1실 1박 100밧이 이미 객실에 들어 있다. */
-    +'<div class="rminc rmex"><label>추가요금</label>'
-      +'<span>3인 이용(1인 1박)</span>'
-      +'<input type="number" min="0" data-rmx="extraPax" value="'+esc(pr&&pr.extraPax!=null?pr.extraPax:'')+'" placeholder="밧">'
-      +'<span>엑스트라베드(1개 1박)</span>'
-      +'<input type="number" min="0" data-rmx="extraBed" value="'+esc(pr&&pr.extraBed!=null?pr.extraBed:'')+'" placeholder="밧">'
+    /* 추가 인원 요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
+       엑스트라베드 값과 3인 요금이 같은 말이라(사장님) 성인·어린이로 나눴다.
+       기간을 안 나눈다(시즌마다 바꾸는 값이 아니다). 마진은 안 붙는다 — 1실 1박 100밧이 이미 객실에 들어 있다.
+       ※ 처음에 extraPax·extraBed로 넣어 둔 값이 있으면 그 값을 그대로 보여 준다. */
+    +'<div class="rminc rmex"><label>추가 인원 <span class="rhint">1인 1박</span></label>'
+      +'<span>성인</span>'
+      +'<input type="number" min="0" data-rmx="extraAdult" value="'+esc(exVal(pr,'extraAdult'))+'" placeholder="밧">'
+      +'<span>어린이</span>'
+      +'<input type="number" min="0" data-rmx="extraChild" value="'+esc(exVal(pr,'extraChild'))+'" placeholder="밧">'
       +'</div>'
     +'<div class="rmbody">'
       +'<div class="rmrates">'+roomRatesHTML(rates,rm)+'</div>'
@@ -1302,6 +1313,8 @@ document.getElementById('pane').addEventListener('input',e=>{
   const rm=siteRoomsOf(x)[Number(row.dataset.mi)]; if(!rm||!String(rm.t||'').trim()) return;
   const pr=priceRoomOf(x,rm.t);
   pr[f]=(e.target.value===''?'':Number(e.target.value));
+  /* 옛 이름(extraPax·extraBed)이 남아 있으면 지운다 — 안 지우면 칸을 비워도 옛 값이 되살아난다 */
+  if(EXTRA_OLD[f]&&pr[EXTRA_OLD[f]]!=null) delete pr[EXTRA_OLD[f]];
   markDirty('rates');
 });
 /* 객실 요금줄의 「기간 고르기」 — 골프장 쪽과 같은 목록을 쓴다 */
