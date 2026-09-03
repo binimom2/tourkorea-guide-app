@@ -201,6 +201,29 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .dlist li::before{content:"·";position:absolute;left:4px;font-weight:900;color:var(--marigold)}
 .dlist li.none{padding-left:0;font-size:13.5px;color:var(--muted)}   /* 「등록된 안내 없음」 자리표시는 그대로 흐리게 */
 .dlist li.none::before{content:""}
+/* 「위치: 터미널21 부근」처럼 앞말을 적어 두면 앞말만 진하게 서고 뒷말이 옆에 붙는다 */
+.dlist li b{display:inline-block;min-width:88px;font-weight:800;color:var(--ink);margin-right:6px}
+.dlist li a{color:var(--fairway-mid);word-break:break-all}
+/* 호텔 객실 안내 표 — 좁은 화면에서는 표만 옆으로 밀린다(본문은 안 밀린다) */
+.rwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.rooms{width:100%;border-collapse:collapse;font-size:13px;min-width:420px}
+table.rooms th{font-size:11.5px;font-weight:800;color:var(--muted);text-align:left;padding:0 8px 6px;white-space:nowrap}
+table.rooms td{padding:9px 8px;border-top:1px solid var(--line);vertical-align:middle;line-height:1.4}
+table.rooms td.rt{font-weight:800;color:var(--ink)}
+.rtwrap{display:flex;align-items:center;gap:9px}
+/* 객실 사진 — 누르면 크게 열린다. 여러 장이면 오른쪽 아래에 장수가 붙는다. */
+.rth{position:relative;width:56px;height:42px;border-radius:7px;overflow:hidden;flex:none;
+  background:#E8EEE9;cursor:zoom-in;display:block}
+.rth img{width:100%;height:100%;object-fit:cover;display:block}
+.rth b{position:absolute;right:0;bottom:0;background:rgba(20,20,20,.62);color:#fff;
+  font-size:10px;font-weight:800;padding:1px 5px;border-radius:6px 0 0 0}
+table.rooms td.rsub{color:var(--muted);white-space:nowrap}
+table.rooms td.rp{text-align:right;font-weight:900;white-space:nowrap;letter-spacing:-.03em}
+table.rooms td.rp b{display:block;font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:0}
+table.rooms td.rp .ask{font-weight:800;font-size:12.5px;color:var(--muted)}
+table.rooms .bf{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:#F1F8F3;color:var(--fairway-mid);border:1px solid #CFE6D6;white-space:nowrap}
+table.rooms .bf.no{background:#F6F6F6;color:var(--muted);border-color:var(--line)}
+.rfoot{font-size:11.5px;color:var(--muted);margin:9px 0 0;line-height:1.5}
 
 /* 견적 요청 칸에 쌓이는 「관심 골프장」 */
 .wish{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
@@ -395,6 +418,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <div class="dsect inc" id="dIncBox"><b>포함사항</b><p class="keep" id="dInc"></p></div>
         <div class="dsect exc" id="dExcBox"><b>불포함사항</b><p class="keep" id="dExc"></p></div>
         <div class="dsect note"><b>안내사항</b><ul class="dlist" id="dList"></ul></div>
+        <!-- 호텔 전용 — 객실 타입별 요금. 포함·불포함 대신 이 표가 들어간다(사장님 지시 2026-09-03) -->
+        <div class="dsect" id="dRoomBox" style="display:none"><b>객실 안내</b>
+          <div class="rwrap"><table class="rooms"><thead><tr>
+            <th>객실 타입</th><th>면적</th><th>뷰</th><th>침대</th><th>조식</th><th style="text-align:right">1박 요금</th>
+          </tr></thead><tbody id="dRooms"></tbody></table></div>
+          <p class="rfoot" id="dRoomFoot"></p>
+        </div>
       </div>
       <!-- 오른쪽 실시간 견적 패널 — 라운드·인원·날짜를 고르면 서버가 그 날짜 요금으로 계산해 준다 -->
       <aside class="dpanel">
@@ -402,17 +432,26 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <div class="qp-name" id="qpName"></div>
         <div class="qp-en" id="qpEn"></div>
         <div id="qpHoleWrap">
-          <div class="qp-lab">라운드 선택</div>
+          <div class="qp-lab" id="qpHoleLab">라운드 선택</div>
           <div class="qp-holes" id="qpHoles"></div>
         </div>
-        <div class="qp-lab">인원</div>
+        <div class="qp-lab" id="qpPaxLab">인원</div>
         <div class="qp-pax">
-          <button type="button" id="qpMinus" aria-label="인원 줄이기">−</button>
+          <button type="button" id="qpMinus" aria-label="줄이기">−</button>
           <span id="qpPaxN">4인</span>
-          <button type="button" id="qpPlus" aria-label="인원 늘리기">＋</button>
+          <button type="button" id="qpPlus" aria-label="늘리기">＋</button>
         </div>
-        <div class="qp-lab">날짜 선택</div>
-        <input type="date" id="qpDate" aria-label="라운딩 날짜">
+        <!-- 호텔에서만 나온다 — 골프장은 박수가 없다 -->
+        <div id="qpNightWrap" style="display:none">
+          <div class="qp-lab">숙박</div>
+          <div class="qp-pax">
+            <button type="button" id="qpNMinus" aria-label="박수 줄이기">−</button>
+            <span id="qpNightN">2박</span>
+            <button type="button" id="qpNPlus" aria-label="박수 늘리기">＋</button>
+          </div>
+        </div>
+        <div class="qp-lab" id="qpDateLab">날짜 선택</div>
+        <input type="date" id="qpDate" aria-label="날짜">
         <div class="qp-price" id="qpPrice"></div>
         <button class="mbtn" id="dQuote" type="button">견적 요청에 담기</button>
         <a class="qp-kakao" id="qpKakao" href="#contact">카카오톡 상담</a>
@@ -736,6 +775,69 @@ function ro(w){
   const c = (w || "").charCodeAt((w || "").length - 1) - 0xAC00;
   return (c >= 0 && c < 11172 && c % 28 !== 0) ? "으로" : "로";
 }
+/* 안내사항 한 줄 — 「위치: 터미널21 부근」처럼 앞말을 적어 두면 앞말만 진하게 세운다.
+   앞말이 없으면 그냥 한 줄로 나간다. 주소 안의 「:」(https://)까지 앞말로 보면 안 되므로
+   앞말에는 「/」를 못 넣고, https·http는 앞말로 치지 않는다. */
+function noteLine(s){
+  const m = String(s).match(/^([^:：]{1,14})\s*[:：]\s*(.+)$/);
+  /* 「https://…」의 쌍점, 「10:00 오픈」의 시각은 앞말이 아니다 */
+  if(!m || /^https?$/i.test(m[1].trim()) || /^\d+$/.test(m[1].trim()) || /^\/\//.test(m[2]))
+    return linkify(s);
+  return "<b>" + esc(m[1].trim()) + "</b>" + linkify(m[2].trim());
+}
+/* 주소(http…)는 눌러서 열리게 — 호텔 홈페이지를 안내사항에 적어 두는 일이 많다 */
+function linkify(s){
+  return esc(s).replace(/(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+/* ══════════ 호텔 객실 ══════════
+   객실 «내용»(타입·면적·뷰·침대·조식)은 SITE.hotels[].rooms 에 있다 — 원가가 아니라 공개해도 된다.
+   객실 «요금»은 요금표(golf_pricing)에 있어 이 화면으로 내려오지 않는다.
+   서버(/api/golf-price)가 마진을 얹어 계산한 «손님가»만 PRICE.hotels[].rooms 로 받아 쓴다.
+   둘을 잇는 기준은 **객실 타입 이름**이다(골프장을 이름으로 잇는 것과 같다). */
+const rkey = (t) => String(t || "").replace(/\s+/g, "").toLowerCase();
+function roomsOf(x){
+  return (Array.isArray(x && x.rooms) ? x.rooms : []).filter(r => r && String(r.t || "").trim());
+}
+/* 그 객실의 손님가(최저가). 요금이 아직 안 들어온 객실은 null — 카드처럼 「문의」로 둔다. */
+function roomPriceOf(x, t){
+  const p = priceOf(x, "hotels");
+  const list = (p && Array.isArray(p.rooms)) ? p.rooms : [];
+  return list.filter(r => rkey(r.t) === rkey(t))[0] || null;
+}
+function drawRooms(x, kind){
+  const box = $("#dRoomBox"), rooms = kind === "hotels" ? roomsOf(x) : [];
+  if(!rooms.length){ box.style.display = "none"; return; }
+  box.style.display = "";
+  /* 객실마다 올려 둔 사진 — 눌러서 크게 본다. 없으면 이름만 나온다. */
+  const pics = rooms.map(r => picsOf({ n: r.t, img: r.img, imgs: r.imgs }));
+  $("#dRooms").innerHTML = rooms.map((r, i) => {
+    const rp = roomPriceOf(x, r.t);
+    return "<tr><td class='rt'><div class='rtwrap'>"
+      + (pics[i].length
+          ? "<span class='rth' data-r='" + i + "' title='사진 크게 보기'>"
+            + "<img loading='lazy' alt='' src='" + esc(pics[i][0]) + "' onerror=\"this.parentNode.remove()\">"
+            + (pics[i].length > 1 ? "<b>" + pics[i].length + "</b>" : "") + "</span>"
+          : "")
+      + "<span>" + esc(r.t) + "</span></div></td>"
+      + "<td class='rsub'>" + esc(r.size || "") + "</td>"
+      + "<td class='rsub'>" + esc(r.view || "") + "</td>"
+      + "<td class='rsub'>" + esc(r.bed || "") + "</td>"
+      + "<td>" + (r.bf === false ? "<span class='bf no'>불포함</span>"
+                : r.bf ? "<span class='bf'>조식 포함</span>" : "") + "</td>"
+      + "<td class='rp'>" + (rp && rp.fromKrw
+          ? rp.fromKrw.toLocaleString("ko-KR") + "원~"
+            + (rp.fromBaht ? "<b>(" + rp.fromBaht.toLocaleString("ko-KR") + "바트)</b>" : "")
+          : "<span class='ask'>요금 문의</span>") + "</td></tr>";
+  }).join("");
+  $("#dRooms").querySelectorAll(".rth").forEach(el => el.onclick = () => {
+    openLbox(0, pics[Number(el.dataset.r)]);
+  });
+  $("#dRoomFoot").textContent =
+    "1실 1박 기준입니다. 날짜(성수기·주말)에 따라 달라져, 오른쪽에서 객실과 날짜를 고르시면 그날 요금으로 계산해 드립니다.";
+}
+
 function openDetail(x, kind){
   if(!x) return;
   dCur = x; dPics = picsOf(x);
@@ -761,24 +863,33 @@ function openDetail(x, kind){
           '<div class="gsub" data-p="' + (i + 1) + '"><img loading="lazy" alt="" src="' + esc(s) + '">'
           + (i === 3 && dPics.length > 5 ? '<span class="gmore">' + (dPics.length - 5) + ' ›</span>' : "")
           + '</div>').join("") + '</div>' : "");
-    gal.querySelectorAll("[data-p]").forEach(g => g.onclick = () => openLbox(Number(g.dataset.p)));
+    gal.querySelectorAll("[data-p]").forEach(g => g.onclick = () => openLbox(Number(g.dataset.p), dPics));
   }
   /* 소개 문구를 한 줄씩 쪼개 보여준다 — 줄을 나눠 적었으면 그 줄대로,
      예전처럼 「 · 」로 이어 적었으면 그 자리에서 쪼갠다. 둘 다 받는다. */
-  const parts = (x.d || "").split(/\r?\n|\s·\s/).map(s => s.trim()).filter(Boolean);
+  /* 줄을 나눠 적었으면 그 줄대로 — 「 · 」는 한 줄 안의 이음말이므로 그대로 둔다
+     (「건물정보: 오픈 2017년 · 객실 444개 · 30층」이 네 줄로 흩어지면 안 된다).
+     예전처럼 한 줄로만 적어 둔 것은 그 자리에서 「 · 」로 쪼갠다 — 골프장 소개가 그렇게 들어 있다. */
+  const raw = (x.d || "").trim();
+  const parts = (raw.indexOf("\n") >= 0 ? raw.split(/\r?\n/) : raw.split(/\s·\s/))
+    .map(s => s.trim()).filter(Boolean);
   $("#dList").innerHTML = parts.length
-    ? parts.map(p => "<li>" + esc(p) + "</li>").join("")
+    ? parts.map(p => "<li>" + noteLine(p) + "</li>").join("")
     : '<li class="none">' + (kind === "hotels"
         ? "객실 타입·조식 여부는 일정에 맞춰 안내드립니다."
         : "안내는 준비 중입니다. 문의 주시면 바로 알려드리겠습니다.") + "</li>";
   /* 포함·불포함 — 종류별 기본 문구(SITE.incExc)를 쓰되,
-     그 항목에 따로 적어 둔 것이 있으면 그 줄만 바꿔 준다(예: 캐디팁이 포함인 골프장). */
-  const dft = (SITE.incExc && (SITE.incExc[kind] || SITE.incExc._)) || {};
-  $("#dInc").textContent = (x.inc || "").trim() || dft.inc || "";
-  $("#dExc").textContent = (x.exc || "").trim() || dft.exc || "";
+     그 항목에 따로 적어 둔 것이 있으면 그 줄만 바꿔 준다(예: 캐디팁이 포함인 골프장).
+     ── 호텔은 포함·불포함을 쓰지 않는다(사장님 지시 2026-09-03).
+        객실마다 조식 여부가 달라 한 문장으로 묶을 수 없어, 아래 「객실 안내」 표로 대신한다. */
+  const dft = (kind === "hotels") ? {}
+            : (SITE.incExc && (SITE.incExc[kind] || SITE.incExc._)) || {};
+  $("#dInc").textContent = kind === "hotels" ? "" : ((x.inc || "").trim() || dft.inc || "");
+  $("#dExc").textContent = kind === "hotels" ? "" : ((x.exc || "").trim() || dft.exc || "");
   /* 적을 것이 없으면 그 상자는 아예 감춘다 — 빈 칸이 남으면 빠뜨린 것처럼 보인다 */
   $("#dIncBox").style.display = $("#dInc").textContent ? "" : "none";
   $("#dExcBox").style.display = $("#dExc").textContent ? "" : "none";
+  drawRooms(x, kind);
   $("#dQuote").textContent = "이 " + (cat.t || "곳") + ro(cat.t || "곳") + " 견적 요청하기";
   openPanel(x, kind);
   $("#detailMask").classList.add("on");
@@ -788,6 +899,8 @@ function openDetail(x, kind){
    고른 날짜의 요금은 서버가 계산한다(원가·밧은 이 화면에 오지 않는다).
    날짜를 아직 안 골랐으면 카드와 같은 «최저가»를 보여 준다. */
 let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
+/* 호텔용 — 고른 객실 타입 · 박수 · 객실 수. 골프장은 쓰지 않는다. */
+let qpRoom = "", qpNights = 2, qpRooms = 1;
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
   $("#qpReg").textContent  = x.r || "";
@@ -819,14 +932,55 @@ function openPanel(x, kind){
       $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
       qpCalc();
     });
+  } else if(kind === "hotels" && roomsOf(x).length){
+    /* 호텔은 라운드 대신 «객실 타입»을 고른다. 요금이 아직 없는 객실도 고를 수는 있게 둔다 —
+       고르면 「요금은 일정에 맞춰 안내드립니다」가 뜨고 견적 요청으로 이어진다. */
+    wrap.style.display = "";
+    const rooms = roomsOf(x);
+    qpRoom = rooms[0].t;
+    $("#qpHoles").innerHTML = rooms.map(r => {
+      const rp = roomPriceOf(x, r.t);
+      return '<button type="button" data-room="' + esc(r.t) + '" class="' + (r.t === qpRoom ? "on" : "") + '">'
+        + '<b>' + esc(r.t) + '</b><span>'
+        + (rp && rp.fromKrw
+            ? rp.fromKrw.toLocaleString("ko-KR") + '원~'
+              + (rp.fromBaht ? '<i>(' + rp.fromBaht.toLocaleString("ko-KR") + '바트)</i>' : '')
+            : '요금 문의')
+        + '</span></button>';
+    }).join("");
+    $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
+      qpRoom = b.dataset.room;
+      $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
+      qpCalc();
+    });
   } else {
     wrap.style.display = "none";
+    qpRoom = "";
   }
-  setPax(qpPax);
+  /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
+  const isH = kind === "hotels";
+  $("#qpHoleLab").textContent = isH ? "객실 타입" : "라운드 선택";
+  $("#qpPaxLab").textContent  = isH ? "객실 수" : "인원";
+  $("#qpDateLab").textContent = isH ? "체크인 날짜" : "날짜 선택";
+  $("#qpNightWrap").style.display = isH ? "" : "none";
+  $("#qpNightN").textContent = qpNights + "박";
+  drawCnt();
+  qpCalc();
 }
-function setPax(n){
-  qpPax = Math.max(1, Math.min(40, n));
-  $("#qpPaxN").textContent = qpPax + "인";
+/* ± 단추 하나로 골프는 인원, 호텔은 객실 수를 센다 */
+function drawCnt(){
+  $("#qpPaxN").textContent = qpKind === "hotels" ? qpRooms + "실" : qpPax + "인";
+}
+function setCnt(n){
+  if(qpKind === "hotels") qpRooms = Math.max(1, Math.min(20, n));
+  else                    qpPax   = Math.max(1, Math.min(40, n));
+  drawCnt();
+  qpCalc();
+}
+function curCnt(){ return qpKind === "hotels" ? qpRooms : qpPax; }
+function setNights(n){
+  qpNights = Math.max(1, Math.min(30, n));
+  $("#qpNightN").textContent = qpNights + "박";
   qpCalc();
 }
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
@@ -844,19 +998,28 @@ async function qpCalc(){
     return;
   }
   /* 날짜 전 — 카드와 같은 최저가를 보여 준다 */
-  if(!date || qpKind !== "courses"){
+  if(!date || (qpKind !== "courses" && qpKind !== "hotels")){
     /* 홀수에 맞춘 최저가 — 27홀은 18+9, 36홀은 18×2 (9홀은 따로 팔지 않는다) */
     const pick = (v18, v9) => qpHoles === "27" ? (v18 && v9 ? v18 + v9 : 0)
                             : qpHoles === "36" ? (v18 ? v18 * 2 : 0) : v18;
-    const base   = qpKind === "hotels" ? p.fromKrw  : pick(p.from18, p.from9);
-    const baseBt = qpKind === "hotels" ? p.fromBaht : pick(p.from18Baht, p.from9Baht);
-    if(!base){ qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.</div>'); return; }
-    qpBox('<div class="k">' + (qpKind === "hotels" ? "1실 1박 기준 · 최저가" : "1인 기준 · " + qpHoles + "홀 최저가") + '</div>'
+    /* 호텔은 «고른 객실»의 최저가를 보여 준다 — 객실을 안 고른 곳은 호텔 전체 최저가 */
+    const rp     = qpKind === "hotels" && qpRoom ? roomPriceOf(qpItem, qpRoom) : null;
+    const base   = qpKind === "hotels" ? (rp ? rp.fromKrw  : p.fromKrw)  : pick(p.from18, p.from9);
+    const baseBt = qpKind === "hotels" ? (rp ? rp.fromBaht : p.fromBaht) : pick(p.from18Baht, p.from9Baht);
+    if(!base){ qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.<br>「견적 요청에 담기」를 눌러 주세요.</div>'); return; }
+    const cnt = qpKind === "hotels" ? qpRooms * qpNights : qpPax;
+    qpBox('<div class="k">' + (qpKind === "hotels"
+            ? (qpRoom ? esc(qpRoom) + " · " : "") + "1실 1박 기준 · 최저가"
+            : "1인 기준 · " + qpHoles + "홀 최저가") + '</div>'
       + '<div class="v">' + base.toLocaleString("ko-KR") + '<em>원~</em>'
         + (baseBt ? '<b class="vbt">(' + baseBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
-      + (qpKind === "hotels" ? "" : '<div class="sum">' + qpPax + '인 합계: ' + (base * qpPax).toLocaleString("ko-KR") + '원'
-          + (baseBt ? ' (' + (baseBt * qpPax).toLocaleString("ko-KR") + '바트)' : '') + '</div>')
-      + '<div class="ask" style="margin-top:6px">날짜를 고르시면 그날 요금으로 계산해 드립니다.</div>'
+      + '<div class="sum">'
+        + (qpKind === "hotels" ? qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '인 합계: ')
+        + (base * cnt).toLocaleString("ko-KR") + '원'
+        + (baseBt ? ' (' + (baseBt * cnt).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
+      + '<div class="ask" style="margin-top:6px">'
+        + (qpKind === "hotels" ? "체크인 날짜를 고르시면 그날 요금으로 계산해 드립니다."
+                               : "날짜를 고르시면 그날 요금으로 계산해 드립니다.") + '</div>'
       + fxNote());
     return;
   }
@@ -867,12 +1030,28 @@ async function qpCalc(){
     const r = await fetch(API + "/api/golf-price", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ region: qpItem.r, course: qpItem.n, holes: qpHoles, date, pax: qpPax })
+      body: JSON.stringify(qpKind === "hotels"
+        ? { kind:"hotel", region: qpItem.r, hotel: qpItem.n, room: qpRoom,
+            date, nights: qpNights, rooms: qpRooms }
+        : { region: qpItem.r, course: qpItem.n, holes: qpHoles, date, pax: qpPax })
     });
     const j = await r.json();
     if(my !== qpSeq) return;
     if(!j.ok){
       qpBox('<div class="ask">' + esc(j.error || "요금을 확인하지 못했습니다.") + '<br>「견적 요청에 담기」를 눌러 주시면 바로 안내드리겠습니다.</div>');
+      return;
+    }
+    if(qpKind === "hotels"){
+      /* 호텔은 «1박 평균»을 크게 보여 준다 — 성수기·주말이 섞이면 밤마다 값이 달라서
+         한 밤의 값만 보여 주면 합계와 안 맞아 보인다. */
+      qpBox('<div class="k">' + (j.room ? esc(j.room) + " · " : "") + '1실 1박 평균 · '
+          + esc(j.date) + ' 체크인 ' + j.nights + '박</div>'
+        + '<div class="v">' + j.perKrw.toLocaleString("ko-KR") + '<em>원</em>'
+          + (j.perBaht ? '<b class="vbt">(' + j.perBaht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
+        + '<div class="sum">' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
+          + (j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
+        + (j.note ? '<div class="ask" style="margin-top:6px">' + esc(j.note) + '</div>' : '')
+        + fxNote());
       return;
     }
     qpBox('<div class="k">1인 기준 · ' + esc(j.date) + ' ' + (j.we ? "주말·공휴일" : "주중") + (j.season ? " · " + esc(j.season) : "") + '</div>'
@@ -886,20 +1065,24 @@ async function qpCalc(){
     qpBox('<div class="ask">요금을 확인하지 못했습니다. 「견적 요청에 담기」를 눌러 주세요.</div>');
   }
 }
-$("#qpMinus").onclick = () => setPax(qpPax - 1);
-$("#qpPlus").onclick  = () => setPax(qpPax + 1);
+$("#qpMinus").onclick  = () => setCnt(curCnt() - 1);
+$("#qpPlus").onclick   = () => setCnt(curCnt() + 1);
+$("#qpNMinus").onclick = () => setNights(qpNights - 1);
+$("#qpNPlus").onclick  = () => setNights(qpNights + 1);
 $("#qpDate").onchange = qpCalc;
 function closeDetail(){ $("#detailMask").classList.remove("on"); }
 $("#detailClose").onclick = closeDetail;
 $("#detailMask").onclick = e => { if(e.target === $("#detailMask")) closeDetail(); };
 
-/* 사진 크게 보기 — 좌우로 넘기고, ESC나 바깥을 누르면 닫힌다 */
-let lbi = 0;
-function openLbox(i){
-  if(!dPics.length) return;
-  const n = dPics.length;
+/* 사진 크게 보기 — 좌우로 넘기고, ESC나 바깥을 누르면 닫힌다.
+   호텔 객실 사진도 같은 창을 쓴다 — 어느 묶음을 보고 있는지 lbList가 들고 있다. */
+let lbi = 0, lbList = [];
+function openLbox(i, list){
+  if(list) lbList = list;
+  if(!lbList.length) return;
+  const n = lbList.length;
   lbi = ((i || 0) % n + n) % n;
-  $("#lboxImg").src = dPics[lbi];
+  $("#lboxImg").src = lbList[lbi];
   $("#lboxNum").textContent = (lbi + 1) + " / " + n;
   $("#lbox").classList.add("on");
 }
@@ -928,13 +1111,16 @@ function drawWish(){
    손님이 위에서 한 번 고른 것을 다시 적게 하지 않는다. */
 function toAskForm(){
   if(dCur){
-    if(wish.indexOf(dCur.n) < 0) wish.push(dCur.n);
+    /* 호텔은 고른 객실 타입까지 적어 보낸다 — 「브라이튼 그랜드 (디럭스 씨뷰)」 */
+    const nm = dCur.n + (qpKind === "hotels" && qpRoom ? " (" + qpRoom + ")" : "");
+    if(wish.indexOf(nm) < 0) wish.push(nm);
     if(!$("#qRegion").value.trim()) $("#qRegion").value = dCur.r;
     drawWish();
   }
   const d = $("#qpDate").value;
   if(d && !$("#qDate").value) $("#qDate").value = d;
   if(qpPax && !$("#qPax").value) $("#qPax").value = qpPax;
+  if(qpKind === "hotels" && qpNights && !$("#qNights").value) $("#qNights").value = qpNights;
   closeDetail();
   document.getElementById("contact").scrollIntoView({ behavior:"smooth" });
 }

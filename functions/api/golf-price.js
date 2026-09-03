@@ -108,6 +108,44 @@ function lowestOf(list, c) {
   return { u18, u9 };
 }
 
+/* ══════ 호텔 객실 요금 (2026-09-03~) ══════
+   호텔은 골프장과 요금 모양이 다르다 — 홀수가 없고 «객실 타입»과 «1박»이 있다.
+     hotels[].rooms[] = { t:'디럭스 씨뷰', margin?, rates:[{from,to,wd,we}] }
+   wd = 주중 1박, we = 주말·휴일 1박 (밧, 그 방 하나 값). 한쪽만 적어 두면 두 날 모두 그 값으로 본다
+   — 요일에 따라 안 갈리는 호텔이 많아 두 칸을 다 채우게 하면 입력만 늘어난다.
+   객실 «내용»(면적·뷰·침대·조식)은 여기가 아니라 golf_site에 있다(공개해도 되는 자료).
+   이어 주는 기준은 **객실 타입 이름**이다. */
+const roomsOf = (h) => (Array.isArray(h && h.rooms) ? h.rooms : [])
+  .filter((r) => r && String(r.t || '').trim());
+/* 그 줄의 손님가(밧) — we=true면 주말·휴일 값. 한쪽이 비면 다른 쪽 값을 쓴다. */
+function roomRate(r, rm, h, we) {
+  const wd = posNum(r.wd), wk = posNum(r.we);
+  const base = we ? (wk != null ? wk : wd) : (wd != null ? wd : wk);
+  if (base == null) return null;
+  return base + pickMargin(r.margin, blank(rm && rm.margin) ? (h && h.margin) : rm.margin);
+}
+/* 그 객실의 최저가 — 등록된 모든 기간·주중·주말 가운데 제일 싼 값(표의 「~」) */
+function roomLowest(rm, h) {
+  let lo = null;
+  (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
+    [false, true].forEach((we) => {
+      const v = roomRate(r, rm, h, we);
+      if (v != null && (lo == null || v < lo)) lo = v;
+    });
+  });
+  return lo;
+}
+/* 그 날짜의 값 — 기간이 겹치는 줄이 여럿이면 싼 쪽을 쓴다(골프장과 같은 규칙) */
+function roomOn(rm, h, date, we) {
+  let lo = null;
+  (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
+    if (!rateCovers(r, date)) return;
+    const v = roomRate(r, rm, h, we);
+    if (v != null && (lo == null || v < lo)) lo = v;
+  });
+  return lo;
+}
+
 /* ── GET: 카드에 붙는 최저가 ── */
 export async function onRequestGet({ env }) {
   let P, fx;
@@ -155,8 +193,22 @@ export async function onRequestGet({ env }) {
         const cand = lo.u18 != null ? lo.u18 : lo.u9;
         if (cand != null && (v == null || cand < v)) v = cand;
       }
-      if (!(v > 0)) return;
-      hotels.push({ region, name: h.name, fromKrw: krwUp(v * fx.rate), fromBaht: v });   // 1실 1박
+      /* 객실 타입별 요금 — 손님 상세의 「객실 안내」 표에 한 줄씩 붙는다.
+         내려보내는 것은 «손님가»(마진 얹은 값)뿐이다. 원가·마진 액수는 여기서 나가지 않는다. */
+      const rooms = [];
+      roomsOf(h).forEach((rm) => {
+        const lo = roomLowest(rm, h);
+        if (lo == null) { rooms.push({ t: rm.t }); return; }    // 요금 미등록 객실은 이름만
+        rooms.push({ t: rm.t, fromKrw: krwUp(lo * fx.rate), fromBaht: lo });
+        if (v == null || lo < v) v = lo;                        // 카드의 「~」는 제일 싼 객실 값
+      });
+      if (!(v > 0) && !rooms.length) return;
+      hotels.push({                                             // 1실 1박
+        region, name: h.name,
+        fromKrw: v > 0 ? krwUp(v * fx.rate) : null,
+        fromBaht: v > 0 ? v : null,
+        rooms,
+      });
     });
   });
 
@@ -173,6 +225,8 @@ export async function onRequestPost({ request, env }) {
   let B;
   try { B = await request.json(); }
   catch (e) { return json({ ok: false, error: '요청을 읽지 못했습니다' }, 400); }
+
+  if (String(B.kind || '') === 'hotel') return hotelPost(B, env);
 
   const region = String(B.region || '');
   const name = String(B.course || '');
@@ -242,6 +296,76 @@ export async function onRequestPost({ request, env }) {
     perBaht: baht, totalBaht: baht * pax,
     includes: ['그린피', '캐디피', '카트비'],
     excludes: ['캐디팁', '개인 경비'],
+    fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' },
+  });
+}
+
+/* ── POST(호텔): 체크인 날짜 · 박수 · 객실 수 ──
+   밤마다 따로 셈한다 — 금·토가 끼거나 성수기에 걸치면 밤마다 값이 다르다.
+   한 밤이라도 요금이 없으면 금액을 내지 않는다(어림값을 보여 주면 나중에 말이 달라진다). */
+const addDays = (ds, n) => {
+  const d = new Date(ds + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+async function hotelPost(B, env) {
+  const region = String(B.region || '');
+  const name = String(B.hotel || '');
+  const want = String(B.room || '');
+  const date = String(B.date || '');
+  const nights = Math.max(1, Math.min(30, Math.round(+B.nights || 1)));
+  const rooms = Math.max(1, Math.min(20, Math.round(+B.rooms || 1)));
+  if (!name) return json({ ok: false, error: '호텔을 골라 주세요' }, 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ ok: false, error: '체크인 날짜를 골라 주세요' }, 400);
+
+  let P, fx;
+  try {
+    const got = await Promise.all([readPricing(env), cashBuyRate()]);
+    P = got[0]; fx = got[1];
+  } catch (e) {
+    return json({ ok: false, error: e.message || String(e) }, 502);
+  }
+  if (!P) return json({ ok: false, error: '요금표가 아직 등록되지 않았습니다' }, 503);
+
+  /* 지역이 안 맞아도 이름으로 찾는다 — 사이트 표기와 요금표가 조금 달라도 견적이 나와야 한다 */
+  let hotel = (((P.regions || {})[region] || {}).hotels || []).find((h) => h.name === name) || null;
+  if (!hotel) {
+    Object.values(P.regions || {}).forEach((rv) => {
+      if (!hotel) hotel = (rv.hotels || []).find((h) => h.name === name) || null;
+    });
+  }
+  if (!hotel) return json({ ok: false, error: '이 호텔은 요금이 등록되어 있지 않습니다' }, 404);
+
+  const key = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+  const list = roomsOf(hotel);
+  const room = want ? list.find((r) => key(r.t) === key(want)) : list[0];
+  if (!room) {
+    return json({ ok: false, error: '고르신 객실은 요금이 아직 등록되어 있지 않습니다', needAsk: true }, 200);
+  }
+
+  const holidays = Array.isArray(P.holidays) ? P.holidays : [];
+  let sumBaht = 0, sumKrw = 0, same = true, first = null;
+  for (let i = 0; i < nights; i++) {
+    const d = addDays(date, i);
+    const we = isWeekendDate(d) || holidays.includes(d);
+    const v = roomOn(room, hotel, d, we);
+    if (v == null) {
+      return json({ ok: false, needAsk: true,
+        error: (nights > 1 ? d + ' 밤의 ' : '') + '요금이 아직 등록되어 있지 않습니다' }, 200);
+    }
+    if (first == null) first = v; else if (v !== first) same = false;
+    sumBaht += v;
+    sumKrw += krwUp(v * fx.rate);            // 밤마다 천원 단위로 올린다 — 표에 적힌 값과 같아진다
+  }
+
+  return json({
+    ok: true,
+    hotel: hotel.name, region, room: room.t, date, nights, rooms,
+    checkout: addDays(date, nights),
+    /* 1박 평균 — 밤마다 값이 다르면 합계를 박수로 나눈 값이다(합계가 정본) */
+    perKrw: Math.round(sumKrw / nights), perBaht: Math.round(sumBaht / nights),
+    totalKrw: sumKrw * rooms, totalBaht: sumBaht * rooms,
+    note: same ? '' : '성수기·주말이 섞여 밤마다 요금이 다릅니다 — 합계가 정확한 금액입니다.',
     fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' },
   });
 }
