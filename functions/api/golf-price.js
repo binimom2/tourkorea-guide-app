@@ -110,40 +110,52 @@ function lowestOf(list, c) {
 
 /* ══════ 호텔 객실 요금 (2026-09-03~) ══════
    호텔은 골프장과 요금 모양이 다르다 — 홀수가 없고 «객실 타입»과 «1박»이 있다.
-     hotels[].rooms[] = { t:'디럭스 씨뷰', margin?, rates:[{from,to,wd,we}] }
+     hotels[].rooms[] = { t:'디럭스 씨뷰', margin?, rates:[{from,to,wd,we,sur?}] }
    wd = 주중 1박, we = 주말·휴일 1박 (밧, 그 방 하나 값). 한쪽만 적어 두면 두 날 모두 그 값으로 본다
    — 요일에 따라 안 갈리는 호텔이 많아 두 칸을 다 채우게 하면 입력만 늘어난다.
    객실 «내용»(면적·뷰·침대·조식)은 여기가 아니라 golf_site에 있다(공개해도 되는 자료).
-   이어 주는 기준은 **객실 타입 이름**이다. */
+   이어 주는 기준은 **객실 타입 이름**이다.
+
+   ── 써차지 (sur:true) — 2026-09-03 사장님 요청 ──
+   호텔은 크리스마스·연말처럼 «특별한 날»에 기본요금 위에 얹는 추가 요금이 있다.
+   그 줄에 `sur:true`를 두면 **기본요금을 대신하지 않고 더해진다.**
+     그 날의 값 = (걸리는 기본요금 중 싼 것) + (걸리는 써차지 전부의 합) + 마진(한 번만)
+   써차지 줄이 여럿 걸리면 다 더한다(크리스마스 + 연말이 겹칠 수 있다).
+   카드·객실표의 «최저가»에는 써차지가 안 들어간다 — 「~」는 기본요금 기준이다. */
 const roomsOf = (h) => (Array.isArray(h && h.rooms) ? h.rooms : [])
   .filter((r) => r && String(r.t || '').trim());
-/* 그 줄의 손님가(밧) — we=true면 주말·휴일 값. 한쪽이 비면 다른 쪽 값을 쓴다. */
-function roomRate(r, rm, h, we) {
+const isSur = (r) => r && (r.sur === true || r.sur === 1 || r.sur === '1');
+/* 그 줄에 적힌 밧 — 마진은 아직 안 얹는다(써차지를 더한 뒤 한 번만 얹어야 한다).
+   we=true면 주말·휴일 값. 한쪽이 비면 다른 쪽 값을 쓴다. */
+function roomBaht(r, we) {
   const wd = posNum(r.wd), wk = posNum(r.we);
-  const base = we ? (wk != null ? wk : wd) : (wd != null ? wd : wk);
-  if (base == null) return null;
-  return base + pickMargin(r.margin, blank(rm && rm.margin) ? (h && h.margin) : rm.margin);
+  return we ? (wk != null ? wk : wd) : (wd != null ? wd : wk);
 }
-/* 그 객실의 최저가 — 등록된 모든 기간·주중·주말 가운데 제일 싼 값(표의 「~」) */
+const roomMargin = (rm, h) => marginOf(blank(rm && rm.margin) ? (h && h.margin) : rm.margin);
+/* 그 객실의 최저가 — 기본요금 줄만 본다(써차지는 「~」에 안 넣는다) */
 function roomLowest(rm, h) {
   let lo = null;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
+    if (isSur(r)) return;
     [false, true].forEach((we) => {
-      const v = roomRate(r, rm, h, we);
+      const v = roomBaht(r, we);
       if (v != null && (lo == null || v < lo)) lo = v;
     });
   });
-  return lo;
+  return lo == null ? null : lo + roomMargin(rm, h);
 }
-/* 그 날짜의 값 — 기간이 겹치는 줄이 여럿이면 싼 쪽을 쓴다(골프장과 같은 규칙) */
+/* 그 날짜의 값 — 기본요금은 겹치면 싼 쪽, 써차지는 걸리는 것을 모두 더한다 */
 function roomOn(rm, h, date, we) {
-  let lo = null;
+  let base = null, add = 0, sur = false;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
     if (!rateCovers(r, date)) return;
-    const v = roomRate(r, rm, h, we);
-    if (v != null && (lo == null || v < lo)) lo = v;
+    const v = roomBaht(r, we);
+    if (v == null) return;
+    if (isSur(r)) { add += v; sur = true; }
+    else if (base == null || v < base) base = v;
   });
-  return lo;
+  if (base == null) return null;             // 기본요금이 없으면 값을 내지 않는다
+  return { baht: base + add + roomMargin(rm, h), sur };
 }
 
 /* ── GET: 카드에 붙는 최저가 ── */
@@ -344,15 +356,17 @@ async function hotelPost(B, env) {
   }
 
   const holidays = Array.isArray(P.holidays) ? P.holidays : [];
-  let sumBaht = 0, sumKrw = 0, same = true, first = null;
+  let sumBaht = 0, sumKrw = 0, same = true, first = null, anySur = false;
   for (let i = 0; i < nights; i++) {
     const d = addDays(date, i);
     const we = isWeekendDate(d) || holidays.includes(d);
-    const v = roomOn(room, hotel, d, we);
-    if (v == null) {
+    const got = roomOn(room, hotel, d, we);
+    if (got == null) {
       return json({ ok: false, needAsk: true,
         error: (nights > 1 ? d + ' 밤의 ' : '') + '요금이 아직 등록되어 있지 않습니다' }, 200);
     }
+    const v = got.baht;
+    if (got.sur) anySur = true;              // 특별일 추가요금이 붙은 밤이 있다
     if (first == null) first = v; else if (v !== first) same = false;
     sumBaht += v;
     sumKrw += krwUp(v * fx.rate);            // 밤마다 천원 단위로 올린다 — 표에 적힌 값과 같아진다
@@ -365,7 +379,9 @@ async function hotelPost(B, env) {
     /* 1박 평균 — 밤마다 값이 다르면 합계를 박수로 나눈 값이다(합계가 정본) */
     perKrw: Math.round(sumKrw / nights), perBaht: Math.round(sumBaht / nights),
     totalKrw: sumKrw * rooms, totalBaht: sumBaht * rooms,
-    note: same ? '' : '성수기·주말이 섞여 밤마다 요금이 다릅니다 — 합계가 정확한 금액입니다.',
+    sur: anySur,
+    note: (anySur ? '고르신 날짜에 특별일 추가요금이 붙어 있습니다. ' : '')
+      + (same ? '' : '성수기·주말이 섞여 밤마다 요금이 다릅니다 — 합계가 정확한 금액입니다.'),
     fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' },
   });
 }

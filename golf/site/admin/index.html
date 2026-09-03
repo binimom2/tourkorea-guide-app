@@ -127,7 +127,10 @@ tr.subrow td{padding:0 6px 11px}
 .rmdel:hover,.rmrdel:hover{background:rgba(192,73,47,.1);border-radius:5px}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
-.rmhd,.rmrate{display:grid;grid-template-columns:234px 88px 88px 22px;gap:5px;align-items:center}
+.rmhd,.rmrate{display:grid;grid-template-columns:234px 108px 88px 88px 22px;gap:5px;align-items:center}
+/* 써차지(특별일 추가요금) 줄은 눈에 띄게 — 기본요금과 헷갈리면 값이 두 배로 나간다 */
+.rmrate.sur{background:#FFF6E6;border-radius:7px;padding:3px;margin:-3px}
+.rmrate.sur input[type=number]{border-color:var(--marigold)}
 .rmhd{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
 .rmrate input,.rmrate select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
@@ -1123,6 +1126,8 @@ function priceRoomsRO(x){
   return (h&&Array.isArray(h.rooms))?h.rooms:[];
 }
 function findRoom(list,t){ return list.filter(z=>nameKey(z.t)===nameKey(t))[0]||null; }
+/* 써차지 줄인가 — 서버(golf-price.js)의 isSur과 같은 판정이어야 한다 */
+function isSurRate(r){ return !!r && (r.sur===true||r.sur===1||r.sur==='1'); }
 /* 고칠 때 쓴다 — 요금표에 자리가 없으면 만든다 */
 function priceRoomOf(x,t){
   const o=ensureRateHome('hotels',x);
@@ -1133,17 +1138,23 @@ function priceRoomOf(x,t){
   return r;
 }
 function hotelByName(n){ return (itemsArr('hotels')||[]).filter(z=>String(z.n||'')===n)[0]||null; }
+/* 한 줄 = 한 기간. 「구분」이 «＋추가(써차지)»면 그 기간에 걸린 날은
+   기본요금 위에 이 금액이 **더해진다**(크리스마스·연말 같은 특별일). */
 function roomRateHTML(r,j){
   const n=v=>(v===''||v==null)?'':v;
-  return '<div class="rmrate" data-ri="'+j+'">'
+  const sur=isSurRate(r);
+  return '<div class="rmrate'+(sur?' sur':'')+'" data-ri="'+j+'">'
     +'<div class="rper">'+periodSelHTML(r)
       +'<div class="rdate">'
       +'<input type="date" data-rmf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
       +'<span class="rtil">~</span>'
       +'<input type="date" data-rmf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
       +'</div></div>'
-    +'<input type="number" data-rmf="wd" value="'+esc(n(r.wd))+'" placeholder="주중" min="0">'
-    +'<input type="number" data-rmf="we" value="'+esc(n(r.we))+'" placeholder="주말·휴일" min="0">'
+    +'<select data-rmf="sur" title="써차지로 두면 기본요금에 더해집니다">'
+      +'<option value=""'+(sur?'':' selected')+'>기본요금</option>'
+      +'<option value="1"'+(sur?' selected':'')+'>＋추가(써차지)</option></select>'
+    +'<input type="number" data-rmf="wd" value="'+esc(n(r.wd))+'" placeholder="'+(sur?'＋주중':'주중')+'" min="0">'
+    +'<input type="number" data-rmf="we" value="'+esc(n(r.we))+'" placeholder="'+(sur?'＋주말':'주말·휴일')+'" min="0">'
     +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button>'
     +'</div>';
 }
@@ -1152,7 +1163,7 @@ function roomRateHTML(r,j){
    위 이름칸에서 탭으로 옮겨 가던 손가락이 갈 곳을 잃는다. */
 function roomRatesHTML(rates,rm){
   return (rates.length
-      ? '<div class="rmhd"><span>기간</span><span>주중</span><span>주말·휴일</span></div>'
+      ? '<div class="rmhd"><span>기간</span><span>구분</span><span>주중</span><span>주말·휴일</span></div>'
         +rates.map((r,q)=>roomRateHTML(r,q)).join('')
       : '<div class="rnone">아직 요금이 없습니다 — 아래 「＋ 기간 추가」를 누르세요'
         +(String(rm&&rm.t||'').trim()?'':' (객실 타입 이름을 먼저 적어 주세요)')+'</div>')
@@ -1195,7 +1206,8 @@ function roomCell(x,i){
   /* 옛 호텔 요금(1박 단가·골프식 요금줄)이 들어 있으면 알려 준다 — 모르고 또 넣으면 안 된다 */
   const old=home?((Array.isArray(home.rates)?home.rates.length:0)+oldSeasonCount(home)+((+home.perNight>0)?1:0)):0;
   return '<div class="iecell rcell" data-rn="'+esc(x.n||'')+'" data-rix="'+i+'">'
-    +'<b>🛏 객실 타입별 요금 <span class="rhint">1실 1박 · 밧 · 한쪽만 적으면 주중·주말 같은 값으로 봅니다</span></b>'
+    +'<b>🛏 객실 타입별 요금 <span class="rhint">1실 1박 · 밧 · 한쪽만 적으면 주중·주말 같은 값으로 봅니다 · '
+      +'「＋추가(써차지)」 줄은 그 기간에 걸린 날짜에 기본요금 위로 더해집니다</span></b>'
     +(rooms.length
       ? '<div class="rmlist">'+rooms.map((rm,j)=>roomRowHTML(x,i,rm,j,findRoom(prs,rm.t))).join('')+'</div>'
       : '<div class="rnone">아직 객실이 없습니다 — 아래 「＋ 객실 추가」로 넣어 주세요</div>')
@@ -1254,9 +1266,13 @@ document.getElementById('pane').addEventListener('input',e=>{
   const x=hotelByName(cell.dataset.rn); if(!x) return;
   const rm=siteRoomsOf(x)[Number(row.dataset.mi)]; if(!rm||!String(rm.t||'').trim()) return;
   const pr=priceRoomOf(x,rm.t), r=pr.rates[Number(rr.dataset.ri)]; if(!r) return;
-  r[f]=(f==='wd'||f==='we')?(e.target.value===''?'':Number(e.target.value)):e.target.value;
+  r[f]=(f==='wd'||f==='we') ? (e.target.value===''?'':Number(e.target.value))
+     : (f==='sur')          ? (e.target.value==='1')
+     : e.target.value;
   if(f==='from'||f==='to') rememberPeriod(r.from,r.to);
   markDirty('rates');
+  /* 기본요금 ⇄ 써차지를 바꾸면 줄 색과 안내 글자가 같이 바뀌어야 한다 */
+  if(f==='sur') redrawRoomRates(row,x);
 });
 /* 객실 요금줄의 「기간 고르기」 — 골프장 쪽과 같은 목록을 쓴다 */
 document.getElementById('pane').addEventListener('change',e=>{
