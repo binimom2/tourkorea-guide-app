@@ -320,6 +320,31 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-triple{margin-top:10px;padding:8px 10px;border-radius:9px;background:#fff7e8;border:1px solid #f0dcb4;font-size:12px;font-weight:700;color:var(--ink-soft);line-height:1.45}
 .qp-triple b{color:var(--ink)}
 .dpanel input[type=date]{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;background:#fff;color:inherit}
+/* 날짜 단추 + 달력판 — 손님은 날짜 칸에 직접 적지 않고 달력에서 고른다 */
+.qp-dbtn{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
+  font-weight:700;background:#fff;color:inherit;text-align:left;cursor:pointer}
+.qp-dbtn:hover{border-color:var(--fairway)}
+.qp-dbtn.on{border-color:var(--fairway);background:#f4faf6}
+.qp-dbtn .ph{color:var(--muted);font-weight:600}
+.qp-cal{margin-top:8px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.qp-calhd{display:grid;grid-template-columns:32px 1fr 32px;align-items:center;margin-bottom:8px}
+.qp-calhd b{text-align:center;font-size:14px;font-weight:800}
+.qp-calhd button{border:1.5px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:15px;
+  padding:3px 0;cursor:pointer;color:inherit}
+.qp-calhd button:hover:not(:disabled){border-color:var(--fairway)}
+.qp-calhd button:disabled{opacity:.35;cursor:default}
+.qp-caldow,.qp-calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.qp-caldow i{text-align:center;font-style:normal;font-size:11px;font-weight:700;color:var(--muted);padding-bottom:4px}
+.qp-caldow i:first-child{color:#c0392b}
+.qp-calgrid button{border:none;background:none;font:inherit;font-size:12.5px;font-weight:700;padding:7px 0;
+  border-radius:8px;cursor:pointer;color:inherit}
+.qp-calgrid button:hover:not(:disabled){background:var(--paper)}
+.qp-calgrid button:disabled{color:#cfcfcf;cursor:default}
+.qp-calgrid button.sun:not(:disabled){color:#c0392b}
+.qp-calgrid button.mid{background:#eaf4ee;border-radius:0}
+.qp-calgrid button.edge{background:var(--fairway);color:#fff}
+.qp-calgrid span{padding:7px 0}
+.qp-calfoot{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;line-height:1.4}
 .qp-price{margin:14px 0 12px;background:var(--paper);border-radius:12px;padding:13px 14px;min-height:86px}
 .qp-price .k{font-size:12px;color:var(--muted);font-weight:600}
 .qp-price .v{font-size:27px;font-weight:900;letter-spacing:-.05em;line-height:1.15;margin-top:2px}
@@ -454,7 +479,20 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <div id="qpFields">
           <div id="qpDateWrap">
             <div class="qp-lab" id="qpDateLab">날짜 선택</div>
-            <input type="date" id="qpDate" aria-label="날짜">
+            <!-- 눌러서 달력판을 연다. 호텔은 체크인~체크아웃을 이어서 고르고, 골프장은 하루만 고른다.
+                 고른 날짜는 #qpDate(감춘 칸)에 들어간다 — 요금 셈은 예전처럼 이 값을 읽는다. -->
+            <button type="button" class="qp-dbtn" id="qpDateBtn">날짜를 골라 주세요</button>
+            <input type="hidden" id="qpDate">
+            <div class="qp-cal" id="qpCal" hidden>
+              <div class="qp-calhd">
+                <button type="button" id="qpCalPrev" aria-label="이전 달">‹</button>
+                <b id="qpCalTitle"></b>
+                <button type="button" id="qpCalNext" aria-label="다음 달">›</button>
+              </div>
+              <div class="qp-caldow"><i>일</i><i>월</i><i>화</i><i>수</i><i>목</i><i>금</i><i>토</i></div>
+              <div class="qp-calgrid" id="qpCalGrid"></div>
+              <div class="qp-calfoot" id="qpCalFoot"></div>
+            </div>
           </div>
           <!-- 호텔에서만 나온다 — 골프장은 박수가 없다 -->
           <div id="qpNightWrap" style="display:none">
@@ -974,6 +1012,85 @@ let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
    추가 인원을 따로 세지 않는다 — 인원수와 룸 갯수로 3인 방이 몇 개인지 저절로 나온다.
    qpPax는 «성인+아동»으로 늘 맞춰 둔다 — 3인 방 셈과 합계 표시가 이 값을 쓴다. */
 let qpRoom = "", qpNights = 2, qpRooms = 1, qpAdult = 4, qpChild = 0, qpAges = [];
+
+/* ══════════ 달력판 ══════════
+   손님이 날짜 칸에 직접 적지 않는다 — 눌러서 달력을 열고 고른다(사장님).
+   호텔은 체크인~체크아웃을 이어서 고르고 그 사이가 박수가 된다. 골프장은 하루만 고른다.
+   고른 체크인은 예전처럼 #qpDate(이제 감춘 칸)에 들어가므로 요금 셈은 손대지 않았다. */
+let qpCheckout = "", calMonth = null, calHalf = "";   // calHalf = 체크인만 고른 도중 상태
+const D2 = n => (n < 10 ? "0" : "") + n;
+/* 그 자리의 «오늘»로 적는다 — toISOString은 UTC라 아침에 하루가 밀린다 */
+function dstr(d){ return d.getFullYear() + "-" + D2(d.getMonth() + 1) + "-" + D2(d.getDate()); }
+function dparse(s){ const p = String(s).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function dadd(s, n){ const d = dparse(s); d.setDate(d.getDate() + n); return dstr(d); }
+function dgap(a, b){ return Math.round((dparse(b) - dparse(a)) / 86400000); }
+function dlabel(s){
+  const d = dparse(s);
+  return D2(d.getMonth() + 1) + "." + D2(d.getDate()) + " (" + "일월화수목금토"[d.getDay()] + ")";
+}
+function today(){ return dstr(new Date()); }
+
+function openCal(){
+  calMonth = dparse($("#qpDate").value || today()); calMonth.setDate(1);
+  calHalf = "";
+  $("#qpCal").hidden = false;
+  drawCal();
+}
+function closeCal(){ $("#qpCal").hidden = true; calHalf = ""; }
+/* 단추에 고른 날짜를 적는다 — 「01.17 (일) ~ 01.21 (목) · 4박」 */
+function drawDateBtn(){
+  const b = $("#qpDateBtn"), inn = $("#qpDate").value;
+  if(!inn){
+    b.classList.remove("on");
+    b.innerHTML = '<span class="ph">날짜를 골라 주세요</span>';
+    return;
+  }
+  b.classList.add("on");
+  b.textContent = (qpKind === "hotels" && qpCheckout)
+    ? dlabel(inn) + " ~ " + dlabel(qpCheckout) + " · " + qpNights + "박"
+    : dlabel(inn);
+}
+function drawCal(){
+  if($("#qpCal").hidden) return;
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  $("#qpCalTitle").textContent = y + "년 " + (m + 1) + "월";
+  const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
+  const tdy = today(), inn = $("#qpDate").value;
+  /* 체크아웃을 고르는 중이면 체크인 다음날부터 고를 수 있다 */
+  const min = calHalf ? dadd(calHalf, 1) : tdy;
+  const cells = [];
+  for(let i = 0; i < first.getDay(); i++) cells.push("<span></span>");
+  for(let d = 1; d <= last.getDate(); d++){
+    const s = y + "-" + D2(m + 1) + "-" + D2(d), cls = [];
+    if(new Date(y, m, d).getDay() === 0) cls.push("sun");
+    if(calHalf){
+      if(s === calHalf) cls.push("edge");
+    }else if(qpKind === "hotels" && inn && qpCheckout){
+      if(s === inn || s === qpCheckout) cls.push("edge");
+      else if(s > inn && s < qpCheckout) cls.push("mid");
+    }else if(s === inn) cls.push("edge");
+    cells.push('<button type="button" data-d="' + s + '" class="' + cls.join(" ") + '"'
+      + (s < min ? " disabled" : "") + ">" + d + "</button>");
+  }
+  $("#qpCalGrid").innerHTML = cells.join("");
+  $("#qpCalGrid").querySelectorAll("[data-d]").forEach(b => b.onclick = () => calPick(b.dataset.d));
+  /* 이번 달보다 앞으로는 넘기지 않는다 — 넘겨 봐야 다 막힌 날이라 헛걸음이다 */
+  const t = dparse(tdy);
+  $("#qpCalPrev").disabled = (y * 12 + m) <= (t.getFullYear() * 12 + t.getMonth());
+  $("#qpCalFoot").textContent = qpKind !== "hotels" ? "라운드 하실 날짜를 골라 주세요"
+    : calHalf ? "체크아웃 날짜를 골라 주세요" : "체크인 날짜를 골라 주세요";
+}
+function calPick(s){
+  if(qpKind !== "hotels"){
+    $("#qpDate").value = s; closeCal(); drawDateBtn(); qpCalc(); return;
+  }
+  if(!calHalf || s <= calHalf){ calHalf = s; drawCal(); return; }  // 체크인 고르기(앞날을 누르면 다시 잡는다)
+  $("#qpDate").value = calHalf;
+  qpCheckout = s;
+  qpNights = Math.max(1, Math.min(30, dgap(calHalf, s)));
+  $("#qpNightN").textContent = qpNights + "박";
+  closeCal(); drawDateBtn(); drawTriple(); qpCalc();
+}
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
   $("#qpReg").textContent  = x.r || "";
@@ -981,7 +1098,9 @@ function openPanel(x, kind){
   $("#qpEn").textContent   = x.e || "";
   $("#qpEn").style.display = x.e ? "" : "none";
   $("#qpDate").value = "";
-  $("#qpDate").min = new Date().toISOString().slice(0, 10);   // 지난 날짜는 고를 수 없다
+  qpCheckout = "";
+  closeCal();                                   // 다른 곳을 열 때 달력이 펼쳐진 채로 남지 않게
+  drawDateBtn();
   const p = priceOf(x, kind);
   /* 라운드 선택은 골프장에만 있다. 등록된 홀수만 버튼으로 낸다. */
   const wrap = $("#qpHoleWrap");
@@ -1137,7 +1256,10 @@ function setRooms(n){
 function setNights(n){
   qpNights = Math.max(1, Math.min(30, n));
   $("#qpNightN").textContent = qpNights + "박";
-  drawTriple(); qpCalc();
+  /* 박수를 ±로 고치면 체크아웃 날짜가 따라 움직인다 — 달력과 어긋나면 안 된다 */
+  const inn = $("#qpDate").value;
+  if(qpKind === "hotels" && inn) qpCheckout = dadd(inn, qpNights);
+  drawDateBtn(); drawTriple(); qpCalc();
 }
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
 /* 「성인 4명 · 아동 2명(7세·4세)」 — 나이를 안 적은 아동은 나이 없이 센다 */
@@ -1270,7 +1392,9 @@ $("#qpRMinus").onclick = () => setRooms(qpRooms - 1);
 $("#qpRPlus").onclick  = () => setRooms(qpRooms + 1);
 $("#qpCMinus").onclick = () => setChild(qpChild - 1);
 $("#qpCPlus").onclick  = () => setChild(qpChild + 1);
-$("#qpDate").onchange = qpCalc;
+$("#qpDateBtn").onclick = () => { $("#qpCal").hidden ? openCal() : closeCal(); };
+$("#qpCalPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); drawCal(); };
+$("#qpCalNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); drawCal(); };
 function closeDetail(){ $("#detailMask").classList.remove("on"); }
 $("#detailClose").onclick = closeDetail;
 $("#detailMask").onclick = e => { if(e.target === $("#detailMask")) closeDetail(); };
