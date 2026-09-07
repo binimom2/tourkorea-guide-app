@@ -1166,11 +1166,10 @@ function openPanel(x, kind){
   (isH ? ["qpDateWrap", "qpPaxWrap", "qpChildWrap", "qpNightWrap", "qpRoomCntWrap", "qpHoleWrap", "qpTriple"]
        : ["qpHoleWrap", "qpPaxWrap", "qpChildWrap", "qpDateWrap", "qpNightWrap", "qpRoomCntWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
-  /* 호텔을 열 때마다 성인 2명 · 1박에서 다시 시작한다(사장님).
-     룸 갯수는 미리 채우지 않는다 — 손님이 직접 고르게 두고, 고르기 전에는 요금을 내지 않는다. */
+  /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님). */
   if(isH){
     qpAdult = 2; qpChild = 0; qpAges = []; qpPax = 2;
-    qpNights = 1; qpRooms = 0;
+    qpNights = 1; qpRooms = 1;
     $("#qpNightN").textContent = qpNights + "박";
     drawAges();
   }
@@ -1216,24 +1215,28 @@ function drawTriple(){
   box.innerHTML = "세 분이 드는 방 <b>" + n + "실</b> — 1박마다 "
     + part.join(" + ") + "이 더해집니다.";
 }
-/* 골프는 인원만, 호텔은 성인·아동·룸 갯수를 따로 센다.
-   룸 갯수는 손님이 고르기 전까지 «고르기»로 비워 둔다 — 0은 «아직 안 골랐다»는 뜻이다. */
+/* 골프는 인원만, 호텔은 성인·아동·룸 갯수를 따로 센다 */
 function drawCnt(){
   const isH = qpKind === "hotels";
   $("#qpPaxN").textContent   = (isH ? qpAdult : qpPax) + (isH ? "명" : "인");
   $("#qpChildN").textContent = qpChild + "명";
-  $("#qpRoomN").textContent  = qpRooms >= 1 ? qpRooms + "실" : "고르기";
+  $("#qpRoomN").textContent  = qpRooms + "실";
 }
+const CHILD_MAX_AGE = 12;      // 아동은 12세까지다(사장님) — 위·아래 화살표도 여기서 멈춘다
 /* 아동 나이 칸 — 아동 수만큼 만든다. 0을 미리 넣지 않는다(빈 칸으로 두고 적게 한다). */
 function drawAges(){
   const box = $("#qpAges");
   box.innerHTML = qpAges.map((v, i) =>
     '<label>아동 ' + (i + 1)
-    + '<input type="number" min="0" max="17" inputmode="numeric" placeholder="나이"'
+    + '<input type="number" min="0" max="' + CHILD_MAX_AGE + '" inputmode="numeric" placeholder="나이"'
     + ' data-age="' + i + '" value="' + (v === "" || v == null ? "" : esc(String(v))) + '"></label>').join("");
+  /* 아동은 12세까지다(사장님) — 넘겨 적으면 칸에 보이는 숫자까지 12로 되돌린다 */
   box.querySelectorAll("[data-age]").forEach(el => el.oninput = () => {
     const i = Number(el.dataset.age), v = el.value.trim();
-    qpAges[i] = v === "" ? "" : Math.max(0, Math.min(17, Number(v)));
+    if(v === ""){ qpAges[i] = ""; return; }
+    const n = Math.max(0, Math.min(CHILD_MAX_AGE, Number(v)));
+    qpAges[i] = n;
+    if(String(n) !== v) el.value = n;
   });
 }
 function syncPax(){ qpPax = qpKind === "hotels" ? qpAdult + qpChild : qpPax; }
@@ -1250,7 +1253,7 @@ function setChild(n){
   syncPax(); drawCnt(); drawAges(); drawTriple(); qpCalc();
 }
 function setRooms(n){
-  qpRooms = Math.max(0, Math.min(20, n));
+  qpRooms = Math.max(1, Math.min(20, n));
   drawCnt(); drawTriple(); qpCalc();
 }
 function setNights(n){
@@ -1296,14 +1299,11 @@ async function qpCalc(){
     qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.<br>아래 「견적 요청에 담기」를 눌러 주세요.</div>');
     return;
   }
-  /* 호텔은 «날짜 · 인원수 · 룸 갯수 · 룸 타입»을 다 골라야 요금이 나온다(사장님).
-     인원수·박수는 4명 2박에서 시작하니, 아직 안 고른 것은 룸 갯수와 룸 타입이다. */
-  if(qpKind === "hotels" && (qpRooms < 1 || !qpRoom)){
-    const need = [];
-    if(qpRooms < 1) need.push("룸 갯수");
-    if(!qpRoom)     need.push("룸 타입");
-    qpBox('<div class="ask"><b>' + need.join("</b> · <b>") + '</b>을 골라 주세요.<br>'
-        + '인원수 · 박수 · 룸 갯수 · 룸 타입을 고르시면 그날 요금으로 계산해 드립니다.</div>');
+  /* 호텔은 «날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입»을 다 골라야 요금이 나온다(사장님).
+     인원수·박수·룸 갯수는 2명 1박 1실에서 시작하니, 아직 안 고른 것은 룸 타입뿐이다. */
+  if(qpKind === "hotels" && !qpRoom){
+    qpBox('<div class="ask"><b>룸 타입</b>을 골라 주세요.<br>'
+        + '날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입을 고르시면 그날 요금으로 계산해 드립니다.</div>');
     return;
   }
   /* 날짜 전 — 카드와 같은 최저가를 보여 준다 */
