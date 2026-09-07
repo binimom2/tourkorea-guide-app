@@ -311,6 +311,11 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-pax button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 0;font:inherit;font-size:17px;cursor:pointer}
 .qp-pax button:hover{border-color:var(--fairway)}
 .qp-pax span{text-align:center;font-size:15.5px;font-weight:800}
+/* 아동 나이 칸 — 아동 수만큼 생긴다. 미리 0을 넣지 않는다(빈 칸으로 두고 적게 한다) */
+.qp-ages{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.qp-ages label{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.qp-ages input{width:52px;border:1.5px solid var(--line);border-radius:8px;padding:5px 6px;font:inherit;font-size:13px;text-align:right;background:#fff;color:inherit}
+.qp-ages input:focus{outline:none;border-color:var(--fairway)}
 /* 3인 방 안내 — 인원수와 룸 갯수로 저절로 정해지므로 손님이 고르는 칸이 아니다 */
 .qp-triple{margin-top:10px;padding:8px 10px;border-radius:9px;background:#fff7e8;border:1px solid #f0dcb4;font-size:12px;font-weight:700;color:var(--ink-soft);line-height:1.45}
 .qp-triple b{color:var(--ink)}
@@ -445,7 +450,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <div class="qp-name" id="qpName"></div>
         <div class="qp-en" id="qpEn"></div>
         <!-- 고르는 칸들 — 순서는 종류마다 다르다(openPanel에서 다시 세운다).
-             호텔은 날짜 → 숙박 → 인원수 → 룸타입 → 룸 갯수 순이다(사장님). -->
+             호텔은 날짜 → 성인 → 아동 → 박수 → 룸 갯수 → 룸 타입 순이다(사장님). -->
         <div id="qpFields">
           <div id="qpDateWrap">
             <div class="qp-lab" id="qpDateLab">날짜 선택</div>
@@ -467,6 +472,16 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
               <span id="qpPaxN">4인</span>
               <button type="button" id="qpPlus" aria-label="늘리기">＋</button>
             </div>
+          </div>
+          <!-- 호텔에서만 나온다 — 아동은 나이까지 적는다(요금·침대 판단이 나이에 걸린다) -->
+          <div id="qpChildWrap" style="display:none">
+            <div class="qp-lab">아동</div>
+            <div class="qp-pax">
+              <button type="button" id="qpCMinus" aria-label="아동 줄이기">−</button>
+              <span id="qpChildN">0명</span>
+              <button type="button" id="qpCPlus" aria-label="아동 늘리기">＋</button>
+            </div>
+            <div class="qp-ages" id="qpAges"></div>
           </div>
           <div id="qpHoleWrap">
             <div class="qp-lab" id="qpHoleLab">라운드 선택</div>
@@ -955,10 +970,10 @@ function openDetail(x, kind){
    고른 날짜의 요금은 서버가 계산한다(원가·밧은 이 화면에 오지 않는다).
    날짜를 아직 안 골랐으면 카드와 같은 «최저가»를 보여 준다. */
 let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
-/* 호텔용 — 고른 룸타입 · 박수 · 룸 갯수. 골프장은 쓰지 않는다.
-   호텔에서 손님이 고르는 것은 «날짜 · 인원수 · 룸타입 · 룸 갯수» 넷이다(사장님).
-   추가 인원을 따로 세지 않는다 — 인원수와 룸 갯수로 3인 방이 몇 개인지 저절로 나온다. */
-let qpRoom = "", qpNights = 2, qpRooms = 1;
+/* 호텔용 — 고른 룸타입 · 박수 · 룸 갯수 · 성인 · 아동(나이). 골프장은 쓰지 않는다.
+   추가 인원을 따로 세지 않는다 — 인원수와 룸 갯수로 3인 방이 몇 개인지 저절로 나온다.
+   qpPax는 «성인+아동»으로 늘 맞춰 둔다 — 3인 방 셈과 합계 표시가 이 값을 쓴다. */
+let qpRoom = "", qpNights = 2, qpRooms = 1, qpAdult = 4, qpChild = 0, qpAges = [];
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
   $("#qpReg").textContent  = x.r || "";
@@ -1020,20 +1035,26 @@ function openPanel(x, kind){
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
   $("#qpHoleLab").textContent = isH ? "룸 타입" : "라운드 선택";
-  $("#qpPaxLab").textContent  = isH ? "인원수" : "인원";
+  $("#qpPaxLab").textContent  = isH ? "성인" : "인원";
   $("#qpDateLab").textContent = isH ? "체크인 날짜" : "날짜 선택";
   $("#qpNightWrap").style.display    = isH ? "" : "none";
   $("#qpRoomCntWrap").style.display  = isH ? "" : "none";
+  $("#qpChildWrap").style.display    = isH ? "" : "none";
   $("#qpNightN").textContent = qpNights + "박";
   /* 고르는 차례 — 호텔은 날짜 → 숙박 → 인원수 → 룸타입 → 룸 갯수,
      골프장은 예전 그대로 라운드 → 인원 → 날짜다. */
   const box = $("#qpFields");
-  (isH ? ["qpDateWrap", "qpPaxWrap", "qpNightWrap", "qpRoomCntWrap", "qpHoleWrap", "qpTriple"]
-       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpNightWrap", "qpRoomCntWrap", "qpTriple"])
+  (isH ? ["qpDateWrap", "qpPaxWrap", "qpChildWrap", "qpNightWrap", "qpRoomCntWrap", "qpHoleWrap", "qpTriple"]
+       : ["qpHoleWrap", "qpPaxWrap", "qpChildWrap", "qpDateWrap", "qpNightWrap", "qpRoomCntWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
-  /* 호텔을 열 때마다 4명 · 2박에서 다시 시작한다(사장님).
+  /* 호텔을 열 때마다 성인 4명 · 2박에서 다시 시작한다(사장님).
      룸 갯수는 미리 채우지 않는다 — 손님이 직접 고르게 두고, 고르기 전에는 요금을 내지 않는다. */
-  if(isH){ qpPax = 4; qpNights = 2; qpRooms = 0; $("#qpNightN").textContent = qpNights + "박"; }
+  if(isH){
+    qpAdult = 4; qpChild = 0; qpAges = []; qpPax = 4;
+    qpNights = 2; qpRooms = 0;
+    $("#qpNightN").textContent = qpNights + "박";
+    drawAges();
+  }
   drawTriple();
   drawCnt();
   qpCalc();
@@ -1069,22 +1090,46 @@ function drawTriple(){
   const n = tripleRooms(), t = triplePriceOf();
   if(!n || !t){ box.style.display = "none"; return; }
   box.style.display = "";
-  box.innerHTML = "세 분이 드는 방 <b>" + n + "실</b> — 1박마다 룸당 "
-    + t.roomKrw.toLocaleString("ko-KR") + "원"
-    + (t.bedKrw ? " + 엑스트라 베드 " + t.bedKrw.toLocaleString("ko-KR") + "원" : "")
-    + "이 더해집니다.";
+  /* 둘 중 적어 두지 않은 쪽(0)은 아예 적지 않는다 — 「룸당 0원」이 찍히면 안 된다 */
+  const part = [];
+  if(t.roomKrw) part.push("룸당 " + t.roomKrw.toLocaleString("ko-KR") + "원");
+  if(t.bedKrw)  part.push("엑스트라 베드 " + t.bedKrw.toLocaleString("ko-KR") + "원");
+  box.innerHTML = "세 분이 드는 방 <b>" + n + "실</b> — 1박마다 "
+    + part.join(" + ") + "이 더해집니다.";
 }
-/* 골프는 인원만, 호텔은 인원수와 룸 갯수를 따로 센다.
+/* 골프는 인원만, 호텔은 성인·아동·룸 갯수를 따로 센다.
    룸 갯수는 손님이 고르기 전까지 «고르기»로 비워 둔다 — 0은 «아직 안 골랐다»는 뜻이다. */
 function drawCnt(){
-  $("#qpPaxN").textContent  = qpPax + (qpKind === "hotels" ? "명" : "인");
-  $("#qpRoomN").textContent = qpRooms >= 1 ? qpRooms + "실" : "고르기";
+  const isH = qpKind === "hotels";
+  $("#qpPaxN").textContent   = (isH ? qpAdult : qpPax) + (isH ? "명" : "인");
+  $("#qpChildN").textContent = qpChild + "명";
+  $("#qpRoomN").textContent  = qpRooms >= 1 ? qpRooms + "실" : "고르기";
 }
+/* 아동 나이 칸 — 아동 수만큼 만든다. 0을 미리 넣지 않는다(빈 칸으로 두고 적게 한다). */
+function drawAges(){
+  const box = $("#qpAges");
+  box.innerHTML = qpAges.map((v, i) =>
+    '<label>아동 ' + (i + 1)
+    + '<input type="number" min="0" max="17" inputmode="numeric" placeholder="나이"'
+    + ' data-age="' + i + '" value="' + (v === "" || v == null ? "" : esc(String(v))) + '"></label>').join("");
+  box.querySelectorAll("[data-age]").forEach(el => el.oninput = () => {
+    const i = Number(el.dataset.age), v = el.value.trim();
+    qpAges[i] = v === "" ? "" : Math.max(0, Math.min(17, Number(v)));
+  });
+}
+function syncPax(){ qpPax = qpKind === "hotels" ? qpAdult + qpChild : qpPax; }
 function setCnt(n){
-  qpPax = Math.max(1, Math.min(40, n));
-  drawCnt(); drawTriple(); qpCalc();
+  if(qpKind === "hotels") qpAdult = Math.max(1, Math.min(40, n));
+  else                    qpPax   = Math.max(1, Math.min(40, n));
+  syncPax(); drawCnt(); drawTriple(); qpCalc();
 }
-function curCnt(){ return qpPax; }
+function curCnt(){ return qpKind === "hotels" ? qpAdult : qpPax; }
+function setChild(n){
+  qpChild = Math.max(0, Math.min(10, n));
+  qpAges.length = qpChild;                       // 줄이면 뒤에서 지워지고
+  for(let i = 0; i < qpChild; i++) if(qpAges[i] == null) qpAges[i] = "";   // 늘리면 빈 칸으로 생긴다
+  syncPax(); drawCnt(); drawAges(); drawTriple(); qpCalc();
+}
 function setRooms(n){
   qpRooms = Math.max(0, Math.min(20, n));
   drawCnt(); drawTriple(); qpCalc();
@@ -1095,6 +1140,16 @@ function setNights(n){
   drawTriple(); qpCalc();
 }
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
+/* 「성인 4명 · 아동 2명(7세·4세)」 — 나이를 안 적은 아동은 나이 없이 센다 */
+function paxLabel(){
+  if(qpKind !== "hotels") return qpPax + "인";
+  let s = "성인 " + qpAdult + "명";
+  if(qpChild){
+    const ages = qpAges.filter(v => v !== "" && v != null).map(v => v + "세");
+    s += " · 아동 " + qpChild + "명" + (ages.length ? "(" + ages.join("·") + ")" : "");
+  }
+  return s;
+}
 /* 3인 방에 붙는 값 — 한 방에 한 밤씩 (룸당·박당 + 엑스트라 베드).
    서버(golf-price.js)가 셈한 값과 같은 규칙이다(마진은 안 붙는다 — 1실 1박 마진에 이미 들어 있다). */
 function extraSum(){
@@ -1148,7 +1203,7 @@ async function qpCalc(){
         + (baseBt ? '<b class="vbt">(' + baseBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + (ex.krw ? '<div class="exline">' + esc(ex.label) + ': ' + ex.krw.toLocaleString("ko-KR") + '원</div>' : '')
       + '<div class="sum">'
-        + (qpKind === "hotels" ? qpPax + '명 · ' + qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '인 합계: ')
+        + (qpKind === "hotels" ? esc(paxLabel()) + ' · ' + qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '인 합계: ')
         + (base * cnt + ex.krw).toLocaleString("ko-KR") + '원'
         + (baseBt ? ' (' + (baseBt * cnt + ex.baht).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + '<div class="ask" style="margin-top:6px">'
@@ -1169,6 +1224,8 @@ async function qpCalc(){
            «엑스트라 베드 × 방 수 × 박수»를 각각 셈하므로 이러면 둘 다 붙는다. */
         ? { kind:"hotel", region: qpItem.r, hotel: qpItem.n, room: qpRoom,
             date, nights: qpNights, rooms: qpRooms, pax: qpPax,
+            adult: qpAdult, child: qpChild,
+            childAges: qpAges.filter(v => v !== "" && v != null),
             extraAdult: tripleRooms(), extraChild: tripleRooms() }
         : { region: qpItem.r, course: qpItem.n, holes: qpHoles, date, pax: qpPax })
     });
@@ -1188,7 +1245,7 @@ async function qpCalc(){
         /* 3인 방에 붙은 값 — 서버가 보내 준 extraAdult가 «세 분이 드는 방 수»다 */
         + (j.extraKrw ? '<div class="exline">세 분이 드는 방 ' + (j.extraAdult || 0) + '실 × '
             + j.nights + '박: ' + j.extraKrw.toLocaleString("ko-KR") + '원</div>' : '')
-        + '<div class="sum">' + qpPax + '명 · ' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
+        + '<div class="sum">' + esc(paxLabel()) + ' · ' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
           + (j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
         + (j.note ? '<div class="ask" style="margin-top:6px">' + esc(j.note) + '</div>' : '')
         + fxNote());
@@ -1211,6 +1268,8 @@ $("#qpNMinus").onclick = () => setNights(qpNights - 1);
 $("#qpNPlus").onclick  = () => setNights(qpNights + 1);
 $("#qpRMinus").onclick = () => setRooms(qpRooms - 1);
 $("#qpRPlus").onclick  = () => setRooms(qpRooms + 1);
+$("#qpCMinus").onclick = () => setChild(qpChild - 1);
+$("#qpCPlus").onclick  = () => setChild(qpChild + 1);
 $("#qpDate").onchange = qpCalc;
 function closeDetail(){ $("#detailMask").classList.remove("on"); }
 $("#detailClose").onclick = closeDetail;
@@ -1251,6 +1310,7 @@ function drawWish(){
 }
 /* 패널에서 고른 날짜·인원을 아래 견적 요청 칸으로 그대로 옮긴다 —
    손님이 위에서 한 번 고른 것을 다시 적게 하지 않는다. */
+let askRoomNote = "";        // 「성인 4명 · 아동 2명(7세·4세) · 2실」
 function toAskForm(){
   if(dCur){
     /* 호텔은 고른 객실 타입까지 적어 보낸다 — 「브라이튼 그랜드 (디럭스 씨뷰)」 */
@@ -1263,6 +1323,10 @@ function toAskForm(){
   if(d && !$("#qDate").value) $("#qDate").value = d;
   if(qpPax && !$("#qPax").value) $("#qPax").value = qpPax;
   if(qpKind === "hotels" && qpNights && !$("#qNights").value) $("#qNights").value = qpNights;
+  /* 성인·아동(나이)·룸 갯수는 적을 칸이 없어서 문구에 실어 보낸다 */
+  askRoomNote = qpKind === "hotels"
+    ? paxLabel() + (qpRooms >= 1 ? " · " + qpRooms + "실" : "")
+    : "";
   closeDetail();
   document.getElementById("contact").scrollIntoView({ behavior:"smooth" });
 }
@@ -1276,6 +1340,7 @@ function askText(){
   if(g("qDate"))   L.push("· 출발일: " + g("qDate"));
   if(g("qRegion")) L.push("· 지역: " + g("qRegion"));
   if(g("qPax"))    L.push("· 인원: " + g("qPax") + "명");
+  if(askRoomNote)  L.push("· 객실: " + askRoomNote);
   if(g("qNights")) L.push("· 일정: " + g("qNights") + "박 " + (Number(g("qNights")) + 1) + "일");
   if(g("qRounds")) L.push("· 라운딩: " + g("qRounds") + "회");
   if(wish.length)  L.push("· 희망 골프장·호텔: " + wish.join(", "));
