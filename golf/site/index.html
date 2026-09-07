@@ -1166,11 +1166,11 @@ function openPanel(x, kind){
   (isH ? ["qpDateWrap", "qpPaxWrap", "qpChildWrap", "qpNightWrap", "qpRoomCntWrap", "qpHoleWrap", "qpTriple"]
        : ["qpHoleWrap", "qpPaxWrap", "qpChildWrap", "qpDateWrap", "qpNightWrap", "qpRoomCntWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
-  /* 호텔을 열 때마다 성인 4명 · 2박에서 다시 시작한다(사장님).
+  /* 호텔을 열 때마다 성인 2명 · 1박에서 다시 시작한다(사장님).
      룸 갯수는 미리 채우지 않는다 — 손님이 직접 고르게 두고, 고르기 전에는 요금을 내지 않는다. */
   if(isH){
-    qpAdult = 4; qpChild = 0; qpAges = []; qpPax = 4;
-    qpNights = 2; qpRooms = 0;
+    qpAdult = 2; qpChild = 0; qpAges = []; qpPax = 2;
+    qpNights = 1; qpRooms = 0;
     $("#qpNightN").textContent = qpNights + "박";
     drawAges();
   }
