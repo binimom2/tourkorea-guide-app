@@ -1214,14 +1214,15 @@ function roomRowHTML(x,i,rm,j,pr){
     +'<div class="rminc"><label>포함·편의시설</label>'
       +'<input data-mf="inc" value="'+esc(rm.inc||'')+'" '
       +'placeholder="에어컨 · LCD TV · 무료 Wi-Fi · 차와 커피 · 헤어드라이어 · 금고"></div>'
-    /* 추가 인원 요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
-       엑스트라베드 값과 3인 요금이 같은 말이라(사장님) 성인·어린이로 나눴다.
+    /* 3인 투숙 추가 요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
+       두 값은 서로 다른 것이고 3인일 때 «둘 다» 붙는다(사장님) — 룸당·박당 요금 + 엑스트라 베드 요금.
        기간을 안 나눈다(시즌마다 바꾸는 값이 아니다). 마진은 안 붙는다 — 1실 1박 100밧이 이미 객실에 들어 있다.
+       ※ 저장 자리(extraAdult·extraChild)는 예전 이름 그대로 둔다 — 적어 둔 값이 그대로 살아 있어야 한다.
        ※ 처음에 extraPax·extraBed로 넣어 둔 값이 있으면 그 값을 그대로 보여 준다. */
-    +'<div class="rminc rmex"><label>추가 인원 <span class="rhint">1인 1박</span></label>'
-      +'<span>성인</span>'
+    +'<div class="rminc rmex"><label>3인 투숙 추가 <span class="rhint">3명이면 둘 다 더해진다</span></label>'
+      +'<span>룸당·박당 요금</span>'
       +'<input type="number" min="0" data-rmx="extraAdult" value="'+esc(exVal(pr,'extraAdult'))+'" placeholder="밧">'
-      +'<span>어린이</span>'
+      +'<span>엑스트라 베드 요금</span>'
       +'<input type="number" min="0" data-rmx="extraChild" value="'+esc(exVal(pr,'extraChild'))+'" placeholder="밧">'
       +'</div>'
     +'<div class="rmbody">'
@@ -1479,7 +1480,8 @@ function subItems(k){
     /* 포함·불포함사항은 이 줄이 아니라 바로 아래 줄에 넓게 깔린다.
        호텔은 그 자리가 「객실 타입별 요금」이고, 이 칸이 손님 화면의 「안내사항」이 된다. */
     +'<th>'+(k==='hotels'?'안내사항 <span class="rhint">한 줄에 하나 · 「위치: …」</span>':'소개 문구')+'</th>'
-    +'<th style="width:175px">사진</th><th style="width:74px"></th>'
+    /* 호텔은 이 칸이 «공통 사진»이다 — 손님 상세에서 공통 사진 다음에 객실 타입별 사진이 이어 붙는다 */
+    +'<th style="width:175px">'+(k==='hotels'?'공통 사진 <span class="rhint">객실 사진과 같이 나온다</span>':'사진')+'</th><th style="width:74px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
     /* 지역 차례 — 손님 화면과 「지역순 보기」가 이 차례를 따른다. 골프장·호텔이 같이 쓴다 */
