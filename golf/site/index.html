@@ -197,12 +197,14 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .dreg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em;margin-bottom:2px}
 .modal.wide h3{margin:0 0 12px}
 .dlist{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:7px}
-.dlist li{font-size:14px;color:var(--ink-soft);padding-left:16px;position:relative;line-height:1.5}
+/* 앞말과 뒷말을 두 칸으로 세운다 — 주소처럼 뒷말이 두 줄이 되어도 둘째 줄이 첫 줄에 맞춰 선다 */
+.dlist li{font-size:14px;color:var(--ink-soft);padding-left:16px;position:relative;line-height:1.5;display:flex;align-items:baseline;gap:6px}
 .dlist li::before{content:"·";position:absolute;left:4px;font-weight:900;color:var(--marigold)}
 .dlist li.none{padding-left:0;font-size:13.5px;color:var(--muted)}   /* 「등록된 안내 없음」 자리표시는 그대로 흐리게 */
 .dlist li.none::before{content:""}
 /* 「위치: 터미널21 부근」처럼 앞말을 적어 두면 앞말만 진하게 서고 뒷말이 옆에 붙는다 */
-.dlist li b{display:inline-block;min-width:88px;font-weight:800;color:var(--ink);margin-right:6px}
+.dlist li b{flex:0 0 88px;font-weight:800;color:var(--ink)}
+.dlist li .nv{flex:1 1 auto;min-width:0}   /* 뒷말 칸 — 넘치면 이 칸 안에서만 줄바꿈된다 */
 .dlist li a{color:var(--fairway-mid);word-break:break-all}
 /* 호텔 객실 안내 표 — 좁은 화면에서는 표만 옆으로 밀린다(본문은 안 밀린다) */
 .rwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -819,7 +821,8 @@ function noteLine(s){
   /* 「https://…」의 쌍점, 「10:00 오픈」의 시각은 앞말이 아니다 */
   if(!m || /^https?$/i.test(m[1].trim()) || /^\d+$/.test(m[1].trim()) || /^\/\//.test(m[2]))
     return linkify(s);
-  return "<b>" + esc(m[1].trim()) + "</b>" + linkify(m[2].trim());
+  /* 뒷말은 제 칸(.nv)에 담는다 — 주소처럼 길어서 줄이 넘어가도 앞말 옆 줄에 맞춰 선다 */
+  return "<b>" + esc(m[1].trim()) + "</b><span class=\"nv\">" + linkify(m[2].trim()) + "</span>";
 }
 /* 주소(http…)는 눌러서 열리게 — 호텔 홈페이지를 안내사항에 적어 두는 일이 많다 */
 function linkify(s){
