@@ -3854,7 +3854,11 @@ function calcIncentiveAdmin() {
   const kb=getKBTotal();
   const compTotal=compSettle+kb+admLandTHB;
 
-  document.getElementById('inc-adm-company').textContent='฿ '+fmtNum(Math.round(Math.abs(compSettle)));
+  // 마이너스면 가이드는 0, 회사가 100% 떠안는다 → 부호와 빨간색 그대로 표기
+  const compSettleEl=document.getElementById('inc-adm-company');
+  const compSettleVal=Math.round(compSettle);
+  compSettleEl.textContent=(compSettleVal<0?'-฿ ':'฿ ')+fmtNum(Math.abs(compSettleVal));
+  compSettleEl.style.color=compSettleVal<0?'var(--danger)':'';
   const pctLbl=document.getElementById('inc-adm-company-pct'); if(pctLbl) pctLbl.textContent=(100-pct)+'%';
   document.getElementById('inc-adm-kb').textContent='฿ '+fmtNum(Math.round(kb));
   document.getElementById('inc-adm-land-rev').textContent='฿ '+fmtNum(Math.round(admLandTHB));
