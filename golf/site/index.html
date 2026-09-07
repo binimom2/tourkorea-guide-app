@@ -208,20 +208,21 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .dlist li a{color:var(--fairway-mid);word-break:break-all}
 /* 호텔 객실 안내 표 — 좁은 화면에서는 표만 옆으로 밀린다(본문은 안 밀린다) */
 .rwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table.rooms{width:100%;border-collapse:collapse;font-size:13px;min-width:420px}
-table.rooms th{font-size:11.5px;font-weight:800;color:var(--muted);text-align:left;padding:0 8px 6px;white-space:nowrap}
-table.rooms td{padding:9px 8px;border-top:1px solid var(--line);vertical-align:middle;line-height:1.4}
+/* 객실 안내 표 — 상세창이 넓어진 만큼 글자와 사진도 키웠다(사장님) */
+table.rooms{width:100%;border-collapse:collapse;font-size:14.5px;min-width:420px}
+table.rooms th{font-size:12.5px;font-weight:800;color:var(--muted);text-align:left;padding:0 10px 8px;white-space:nowrap}
+table.rooms td{padding:13px 10px;border-top:1px solid var(--line);vertical-align:middle;line-height:1.45}
 table.rooms td.rt{font-weight:800;color:var(--ink)}
 .rtwrap{display:flex;align-items:center;gap:9px}
 /* 객실 이름 아래 작은 줄 — 에어컨·Wi-Fi·금고처럼 그 객실에 딸린 것들 */
-.rinc{display:block;font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted);
-  line-height:1.45;margin-top:2px;max-width:280px}
+.rinc{display:block;font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted);
+  line-height:1.5;margin-top:3px;max-width:420px}
 /* 3인 이용·엑스트라베드 추가요금 — 객실값과 헷갈리지 않게 색을 달리한다 */
-.rex{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:var(--fairway-mid);
-  line-height:1.45;margin-top:2px}
+.rex{display:block;font-style:normal;font-size:12.5px;font-weight:700;color:var(--fairway-mid);
+  line-height:1.5;margin-top:3px}
 .rex em{font-style:normal;font-weight:600;color:var(--muted)}
 /* 객실 사진 — 누르면 크게 열린다. 여러 장이면 오른쪽 아래에 장수가 붙는다. */
-.rth{position:relative;width:56px;height:42px;border-radius:7px;overflow:hidden;flex:none;
+.rth{position:relative;width:84px;height:63px;border-radius:8px;overflow:hidden;flex:none;
   background:#E8EEE9;cursor:zoom-in;display:block}
 .rth img{width:100%;height:100%;object-fit:cover;display:block}
 .rth b{position:absolute;right:0;bottom:0;background:rgba(20,20,20,.62);color:#fff;
@@ -283,8 +284,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .card .pask{font-size:15px;font-weight:800;color:var(--fairway)}
 
 /* ── 상세: 왼쪽 사진·설명 + 오른쪽 견적 패널 ── */
-.modal.detail{max-width:1020px;padding:22px}
-.dgrid{display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start}
+/* 상세창은 화면이 허락하는 만큼 넓게 — 객실 안내 표를 시원하게 보려고 넓혔다(사장님) */
+.modal.detail{max-width:min(1440px,96vw);padding:22px}
+.dgrid{display:grid;grid-template-columns:1fr 360px;gap:26px;align-items:start}
 .dleft{min-width:0}
 .dsect{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
 .dsect>b{display:block;font-size:13px;font-weight:900;margin-bottom:6px}
@@ -311,11 +313,30 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-pax button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 0;font:inherit;font-size:17px;cursor:pointer}
 .qp-pax button:hover{border-color:var(--fairway)}
 .qp-pax span{text-align:center;font-size:15.5px;font-weight:800}
-/* 아동 나이 칸 — 아동 수만큼 생긴다. 미리 0을 넣지 않는다(빈 칸으로 두고 적게 한다) */
-.qp-ages{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-.qp-ages label{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--muted)}
-.qp-ages input{width:52px;border:1.5px solid var(--line);border-radius:8px;padding:5px 6px;font:inherit;font-size:13px;text-align:right;background:#fff;color:inherit}
-.qp-ages input:focus{outline:none;border-color:var(--fairway)}
+/* 객실 선택 펼침판 — 객실 수·성인·아동을 한 칸에 묶는다 */
+.qp-occ{margin-top:8px;border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.qp-occrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.qp-occrow>span{font-size:13.5px;font-weight:800;line-height:1.3}
+.qp-occrow>span i{display:block;font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
+.qp-occrow .qp-pax{grid-template-columns:32px 56px 32px;flex:none}
+.qp-occrow .qp-pax button{padding:5px 0;font-size:15px}
+.qp-occrow .qp-pax span{font-size:14px}
+.qp-occdone{width:100%;margin-top:2px;border:none;border-radius:10px;padding:11px;font:inherit;font-size:14.5px;
+  font-weight:800;background:var(--fairway);color:#fff;cursor:pointer}
+.qp-occdone:hover{filter:brightness(1.06)}
+/* 아동 나이·생년월일 — 아동을 고른 만큼만 펼쳐진다. 미리 0을 넣지 않는다(빈 칸으로 두고 적게 한다) */
+.qp-ages{border-top:1px solid var(--line);margin:2px 0 10px;padding-top:10px}
+.qp-ages:empty{display:none}
+.qp-agerow{margin-bottom:9px}
+.qp-agerow>b{display:block;font-size:12.5px;font-weight:800;margin-bottom:5px}
+.qp-agefld{display:flex;gap:6px}
+.qp-agefld label{flex:1;display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;color:var(--muted)}
+.qp-agefld input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;
+  font-size:13px;background:#fff;color:inherit}
+.qp-agefld .age{flex:0 0 74px}
+.qp-agefld .age input{text-align:right}
+.qp-agefld input:focus{outline:none;border-color:var(--fairway)}
+.qp-agenote{font-size:11px;font-weight:700;color:var(--muted);line-height:1.45;margin:-2px 0 4px}
 /* 3인 방 안내 — 인원수와 룸 갯수로 저절로 정해지므로 손님이 고르는 칸이 아니다 */
 .qp-triple{margin-top:10px;padding:8px 10px;border-radius:9px;background:#fff7e8;border:1px solid #f0dcb4;font-size:12px;font-weight:700;color:var(--ink-soft);line-height:1.45}
 .qp-triple b{color:var(--ink)}
@@ -511,28 +532,43 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
               <button type="button" id="qpPlus" aria-label="늘리기">＋</button>
             </div>
           </div>
-          <!-- 호텔에서만 나온다 — 아동은 나이까지 적는다(요금·침대 판단이 나이에 걸린다) -->
-          <div id="qpChildWrap" style="display:none">
-            <div class="qp-lab">아동</div>
-            <div class="qp-pax">
-              <button type="button" id="qpCMinus" aria-label="아동 줄이기">−</button>
-              <span id="qpChildN">0명</span>
-              <button type="button" id="qpCPlus" aria-label="아동 늘리기">＋</button>
+          <!-- 호텔에서만 나온다 — 객실 수·성인·아동을 한 칸에 묶어 두고 눌러서 펼친다(사장님).
+               아동을 고르면 그 아래로 아동마다 나이·생년월일 칸이 더 펼쳐진다. -->
+          <div id="qpRoomsWrap" style="display:none">
+            <div class="qp-lab">객실 선택</div>
+            <button type="button" class="qp-dbtn" id="qpRoomsBtn"></button>
+            <div class="qp-occ" id="qpOcc" hidden>
+              <div class="qp-occrow">
+                <span>객실</span>
+                <div class="qp-pax">
+                  <button type="button" id="qpRMinus" aria-label="객실 줄이기">−</button>
+                  <span id="qpRoomN">1실</span>
+                  <button type="button" id="qpRPlus" aria-label="객실 늘리기">＋</button>
+                </div>
+              </div>
+              <div class="qp-occrow">
+                <span>성인<i>인원수</i></span>
+                <div class="qp-pax">
+                  <button type="button" id="qpAMinus" aria-label="성인 줄이기">−</button>
+                  <span id="qpAdultN">2명</span>
+                  <button type="button" id="qpAPlus" aria-label="성인 늘리기">＋</button>
+                </div>
+              </div>
+              <div class="qp-occrow">
+                <span>아동<i>12세 이하</i></span>
+                <div class="qp-pax">
+                  <button type="button" id="qpCMinus" aria-label="아동 줄이기">−</button>
+                  <span id="qpChildN">0명</span>
+                  <button type="button" id="qpCPlus" aria-label="아동 늘리기">＋</button>
+                </div>
+              </div>
+              <div class="qp-ages" id="qpAges"></div>
+              <button type="button" class="qp-occdone" id="qpOccDone">선택</button>
             </div>
-            <div class="qp-ages" id="qpAges"></div>
           </div>
           <div id="qpHoleWrap">
             <div class="qp-lab" id="qpHoleLab">라운드 선택</div>
             <div class="qp-holes" id="qpHoles"></div>
-          </div>
-          <!-- 호텔에서만 나온다 -->
-          <div id="qpRoomCntWrap" style="display:none">
-            <div class="qp-lab">룸 갯수</div>
-            <div class="qp-pax">
-              <button type="button" id="qpRMinus" aria-label="룸 갯수 줄이기">−</button>
-              <span id="qpRoomN">1실</span>
-              <button type="button" id="qpRPlus" aria-label="룸 갯수 늘리기">＋</button>
-            </div>
           </div>
           <!-- 인원수와 룸 갯수로 3인 방이 생기면 여기에 알려 준다 -->
           <div id="qpTriple" class="qp-triple" style="display:none"></div>
@@ -1011,7 +1047,7 @@ let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
 /* 호텔용 — 고른 룸타입 · 박수 · 룸 갯수 · 성인 · 아동(나이). 골프장은 쓰지 않는다.
    추가 인원을 따로 세지 않는다 — 인원수와 룸 갯수로 3인 방이 몇 개인지 저절로 나온다.
    qpPax는 «성인+아동»으로 늘 맞춰 둔다 — 3인 방 셈과 합계 표시가 이 값을 쓴다. */
-let qpRoom = "", qpNights = 2, qpRooms = 1, qpAdult = 4, qpChild = 0, qpAges = [];
+let qpRoom = "", qpNights = 2, qpRooms = 1, qpAdult = 4, qpChild = 0, qpAges = [], qpBirth = [];
 
 /* ══════════ 달력판 ══════════
    손님이 날짜 칸에 직접 적지 않는다 — 눌러서 달력을 열고 고른다(사장님).
@@ -1154,23 +1190,23 @@ function openPanel(x, kind){
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
   $("#qpHoleLab").textContent = isH ? "룸 타입" : "라운드 선택";
-  $("#qpPaxLab").textContent  = isH ? "성인" : "인원";
   $("#qpDateLab").textContent = isH ? "체크인 날짜" : "날짜 선택";
-  $("#qpNightWrap").style.display    = isH ? "" : "none";
-  $("#qpRoomCntWrap").style.display  = isH ? "" : "none";
-  $("#qpChildWrap").style.display    = isH ? "" : "none";
+  $("#qpNightWrap").style.display  = isH ? "" : "none";
+  $("#qpRoomsWrap").style.display  = isH ? "" : "none";   // 객실 수·성인·아동 묶음
+  $("#qpPaxWrap").style.display    = isH ? "none" : "";   // 골프장만 쓰는 「인원」 칸
   $("#qpNightN").textContent = qpNights + "박";
   /* 고르는 차례 — 호텔은 날짜 → 숙박 → 인원수 → 룸타입 → 룸 갯수,
      골프장은 예전 그대로 라운드 → 인원 → 날짜다. */
   const box = $("#qpFields");
-  (isH ? ["qpDateWrap", "qpPaxWrap", "qpChildWrap", "qpNightWrap", "qpRoomCntWrap", "qpHoleWrap", "qpTriple"]
-       : ["qpHoleWrap", "qpPaxWrap", "qpChildWrap", "qpDateWrap", "qpNightWrap", "qpRoomCntWrap", "qpTriple"])
+  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpNightWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap"]
+       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpRoomsWrap", "qpNightWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님). */
   if(isH){
-    qpAdult = 2; qpChild = 0; qpAges = []; qpPax = 2;
+    qpAdult = 2; qpChild = 0; qpAges = []; qpBirth = []; qpPax = 2;
     qpNights = 1; qpRooms = 1;
     $("#qpNightN").textContent = qpNights + "박";
+    closeOcc();          // 다른 곳을 열 때 펼쳐진 채로 남지 않게
     drawAges();
   }
   drawTriple();
@@ -1215,21 +1251,50 @@ function drawTriple(){
   box.innerHTML = "세 분이 드는 방 <b>" + n + "실</b> — 1박마다 "
     + part.join(" + ") + "이 더해집니다.";
 }
-/* 골프는 인원만, 호텔은 성인·아동·룸 갯수를 따로 센다 */
+/* 골프는 「인원」 한 칸, 호텔은 「객실 선택」 묶음 안의 객실·성인·아동을 센다 */
 function drawCnt(){
-  const isH = qpKind === "hotels";
-  $("#qpPaxN").textContent   = (isH ? qpAdult : qpPax) + (isH ? "명" : "인");
+  $("#qpPaxN").textContent   = qpPax + "인";        // 골프장 전용 칸
+  $("#qpAdultN").textContent = qpAdult + "명";
   $("#qpChildN").textContent = qpChild + "명";
   $("#qpRoomN").textContent  = qpRooms + "실";
+  drawRoomsBtn();
 }
+/* 접었을 때 보이는 한 줄 — 「객실 1실 · 성인 2명 · 아동 1명」 */
+function drawRoomsBtn(){
+  $("#qpRoomsBtn").textContent =
+    "객실 " + qpRooms + "실 · 성인 " + qpAdult + "명" + (qpChild ? " · 아동 " + qpChild + "명" : "");
+}
+function openOcc(){ $("#qpOcc").hidden = false; }
+function closeOcc(){ $("#qpOcc").hidden = true; }
+
 const CHILD_MAX_AGE = 12;      // 아동은 12세까지다(사장님) — 위·아래 화살표도 여기서 멈춘다
-/* 아동 나이 칸 — 아동 수만큼 만든다. 0을 미리 넣지 않는다(빈 칸으로 두고 적게 한다). */
+/* 투숙 끝나는 날 기준 만나이 — 타사도 「투숙 종료일 기준」으로 센다 */
+function ageOn(b8, on){
+  const y = +b8.slice(0, 4), m = +b8.slice(4, 6), d = +b8.slice(6, 8), t = dparse(on);
+  let a = t.getFullYear() - y;
+  if(t.getMonth() + 1 < m || (t.getMonth() + 1 === m && t.getDate() < d)) a--;
+  return a;
+}
+/* 나이를 셀 기준일 — 체크아웃, 없으면 체크인+박수, 그것도 없으면 오늘 */
+function ageBaseDate(){
+  const inn = $("#qpDate").value;
+  return qpCheckout || (inn ? dadd(inn, qpNights) : today());
+}
+/* 아동 나이·생년월일 칸 — 아동을 고른 만큼만 펼친다. 0을 미리 넣지 않는다(빈 칸으로 둔다). */
 function drawAges(){
   const box = $("#qpAges");
-  box.innerHTML = qpAges.map((v, i) =>
-    '<label>아동 ' + (i + 1)
-    + '<input type="number" min="0" max="' + CHILD_MAX_AGE + '" inputmode="numeric" placeholder="나이"'
-    + ' data-age="' + i + '" value="' + (v === "" || v == null ? "" : esc(String(v))) + '"></label>').join("");
+  if(!qpChild){ box.innerHTML = ""; return; }
+  box.innerHTML =
+    '<div class="qp-agenote">아동 나이는 <b>투숙 종료일 기준 만나이</b>입니다. '
+    + '생년월일(여권 기준)을 적으시면 나이가 저절로 셈해집니다.</div>'
+    + qpAges.map((v, i) =>
+      '<div class="qp-agerow"><b>아동 ' + (i + 1) + '</b><div class="qp-agefld">'
+      + '<label class="age">나이<input type="number" min="0" max="' + CHILD_MAX_AGE + '"'
+      + ' inputmode="numeric" placeholder="세" data-age="' + i + '"'
+      + ' value="' + (v === "" || v == null ? "" : esc(String(v))) + '"></label>'
+      + '<label>생년월일<input type="text" inputmode="numeric" maxlength="8" placeholder="20001201"'
+      + ' data-birth="' + i + '" value="' + esc(qpBirth[i] || "") + '"></label>'
+      + '</div></div>').join("");
   /* 아동은 12세까지다(사장님) — 넘겨 적으면 칸에 보이는 숫자까지 12로 되돌린다 */
   box.querySelectorAll("[data-age]").forEach(el => el.oninput = () => {
     const i = Number(el.dataset.age), v = el.value.trim();
@@ -1238,18 +1303,34 @@ function drawAges(){
     qpAges[i] = n;
     if(String(n) !== v) el.value = n;
   });
+  /* 생년월일 여덟 자리가 다 채워지면 나이 칸을 대신 채워 준다 */
+  box.querySelectorAll("[data-birth]").forEach(el => el.oninput = () => {
+    const i = Number(el.dataset.birth);
+    const v = el.value.replace(/\D/g, "").slice(0, 8);
+    if(v !== el.value) el.value = v;
+    qpBirth[i] = v;
+    if(v.length !== 8) return;
+    const a = ageOn(v, ageBaseDate());
+    if(a < 0 || a > 120) return;                       // 잘못 적은 날짜는 그냥 둔다
+    qpAges[i] = Math.min(CHILD_MAX_AGE, a);
+    const ageEl = box.querySelector('[data-age="' + i + '"]');
+    if(ageEl) ageEl.value = qpAges[i];
+  });
 }
-function syncPax(){ qpPax = qpKind === "hotels" ? qpAdult + qpChild : qpPax; }
-function setCnt(n){
-  if(qpKind === "hotels") qpAdult = Math.max(1, Math.min(40, n));
-  else                    qpPax   = Math.max(1, Math.min(40, n));
+function syncPax(){ if(qpKind === "hotels") qpPax = qpAdult + qpChild; }
+function setCnt(n){ qpPax = Math.max(1, Math.min(40, n)); drawCnt(); qpCalc(); }   // 골프장 전용
+function curCnt(){ return qpPax; }
+function setAdult(n){
+  qpAdult = Math.max(1, Math.min(40, n));
   syncPax(); drawCnt(); drawTriple(); qpCalc();
 }
-function curCnt(){ return qpKind === "hotels" ? qpAdult : qpPax; }
 function setChild(n){
   qpChild = Math.max(0, Math.min(10, n));
-  qpAges.length = qpChild;                       // 줄이면 뒤에서 지워지고
-  for(let i = 0; i < qpChild; i++) if(qpAges[i] == null) qpAges[i] = "";   // 늘리면 빈 칸으로 생긴다
+  qpAges.length = qpChild; qpBirth.length = qpChild;          // 줄이면 뒤에서 지워지고
+  for(let i = 0; i < qpChild; i++){                           // 늘리면 빈 칸으로 생긴다
+    if(qpAges[i] == null)  qpAges[i]  = "";
+    if(qpBirth[i] == null) qpBirth[i] = "";
+  }
   syncPax(); drawCnt(); drawAges(); drawTriple(); qpCalc();
 }
 function setRooms(n){
@@ -1390,8 +1471,12 @@ $("#qpNMinus").onclick = () => setNights(qpNights - 1);
 $("#qpNPlus").onclick  = () => setNights(qpNights + 1);
 $("#qpRMinus").onclick = () => setRooms(qpRooms - 1);
 $("#qpRPlus").onclick  = () => setRooms(qpRooms + 1);
+$("#qpAMinus").onclick = () => setAdult(qpAdult - 1);
+$("#qpAPlus").onclick  = () => setAdult(qpAdult + 1);
 $("#qpCMinus").onclick = () => setChild(qpChild - 1);
 $("#qpCPlus").onclick  = () => setChild(qpChild + 1);
+$("#qpRoomsBtn").onclick = () => { $("#qpOcc").hidden ? openOcc() : closeOcc(); };
+$("#qpOccDone").onclick  = closeOcc;
 $("#qpDateBtn").onclick = () => { $("#qpCal").hidden ? openCal() : closeCal(); };
 $("#qpCalPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); drawCal(); };
 $("#qpCalNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); drawCal(); };
