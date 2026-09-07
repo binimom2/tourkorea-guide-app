@@ -515,15 +515,6 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
               <div class="qp-calfoot" id="qpCalFoot"></div>
             </div>
           </div>
-          <!-- 호텔에서만 나온다 — 골프장은 박수가 없다 -->
-          <div id="qpNightWrap" style="display:none">
-            <div class="qp-lab">숙박</div>
-            <div class="qp-pax">
-              <button type="button" id="qpNMinus" aria-label="박수 줄이기">−</button>
-              <span id="qpNightN">2박</span>
-              <button type="button" id="qpNPlus" aria-label="박수 늘리기">＋</button>
-            </div>
-          </div>
           <div id="qpPaxWrap">
             <div class="qp-lab" id="qpPaxLab">인원</div>
             <div class="qp-pax">
@@ -1123,8 +1114,7 @@ function calPick(s){
   if(!calHalf || s <= calHalf){ calHalf = s; drawCal(); return; }  // 체크인 고르기(앞날을 누르면 다시 잡는다)
   $("#qpDate").value = calHalf;
   qpCheckout = s;
-  qpNights = Math.max(1, Math.min(30, dgap(calHalf, s)));
-  $("#qpNightN").textContent = qpNights + "박";
+  qpNights = Math.max(1, Math.min(30, dgap(calHalf, s)));   // 박수는 고른 기간에서 저절로 나온다
   closeCal(); drawDateBtn(); drawTriple(); qpCalc();
 }
 function openPanel(x, kind){
@@ -1191,21 +1181,18 @@ function openPanel(x, kind){
   const isH = kind === "hotels";
   $("#qpHoleLab").textContent = isH ? "룸 타입" : "라운드 선택";
   $("#qpDateLab").textContent = isH ? "체크인 날짜" : "날짜 선택";
-  $("#qpNightWrap").style.display  = isH ? "" : "none";
   $("#qpRoomsWrap").style.display  = isH ? "" : "none";   // 객실 수·성인·아동 묶음
   $("#qpPaxWrap").style.display    = isH ? "none" : "";   // 골프장만 쓰는 「인원」 칸
-  $("#qpNightN").textContent = qpNights + "박";
-  /* 고르는 차례 — 호텔은 날짜 → 숙박 → 인원수 → 룸타입 → 룸 갯수,
-     골프장은 예전 그대로 라운드 → 인원 → 날짜다. */
+  /* 고르는 차례 — 호텔은 날짜 → 객실 선택 → 룸 타입,
+     골프장은 예전 그대로 라운드 → 인원 → 날짜다. 박수 칸은 없다 — 달력에서 저절로 나온다. */
   const box = $("#qpFields");
-  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpNightWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap"]
-       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpRoomsWrap", "qpNightWrap", "qpTriple"])
+  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap"]
+       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님). */
   if(isH){
     qpAdult = 2; qpChild = 0; qpAges = []; qpBirth = []; qpPax = 2;
     qpNights = 1; qpRooms = 1;
-    $("#qpNightN").textContent = qpNights + "박";
     closeOcc();          // 다른 곳을 열 때 펼쳐진 채로 남지 않게
     drawAges();
   }
@@ -1337,14 +1324,6 @@ function setRooms(n){
   qpRooms = Math.max(1, Math.min(20, n));
   drawCnt(); drawTriple(); qpCalc();
 }
-function setNights(n){
-  qpNights = Math.max(1, Math.min(30, n));
-  $("#qpNightN").textContent = qpNights + "박";
-  /* 박수를 ±로 고치면 체크아웃 날짜가 따라 움직인다 — 달력과 어긋나면 안 된다 */
-  const inn = $("#qpDate").value;
-  if(qpKind === "hotels" && inn) qpCheckout = dadd(inn, qpNights);
-  drawDateBtn(); drawTriple(); qpCalc();
-}
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
 /* 「성인 4명 · 아동 2명(7세·4세)」 — 나이를 안 적은 아동은 나이 없이 센다 */
 function paxLabel(){
@@ -1467,8 +1446,6 @@ async function qpCalc(){
 }
 $("#qpMinus").onclick  = () => setCnt(curCnt() - 1);
 $("#qpPlus").onclick   = () => setCnt(curCnt() + 1);
-$("#qpNMinus").onclick = () => setNights(qpNights - 1);
-$("#qpNPlus").onclick  = () => setNights(qpNights + 1);
 $("#qpRMinus").onclick = () => setRooms(qpRooms - 1);
 $("#qpRPlus").onclick  = () => setRooms(qpRooms + 1);
 $("#qpAMinus").onclick = () => setAdult(qpAdult - 1);
