@@ -651,7 +651,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
             <div class="qp-lab" id="qpDateLab">날짜 선택</div>
             <!-- 눌러서 달력판을 연다. 호텔은 체크인~체크아웃을 이어서 고르고, 골프장은 하루만 고른다.
                  고른 날짜는 #qpDate(감춘 칸)에 들어간다 — 요금 셈은 예전처럼 이 값을 읽는다. -->
-            <button type="button" class="qp-dbtn" id="qpDateBtn"><span class="ph">날짜를 골라 주세요</span></button>
+            <button type="button" class="qp-dbtn" id="qpDateBtn"><span class="ph">연도-월-일</span></button>
             <input type="hidden" id="qpDate">
             <div class="qp-cal" id="qpCal" hidden>
               <div class="qp-calhd">
@@ -1327,7 +1327,7 @@ const CAL_SVG = '<svg class="cal" viewBox="0 0 24 24" fill="none" stroke="curren
   + '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
 /* 아직 안 고르셨을 때 칸에 뜨는 말 — 호텔은 두 날짜를 잇달아 고르는 곳이라 다르게 적는다 */
 function datePh(){
-  return qpKind === "hotels" ? "체크인 - 체크아웃" : "날짜를 골라 주세요";
+  return qpKind === "hotels" ? "체크인 - 체크아웃" : "연도-월-일";
 }
 function drawDateBtn(){
   const b = $("#qpDateBtn"), inn = $("#qpDate").value;
@@ -1443,7 +1443,7 @@ function openPanel(x, kind){
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
   $("#qpHoleLab").textContent = isH ? "룸 타입" : "라운드 선택";
-  $("#qpDateLab").textContent = isH ? "체크인 - 체크아웃 날짜를 선택해주세요" : "날짜 선택";
+  $("#qpDateLab").textContent = isH ? "체크인 - 체크아웃 날짜를 선택해주세요" : "날짜를 선택해주세요";
   $("#qpRoomsWrap").style.display  = isH ? "" : "none";   // 객실 수·성인·아동 묶음
   $("#qpPaxWrap").style.display    = isH ? "none" : "";   // 골프장만 쓰는 「인원」 칸
   /* 고르는 차례 — 호텔은 날짜 → 객실 선택 → 룸 타입,
