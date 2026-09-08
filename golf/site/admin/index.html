@@ -184,6 +184,14 @@ tr.subrow td{padding:0 6px 11px}
 .bkby{font-size:11.5px;color:var(--muted);font-weight:700}
 @media(max-width:640px){ .bkw{min-width:100%} .bkm{margin-left:0} }
 
+/* 🎨 화면 꾸미기 — 고르는 단추 */
+.thpick{display:flex;flex-wrap:wrap;gap:8px}
+.th{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);
+  border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:800;color:var(--fairway)}
+.th:hover{border-color:var(--fairway)}
+.th.on{border-color:var(--fairway);background:rgba(18,58,43,.07);box-shadow:inset 0 0 0 1px var(--fairway)}
+.th i{width:16px;height:16px;border-radius:999px;border:1px solid rgba(0,0,0,.15);display:inline-block}
+
 /* 종류 차례 바꾸기 ▲▼ */
 .ordbtns{display:flex;gap:4px}
 .ord{background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--fairway);
@@ -880,6 +888,23 @@ function subHero(){
     +'<div class="rowbtns"><button class="add" data-add="herokey">＋ 배지 추가</button></div>'
     +'</div>'
 
+    /* ══ 화면 꾸미기 ══ 색은 미리 맞춰 둔 조합에서만 고르게 한다 —
+       아무 색이나 찍으면 「크림색 바탕에 흰 글자」처럼 안 읽히는 조합이 나온다. */
+    +'<div class="card"><h2>🎨 화면 꾸미기</h2>'
+    +'<p class="desc">손님 화면 전체에 한 번에 적용됩니다. 저장을 눌러야 반영됩니다.</p>'
+    +'<p class="hint">포인트 색 — 배지 · 강조 글씨 · 「⚡실시간 견적」 단추가 같이 바뀝니다</p>'
+    +'<div class="thpick">'
+    +[['gold','금색 (지금)','#E8A33D'],['orange','주황','#E2703A'],
+      ['teal','청록','#2E9E8F'],['brick','붉은벽돌','#C2503F']]
+      .map(([k,n,c])=>'<button class="th'+((TH().accent||'gold')===k?' on':'')+'" data-th="'+k+'">'
+        +'<i style="background:'+c+'"></i>'+esc(n)+'</button>').join('')
+    +'</div>'
+    +'<p class="hint" style="margin-top:14px">글자 크기 — 나이 드신 손님이 많으시면 「크게」를 권합니다</p>'
+    +'<div class="thpick">'
+    +[['sm','작게'],['md','보통 (지금)'],['lg','크게']]
+      .map(([k,n])=>'<button class="th'+((TH().size||'md')===k?' on':'')+'" data-fs="'+k+'">'+esc(n)+'</button>').join('')
+    +'</div></div>'
+
     +'<div class="card"><h2>네 칸 강조 줄</h2>'
     +'<p class="desc">첫 화면 바로 아래 어두운 띠에 들어가는 네 칸입니다.</p>'
     +'<div class="tblwrap"><table><thead><tr><th style="width:180px">큰 글씨</th><th>작은 글씨</th><th style="width:70px"></th></tr></thead><tbody>'
@@ -898,8 +923,14 @@ function subHero(){
         +'<div class="f"><label>설명</label>'+ta('sections.'+k+'.p',s.p)+'</div></div>';
     }).join('')
     +'</div>';
+  /* 화면 꾸미기 — 고른 것을 S.theme 에 담는다. 저장을 눌러야 손님 화면에 반영된다. */
+  const pane=document.getElementById('subpane');
+  pane.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{ TH().accent=b.dataset.th; markDirty('site'); subHero(); });
+  pane.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ TH().size=b.dataset.fs;  markDirty('site'); subHero(); });
   bindRowBtns();
 }
+/* S.theme 이 없으면 만들어 준다 */
+function TH(){ return S.theme || (S.theme={}); }
 
 /* 사진은 한 칸에 줄마다 하나씩 적는다 — 첫 줄이 카드에 나오는 대표 사진,
    나머지는 상세(2차) 화면의 사진들이 된다. */

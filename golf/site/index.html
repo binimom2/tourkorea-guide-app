@@ -13,7 +13,9 @@
 /* 견적기(/golf/)와 같은 팔레트를 쓴다 — 손님 사이트와 내부 도구가 한 브랜드로 보이게 */
 :root{
   --fairway:#123A2B; --fairway-deep:#08170F; --fairway-mid:#1C5B42;
-  --sand:#E9DFC8; --paper:#F7F3E9; --marigold:#E8A33D;
+  /* 포인트 색 — 관리 화면 「화면 꾸미기」에서 고르면 여기 두 값만 바뀐다(applyTheme).
+     --marigold: 배지·강조 글씨·「실시간 견적」 단추 / --marigold-hi: 그 위에 마우스를 올렸을 때 */
+  --sand:#E9DFC8; --paper:#F7F3E9; --marigold:#E8A33D; --marigold-hi:#f2b258;
   --ink:#15211C; --line:rgba(18,58,43,.16); --muted:#5E6F66;
   /* 포함·불포함·안내사항처럼 손님이 꼭 읽어야 하는 본문 — 흐린 회색(--muted)은 너무 연해서 진한 회색을 따로 둔다 */
   --ink-soft:#121A16;
@@ -66,6 +68,21 @@ a{color:inherit}
   .burger{display:block}
 }
 
+/* ── 글자 크기 ── (관리 화면 「화면 꾸미기」)
+   화면의 치수가 대부분 px로 적혀 있어 뿌리 글자만 키워서는 안 커진다.
+   그래서 손님이 실제로 «읽는» 글자만 골라 몇 px씩 올리고 내린다.
+   칸 크기·여백은 건드리지 않아 배치가 무너지지 않는다. */
+body.fs-lg .card h3{font-size:18px}
+body.fs-lg .card p,body.fs-lg .sechead p,body.fs-lg .keep,body.fs-lg .dlist li{font-size:16px}
+body.fs-lg .price .pnum{font-size:21px}
+body.fs-lg .dsect b,body.fs-lg .crow .cname{font-size:16.5px}
+body.fs-lg .qp-price .v{font-size:31px}
+body.fs-lg .hero p.lead{font-size:19px}
+body.fs-sm .card h3{font-size:15.5px}
+body.fs-sm .card p,body.fs-sm .sechead p,body.fs-sm .keep,body.fs-sm .dlist li{font-size:13px}
+body.fs-sm .price .pnum{font-size:17.5px}
+body.fs-sm .qp-price .v{font-size:25px}
+
 /* ── 히어로 ── */
 .hero{position:relative;background:linear-gradient(160deg,var(--fairway) 0%,var(--fairway-deep) 100%);color:#fff;overflow:hidden}
 .hero::after{content:"";position:absolute;inset:0;background:
@@ -81,7 +98,7 @@ a{color:inherit}
 .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
 .btn{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:999px;padding:14px 26px;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer;text-decoration:none}
 .btn-gold{background:var(--marigold);color:#2A1A00}
-.btn-gold:hover{background:#f2b258}
+.btn-gold:hover{background:var(--marigold-hi)}
 .btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.34)}
 .btn-ghost:hover{background:rgba(255,255,255,.18)}
 
@@ -96,7 +113,7 @@ a{color:inherit}
 /* 「실시간 견적」 — 제일 눌러 주셨으면 하는 칸이라 금색으로 도드라지게 둔다(사장님 2026-09-08) */
 .trust button.hot{background:var(--marigold)}
 .trust button.hot b{color:#2A1A00}
-.trust button.hot:hover{background:#f2b258}
+.trust button.hot:hover{background:var(--marigold-hi)}
 .trust button.hot:active{background:#e0952c}
 .trust em{display:block;font-style:normal;font-size:19px;line-height:1;margin-bottom:6px}
 .trust b{display:block;font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.02em;white-space:nowrap}
@@ -1239,7 +1256,28 @@ function drawHeads(){
     box.innerHTML = headHtml(s, itemsOf(k).length);
   });
 }
+/* ══════ 화면 꾸미기 ══════
+   관리 화면에서 고른 «포인트 색»과 «글자 크기»를 여기서 입힌다(SITE.theme).
+   색은 미리 맞춰 둔 조합에서만 고르게 해 두었다 — 아무 색이나 찍으면
+   크림색 바탕에 흰 글자 같은 «안 읽히는» 조합이 나온다.
+   고른 값이 없으면 원래 금색·보통 크기 그대로다. */
+const THEMES = {
+  gold:   { c:"#E8A33D", hi:"#f2b258" },   // 지금 색(기본)
+  orange: { c:"#E2703A", hi:"#ef8757" },
+  teal:   { c:"#2E9E8F", hi:"#3fb5a5" },
+  brick:  { c:"#C2503F", hi:"#d46554" }
+};
+function applyTheme(){
+  const t = SITE.theme || {};
+  const p = THEMES[t.accent] || THEMES.gold;
+  const r = document.documentElement.style;
+  r.setProperty("--marigold", p.c);
+  r.setProperty("--marigold-hi", p.hi);
+  document.body.classList.remove("fs-sm", "fs-lg");
+  if(t.size === "sm" || t.size === "lg") document.body.classList.add("fs-" + t.size);
+}
 function renderAll(){
+  applyTheme();
   drawHero();
   if(!catList().some(c => c.k === curCat)) curCat = (catList()[0] || {}).k || "courses";
   drawCatPick(); drawHeads(); drawCatalog();
