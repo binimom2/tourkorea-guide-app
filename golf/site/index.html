@@ -288,7 +288,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .staff a{color:rgba(255,255,255,.42);text-decoration:none;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 11px}
 
 /* ── 1차 화면: 종류 고르기(골프장·호텔·스파·차량…) ── */
-.catpick{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}
+/* 종류 단추 — 이제 «그 섹션으로 건너뛰는» 길잡이다. 위에 붙어 다녀 어디서든 옮겨 갈 수 있다. */
+.catpick{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px;
+  position:sticky;top:60px;z-index:40;background:var(--paper);padding:12px 0 10px}
+/* 종류마다 한 칸씩 — 골프장 아래 호텔, 그 아래 스파… */
+.catsec{padding:26px 0 8px;scroll-margin-top:124px}
+.catsec+.catsec{border-top:1px solid var(--line)}
+@media(max-width:860px){ .catpick{top:60px} .catsec{scroll-margin-top:150px} }
 .catpick button{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font:inherit;font-size:15px;font-weight:800;color:var(--fairway);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
 .catpick button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(18,58,43,.10)}
 .catpick button em{font-style:normal;font-size:20px;line-height:1}
@@ -605,11 +611,11 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
      카드를 누르면 2차 화면(상세)이 열린다. 종류는 data.js의 cats에서 온다. -->
 <section id="catalog">
   <div class="wrap">
-    <div class="sechead" id="sh-catalog"></div>
     <div class="catpick" id="catPick"></div>
-    <div class="tabs" id="regTabs"></div>
-    <div class="cards" id="itemCards"></div>
   </div>
+  <!-- 종류마다 섹션이 하나씩 쌓인다 — 골프장 아래에 호텔, 그 아래 스파… (사장님 2026-09-08).
+       예전에는 한 자리에서 종류를 갈아 끼웠다. 위 catPick 은 이제 그 섹션으로 «건너뛰는» 단추다. -->
+  <div id="catSections"></div>
 </section>
 <!-- 예전 주소(#courses·#hotels)로 들어오신 분도 그대로 열리게 자리만 남겨 둔다 -->
 <span id="courses"></span><span id="hotels"></span>
@@ -951,7 +957,7 @@ async function loadPrices(){
                                      if(!PRICE.hotels [nkey(h.name)]) PRICE.hotels [nkey(h.name)] = h; });
     PRICE.fx = j.fx || null;
     PRICE.loaded = true;
-    drawItems();   // 카드에 요금줄을 붙여 다시 그린다
+    drawAllItems();   // 카드에 요금줄을 붙여 다시 그린다
   }catch(e){ /* 요금을 못 받아도 사이트는 정상 동작한다 */ }
 }
 
@@ -1061,8 +1067,7 @@ function bindCards(boxId){
   bindFavBtns($(boxId));      /* 사진 위의 ♡ — 카드를 열지 않고 찜만 켜고 끈다 */
 }
 
-let curCat = "courses";
-let curReg = "";
+let curCat = "courses";        // 마지막으로 건너뛴 종류 — 위 「종류」 단추의 표시에만 쓴다
 /* 1차 화면 — 종류 고르기. 위 메뉴줄도 같은 목록으로 그린다. */
 function drawCatPick(){
   const list = catList();
@@ -1094,24 +1099,63 @@ function drawCatPick(){
     document.getElementById("catalog").scrollIntoView({ behavior:"smooth" });
   });
 }
-/* r 을 주면 그 지역까지 골라 준다(맨 위 메뉴의 지역 목록에서 쓴다) */
+/* 종류를 고른다 = 그 섹션으로 «건너뛴다». r 을 주면 그 지역까지 골라 준다.
+   (예전에는 한 자리에서 종류를 갈아 끼웠지만, 이제는 종류마다 섹션이 따로 있다) */
 function pickCat(k, r){
   if(!k || !itemsOf(k).length) return;
   curCat = k;
   const regs = regionsOf(itemsOf(k));
-  curReg = (r && regs.some(g => g.r === r)) ? r : ((regs[0] || {}).r || "");
-  drawCatPick(); drawHeads(); drawTabs(); drawItems();
+  if(r && regs.some(g => g.r === r)) curRegs[k] = r;
+  drawCatPick(); drawTabsOf(k); drawItemsOf(k);
+  const sec = document.getElementById("sec-" + k);
+  if(sec) sec.scrollIntoView({ behavior:"smooth" });
 }
-function drawTabs(){ tabber("#regTabs", itemsOf(curCat), curReg, r => { curReg = r; drawTabs(); drawItems(); }); }
-function drawItems(){
+/* ── 종류마다 섹션 하나 ──
+   골프장 아래에 호텔, 그 아래 스파… 로 쭉 쌓는다(사장님 2026-09-08).
+   지역 탭은 섹션마다 따로 돈다 — 골프장을 「방콕」으로 보다가 호텔로 내려가도
+   호텔은 호텔대로 고른 지역을 지킨다. */
+let curRegs = {};                 // 종류별로 지금 보고 있는 지역
+function regOf(k){
+  const regs = regionsOf(itemsOf(k));
+  if(!regs.some(g => g.r === curRegs[k])) curRegs[k] = (regs[0] || {}).r || "";
+  return curRegs[k];
+}
+function drawCatalog(){
+  const list = catList();
+  $("#catSections").innerHTML = list.map(c =>
+    '<section class="catsec" id="sec-' + esc(c.k) + '"><div class="wrap">'
+    + '<div class="sechead" id="sh-cat-' + esc(c.k) + '"></div>'
+    + '<div class="tabs" id="tabs-' + esc(c.k) + '"></div>'
+    + '<div class="cards" id="cards-' + esc(c.k) + '"></div>'
+    + '</div></section>').join("");
+  list.forEach(c => { drawHeadOf(c.k); drawTabsOf(c.k); drawItemsOf(c.k); });
+}
+function drawHeadOf(k){
+  const box = document.getElementById("sh-cat-" + k);
+  if(!box) return;
+  const c = catOf(k);
+  const s = (SITE.sections || {})[k] || { kicker: c.t, h2: c.t, p: "" };
+  box.innerHTML = headHtml(s, itemsOf(k).length);
+}
+function drawTabsOf(k){
+  tabber("#tabs-" + k, itemsOf(k), regOf(k), r => {
+    curRegs[k] = r; drawTabsOf(k); drawItemsOf(k);
+  });
+}
+function drawItemsOf(k){
+  const box = document.getElementById("cards-" + k);
+  if(!box) return;
   /* 원본 인덱스를 들고 가야 상세를 열 때 맞는 항목을 집는다 */
-  const note = curCat === "hotels" ? (SITE.hotelNote || "") : "";
-  $("#itemCards").innerHTML = itemsOf(curCat)
-      .map((x, i) => ({ x, i })).filter(o => o.x.r === curReg)
-      .map(o => cardOf(o.x, curCat, o.i)).join("")
+  const note = k === "hotels" ? (SITE.hotelNote || "") : "";
+  const reg = regOf(k);
+  box.innerHTML = itemsOf(k)
+      .map((x, i) => ({ x, i })).filter(o => o.x.r === reg)
+      .map(o => cardOf(o.x, k, o.i)).join("")
     + (note ? '<p class="cardnote">' + esc(note) + '</p>' : "");
-  bindCards("#itemCards");
+  bindCards("#cards-" + k);
 }
+/* 요금이 늦게 붙었을 때 카드를 전부 다시 그린다 */
+function drawAllItems(){ catList().forEach(c => drawItemsOf(c.k)); }
 function drawTours(){
   $("#tourList").innerHTML = SITE.tours.map(t =>
     '<div class="tourcat"><h3><em>' + t.icon + '</em>' + esc(t.t) + '</h3>'
@@ -1186,19 +1230,14 @@ function headHtml(s, n){
 function drawHeads(){
   Object.keys(SITE.sections || {}).forEach(k => {
     const s = SITE.sections[k], box = document.getElementById("sh-" + k);
-    if(!box || !s) return;      // 골프장·호텔은 아래 한 칸(#sh-catalog)에서 종류별로 바뀐다
+    if(!box || !s) return;      // 골프장·호텔 등 종류 제목은 섹션마다 drawHeadOf 가 그린다
     box.innerHTML = headHtml(s, itemsOf(k).length);
   });
-  /* 1차 화면 제목은 지금 고른 종류의 것으로 바뀐다. 새로 만든 종류는 이름만 크게 띄운다. */
-  const c = catOf(curCat);
-  const s = (SITE.sections || {})[curCat] || { kicker: c.t, h2: c.t, p: "" };
-  $("#sh-catalog").innerHTML = headHtml(s, itemsOf(curCat).length);
 }
 function renderAll(){
   drawHero();
   if(!catList().some(c => c.k === curCat)) curCat = (catList()[0] || {}).k || "courses";
-  curReg = (regionsOf(itemsOf(curCat))[0] || {}).r || "";
-  drawCatPick(); drawHeads(); drawTabs(); drawItems();
+  drawCatPick(); drawHeads(); drawCatalog();
   drawTours(); drawBoard(); drawContact();
 }
 renderAll();
