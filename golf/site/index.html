@@ -294,7 +294,20 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 
 /* ── 상세: 왼쪽 사진·설명 + 오른쪽 견적 패널 ── */
 /* 상세창은 화면이 허락하는 만큼 넓게 — 객실 안내 표를 시원하게 보려고 넓혔다(사장님) */
-.modal.detail{max-width:min(1440px,96vw);padding:22px}
+.modal.detail{max-width:min(1440px,96vw);padding:22px;position:relative}
+/* 창 맨 위의 띠 — 끌어서 창을 옮기는 손잡이 겸 닫기 단추 자리(사장님 2026-09-08).
+   창 안을 스크롤해도 위에 붙어 있게 sticky 로 둔다.
+   좁은 화면에서는 창이 화면을 거의 다 채워 옮길 데가 없으므로 손잡이 글씨만 감추고
+   닫기 단추는 그대로 남긴다(띠째 감추면 ×까지 사라진다). */
+.dbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:7px;
+  margin:-22px -22px 14px;padding:7px 12px 7px 22px;background:#F1ECE0;
+  border-bottom:1px solid var(--line);border-radius:18px 18px 0 0;
+  cursor:grab;user-select:none;touch-action:none}
+.dbar.grabbing{cursor:grabbing}
+.dbar .grip{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.dbar .grip b{font-size:14px;line-height:1;color:rgba(18,58,43,.3)}
+.dbar .mclose{margin:0 0 0 auto;float:none;font-size:24px}
+@media(max-width:820px){ .dbar{cursor:default} .dbar .grip{display:none} }
 .dgrid{display:grid;grid-template-columns:1fr 360px;gap:26px;align-items:start}
 .dleft{min-width:0}
 .dsect{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
@@ -602,8 +615,12 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 
 <!-- 골프장 · 호텔 상세 -->
 <div class="mask" id="detailMask">
-  <div class="modal wide detail" role="dialog" aria-modal="true" aria-labelledby="dName">
-    <button class="mclose" id="detailClose" type="button" aria-label="닫기">×</button>
+  <div class="modal wide detail" id="detailBox" role="dialog" aria-modal="true" aria-labelledby="dName">
+    <!-- 이 띠를 끌면 창이 따라 움직인다. 닫기 단추도 여기 얹혀 스크롤해도 늘 보인다. -->
+    <div class="dbar" id="dBar">
+      <span class="grip"><b>⠿</b>끌어서 옮기기</span>
+      <button class="mclose" id="detailClose" type="button" aria-label="닫기">×</button>
+    </div>
     <div class="dgrid">
       <div class="dleft">
         <div class="dreg" id="dReg"></div>
@@ -1204,6 +1221,7 @@ function drawRooms(x, kind){
 function openDetail(x, kind){
   if(!x) return;
   dCur = x; dKind = kind; dPics = allPicsOf(x, kind);
+  dragReset();          // 앞서 옮겨 둔 자리가 아니라 늘 가운데에서 열린다
   drawFavLine();
   const cat = catOf(kind), bd = badgeOf(x);
   $("#dReg").textContent  = x.r || "";
@@ -1707,6 +1725,47 @@ $("#qpCalPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); dr
 $("#qpCalNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); drawCal(); };
 function closeDetail(){ $("#detailMask").classList.remove("on"); }
 $("#detailClose").onclick = closeDetail;
+
+/* ── 상세창 옮기기 ──
+   뒤에 있는 목록이나 다른 곳을 같이 보시려는 분들을 위해 창을 고정하지 않는다(사장님 2026-09-08).
+   가운데 정렬(flex)은 그대로 두고 transform 으로만 밀어 둔다 — 다른 곳을 열면 제자리로 돌아온다.
+   좁은 화면(≤820px)에서는 창이 화면을 거의 다 채워 옮길 데가 없으므로 끌리지 않는다. */
+let dgX = 0, dgY = 0, dgOn = false, dgSX = 0, dgSY = 0;
+function dragReset(){ dgX = 0; dgY = 0; $("#detailBox").style.transform = ""; }
+/* 옮긴 뒤 창이 화면 밖으로 빠져나가 다시 못 잡는 일이 없게 가장자리를 되돌려 놓는다 */
+function dragMove(x, y){
+  const m = $("#detailBox");
+  m.style.transform = "translate(" + x + "px," + y + "px)";
+  const r = m.getBoundingClientRect();
+  let ax = 0, ay = 0;
+  if(r.right < 150)               ax = 150 - r.right;
+  if(r.left > innerWidth - 150)   ax = innerWidth - 150 - r.left;
+  if(r.top < 0)                   ay = -r.top;
+  if(r.top > innerHeight - 70)    ay = innerHeight - 70 - r.top;
+  dgX = x + ax; dgY = y + ay;
+  if(ax || ay) m.style.transform = "translate(" + dgX + "px," + dgY + "px)";
+}
+(function(){
+  const bar = $("#dBar");
+  bar.addEventListener("pointerdown", e => {
+    if(innerWidth <= 820) return;                 // 좁은 화면에서는 옮기지 않는다
+    if(e.target.closest(".mclose")) return;       // 닫기 단추를 누른 것은 끌기가 아니다
+    dgOn = true; dgSX = e.clientX - dgX; dgSY = e.clientY - dgY;
+    bar.classList.add("grabbing");
+    try{ bar.setPointerCapture(e.pointerId); }catch(err){}
+    e.preventDefault();                           // 끌 때 글자가 선택되지 않게
+  });
+  bar.addEventListener("pointermove", e => {
+    if(dgOn) dragMove(e.clientX - dgSX, e.clientY - dgSY);
+  });
+  const end = e => {
+    if(!dgOn) return;
+    dgOn = false; bar.classList.remove("grabbing");
+    try{ bar.releasePointerCapture(e.pointerId); }catch(err){}
+  };
+  bar.addEventListener("pointerup", end);
+  bar.addEventListener("pointercancel", end);
+})();
 $("#detailMask").onclick = e => { if(e.target === $("#detailMask")) closeDetail(); };
 
 /* 사진 크게 보기 — 좌우로 넘기고, ESC나 바깥을 누르면 닫힌다.
