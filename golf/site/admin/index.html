@@ -184,6 +184,13 @@ tr.subrow td{padding:0 6px 11px}
 .bkby{font-size:11.5px;color:var(--muted);font-weight:700}
 @media(max-width:640px){ .bkw{min-width:100%} .bkm{margin-left:0} }
 
+/* 종류 차례 바꾸기 ▲▼ */
+.ordbtns{display:flex;gap:4px}
+.ord{background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--fairway);
+  font-size:11px;font-weight:800;padding:6px 8px;line-height:1}
+.ord:hover:not(:disabled){background:rgba(18,58,43,.08)}
+.ord:disabled{opacity:.3;cursor:default}
+
 /* 📅 공휴일 — 날짜 칸을 낱개로 늘어놓는다 */
 .hdays{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .hd{display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:8px;padding:4px 5px;background:#fff}
@@ -1722,7 +1729,7 @@ function subCats(){
     +'<div class="tblwrap"><table><thead><tr>'
     +'<th style="width:64px">그림</th><th style="width:150px">이름</th><th style="width:70px">단위</th>'
     +'<th style="width:130px">저장 이름</th><th style="width:110px">항목 수</th>'
-    +'<th style="width:120px">손님에게 보이기</th><th style="width:62px"></th>'
+    +'<th style="width:120px">손님에게 보이기</th><th style="width:74px">순서</th><th style="width:62px"></th>'
     +'</tr></thead><tbody>'
     +cs.map((c,i)=>'<tr><td>'+inp('cats.'+i+'.ic',c.ic||'','⛳')+'</td>'
       +'<td>'+inp('cats.'+i+'.t',c.t||'','스파·마사지')+'</td>'
@@ -1733,13 +1740,28 @@ function subCats(){
       +'<td><span class="cnt">'+itemsArr(c.k).length+(c.u||'곳')+'</span></td>'
       +'<td><label style="display:flex;align-items:center;gap:7px;font-size:13px">'
         +'<input type="checkbox" data-p="cats.'+i+'.on" data-bool="1"'+(c.on!==false?' checked':'')+'> 보이기</label></td>'
+      /* 여기 적힌 차례가 곧 손님 화면의 차례다 — 메뉴·섹터 단추·섹션이 모두 이 순서로 선다 */
+      +'<td><div class="ordbtns">'
+        +'<button class="ord" data-mv="up" data-i="'+i+'"'+(i===0?' disabled':'')+' title="위로">▲</button>'
+        +'<button class="ord" data-mv="dn" data-i="'+i+'"'+(i===cs.length-1?' disabled':'')+' title="아래로">▼</button>'
+      +'</div></td>'
       +'<td>'+(c.k==='courses'||c.k==='hotels' ? ''
           : '<button class="del" data-delcat="'+esc(c.k)+'">삭제</button>')+'</td></tr>').join('')
     +'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="cat">＋ 종류 추가</button></div>'
-    +'<p class="desc" style="margin-top:12px">※ 「저장 이름」은 영문 소문자로 짓고 한 번 정하면 바꾸지 마세요 — '
+    +'<p class="desc" style="margin-top:12px">※ <b>▲▼로 차례를 바꾸면 손님 화면의 차례도 그대로 바뀝니다</b> — '
+    +'맨 위 메뉴 · 히어로 아래 섹터 단추 · 골프장/호텔 섹션이 모두 이 순서로 섭니다.<br>'
+    +'※ 「저장 이름」은 영문 소문자로 짓고 한 번 정하면 바꾸지 마세요 — '
     +'바꾸면 그 종류에 넣어 둔 항목이 사라진 것처럼 보입니다. 골프장·호텔은 바꿀 수 없습니다.</p>'
     +'</div>';
+  /* 위아래로 옮기기 — 자리만 바꾼다(내용은 그대로). 저장을 눌러야 실제로 반영된다. */
+  document.getElementById('subpane').querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{
+    const i=Number(b.dataset.i), j=b.dataset.mv==='up'?i-1:i+1;
+    const L=catsAll();
+    if(j<0||j>=L.length) return;
+    const t=L[i]; L[i]=L[j]; L[j]=t;
+    S.cats=L; markDirty('site'); subCats();
+  });
   document.getElementById('subpane').querySelectorAll('[data-delcat]').forEach(b=>b.onclick=()=>{
     const k=b.dataset.delcat, n=itemsArr(k).length;
     if(!confirm('「'+k+'」 종류를 지웁니다.'+(n?'\n안에 있는 '+n+'개 항목도 같이 지워집니다.':'')
