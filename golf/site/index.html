@@ -271,7 +271,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* ── 2차 화면: 상세(사진 여러 장) ── */
 .modal.wide{max-width:720px}
 .den{margin:0 0 3px;font-size:13px;font-weight:600;color:var(--muted)}
-.gal{display:grid;grid-template-columns:1.55fr 1fr;gap:8px;margin:14px 0 16px}
+.gal{display:grid;grid-template-columns:1.55fr 1fr;gap:8px;margin:9px 0 16px}
 .gal .gmain,.gal .gsub{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep));cursor:zoom-in}
 .gal .gmain{aspect-ratio:4/3}
 .gal .gside{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -423,10 +423,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);transition:transform .13s ease}
 .favbtn:hover{background:rgba(8,23,15,.62);transform:scale(1.08)}
 .favbtn.on{background:#fff;color:#E0464B;box-shadow:0 2px 8px rgba(0,0,0,.18)}
-/* 상세창 제목 옆의 찜 — 카드 것보다 크고 글자가 붙는다 */
-.favline{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+/* 상세창 — 이름과 찜(♡)을 한 줄에 놓는다. 이름이 길면 찜이 아랫줄로 내려간다. */
+.dnamerow{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:0 0 2px}
+.dnamerow h3{margin:0!important}
+/* 이름 옆의 찜 — 카드 것보다 크고 글자가 붙는다 */
+.favline{display:inline-flex;align-items:center;gap:8px;margin:0}
 .favline button{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
-  border-radius:999px;padding:7px 14px;font:inherit;font-size:13.5px;font-weight:800;color:var(--fairway);cursor:pointer}
+  border-radius:999px;padding:6px 13px;font:inherit;font-size:13px;font-weight:800;color:var(--fairway);cursor:pointer}
 .favline button.on{border-color:#E0464B;color:#E0464B;background:#FFF5F5}
 /* 견적 패널의 둘째 단추(견적 요청에 담기)는 장바구니 단추보다 한 걸음 물러나 보이게 */
 .qp-sub{margin-top:8px;background:#fff!important;color:var(--fairway)!important;border:1px solid var(--line)!important}
@@ -631,9 +634,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     <div class="dgrid">
       <div class="dleft">
         <div class="dreg" id="dReg"></div>
-        <h3 id="dName"></h3>
+        <!-- 찜(♡)은 이름 바로 오른쪽에 붙인다 — 한 줄을 따로 쓰면 사진이 밀려 내려간다(사장님) -->
+        <div class="dnamerow"><h3 id="dName"></h3><span class="favline" id="dFavLine"></span></div>
         <p class="den" id="dEn"></p>
-        <div class="favline" id="dFavLine"></div>
         <div class="gal" id="dGal"></div>
         <div class="dsect inc" id="dIncBox"><b>포함사항</b><p class="keep" id="dInc"></p></div>
         <div class="dsect exc" id="dExcBox"><b>불포함사항</b><p class="keep" id="dExc"></p></div>
