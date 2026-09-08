@@ -862,8 +862,15 @@ function subHero(){
     +'<div class="f"><label>윗줄 (작은 글씨)</label>'+inp('hero.eyebrow',h.eyebrow)+'</div>'
     +'<div class="f"><label>큰 제목 — *별표* 안은 금색, 줄바꿈은 Enter</label>'+ta('hero.title',h.title)+'</div>'
     +'<div class="f"><label>설명 문구</label>'+ta('hero.lead',h.lead)+'</div>'
-    +'<div class="f"><label>버튼 1 / 버튼 2</label>'
-      +'<div class="pwbox">'+inp('hero.cta1',h.cta1)+inp('hero.cta2',h.cta2)+'</div></div>'
+    /* 두 단추는 바로 아래 섹터 메뉴와 하는 일이 겹쳐 기본은 «안 보임»이다(사장님 2026-09-08).
+       문구는 그대로 두고 이 체크만 켜면 되살아난다. */
+    +'<div class="f"><label>버튼 1 / 버튼 2'
+      +'<label style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-weight:700;color:var(--fairway)">'
+      +'<input type="checkbox" data-p="hero.ctaOn" data-bool="1"'+(h.ctaOn===true?' checked':'')+'> 손님 화면에 보이기</label>'
+      +'</label>'
+      +'<div class="pwbox">'+inp('hero.cta1',h.cta1)+inp('hero.cta2',h.cta2)+'</div>'
+      +'<p class="rmnote">지금은 꺼져 있습니다 — 바로 아래 섹터 메뉴(골프장·호텔·⚡실시간 견적)가 '
+      +'같은 일을 하고 있어 겹칩니다.</p></div>'
     +'</div>'
     +'<p class="hint">강조 배지 (제목 아래 동그란 칸)</p>'
     +'<div class="tblwrap"><table><thead><tr><th>내용</th><th style="width:70px"></th></tr></thead><tbody>'

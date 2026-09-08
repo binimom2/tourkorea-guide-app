@@ -1191,9 +1191,14 @@ function drawHero(){
     + "<h1>" + title + "</h1>"
     + '<p class="lead">' + esc(h.lead || "") + "</p>"
     + '<div class="keys">' + (h.keys || []).map(k => "<span>" + esc(k) + "</span>").join("") + "</div>"
-    + '<div class="cta">'
-    + '<a class="btn btn-gold" href="#contact">' + esc(h.cta1 || "실시간 견적 받기") + "</a>"
-    + '<a class="btn btn-ghost" href="#catalog">' + esc(h.cta2 || "골프장 둘러보기") + "</a></div>";
+    /* 「실시간 견적받기 · 골프장 둘러보기」 두 단추 — 바로 아래 섹터 메뉴가 같은 일을 해서
+       겹치므로 2026-09-08부터 기본은 «안 보임»이다(사장님). 관리 화면 「첫 화면」의
+       「두 단추 보이기」를 켜면 그대로 되살아난다 — 문구도 그대로 남아 있다. */
+    + (h.ctaOn === true
+        ? '<div class="cta">'
+          + '<a class="btn btn-gold" href="#contact">' + esc(h.cta1 || "실시간 견적 받기") + "</a>"
+          + '<a class="btn btn-ghost" href="#catalog">' + esc(h.cta2 || "골프장 둘러보기") + "</a></div>"
+        : "");
   drawSectors();
 }
 /* 히어로 바로 아래 띠 — 종류로 바로 가는 «섹터 메뉴»(사장님 2026-09-08).
