@@ -39,10 +39,12 @@ a{color:inherit}
 .menu a:hover{background:rgba(18,58,43,.07)}
 .navcta{margin-left:10px;background:var(--fairway);color:#fff!important;padding:9px 18px!important;border-radius:999px;font-size:14px}
 .navcta:hover{background:var(--fairway-mid)!important}
-.burger{display:none;margin-left:auto;background:none;border:1px solid var(--line);border-radius:9px;padding:7px 11px;font-size:17px;cursor:pointer;line-height:1}
+.burger{display:none;background:none;border:1px solid var(--line);border-radius:9px;padding:7px 11px;font-size:17px;cursor:pointer;line-height:1}
 @media(max-width:860px){
   .menu{display:none;position:absolute;top:60px;left:0;right:0;background:var(--paper);border-bottom:1px solid var(--line);flex-direction:column;padding:10px 18px 16px;gap:2px}
   .menu.open{display:flex}
+  /* 메뉴가 자리에서 빠지므로(absolute) 오른쪽 도구가 대신 오른쪽 끝으로 간다 */
+  .navtools{margin-left:auto}
   .menu a{padding:12px 10px;font-size:15.5px}
   .navcta{margin-left:0;text-align:center;margin-top:6px}
   .burger{display:block}
@@ -410,22 +412,37 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-done{margin-top:8px;background:#EFF7F1;border:1px solid rgba(18,58,43,.2);color:var(--fairway);
   border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;line-height:1.5}
 
-/* 오른쪽 아래 떠 있는 단추 — 담긴 게 있을 때만 나온다 */
-.dock{position:fixed;right:16px;bottom:16px;z-index:120;display:flex;flex-direction:column;gap:9px;align-items:flex-end}
-.dock button{position:relative;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;
-  padding:12px 18px;font:inherit;font-size:14.5px;font-weight:800;cursor:pointer;
-  box-shadow:0 8px 22px rgba(8,23,15,.26)}
-.dock .dkCart{background:var(--marigold);color:#2A1A00}
-.dock .dkCart:hover{background:#f2b258}
-.dock .dkFav{background:#fff;color:var(--fairway);border:1px solid var(--line)}
-.dock .dkFav:hover{background:#fbf8f1}
-.dock b{background:var(--fairway);color:#fff;border-radius:999px;min-width:21px;height:21px;padding:0 6px;
-  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
-.dock .dkFav b{background:#E0464B}
-@media(max-width:520px){ .dock{right:12px;bottom:12px} .dock button{padding:11px 15px;font-size:13.5px} }
-/* 창이 열려 있는 동안에는 떠 있는 단추를 감춘다 — 어두워진 바닥에 혼자 떠 있으면 눌러 보게 된다.
-   :has()를 못 쓰는 옛 브라우저에서는 그냥 그대로 보인다(눌러도 이미 열린 창이라 탈은 없다). */
-body:has(.mask.on) .dock{display:none}
+/* ── 오른쪽 위 도구 — 찜(♡) · 장바구니(🛒) · 태국환율 ──
+   메뉴(☰)가 접히는 좁은 화면에서도 이 셋은 늘 보이게 메뉴 밖에 두었다(사장님 2026-09-08). */
+.navtools{display:flex;align-items:center;gap:6px}
+.ntbtn{position:relative;background:none;border:0;padding:6px;border-radius:10px;cursor:pointer;
+  color:var(--fairway);line-height:0}
+.ntbtn:hover{background:rgba(18,58,43,.09)}
+.ntbtn svg{width:22px;height:22px;display:block}
+.ntbtn.has{color:#E0464B}
+.ntbtn.has#navCart{color:var(--fairway)}
+/* 담긴 갯수 — 0이면 아예 안 붙는다(「0」이 달려 있으면 담긴 줄 안다) */
+.ntbtn b{position:absolute;top:-1px;right:-1px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;
+  background:#E0464B;color:#fff;font-size:10.5px;font-weight:900;line-height:16px;text-align:center}
+#navCart b{background:var(--marigold);color:#2A1A00}
+/* 태국환율 — 손님이 밧을 얼마에 바꾸시는지 바로 보이게(사장님). 살때·팔때 두 줄. */
+.fxbox{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff;
+  min-width:98px;text-align:center;line-height:1.3}
+.fxbox .fxh{background:var(--fairway);color:#fff;font-size:10.5px;font-weight:800;padding:2px 8px}
+.fxbox .fxr{display:flex;justify-content:center;gap:5px;font-size:11.5px;padding:1px 8px;
+  font-variant-numeric:tabular-nums}
+.fxbox .fxr span{color:var(--muted);font-weight:700}
+.fxbox .fxr b{font-weight:800;color:var(--fairway)}
+@media(max-width:640px){
+  .brand span{display:none}          /* 좁은 화면에서는 로고만 — 오른쪽 도구에 자리를 내준다 */
+  .nav .wrap{gap:8px}
+  .navtools{gap:2px}
+  .ntbtn{padding:5px}
+  .ntbtn svg{width:20px;height:20px}
+  .fxbox{min-width:84px}
+  .fxbox .fxh{font-size:9.5px;padding:1px 6px}
+  .fxbox .fxr{font-size:10.5px;padding:0 5px;gap:4px}
+}
 
 /* 찜·장바구니 창 — 상세창보다 좁고 목록만 보여 준다 */
 .modal.list{max-width:min(720px,96vw);padding:22px 22px 20px}
@@ -494,7 +511,6 @@ body:has(.mask.on) .dock{display:none}
 <nav class="nav">
   <div class="wrap">
     <a class="brand" href="#top"><b>We’ve Tour</b><span>위브투어타일랜드</span></a>
-    <button class="burger" id="burger" aria-label="메뉴">☰</button>
     <div class="menu" id="menu">
       <!-- 골프장·호텔… 종류 메뉴는 data.js의 cats로 그린다(#catNav 자리에 채워진다) -->
       <span id="catNav" style="display:contents"></span>
@@ -504,6 +520,14 @@ body:has(.mask.on) .dock{display:none}
       <button class="loginbtn" id="loginBtn" type="button">로그인</button>
       <a class="loginbtn staffbtn hide" id="staffBtn" href="admin/">⚙ 관리</a>
     </div>
+    <!-- 오른쪽 위 — 찜 · 장바구니 · 태국환율.
+         메뉴(☰)가 접히는 좁은 화면에서도 이 셋은 늘 보이게 메뉴 밖에 둔다. -->
+    <div class="navtools">
+      <button type="button" class="ntbtn" id="navFav" aria-label="찜한 곳"></button>
+      <button type="button" class="ntbtn" id="navCart" aria-label="장바구니"></button>
+      <div class="fxbox" id="fxBox" hidden></div>
+    </div>
+    <button class="burger" id="burger" aria-label="메뉴">☰</button>
   </div>
 </nav>
 
@@ -722,12 +746,6 @@ body:has(.mask.on) .dock{display:none}
   </div>
 </div>
 
-<!-- 오른쪽 아래 떠 있는 단추 — 찜·장바구니에 담긴 게 있을 때만 나온다 -->
-<div class="dock" id="dock" hidden>
-  <button type="button" class="dkFav" id="dockFav" hidden>♡ 찜 <b id="favN">0</b></button>
-  <button type="button" class="dkCart" id="dockCart" hidden>🛒 장바구니 <b id="cartN">0</b></button>
-</div>
-
 <!-- 찜 목록 -->
 <div class="mask" id="favMask">
   <div class="modal list" role="dialog" aria-modal="true" aria-labelledby="favTitle">
@@ -798,7 +816,7 @@ function toggleFav(k, n, r){
   const key = favKey(k, n), i = FAV.findIndex(f => favKey(f.k, f.n) === key);
   if(i >= 0) FAV.splice(i, 1); else FAV.push({ k, n, r: r || "" });
   lsPut(FAV_KEY, FAV);
-  markFavs(); drawDock();
+  markFavs(); drawTools();
   if(!$("#favMask").classList.contains("on")) return;
   drawFavBody();                              /* 찜 목록을 열어 둔 채로 뺐으면 그 자리에서 사라지게 */
 }
@@ -1067,6 +1085,7 @@ function renderAll(){
 }
 renderAll();
 loadPrices();   // 요금은 화면을 그린 뒤에 붙는다 — 요금 서버가 늦어도 사이트는 먼저 보인다
+loadFx();       // 오른쪽 위 태국환율도 마찬가지 — 늦게 와도 사이트는 이미 보인다
 
 /* 관리 화면(admin/)에서 저장한 내용이 있으면 그걸로 다시 그린다.
    손님은 로그인이 없어 못 읽을 수 있다 — 그때는 data.js의 기본값 그대로 간다.
@@ -1746,13 +1765,39 @@ function drawFavLine(){
     + (on ? "♥ 찜한 곳" : "♡ 찜하기") + '</button>';
   box.querySelector("button").onclick = () => toggleFav(dKind, dCur.n, dCur.r);
 }
-/* 오른쪽 아래 떠 있는 단추 — 담긴 게 없으면 아예 안 보인다 */
-function drawDock(){
-  $("#favN").textContent  = FAV.length;
-  $("#cartN").textContent = CART.length;
-  $("#dockFav").hidden  = !FAV.length;
-  $("#dockCart").hidden = !CART.length;
-  $("#dock").hidden     = !(FAV.length || CART.length);
+/* 오른쪽 위 ♡ · 🛒 — 담긴 갯수를 오른쪽 어깨에 붙인다. 0이면 아무것도 안 붙는다. */
+const ICON_HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"'
+  + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M12 20.4 4.7 13a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7A4.7 4.7 0 0 1 19.3 13z"/></svg>';
+const ICON_CART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"'
+  + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M2.6 3.6h2.1l2.4 10.7a1.9 1.9 0 0 0 1.9 1.5h8a1.9 1.9 0 0 0 1.9-1.4L20.8 7H5.6"/>'
+  + '<circle cx="9.6" cy="20" r="1.4"/><circle cx="17.4" cy="20" r="1.4"/></svg>';
+function drawTools(){
+  const f = $("#navFav"), c = $("#navCart");
+  f.innerHTML = ICON_HEART + (FAV.length  ? '<b>' + FAV.length  + '</b>' : '');
+  c.innerHTML = ICON_CART  + (CART.length ? '<b>' + CART.length + '</b>' : '');
+  f.classList.toggle("has", !!FAV.length);
+  c.classList.toggle("has", !!CART.length);
+}
+/* 태국환율 — 오른쪽 위에 「살때 / 팔때」 두 줄로 늘 띄워 둔다(사장님 2026-09-08).
+   /api/fx 가 네이버(하나은행 고시)를 대신 받아 넘겨 준다(브라우저에서 직접 부르면 CORS로 막힌다).
+   못 받아 오면 칸을 아예 안 띄운다 — 틀린 환율이 붙어 있는 것보다 없는 편이 낫다. */
+async function loadFx(){
+  try{
+    const r = await fetch(API + "/api/fx");
+    const j = await r.json();
+    if(!j || !j.ok) return;
+    const n = v => (v == null || !isFinite(v)) ? "" : Number(v).toFixed(2);
+    const buy = n(j.cashBuy), sell = n(j.cashSell);
+    if(!buy && !sell) return;
+    const box = $("#fxBox");
+    box.innerHTML = '<div class="fxh">태국환율</div>'
+      + (buy  ? '<div class="fxr"><span>살때</span><b>' + buy  + '</b></div>' : '')
+      + (sell ? '<div class="fxr"><span>팔때</span><b>' + sell + '</b></div>' : '');
+    box.title = (j.date ? j.date + " 기준 · " : "") + "1밧당 원";
+    box.hidden = false;
+  }catch(e){ /* 환율을 못 받아도 사이트는 그대로 돈다 */ }
 }
 /* 견적 패널 아래 한 줄 알림 — ok면 초록(담았습니다), 아니면 빨강(못 담는 까닭) */
 function qpTell(html, ok){
@@ -1801,7 +1846,7 @@ function addToCart(){
   const i = CART.findIndex(c => cartKeyOf(c) === cartKeyOf(it));
   if(i >= 0) CART[i] = it; else CART.push(it);
   lsPut(CART_KEY, CART);
-  drawDock();
+  drawTools();
   qpTell(i >= 0
     ? "장바구니에 있던 같은 일정을 <b>새 내용으로 바꿨습니다.</b>"
     : "장바구니에 담았습니다 — 오른쪽 아래 <b>🛒 장바구니</b>에서 예약을 요청하세요.", true);
@@ -1847,8 +1892,8 @@ function bindRows(box, list, mode){
   });
   box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
     const i = Number(b.dataset.del);
-    if(mode === "cart"){ CART.splice(i, 1); lsPut(CART_KEY, CART); drawDock(); drawCartBody(); }
-    else{ FAV.splice(i, 1); lsPut(FAV_KEY, FAV); drawDock(); markFavs(); drawFavBody(); }
+    if(mode === "cart"){ CART.splice(i, 1); lsPut(CART_KEY, CART); drawTools(); drawCartBody(); }
+    else{ FAV.splice(i, 1); lsPut(FAV_KEY, FAV); drawTools(); markFavs(); drawFavBody(); }
   });
 }
 
@@ -1927,7 +1972,7 @@ function drawCartBody(){
     $("#cartGo").onclick = () => { cartView = "form"; drawCartBody(); };
     $("#cartClear").onclick = () => {
       if(!confirm("장바구니를 비울까요?")) return;
-      CART = []; lsPut(CART_KEY, CART); drawDock(); drawCartBody();
+      CART = []; lsPut(CART_KEY, CART); drawTools(); drawCartBody();
     };
   }
 }
@@ -1956,7 +2001,7 @@ async function sendBooking(){
     /* 다음에 오셔도 다시 적지 않으시게 — 견적 요청 칸과 같은 자리를 쓴다 */
     try{ localStorage.setItem(GUEST_KEY, JSON.stringify({ name: customer.name, tel: customer.tel })); }catch(e){}
     lastNo = j.no;
-    CART = []; lsPut(CART_KEY, CART); drawDock();
+    CART = []; lsPut(CART_KEY, CART); drawTools();
     cartView = "done"; drawCartBody();
   }catch(e){
     btn.disabled = false; btn.textContent = "예약 요청 보내기";
@@ -1972,8 +2017,8 @@ function openCart(){
   drawCartBody(); $("#cartMask").classList.add("on");
 }
 function closeCart(){ $("#cartMask").classList.remove("on"); cartView = "list"; }
-$("#dockFav").onclick  = openFav;
-$("#dockCart").onclick = openCart;
+$("#navFav").onclick  = openFav;
+$("#navCart").onclick = openCart;
 $("#favClose").onclick  = closeFav;
 $("#cartClose").onclick = closeCart;
 $("#favMask").onclick  = e => { if(e.target === $("#favMask"))  closeFav(); };
@@ -1983,7 +2028,7 @@ document.addEventListener("keydown", e => {
   if($("#favMask").classList.contains("on"))  closeFav();
   if($("#cartMask").classList.contains("on")) closeCart();
 });
-drawDock();
+drawTools();
 
 /* 견적 요청 문구 만들기 — 손님이 그대로 복사해 카톡으로 보낼 수 있게 */
 function askText(){
