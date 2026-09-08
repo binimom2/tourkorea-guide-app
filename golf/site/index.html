@@ -380,6 +380,99 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-kakao{display:block;margin-top:8px;text-align:center;background:#FAE100;color:#3B1E1E;border-radius:11px;padding:12px;font-size:14.5px;font-weight:800;text-decoration:none}
 @media(max-width:820px){ .dgrid{grid-template-columns:1fr} .dpanel{position:static} }
 
+/* ── 찜(♡) · 장바구니(🛒) ──────────────────────────────────
+   찜 = 날짜·인원 없이 「나중에 볼 곳」만 모아 두는 것.
+   장바구니 = 날짜·인원·객실까지 정해 금액이 나온 줄을 담아 두는 것.
+   둘 다 이 브라우저(localStorage)에만 남는다 — 예약 요청을 보내야 서버로 간다. */
+.favbtn{position:absolute;top:8px;left:8px;z-index:3;width:34px;height:34px;border-radius:999px;border:0;
+  background:rgba(8,23,15,.4);color:#fff;font-size:16px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);transition:transform .13s ease}
+.favbtn:hover{background:rgba(8,23,15,.62);transform:scale(1.08)}
+.favbtn.on{background:#fff;color:#E0464B;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+/* 상세창 제목 옆의 찜 — 카드 것보다 크고 글자가 붙는다 */
+.favline{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.favline button{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+  border-radius:999px;padding:7px 14px;font:inherit;font-size:13.5px;font-weight:800;color:var(--fairway);cursor:pointer}
+.favline button.on{border-color:#E0464B;color:#E0464B;background:#FFF5F5}
+/* 견적 패널의 둘째 단추(견적 요청에 담기)는 장바구니 단추보다 한 걸음 물러나 보이게 */
+.qp-sub{margin-top:8px;background:#fff!important;color:var(--fairway)!important;border:1px solid var(--line)!important}
+.qp-sub:hover{background:#f1ece0!important}
+/* 날짜·룸타입을 안 고르고 담으려 할 때만 잠깐 뜬다 */
+.qp-warn{margin-top:8px;background:#FFF5F5;border:1px solid rgba(224,70,75,.35);color:#A8302F;
+  border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;line-height:1.5}
+.qp-done{margin-top:8px;background:#EFF7F1;border:1px solid rgba(18,58,43,.2);color:var(--fairway);
+  border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;line-height:1.5}
+
+/* 오른쪽 아래 떠 있는 단추 — 담긴 게 있을 때만 나온다 */
+.dock{position:fixed;right:16px;bottom:16px;z-index:120;display:flex;flex-direction:column;gap:9px;align-items:flex-end}
+.dock button{position:relative;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;
+  padding:12px 18px;font:inherit;font-size:14.5px;font-weight:800;cursor:pointer;
+  box-shadow:0 8px 22px rgba(8,23,15,.26)}
+.dock .dkCart{background:var(--marigold);color:#2A1A00}
+.dock .dkCart:hover{background:#f2b258}
+.dock .dkFav{background:#fff;color:var(--fairway);border:1px solid var(--line)}
+.dock .dkFav:hover{background:#fbf8f1}
+.dock b{background:var(--fairway);color:#fff;border-radius:999px;min-width:21px;height:21px;padding:0 6px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+.dock .dkFav b{background:#E0464B}
+@media(max-width:520px){ .dock{right:12px;bottom:12px} .dock button{padding:11px 15px;font-size:13.5px} }
+/* 창이 열려 있는 동안에는 떠 있는 단추를 감춘다 — 어두워진 바닥에 혼자 떠 있으면 눌러 보게 된다.
+   :has()를 못 쓰는 옛 브라우저에서는 그냥 그대로 보인다(눌러도 이미 열린 창이라 탈은 없다). */
+body:has(.mask.on) .dock{display:none}
+
+/* 찜·장바구니 창 — 상세창보다 좁고 목록만 보여 준다 */
+.modal.list{max-width:min(720px,96vw);padding:22px 22px 20px}
+.modal.list h3{margin:0 0 3px}
+.modal.list .sub{margin:0 0 16px}
+.crows{display:flex;flex-direction:column;gap:10px;margin:0 0 16px}
+.crow{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+.crow .cthumb{flex:none;width:74px;height:56px;border-radius:8px;overflow:hidden;position:relative;
+  background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep))}
+.crow .cthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.crow .cmid{flex:1;min-width:0}
+.crow .ckind{font-size:11px;font-weight:900;letter-spacing:.06em;color:var(--marigold)}
+.crow .cname{margin:1px 0 3px;font-size:15px;font-weight:800;letter-spacing:-.03em;line-height:1.3}
+.crow .cdesc{font-size:12.5px;color:var(--muted);line-height:1.5}
+.crow .cright{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.crow .cprice{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}
+.crow .cprice small{display:block;font-size:11.5px;font-weight:700;color:var(--muted)}
+.crow .cask{font-size:12.5px;font-weight:800;color:var(--muted)}
+.crow .cdel{background:none;border:0;color:var(--muted);font-size:17px;line-height:1;cursor:pointer;padding:2px 4px}
+.crow .cdel:hover{color:#E0464B}
+.crow .copen{background:none;border:0;color:var(--fairway);font-size:12.5px;font-weight:800;cursor:pointer;padding:0;text-decoration:underline}
+.ctotal{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  border-top:2px solid var(--line);padding-top:13px;margin-bottom:15px}
+.ctotal span{font-size:14px;font-weight:800;color:var(--muted)}
+.ctotal b{font-size:23px;font-weight:900;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.ctotal b em{font-style:normal;font-size:15px;margin-left:2px}
+.cnote{margin:0 0 14px;font-size:12.5px;color:var(--muted);line-height:1.55}
+.cempty{text-align:center;color:var(--muted);font-size:14px;padding:26px 0 30px;line-height:1.7}
+/* 좁은 화면 — 금액이 옆에 서 있으면 이름 칸이 눌려 「람차방 인터내 / 셔널 …」로 끊긴다.
+   그래서 ✕는 모서리로 보내고 금액은 아랫줄 오른쪽에 따로 세운다. */
+@media(max-width:520px){
+  .crow{flex-wrap:wrap;position:relative;padding-right:36px}
+  .crow .cthumb{width:64px;height:48px}
+  .crow .cdel{position:absolute;top:8px;right:8px}
+  .crow .cright{width:100%;flex-direction:row;justify-content:flex-end;align-items:baseline}
+  .crow .cprice small{display:inline;margin-left:5px}
+}
+.cbtns{display:flex;gap:8px}
+.cbtns .mbtn{margin:0}
+.cbtns .ghost{background:#fff;border:1px solid var(--line);color:var(--fairway);flex:none;width:auto;padding:13px 18px}
+.cbtns .ghost:hover{background:#f1ece0}
+/* 예약 요청 적는 칸 */
+.bform{display:grid;gap:10px;grid-template-columns:1fr 1fr;margin:0 0 14px}
+.bform label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:800;color:var(--muted)}
+.bform label.full{grid-column:1/-1}
+.bform input,.bform textarea{border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;font-size:14.5px;background:#fff;color:var(--ink)}
+.bform textarea{min-height:76px;resize:vertical;line-height:1.55}
+.bform input:focus,.bform textarea:focus{outline:2px solid var(--marigold);outline-offset:-1px;border-color:transparent}
+@media(max-width:520px){ .bform{grid-template-columns:1fr} }
+.bdone{text-align:center;padding:14px 0 6px}
+.bdone .no{display:inline-block;background:var(--fairway);color:#fff;border-radius:11px;padding:11px 22px;
+  font-size:22px;font-weight:900;letter-spacing:.04em;font-variant-numeric:tabular-nums;margin:10px 0 12px}
+.bdone p{margin:0 0 8px;font-size:14px;color:var(--muted);line-height:1.65}
+
 /* 사진 크게 보기 */
 .lbox{position:fixed;inset:0;z-index:300;background:rgba(6,16,11,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:20px}
 .lbox.on{display:flex}
@@ -478,6 +571,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <div class="dreg" id="dReg"></div>
         <h3 id="dName"></h3>
         <p class="den" id="dEn"></p>
+        <div class="favline" id="dFavLine"></div>
         <div class="gal" id="dGal"></div>
         <div class="dsect inc" id="dIncBox"><b>포함사항</b><p class="keep" id="dInc"></p></div>
         <div class="dsect exc" id="dExcBox"><b>불포함사항</b><p class="keep" id="dExc"></p></div>
@@ -519,7 +613,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
             <div class="qp-lab" id="qpPaxLab">인원</div>
             <div class="qp-pax">
               <button type="button" id="qpMinus" aria-label="줄이기">−</button>
-              <span id="qpPaxN">4인</span>
+              <span id="qpPaxN">4명</span>
               <button type="button" id="qpPlus" aria-label="늘리기">＋</button>
             </div>
           </div>
@@ -565,7 +659,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
           <div id="qpTriple" class="qp-triple" style="display:none"></div>
         </div>
         <div class="qp-price" id="qpPrice"></div>
-        <button class="mbtn" id="dQuote" type="button">견적 요청에 담기</button>
+        <button class="mbtn" id="dCart" type="button">🛒 장바구니에 담기</button>
+        <div class="qp-warn" id="qpWarn" hidden></div>
+        <button class="mbtn qp-sub" id="dQuote" type="button">견적 요청에 담기</button>
         <a class="qp-kakao" id="qpKakao" href="#contact">카카오톡 상담</a>
       </aside>
     </div>
@@ -619,6 +715,34 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   </div>
 </div>
 
+<!-- 오른쪽 아래 떠 있는 단추 — 찜·장바구니에 담긴 게 있을 때만 나온다 -->
+<div class="dock" id="dock" hidden>
+  <button type="button" class="dkFav" id="dockFav" hidden>♡ 찜 <b id="favN">0</b></button>
+  <button type="button" class="dkCart" id="dockCart" hidden>🛒 장바구니 <b id="cartN">0</b></button>
+</div>
+
+<!-- 찜 목록 -->
+<div class="mask" id="favMask">
+  <div class="modal list" role="dialog" aria-modal="true" aria-labelledby="favTitle">
+    <button class="mclose" id="favClose" type="button" aria-label="닫기">×</button>
+    <h3 id="favTitle">♡ 찜한 곳</h3>
+    <p class="sub">눈여겨보신 곳입니다. 카드를 누르면 다시 열려서 날짜·인원을 고르고
+      장바구니에 담으실 수 있습니다.</p>
+    <div id="favBody"></div>
+  </div>
+</div>
+
+<!-- 장바구니 · 예약 요청 -->
+<div class="mask" id="cartMask">
+  <div class="modal list" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+    <button class="mclose" id="cartClose" type="button" aria-label="닫기">×</button>
+    <h3 id="cartTitle">🛒 장바구니</h3>
+    <p class="sub" id="cartSub">담아 두신 일정입니다. 그대로 예약을 요청하시면
+      담당자가 확인하고 연락드립니다.</p>
+    <div id="cartBody"></div>
+  </div>
+</div>
+
 <footer>
   <div class="wrap">
     <b>위브투어타일랜드 · We’ve Tour Thailand</b>
@@ -640,6 +764,67 @@ let SITE = window.SITE_DEFAULT;
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s)
   .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+/* ══════════ 찜(♡) · 장바구니(🛒) ══════════
+   찜       = 「나중에 볼 곳」. 이름만 담는다 — 날짜·인원을 아직 안 정해도 된다.
+   장바구니 = 날짜·인원·객실까지 정해 금액이 나온 줄. 이것을 모아 예약을 요청한다.
+
+   둘 다 **이 브라우저에만** 남는다(localStorage). 서버로 가는 것은
+   「예약 요청 보내기」를 눌렀을 때뿐이고, 그때 /api/golf-book 이 접수번호를 만들어 준다.
+
+   ⚠ 담긴 금액은 «담던 순간 화면에 보이던 값»이다. 확정가가 아니다 —
+     직원이 요금표로 다시 확인해 안내한다. 그래서 화면에도 그렇게 적어 둔다.
+
+   이 자리에 둔 까닭: 화면을 처음 그릴 때(renderAll → 카드마다 ♡) 이미 FAV를 읽어야 한다.
+   ─────────────────────────────────────────────────────── */
+const FAV_KEY = "golf_fav", CART_KEY = "golf_cart";
+function lsGet(k){
+  try{ const v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }                      /* 사생활 보호 모드 등에서 막혀도 사이트는 그대로 돈다 */
+}
+function lsPut(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+let FAV = lsGet(FAV_KEY), CART = lsGet(CART_KEY);
+
+const favKey = (k, n) => String(k || "") + "|" + String(n || "");
+function isFav(k, n){ return FAV.some(f => favKey(f.k, f.n) === favKey(k, n)); }
+function toggleFav(k, n, r){
+  const key = favKey(k, n), i = FAV.findIndex(f => favKey(f.k, f.n) === key);
+  if(i >= 0) FAV.splice(i, 1); else FAV.push({ k, n, r: r || "" });
+  lsPut(FAV_KEY, FAV);
+  markFavs(); drawDock();
+  if(!$("#favMask").classList.contains("on")) return;
+  drawFavBody();                              /* 찜 목록을 열어 둔 채로 뺐으면 그 자리에서 사라지게 */
+}
+/* 카드 사진 위에 얹는 ♡ — 카드 자체가 <button>이라 그 안에 또 <button>을 둘 수 없다.
+   그래서 span으로 만들고 눌림만 가로챈다(카드가 같이 열리지 않게). */
+function favBtnHtml(k, n){
+  return '<span class="favbtn' + (isFav(k, n) ? " on" : "") + '" role="button" tabindex="-1"'
+    + ' data-fk="' + esc(k) + '" data-fn="' + esc(n) + '"'
+    + ' aria-label="찜하기">' + (isFav(k, n) ? "♥" : "♡") + '</span>';
+}
+/* 화면에 이미 그려진 ♡들을 켜고 끈다 — 카드를 통째로 다시 그리지 않는다 */
+function markFavs(){
+  document.querySelectorAll(".favbtn[data-fn]").forEach(el => {
+    const on = isFav(el.dataset.fk, el.dataset.fn);
+    el.classList.toggle("on", on);
+    el.textContent = on ? "♥" : "♡";
+  });
+  drawFavLine();
+}
+function bindFavBtns(root){
+  (root || document).querySelectorAll(".favbtn[data-fn]").forEach(el => {
+    el.onclick = e => {
+      e.preventDefault(); e.stopPropagation();          /* 카드가 열리지 않게 */
+      const x = findItem(el.dataset.fk, el.dataset.fn);
+      toggleFav(el.dataset.fk, el.dataset.fn, x ? x.r : "");
+    };
+  });
+}
+/* 담아 둔 이름으로 지금 사이트에 있는 항목을 다시 찾는다.
+   관리 화면에서 이름이 바뀌거나 「보이기」가 꺼지면 못 찾는다 — 그때는 열지 못하게 둔다. */
+function findItem(k, n){
+  return (itemsOf(k) || []).filter(y => y && y.n === n)[0] || null;
+}
 
 /* ══════════ 요금 ══════════
    요금표(golf_pricing)에는 그린피·캐디피 원가가 들어 있어 이 화면으로 내려받지 않는다.
@@ -731,18 +916,19 @@ function allPicsOf(x, kind){
 }
 /* 사진이 실제로 있는 곳만 SITE.photos·imgs에 적어 둔다. 적혀 있지 않으면 이름이 적힌 초록 칸이 남는다.
    (없는 파일을 일단 불러 보는 방식은 카드마다 404를 만들어서 쓰지 않는다.) */
-function thumbOf(x, badge){
+function thumbOf(x, badge, kind){
   const src = picsOf(x)[0];
   return '<div class="thumb"><i>' + esc(x.n) + '</i>'
     + (src ? '<img loading="lazy" alt="' + esc(x.n) + '" src="' + esc(src)
              + '" onerror="this.remove()">' : "")
-    + (badge ? '<span class="holes">' + esc(badge) + '</span>' : '') + '</div>';
+    + (badge ? '<span class="holes">' + esc(badge) + '</span>' : '')
+    + (kind ? favBtnHtml(kind, x.n) : '') + '</div>';
 }
 /* 카드는 눌러서 상세를 여는 버튼이다 — 올렸을 때 떠오르기만 하고 안 눌리면 안 된다 */
 function cardOf(x, kind, idx){
   const p = priceOf(x, kind);
   return '<button type="button" class="card" data-k="' + esc(kind) + '" data-i="' + idx + '">'
-    + thumbOf(x, badgeOf(x))
+    + thumbOf(x, badgeOf(x), kind)
     + '<div class="body"><div class="reg">' + esc(x.r || "") + '</div>'
     + '<h3>' + esc(x.n) + '</h3>'
     /* 골프장·호텔 카드는 「이름 · 포함사항 · 최저가」 셋만 둔다(사장님 지시).
@@ -774,6 +960,7 @@ function bindCards(boxId){
   $(boxId).querySelectorAll(".card").forEach(b => b.onclick = () => {
     openDetail(itemsOf(b.dataset.k)[Number(b.dataset.i)], b.dataset.k);
   });
+  bindFavBtns($(boxId));      /* 사진 위의 ♡ — 카드를 열지 않고 찜만 켜고 끈다 */
 }
 
 let curCat = "courses";
@@ -891,7 +1078,7 @@ loadPrices();   // 요금은 화면을 그린 뒤에 붙는다 — 요금 서버
 })();
 
 /* ── 골프장·호텔 상세 ── */
-let dCur = null, dPics = [];
+let dCur = null, dPics = [], dKind = "";
 /* 「이 골프장으로 / 이 호텔로」 — 받침이 있으면 '으로' */
 function ro(w){
   const c = (w || "").charCodeAt((w || "").length - 1) - 0xAC00;
@@ -976,7 +1163,8 @@ function drawRooms(x, kind){
 
 function openDetail(x, kind){
   if(!x) return;
-  dCur = x; dPics = allPicsOf(x, kind);
+  dCur = x; dKind = kind; dPics = allPicsOf(x, kind);
+  drawFavLine();
   const cat = catOf(kind), bd = badgeOf(x);
   $("#dReg").textContent  = x.r || "";
   $("#dName").textContent = x.n || "";
@@ -1035,6 +1223,12 @@ function openDetail(x, kind){
    고른 날짜의 요금은 서버가 계산한다(원가·밧은 이 화면에 오지 않는다).
    날짜를 아직 안 골랐으면 카드와 같은 «최저가»를 보여 준다. */
 let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
+/* 화면에 지금 떠 있는 금액을 장바구니가 그대로 쓰도록 붙잡아 둔다.
+     null            아직 담을 수 없다(날짜·룸타입을 안 골랐다)
+     {loading:true}  서버에 물어보는 중
+     {asked:true}    요금표에 없어 「문의」로 담긴다
+     {krw,baht}      그날 요금으로 셈이 끝난 값 */
+let qpResult = null;
 /* 호텔용 — 고른 룸타입 · 박수 · 룸 갯수 · 성인 · 아동(나이). 골프장은 쓰지 않는다.
    추가 인원을 따로 세지 않는다 — 인원수와 룸 갯수로 3인 방이 몇 개인지 저절로 나온다.
    qpPax는 «성인+아동»으로 늘 맞춰 둔다 — 3인 방 셈과 합계 표시가 이 값을 쓴다. */
@@ -1119,6 +1313,8 @@ function calPick(s){
 }
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
+  qpResult = null;                 // 앞에 보던 곳의 금액이 남아 담기지 않게
+  qpTell("");                      // 「담았습니다」·「날짜를 골라 주세요」도 지운다
   $("#qpReg").textContent  = x.r || "";
   $("#qpName").textContent = x.n || "";
   $("#qpEn").textContent   = x.e || "";
@@ -1240,7 +1436,7 @@ function drawTriple(){
 }
 /* 골프는 「인원」 한 칸, 호텔은 「객실 선택」 묶음 안의 객실·성인·아동을 센다 */
 function drawCnt(){
-  $("#qpPaxN").textContent   = qpPax + "인";        // 골프장 전용 칸
+  $("#qpPaxN").textContent   = qpPax + "명";        // 골프장 전용 칸
   $("#qpAdultN").textContent = qpAdult + "명";
   $("#qpChildN").textContent = qpChild + "명";
   $("#qpRoomN").textContent  = qpRooms + "실";
@@ -1327,7 +1523,7 @@ function setRooms(n){
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
 /* 「성인 4명 · 아동 2명(7세·4세)」 — 나이를 안 적은 아동은 나이 없이 센다 */
 function paxLabel(){
-  if(qpKind !== "hotels") return qpPax + "인";
+  if(qpKind !== "hotels") return qpPax + "명";
   let s = "성인 " + qpAdult + "명";
   if(qpChild){
     const ages = qpAges.filter(v => v !== "" && v != null).map(v => v + "세");
@@ -1346,28 +1542,30 @@ function extraSum(){
     label: "세 분이 드는 방 " + n + "실 × " + qpNights + "박"
   };
 }
-function fxNote(){
-  return PRICE.fx
-    ? '<div class="fx">' + PRICE.fx.date + ' ' + PRICE.fx.basis + ' 1밧 = ' + PRICE.fx.rate + '원 기준</div>'
-    : "";
-}
+/* 환율 안내줄(「… 현찰 살때(하나은행 고시) 1밧 = 42.79원 기준」)은 손님에게 안 보인다(사장님 2026-09-08).
+   환산은 그대로 그 환율로 하고, 문구만 감춘다. 다시 보이게 하려면 이 함수만 되돌리면 된다. */
+function fxNote(){ return ""; }
 async function qpCalc(){
   if(!qpItem) return;
   const p = priceOf(qpItem, qpKind);
   const date = $("#qpDate").value;
   if(!p){
-    qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.<br>아래 「견적 요청에 담기」를 눌러 주세요.</div>');
+    qpResult = { asked: true };
+    qpBox('<div class="ask">요금은 일정에 맞춰 안내드립니다.<br>날짜를 고르고 장바구니에 담아 주세요.</div>');
     return;
   }
   /* 호텔은 «날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입»을 다 골라야 요금이 나온다(사장님).
      인원수·박수·룸 갯수는 2명 1박 1실에서 시작하니, 아직 안 고른 것은 룸 타입뿐이다. */
   if(qpKind === "hotels" && !qpRoom){
+    qpResult = null;
     qpBox('<div class="ask"><b>룸 타입</b>을 골라 주세요.<br>'
         + '날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입을 고르시면 그날 요금으로 계산해 드립니다.</div>');
     return;
   }
   /* 날짜 전 — 카드와 같은 최저가를 보여 준다 */
   if(!date || (qpKind !== "courses" && qpKind !== "hotels")){
+    /* 날짜 전에는 「최저가」만 보여 준다 — 이 값으로는 담지 않는다(날짜마다 요금이 다르다) */
+    qpResult = (qpKind === "courses" || qpKind === "hotels") ? null : { asked: true };
     /* 홀수에 맞춘 최저가 — 27홀은 18+9, 36홀은 18×2 (9홀은 따로 팔지 않는다) */
     const pick = (v18, v9) => qpHoles === "27" ? (v18 && v9 ? v18 + v9 : 0)
                             : qpHoles === "36" ? (v18 ? v18 * 2 : 0) : v18;
@@ -1385,7 +1583,7 @@ async function qpCalc(){
         + (baseBt ? '<b class="vbt">(' + baseBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + (ex.krw ? '<div class="exline">' + esc(ex.label) + ': ' + ex.krw.toLocaleString("ko-KR") + '원</div>' : '')
       + '<div class="sum">'
-        + (qpKind === "hotels" ? esc(paxLabel()) + ' · ' + qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '인 합계: ')
+        + (qpKind === "hotels" ? esc(paxLabel()) + ' · ' + qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '명 합계: ')
         + (base * cnt + ex.krw).toLocaleString("ko-KR") + '원'
         + (baseBt ? ' (' + (baseBt * cnt + ex.baht).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + '<div class="ask" style="margin-top:6px">'
@@ -1396,6 +1594,7 @@ async function qpCalc(){
   }
   /* 날짜를 골랐으면 서버에 그날 요금을 물어본다. 늦게 온 응답이 최신 값을 덮지 않게 순번을 센다. */
   const my = ++qpSeq;
+  qpResult = { loading: true };            // 확인하는 동안 옛 금액이 담기지 않게
   qpBox('<div class="ask">요금을 확인하고 있습니다…</div>');
   try{
     const r = await fetch(API + "/api/golf-price", {
@@ -1414,9 +1613,11 @@ async function qpCalc(){
     const j = await r.json();
     if(my !== qpSeq) return;
     if(!j.ok){
-      qpBox('<div class="ask">' + esc(j.error || "요금을 확인하지 못했습니다.") + '<br>「견적 요청에 담기」를 눌러 주시면 바로 안내드리겠습니다.</div>');
+      qpResult = { asked: true };
+      qpBox('<div class="ask">' + esc(j.error || "요금을 확인하지 못했습니다.") + '<br>장바구니에 담아 주시면 바로 안내드리겠습니다.</div>');
       return;
     }
+    qpResult = { krw: j.totalKrw || 0, baht: j.totalBaht || 0 };
     if(qpKind === "hotels"){
       /* 호텔은 «1박 평균»을 크게 보여 준다 — 성수기·주말이 섞이면 밤마다 값이 달라서
          한 밤의 값만 보여 주면 합계와 안 맞아 보인다. */
@@ -1433,15 +1634,17 @@ async function qpCalc(){
         + fxNote());
       return;
     }
-    qpBox('<div class="k">1인 기준 · ' + esc(j.date) + ' ' + (j.we ? "주말·공휴일" : "주중") + (j.season ? " · " + esc(j.season) : "") + '</div>'
+    /* 시즌 이름(=요금표의 기간, 「2026-04-01~2026-09-30」)은 손님에게 안 보인다(사장님 2026-09-08) */
+    qpBox('<div class="k">1인 기준 · ' + esc(j.date) + ' ' + (j.we ? "주말·공휴일" : "주중") + '</div>'
       + '<div class="v">' + j.perKrw.toLocaleString("ko-KR") + '<em>원</em>'
         + (j.perBaht ? '<b class="vbt">(' + j.perBaht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
-      + '<div class="sum">' + j.pax + '인 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
+      + '<div class="sum">' + j.pax + '명 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
         + (j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + fxNote());
   }catch(e){
     if(my !== qpSeq) return;
-    qpBox('<div class="ask">요금을 확인하지 못했습니다. 「견적 요청에 담기」를 눌러 주세요.</div>');
+    qpResult = { asked: true };
+    qpBox('<div class="ask">요금을 확인하지 못했습니다. 장바구니에 담아 주시면 바로 안내드리겠습니다.</div>');
   }
 }
 $("#qpMinus").onclick  = () => setCnt(curCnt() - 1);
@@ -1518,6 +1721,256 @@ function toAskForm(){
 }
 $("#dQuote").onclick = toAskForm;
 $("#qpKakao").onclick = e => { e.preventDefault(); toAskForm(); };
+
+/* ══════════ 찜 · 장바구니 — 화면 ══════════ */
+
+/* 상세창 제목 아래의 ♡ 한 줄 */
+function drawFavLine(){
+  const box = $("#dFavLine");
+  if(!box) return;
+  if(!dCur || !dKind){ box.innerHTML = ""; return; }
+  const on = isFav(dKind, dCur.n);
+  box.innerHTML = '<button type="button" class="' + (on ? "on" : "") + '">'
+    + (on ? "♥ 찜한 곳" : "♡ 찜하기") + '</button>';
+  box.querySelector("button").onclick = () => toggleFav(dKind, dCur.n, dCur.r);
+}
+/* 오른쪽 아래 떠 있는 단추 — 담긴 게 없으면 아예 안 보인다 */
+function drawDock(){
+  $("#favN").textContent  = FAV.length;
+  $("#cartN").textContent = CART.length;
+  $("#dockFav").hidden  = !FAV.length;
+  $("#dockCart").hidden = !CART.length;
+  $("#dock").hidden     = !(FAV.length || CART.length);
+}
+/* 견적 패널 아래 한 줄 알림 — ok면 초록(담았습니다), 아니면 빨강(못 담는 까닭) */
+function qpTell(html, ok){
+  const el = $("#qpWarn");
+  if(!el) return;
+  el.className = ok ? "qp-done" : "qp-warn";
+  el.innerHTML = html || "";
+  el.hidden = !html;
+}
+
+/* 지금 패널에 골라 둔 것을 장바구니 한 줄로 만든다.
+   금액은 qpResult(화면에 떠 있는 값)를 그대로 옮긴다 — 다시 셈하지 않는다. */
+function cartItem(){
+  const date = $("#qpDate").value;
+  const isH  = qpKind === "hotels";
+  const end  = isH ? (qpCheckout || (date ? dadd(date, qpNights) : "")) : "";
+  const option = isH ? qpRoom : (qpKind === "courses" ? qpHoles + "홀" : "");
+  /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
+  const yl = s => dparse(s).getFullYear() + "." + dlabel(s);
+  const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];
+  if(isH)    parts.push(qpNights + "박 " + qpRooms + "실");
+  if(option) parts.push(option);
+  parts.push(paxLabel());
+  return {
+    kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
+    option, date, dateEnd: end,
+    nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
+    pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
+    ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
+    krw:  (qpResult && qpResult.krw)  || 0,
+    baht: (qpResult && qpResult.baht) || 0,
+    asked: !!(qpResult && qpResult.asked),
+    label: parts.join(" · "),
+    img: picsOf(dCur)[0] || ""
+  };
+}
+const cartKeyOf = c => [c.kind, c.name, c.option, c.date].join("|");
+function addToCart(){
+  if(!dCur) return;
+  if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 골라 주세요.");
+  if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 골라 주세요.");
+  if(qpResult && qpResult.loading)     return qpTell("요금을 확인하고 있습니다. 잠시만 기다려 주세요.");
+  if(!qpResult)                        return qpTell("날짜와 인원을 고르시면 담으실 수 있습니다.");
+  const it = cartItem();
+  /* 같은 곳·같은 날·같은 조건이면 겹쳐 담지 않고 새 내용으로 바꾼다 */
+  const i = CART.findIndex(c => cartKeyOf(c) === cartKeyOf(it));
+  if(i >= 0) CART[i] = it; else CART.push(it);
+  lsPut(CART_KEY, CART);
+  drawDock();
+  qpTell(i >= 0
+    ? "장바구니에 있던 같은 일정을 <b>새 내용으로 바꿨습니다.</b>"
+    : "장바구니에 담았습니다 — 오른쪽 아래 <b>🛒 장바구니</b>에서 예약을 요청하세요.", true);
+}
+$("#dCart").onclick = addToCart;
+
+/* 찜·장바구니 목록에 깔리는 한 줄 (mode: "cart" | "fav") */
+function rowHtml(it, mode, i){
+  const found = findItem(it.kind, it.name);
+  const img = it.img || (found ? picsOf(found)[0] : "");
+  const head = (it.kindT || (catOf(it.kind) || {}).t || "") + (it.region ? " · " + it.region : "");
+  return '<div class="crow">'
+    + '<div class="cthumb">'
+      + (img ? '<img alt="" src="' + esc(img) + '" onerror="this.remove()">' : '') + '</div>'
+    + '<div class="cmid">'
+      + '<div class="ckind">' + esc(head) + '</div>'
+      + '<div class="cname">' + esc(it.name) + '</div>'
+      + (mode === "cart" ? '<div class="cdesc">' + esc(it.label || "") + '</div>' : '')
+      + (found
+          ? '<button type="button" class="copen" data-open="' + i + '">'
+            + (mode === "cart" ? "다시 고르기" : "날짜 고르고 담기") + '</button>'
+          : '<div class="cdesc">지금은 안내하지 않는 곳입니다.</div>')
+    + '</div>'
+    + '<div class="cright">'
+      + '<button type="button" class="cdel" data-del="' + i + '" aria-label="빼기">✕</button>'
+      + (mode === "cart"
+          ? ((it.asked || !it.krw)
+              ? '<div class="cask">요금 문의</div>'
+              : '<div class="cprice">' + it.krw.toLocaleString("ko-KR") + '원'
+                + (it.baht ? '<small>(' + it.baht.toLocaleString("ko-KR") + '바트)</small>' : '')
+                + '</div>')
+          : '')
+    + '</div></div>';
+}
+/* 목록에서 「다시 고르기」·「✕」를 이어 준다 */
+function bindRows(box, list, mode){
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
+    const it = list[Number(b.dataset.open)];
+    const x = findItem(it.kind, it.name);
+    if(!x) return;
+    closeFav(); closeCart();
+    openDetail(x, it.kind);
+  });
+  box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    const i = Number(b.dataset.del);
+    if(mode === "cart"){ CART.splice(i, 1); lsPut(CART_KEY, CART); drawDock(); drawCartBody(); }
+    else{ FAV.splice(i, 1); lsPut(FAV_KEY, FAV); drawDock(); markFavs(); drawFavBody(); }
+  });
+}
+
+/* ── 찜 목록 ── */
+function drawFavBody(){
+  const box = $("#favBody");
+  if(!FAV.length){
+    box.innerHTML = '<div class="cempty">찜한 곳이 없습니다.<br>'
+      + '골프장·호텔 사진 왼쪽 위의 <b>♡</b>를 누르시면 여기에 모입니다.</div>';
+    return;
+  }
+  const list = FAV.map(f => ({ kind: f.k, name: f.n, region: f.r }));
+  box.innerHTML = '<div class="crows">' + list.map((it, i) => rowHtml(it, "fav", i)).join("") + '</div>';
+  bindRows(box, list, "fav");
+}
+
+/* ── 장바구니 · 예약 요청 ──
+   한 창 안에서 «목록 → 적는 칸 → 접수 완료» 세 모습으로 바뀐다. */
+let cartView = "list", lastNo = "";
+function bformHtml(){
+  let p = null;
+  try{ p = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); }catch(e){}
+  const nm  = (guest && guest.name) || (p && p.name) || "";
+  const tel = (p && p.tel) || "";
+  return '<div class="bform">'
+    + '<label>성함<input type="text" id="bkName" placeholder="예약자 성함" value="' + esc(nm) + '"></label>'
+    + '<label>연락처<input type="text" id="bkTel" inputmode="tel" placeholder="010-0000-0000" value="' + esc(tel) + '"></label>'
+    + '<label>카카오톡 ID<input type="text" id="bkKakao" placeholder="선택"></label>'
+    + '<label>이메일<input type="email" id="bkEmail" placeholder="선택"></label>'
+    + '<label class="full">요청사항<textarea id="bkMemo" placeholder="항공편·티오프 희망 시각·픽업 등 알려 주실 내용"></textarea></label>'
+    + '</div>'
+    + '<p class="cnote">연락처 · 카카오톡 ID · 이메일 가운데 <b>하나는</b> 적어 주세요. '
+    + '알려주신 연락처는 예약 상담 목적으로만 씁니다.</p>'
+    + '<div class="cbtns">'
+      + '<button type="button" class="mbtn ghost" id="bkBack">← 뒤로</button>'
+      + '<button type="button" class="mbtn" id="bkSend">예약 요청 보내기</button></div>'
+    + '<div class="qp-warn" id="bkMsg" hidden></div>';
+}
+function drawCartBody(){
+  const box = $("#cartBody"), sub = $("#cartSub");
+  if(cartView === "done"){
+    sub.textContent = "";
+    box.innerHTML = '<div class="bdone">'
+      + '<p><b>예약 요청이 접수되었습니다.</b></p>'
+      + '<div class="no">' + esc(lastNo) + '</div>'
+      + '<p>담당자가 확인하고 영업시간 안에 연락드리겠습니다.<br>'
+      + '문의하실 때 이 접수번호를 알려 주시면 빠릅니다.</p>'
+      + '<div class="cbtns"><button type="button" class="mbtn" id="bkDone">확인</button></div></div>';
+    $("#bkDone").onclick = closeCart;
+    return;
+  }
+  if(!CART.length){
+    sub.textContent = "";
+    box.innerHTML = '<div class="cempty">장바구니가 비어 있습니다.<br>'
+      + '골프장·호텔을 열어 날짜와 인원을 고르신 뒤 <b>🛒 장바구니에 담기</b>를 눌러 주세요.</div>';
+    return;
+  }
+  sub.textContent = "담아 두신 일정입니다. 그대로 예약을 요청하시면 담당자가 확인하고 연락드립니다.";
+  const askN = CART.filter(c => c.asked || !c.krw).length;
+  const sum  = CART.reduce((a, c) => a + ((c.asked || !c.krw) ? 0 : c.krw), 0);
+  const rows = '<div class="crows">' + CART.map((c, i) => rowHtml(c, "cart", i)).join("") + '</div>'
+    + '<div class="ctotal"><span>합계' + (askN ? " (요금 문의 " + askN + "건 빼고)" : "") + '</span>'
+      + '<b>' + sum.toLocaleString("ko-KR") + '<em>원</em></b></div>'
+    + '<p class="cnote">담으실 때 화면에 보이던 금액입니다. <b>확정 금액이 아닙니다</b> — '
+    + '담당자가 요금표로 다시 확인해 안내드립니다.</p>';
+  box.innerHTML = rows + (cartView === "form" ? bformHtml()
+    : '<div class="cbtns">'
+      + '<button type="button" class="mbtn ghost" id="cartClear">비우기</button>'
+      + '<button type="button" class="mbtn" id="cartGo">예약 요청하기 →</button></div>');
+  bindRows(box, CART, "cart");
+  if(cartView === "form"){
+    $("#bkBack").onclick = () => { cartView = "list"; drawCartBody(); };
+    $("#bkSend").onclick = sendBooking;
+  }else{
+    $("#cartGo").onclick = () => { cartView = "form"; drawCartBody(); };
+    $("#cartClear").onclick = () => {
+      if(!confirm("장바구니를 비울까요?")) return;
+      CART = []; lsPut(CART_KEY, CART); drawDock(); drawCartBody();
+    };
+  }
+}
+function bkMsg(t){
+  const el = $("#bkMsg");
+  if(!el) return;
+  el.innerHTML = esc(t);
+  el.hidden = !t;
+}
+async function sendBooking(){
+  const g = id => { const el = $("#" + id); return el ? el.value.trim() : ""; };
+  const customer = { name:g("bkName"), tel:g("bkTel"), kakao:g("bkKakao"),
+                     email:g("bkEmail"), memo:g("bkMemo") };
+  if(!customer.name) return bkMsg("성함을 적어 주세요.");
+  if(!customer.tel && !customer.kakao && !customer.email)
+    return bkMsg("연락처 · 카카오톡 ID · 이메일 가운데 하나는 적어 주세요.");
+  const btn = $("#bkSend");
+  btn.disabled = true; btn.textContent = "보내는 중…"; bkMsg("");
+  try{
+    const r = await fetch(API + "/api/golf-book", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "create", items: CART, customer })
+    });
+    const j = await r.json();
+    if(!j || !j.ok) throw new Error((j && j.error) || "보내지 못했습니다.");
+    /* 다음에 오셔도 다시 적지 않으시게 — 견적 요청 칸과 같은 자리를 쓴다 */
+    try{ localStorage.setItem(GUEST_KEY, JSON.stringify({ name: customer.name, tel: customer.tel })); }catch(e){}
+    lastNo = j.no;
+    CART = []; lsPut(CART_KEY, CART); drawDock();
+    cartView = "done"; drawCartBody();
+  }catch(e){
+    btn.disabled = false; btn.textContent = "예약 요청 보내기";
+    bkMsg((e && e.message) || "보내지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+  }
+}
+
+/* ── 창 여닫기 ── */
+function openFav(){ drawFavBody(); $("#favMask").classList.add("on"); }
+function closeFav(){ $("#favMask").classList.remove("on"); }
+function openCart(){
+  if(cartView === "done") cartView = "list";   // 접수 화면이 남아 있지 않게
+  drawCartBody(); $("#cartMask").classList.add("on");
+}
+function closeCart(){ $("#cartMask").classList.remove("on"); cartView = "list"; }
+$("#dockFav").onclick  = openFav;
+$("#dockCart").onclick = openCart;
+$("#favClose").onclick  = closeFav;
+$("#cartClose").onclick = closeCart;
+$("#favMask").onclick  = e => { if(e.target === $("#favMask"))  closeFav(); };
+$("#cartMask").onclick = e => { if(e.target === $("#cartMask")) closeCart(); };
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if($("#favMask").classList.contains("on"))  closeFav();
+  if($("#cartMask").classList.contains("on")) closeCart();
+});
+drawDock();
 
 /* 견적 요청 문구 만들기 — 손님이 그대로 복사해 카톡으로 보낼 수 있게 */
 function askText(){
