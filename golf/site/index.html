@@ -37,6 +37,18 @@ a{color:inherit}
 .menu{display:flex;gap:2px;margin-left:auto}
 .menu a{padding:8px 12px;font-size:14px;font-weight:700;text-decoration:none;color:var(--fairway);border-radius:999px}
 .menu a:hover{background:rgba(18,58,43,.07)}
+/* 종류 메뉴 — 마우스를 올리면 아래로 지역이 펼쳐진다 */
+.navcat{position:relative;display:inline-block}
+.navcat > a i{font-style:normal;font-size:9px;margin-left:4px;opacity:.55;vertical-align:middle}
+.navdrop{position:absolute;left:0;top:100%;min-width:168px;display:none;z-index:70;
+  background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px;
+  box-shadow:0 14px 34px rgba(18,58,43,.18)}
+.navcat:hover .navdrop{display:block}
+.navdrop button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;
+  background:none;border:0;border-radius:8px;padding:9px 11px;font:inherit;font-size:14px;
+  font-weight:700;color:var(--fairway);cursor:pointer;text-align:left;white-space:nowrap}
+.navdrop button:hover{background:rgba(18,58,43,.09)}
+.navdrop small{font-size:11.5px;font-weight:700;color:var(--muted)}
 .navcta{margin-left:10px;background:var(--fairway);color:#fff!important;padding:9px 18px!important;border-radius:999px;font-size:14px}
 .navcta:hover{background:var(--fairway-mid)!important}
 .burger{display:none;background:none;border:1px solid var(--line);border-radius:9px;padding:7px 11px;font-size:17px;cursor:pointer;line-height:1}
@@ -46,6 +58,10 @@ a{color:inherit}
   /* 메뉴가 자리에서 빠지므로(absolute) 오른쪽 도구가 대신 오른쪽 끝으로 간다 */
   .navtools{margin-left:auto}
   .menu a{padding:12px 10px;font-size:15.5px}
+  /* 좁은 화면에서는 마우스를 올릴 수 없으니 지역을 접지 않고 한 단 들여써서 그대로 편다 */
+  .navcat{display:block}
+  .navdrop{position:static;display:block;background:none;border:0;box-shadow:none;padding:0 0 6px 14px}
+  .navdrop button{padding:9px 8px;font-size:14.5px}
   .navcta{margin-left:0;text-align:center;margin-top:6px}
   .burger{display:block}
 }
@@ -1055,14 +1071,35 @@ function drawCatPick(){
     + '<em>' + esc(c.ic || "") + '</em>' + esc(c.t)
     + ' <small>' + itemsOf(c.k).length + esc(c.u || "곳") + '</small></button>').join("");
   $("#catPick").querySelectorAll("button").forEach(b => b.onclick = () => pickCat(b.dataset.k));
-  $("#catNav").innerHTML = list.map(c =>
-    '<a href="#catalog" data-k="' + esc(c.k) + '">' + esc(c.t) + '</a>').join("");
-  $("#catNav").querySelectorAll("a").forEach(a => a.onclick = () => pickCat(a.dataset.k));
+  /* 맨 위 메뉴 — 종류마다 아래로 «지역»이 펼쳐진다(사장님 2026-09-08).
+     골프장이 60곳이 넘어 이름을 다 늘어놓으면 화면을 덮으므로 지역으로 묶는다.
+     지역 차례는 관리 화면의 「지역 순서」를 그대로 따른다(regionsOf). */
+  $("#catNav").innerHTML = list.map(c => {
+    const regs = regionsOf(itemsOf(c.k));
+    return '<span class="navcat">'
+      + '<a href="#catalog" data-k="' + esc(c.k) + '">' + esc(c.t)
+        + (regs.length > 1 ? '<i>▾</i>' : '') + '</a>'
+      + (regs.length > 1
+          ? '<div class="navdrop">' + regs.map(g =>
+              '<button type="button" data-k="' + esc(c.k) + '" data-r="' + esc(g.r) + '">'
+              + esc(g.r) + '<small>' + g.n + esc(c.u || "곳") + '</small></button>').join("")
+            + '</div>'
+          : '')
+      + '</span>';
+  }).join("");
+  $("#catNav").querySelectorAll("a[data-k]").forEach(a => a.onclick = () => pickCat(a.dataset.k));
+  $("#catNav").querySelectorAll(".navdrop button").forEach(b => b.onclick = () => {
+    pickCat(b.dataset.k, b.dataset.r);
+    $("#menu").classList.remove("open");                     // 휴대폰에서 메뉴가 열린 채 남지 않게
+    document.getElementById("catalog").scrollIntoView({ behavior:"smooth" });
+  });
 }
-function pickCat(k){
+/* r 을 주면 그 지역까지 골라 준다(맨 위 메뉴의 지역 목록에서 쓴다) */
+function pickCat(k, r){
   if(!k || !itemsOf(k).length) return;
   curCat = k;
-  curReg = (regionsOf(itemsOf(k))[0] || {}).r || "";
+  const regs = regionsOf(itemsOf(k));
+  curReg = (r && regs.some(g => g.r === r)) ? r : ((regs[0] || {}).r || "");
   drawCatPick(); drawHeads(); drawTabs(); drawItems();
 }
 function drawTabs(){ tabber("#regTabs", itemsOf(curCat), curReg, r => { curReg = r; drawTabs(); drawItems(); }); }
