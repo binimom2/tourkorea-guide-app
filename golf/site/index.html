@@ -1281,6 +1281,10 @@ function openDetail(x, kind){
    고른 날짜의 요금은 서버가 계산한다(원가·밧은 이 화면에 오지 않는다).
    날짜를 아직 안 골랐으면 카드와 같은 «최저가»를 보여 준다. */
 let qpItem = null, qpKind = "", qpPax = 4, qpHoles = "18", qpSeq = 0;
+/* 골프장 인원은 호텔 인원과 **따로** 기억한다(사장님 2026-09-08).
+   qpPax 한 칸을 둘이 나눠 쓰고 있어, 호텔에서 성인 2명으로 보다가 골프장을 열면
+   그 2명이 그대로 넘어왔다. 골프장 기본은 4명이고, 손님이 고쳐 두면 그 값이 유지된다. */
+let golfPax = 4;
 /* 화면에 지금 떠 있는 금액을 장바구니가 그대로 쓰도록 붙잡아 둔다.
      null            아직 담을 수 없다(날짜·룸타입을 안 골랐다)
      {loading:true}  서버에 물어보는 중
@@ -1448,12 +1452,17 @@ function openPanel(x, kind){
   (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap"]
        : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
-  /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님). */
+  /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님).
+     골프장은 «골프장 인원»을 따로 기억해 두었다가 되살린다 — 기본 4명이고,
+     손님이 8명으로 고쳐 두었으면 다른 골프장을 열어도 8명 그대로다.
+     둘이 같은 칸(qpPax)을 쓰고 있어, 이렇게 갈라 두지 않으면 호텔의 2명이 골프장으로 넘어온다. */
   if(isH){
     qpAdult = 2; qpChild = 0; qpAges = []; qpBirth = []; qpPax = 2;
     qpNights = 1; qpRooms = 1;
     closeOcc();          // 다른 곳을 열 때 펼쳐진 채로 남지 않게
     drawAges();
+  } else {
+    qpPax = golfPax;
   }
   drawTriple();
   drawCnt();
@@ -1564,7 +1573,8 @@ function drawAges(){
   });
 }
 function syncPax(){ if(qpKind === "hotels") qpPax = qpAdult + qpChild; }
-function setCnt(n){ qpPax = Math.max(1, Math.min(40, n)); drawCnt(); qpCalc(); }   // 골프장 전용
+/* 골프장 인원 — 고치시면 «골프장 인원»으로 따로 기억해 둔다(호텔 인원과 섞이지 않게) */
+function setCnt(n){ qpPax = golfPax = Math.max(1, Math.min(40, n)); drawCnt(); qpCalc(); }
 function curCnt(){ return qpPax; }
 function setAdult(n){
   qpAdult = Math.max(1, Math.min(40, n));
