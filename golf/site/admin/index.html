@@ -631,13 +631,16 @@ function bookWhen(iso){
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
 }
 function bookStatusOf(k){ return BOOK_STATUS.filter(s=>s.k===k)[0]||BOOK_STATUS[0]; }
-/* 담긴 줄 하나 — 「골프장 · 파타야 / 람차방 CC / 09.17 · 18홀 · 4명 / 676,000원」 */
+/* 담긴 줄 하나 — 「람차방 CC · 골프장 파타야 / 09.17 · 18홀 · 4명 / 676,000원」.
+   종류 이름은 손님이 보낸 글자를 쓰지 않고 여기서 붙인다. */
+const BOOK_KIND={courses:'골프장',hotels:'호텔'};
 function bookItemHtml(it){
   const money=(it.asked||!it.krw)?'<i class="bkask">요금 문의</i>'
     :('<b>'+Number(it.krw).toLocaleString('ko-KR')+'원</b>'
       +(it.baht?' <i>('+Number(it.baht).toLocaleString('ko-KR')+'밧)</i>':''));
+  const tag=[BOOK_KIND[it.kind]||'', it.region||''].filter(Boolean).join(' ');
   return '<li><span class="bkw">'+esc(it.name)
-    +(it.region?' <i>· '+esc(it.region)+'</i>':'')+'</span>'
+    +(tag?' <i>· '+esc(tag)+'</i>':'')+'</span>'
     +'<span class="bkd">'+esc(it.label||'')+'</span>'
     +'<span class="bkm">'+money+'</span></li>';
 }

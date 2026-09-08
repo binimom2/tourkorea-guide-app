@@ -182,9 +182,18 @@ export async function onRequest(context) {
       if (!customer.tel && !customer.kakao && !customer.email)
         return json({ error: '연락처 · 카카오톡 ID · 이메일 중 하나는 적어 주세요.' }, 400);
 
+      /* 접수번호가 어쩌다 겹치면 앞 건을 덮어써 버린다 — 비어 있는 번호가 나올 때까지 다시 뽑는다 */
+      let no = '';
+      for (let i = 0; i < 6 && !no; i++) {
+        const cand = bookingNo();
+        const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + cand) + '&select=data_key');
+        if (!Array.isArray(rows) || !rows.length) no = cand;
+      }
+      if (!no) return json({ error: '접수번호를 만들지 못했습니다. 잠시 뒤 다시 보내 주세요.' }, 503);
+
       const total = items.reduce((a, x) => a + x.krw, 0);
       const rec = {
-        no: bookingNo(),
+        no,
         at: new Date().toISOString(),
         status: 'new',                 // new(접수) · doing(진행) · done(완료) · cancel(취소)
         customer, items,

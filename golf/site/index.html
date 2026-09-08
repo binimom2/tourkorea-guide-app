@@ -1889,6 +1889,7 @@ function drawCartBody(){
     return;
   }
   if(!CART.length){
+    cartView = "list";              // 적는 칸을 열어 둔 채 마지막 줄을 뺐을 때를 위해
     sub.textContent = "";
     box.innerHTML = '<div class="cempty">장바구니가 비어 있습니다.<br>'
       + '골프장·호텔을 열어 날짜와 인원을 고르신 뒤 <b>🛒 장바구니에 담기</b>를 눌러 주세요.</div>';
