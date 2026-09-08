@@ -299,15 +299,20 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
    창 안을 스크롤해도 위에 붙어 있게 sticky 로 둔다.
    좁은 화면에서는 창이 화면을 거의 다 채워 옮길 데가 없으므로 손잡이 글씨만 감추고
    닫기 단추는 그대로 남긴다(띠째 감추면 ×까지 사라진다). */
-.dbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:7px;
-  margin:-22px -22px 14px;padding:7px 12px 7px 22px;background:#F1ECE0;
-  border-bottom:1px solid var(--line);border-radius:18px 18px 0 0;
-  cursor:grab;user-select:none;touch-action:none}
-.dbar.grabbing{cursor:grabbing}
-.dbar .grip{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--muted)}
-.dbar .grip b{font-size:14px;line-height:1;color:rgba(18,58,43,.3)}
-.dbar .mclose{margin:0 0 0 auto;float:none;font-size:24px}
-@media(max-width:820px){ .dbar{cursor:default} .dbar .grip{display:none} }
+/* 띠(배경 줄)를 두지 않는다 — 창 안을 내릴 때 사진 위를 가로지르는 줄로 보였다(사장님).
+   점(끌기)과 ×(닫기)만 동그란 단추로 띄워 두고, 자리만 32px 비워 글자와 겹치지 않게 한다. */
+.dbar{position:sticky;top:0;z-index:5;height:32px;margin:-8px 0 6px;
+  display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.dbar .grip,.dbar .mclose{pointer-events:auto;width:30px;height:30px;padding:0;margin:0;float:none;
+  display:flex;align-items:center;justify-content:center;border-radius:999px;
+  background:rgba(247,243,233,.94);border:1px solid var(--line);
+  box-shadow:0 2px 8px rgba(8,23,15,.1);backdrop-filter:blur(3px)}
+.dbar .grip{cursor:grab;user-select:none;touch-action:none}
+.dbar .grip.grabbing{cursor:grabbing;background:#fff}
+.dbar .grip b{font-size:13px;line-height:1;color:rgba(18,58,43,.5)}
+.dbar .mclose{font-size:19px;line-height:1;color:var(--muted);cursor:pointer}
+.dbar .mclose:hover{background:#fff;color:var(--ink)}
+@media(max-width:820px){ .dbar .grip{display:none} }
 .dgrid{display:grid;grid-template-columns:1fr 360px;gap:26px;align-items:start}
 .dleft{min-width:0}
 .dsect{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
@@ -508,6 +513,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .bform{display:grid;gap:10px;grid-template-columns:1fr 1fr;margin:0 0 14px}
 .bform label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:800;color:var(--muted)}
 .bform label.full{grid-column:1/-1}
+/* 로그인 정보로 채웠다는 한 줄 — 적는 칸 바로 위에 붙는다 */
+.bfme{margin:0 0 8px!important;color:var(--fairway);font-weight:700}
 .bform input,.bform textarea{border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;font-size:14.5px;background:#fff;color:var(--ink)}
 .bform textarea{min-height:76px;resize:vertical;line-height:1.55}
 .bform input:focus,.bform textarea:focus{outline:2px solid var(--marigold);outline-offset:-1px;border-color:transparent}
@@ -618,7 +625,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   <div class="modal wide detail" id="detailBox" role="dialog" aria-modal="true" aria-labelledby="dName">
     <!-- 이 띠를 끌면 창이 따라 움직인다. 닫기 단추도 여기 얹혀 스크롤해도 늘 보인다. -->
     <div class="dbar" id="dBar">
-      <span class="grip" title="끌어서 창을 옮기실 수 있습니다"><b>⠿</b></span>
+      <span class="grip" id="dGrip" title="끌어서 창을 옮기실 수 있습니다"><b>⠿</b></span>
       <button class="mclose" id="detailClose" type="button" aria-label="닫기">×</button>
     </div>
     <div class="dgrid">
@@ -1756,25 +1763,24 @@ function dragMove(x, y){
   if(ax || ay) m.style.transform = "translate(" + dgX + "px," + dgY + "px)";
 }
 (function(){
-  const bar = $("#dBar");
-  bar.addEventListener("pointerdown", e => {
+  const grip = $("#dGrip");                       // 손잡이는 점(⠿) 단추 하나뿐이다
+  grip.addEventListener("pointerdown", e => {
     if(innerWidth <= 820) return;                 // 좁은 화면에서는 옮기지 않는다
-    if(e.target.closest(".mclose")) return;       // 닫기 단추를 누른 것은 끌기가 아니다
     dgOn = true; dgSX = e.clientX - dgX; dgSY = e.clientY - dgY;
-    bar.classList.add("grabbing");
-    try{ bar.setPointerCapture(e.pointerId); }catch(err){}
+    grip.classList.add("grabbing");
+    try{ grip.setPointerCapture(e.pointerId); }catch(err){}
     e.preventDefault();                           // 끌 때 글자가 선택되지 않게
   });
-  bar.addEventListener("pointermove", e => {
+  grip.addEventListener("pointermove", e => {
     if(dgOn) dragMove(e.clientX - dgSX, e.clientY - dgSY);
   });
   const end = e => {
     if(!dgOn) return;
-    dgOn = false; bar.classList.remove("grabbing");
-    try{ bar.releasePointerCapture(e.pointerId); }catch(err){}
+    dgOn = false; grip.classList.remove("grabbing");
+    try{ grip.releasePointerCapture(e.pointerId); }catch(err){}
   };
-  bar.addEventListener("pointerup", end);
-  bar.addEventListener("pointercancel", end);
+  grip.addEventListener("pointerup", end);
+  grip.addEventListener("pointercancel", end);
 })();
 $("#detailMask").onclick = e => { if(e.target === $("#detailMask")) closeDetail(); };
 
@@ -1997,19 +2003,23 @@ function drawFavBody(){
 /* ── 장바구니 · 예약 요청 ──
    한 창 안에서 «목록 → 적는 칸 → 접수 완료» 세 모습으로 바뀐다. */
 let cartView = "list", lastNo = "";
+/* 적는 칸은 «성함 · 연락처 · 이메일 · 요청사항» 넷뿐이다(사장님 2026-09-08).
+   카카오톡 ID는 손님이 자기 아이디를 모르는 일이 많아 뺐다.
+   로그인해 두셨으면 성함·이메일을 그 정보로 채워 준다(고쳐 넣으실 수 있다). */
 function bformHtml(){
   let p = null;
   try{ p = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); }catch(e){}
-  const nm  = (guest && guest.name) || (p && p.name) || "";
+  const nm  = (guest && guest.name)  || (p && p.name)  || "";
+  const em  = (guest && guest.email) || (p && p.email) || "";
   const tel = (p && p.tel) || "";
-  return '<div class="bform">'
+  return (guest ? '<p class="cnote bfme">로그인하신 정보로 채워 두었습니다 — 고치셔도 됩니다.</p>' : '')
+    + '<div class="bform">'
     + '<label>성함<input type="text" id="bkName" placeholder="예약자 성함" value="' + esc(nm) + '"></label>'
     + '<label>연락처<input type="text" id="bkTel" inputmode="tel" placeholder="010-0000-0000" value="' + esc(tel) + '"></label>'
-    + '<label>카카오톡 ID<input type="text" id="bkKakao" placeholder="선택"></label>'
-    + '<label>이메일<input type="email" id="bkEmail" placeholder="선택"></label>'
-    + '<label class="full">요청사항<textarea id="bkMemo" placeholder="항공편·티오프 희망 시각·픽업 등 알려 주실 내용"></textarea></label>'
+    + '<label class="full">이메일<input type="email" id="bkEmail" placeholder="name@example.com" value="' + esc(em) + '"></label>'
+    + '<label class="full">요청사항<textarea id="bkMemo" placeholder="원하시는 티오프 시간을 기재해주세요"></textarea></label>'
     + '</div>'
-    + '<p class="cnote">연락처 · 카카오톡 ID · 이메일 가운데 <b>하나는</b> 적어 주세요. '
+    + '<p class="cnote">연락처나 이메일 가운데 <b>하나는</b> 꼭 적어 주세요. '
     + '알려주신 연락처는 예약 상담 목적으로만 씁니다.</p>'
     + '<div class="cbtns">'
       + '<button type="button" class="mbtn ghost" id="bkBack">← 뒤로</button>'
@@ -2042,8 +2052,11 @@ function drawCartBody(){
   const rows = '<div class="crows">' + CART.map((c, i) => rowHtml(c, "cart", i)).join("") + '</div>'
     + '<div class="ctotal"><span>합계' + (askN ? " (요금 문의 " + askN + "건 빼고)" : "") + '</span>'
       + '<b>' + sum.toLocaleString("ko-KR") + '<em>원</em></b></div>'
-    + '<p class="cnote">담으실 때 화면에 보이던 금액입니다. <b>확정 금액이 아닙니다</b> — '
-    + '담당자가 요금표로 다시 확인해 안내드립니다.</p>';
+    /* 요금은 신뢰의 문제라 「확정」으로 말한다(사장님 2026-09-08).
+       그래서 창을 열 때마다 서버에 다시 물어 최신 요금으로 갈아 끼운다(repriceCart) —
+       그러지 않으면 며칠 전 담긴 옛 금액을 두고 「확정」이라 말하는 꼴이 된다. */
+    + '<p class="cnote"><b>확정 요금입니다.</b> 예약 가능 여부(티오프 시간·객실)는 '
+    + '확인 후 바로 안내드립니다.</p>';
   box.innerHTML = rows + (cartView === "form" ? bformHtml()
     : '<div class="cbtns">'
       + '<button type="button" class="mbtn ghost" id="cartClear">비우기</button>'
@@ -2068,11 +2081,10 @@ function bkMsg(t){
 }
 async function sendBooking(){
   const g = id => { const el = $("#" + id); return el ? el.value.trim() : ""; };
-  const customer = { name:g("bkName"), tel:g("bkTel"), kakao:g("bkKakao"),
-                     email:g("bkEmail"), memo:g("bkMemo") };
+  const customer = { name:g("bkName"), tel:g("bkTel"), email:g("bkEmail"), memo:g("bkMemo") };
   if(!customer.name) return bkMsg("성함을 적어 주세요.");
-  if(!customer.tel && !customer.kakao && !customer.email)
-    return bkMsg("연락처 · 카카오톡 ID · 이메일 가운데 하나는 적어 주세요.");
+  if(!customer.tel && !customer.email)
+    return bkMsg("연락처나 이메일 가운데 하나는 적어 주세요.");
   const btn = $("#bkSend");
   btn.disabled = true; btn.textContent = "보내는 중…"; bkMsg("");
   try{
@@ -2083,7 +2095,8 @@ async function sendBooking(){
     const j = await r.json();
     if(!j || !j.ok) throw new Error((j && j.error) || "보내지 못했습니다.");
     /* 다음에 오셔도 다시 적지 않으시게 — 견적 요청 칸과 같은 자리를 쓴다 */
-    try{ localStorage.setItem(GUEST_KEY, JSON.stringify({ name: customer.name, tel: customer.tel })); }catch(e){}
+    try{ localStorage.setItem(GUEST_KEY, JSON.stringify({
+      name: customer.name, tel: customer.tel, email: customer.email })); }catch(e){}
     lastNo = j.no;
     CART = []; lsPut(CART_KEY, CART); drawTools();
     cartView = "done"; drawCartBody();
@@ -2096,9 +2109,36 @@ async function sendBooking(){
 /* ── 창 여닫기 ── */
 function openFav(){ drawFavBody(); $("#favMask").classList.add("on"); }
 function closeFav(){ $("#favMask").classList.remove("on"); }
-function openCart(){
+/* 담긴 줄의 금액을 서버에 다시 물어 **지금 요금**으로 갈아 끼운다.
+   장바구니는 손님 브라우저에 며칠씩 남는다 — 그 사이 요금표가 바뀌면 옛 금액이 남고,
+   그걸 「확정 요금」이라 말할 수는 없다. 그래서 창을 열 때마다 다시 셈한다.
+   서버에 못 물어보면(인터넷 끊김 등) 담겨 있던 값을 그대로 둔다 — 0원으로 만들지 않는다. */
+async function repriceCart(){
+  await Promise.all(CART.map(async c => {
+    try{
+      const tri = Math.max(0, Math.min(c.rooms, c.pax - c.rooms * 2));   // 세 분이 드는 방 수
+      const body = c.kind === "hotels"
+        ? { kind:"hotel", region:c.region, hotel:c.name, room:c.option, date:c.date,
+            nights:c.nights, rooms:c.rooms, pax:c.pax, adult:c.adult, child:c.child,
+            childAges: c.ages || [], extraAdult: tri, extraChild: tri }
+        : { region:c.region, course:c.name, date:c.date, pax:c.pax,
+            holes: (String(c.option || "").replace(/[^0-9]/g, "") || "18") };
+      const r = await fetch(API + "/api/golf-price", {
+        method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if(j && j.ok){ c.krw = j.totalKrw || 0; c.baht = j.totalBaht || 0; c.asked = false; }
+      else { c.krw = 0; c.baht = 0; c.asked = true; }   // 그 날짜 요금이 없어졌으면 「문의」로
+    }catch(e){ /* 못 물어보면 담긴 값 그대로 */ }
+  }));
+  lsPut(CART_KEY, CART);
+}
+async function openCart(){
   if(cartView === "done") cartView = "list";   // 접수 화면이 남아 있지 않게
-  drawCartBody(); $("#cartMask").classList.add("on");
+  drawCartBody(); $("#cartMask").classList.add("on");   // 담긴 값으로 먼저 보여 주고
+  if(!CART.length) return;
+  await repriceCart();                                  // 최신 요금이 오면 갈아 끼운다
+  /* 그 사이 창을 닫았거나 적는 칸으로 넘어갔으면 다시 그리지 않는다(적던 내용이 지워진다) */
+  if(cartView === "list" && $("#cartMask").classList.contains("on")) drawCartBody();
 }
 function closeCart(){ $("#cartMask").classList.remove("on"); cartView = "list"; }
 $("#navFav").onclick  = openFav;

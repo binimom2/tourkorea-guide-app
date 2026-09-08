@@ -81,6 +81,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .holidays .hd{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:4px 6px;background:var(--paper)}
 .holidays .hd input{font:inherit;font-size:13px;border:0;background:none}
 .holidays .hd button{border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800}
+/* 사이트 관리로 옮겨 간 표 — 보기만 되게 잠근 모습 */
+.lockmsg{background:rgba(232,163,61,.15);border:1px solid rgba(232,163,61,.45);border-radius:9px;
+  padding:10px 12px;font-size:13px;font-weight:700;color:#7a4a00;margin-bottom:12px;line-height:1.55}
+.locked{opacity:.72}
+.locked input,.locked select,.locked textarea{background:#f2efe8;color:var(--muted);cursor:not-allowed}
 
 .savebar{position:fixed;left:0;right:0;bottom:0;background:var(--fairway);color:var(--sand);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:30}
 .savebar .msg{font-size:13px}
@@ -558,13 +563,31 @@ function collapse(o){ // {wd,we} 둘 다 비면 null
   if(o && (o.wd!=null || o.we!=null)) return { wd:o.wd??null, we:o.we??null };
   return null;
 }
+/* ══════ 이 화면이 «가진» 칸과 «남의» 칸 ══════ (2026-09-08)
+   요금표(golf_pricing) 한 덩이를 두 화면이 같이 쓴다 —
+     이 화면(/golf/admin/)         : 차량 · 핸들링 · 가이드 · 기타
+     사이트 관리(/golf/site/admin/) : regions(골프장·호텔 요금줄) · holidays(공휴일)
+   예전에는 두 화면 다 «덩이 전체»를 덮어썼다. 그래서 한 탭이 열릴 때 읽어 둔 옛 내용을
+   저장하면 다른 화면의 작업이 통째로 사라졌다 — 2026-09-08에 골프장 12곳의 요금줄이
+   이렇게 날아갔다(백업으로 복구함).
+   이제는 저장 직전에 서버 최신본을 다시 읽어 **남의 칸은 서버 것을 그대로 살려** 둔다. */
+const NOT_MINE=['regions','holidays'];
+async function mergeKeepOthers(cur){
+  let server=null;
+  try{ server=await gsLoadRaw(PRICING_KEY); }catch(e){ return null; }   // 못 읽으면 저장하지 않는다
+  const out=Object.assign({},server||{},cur);
+  NOT_MINE.forEach(k=>{ if(server&&server[k]!==undefined) out[k]=server[k]; });
+  return out;
+}
 async function saveAll(){
   // 표(CR/HR) → G.regions 재조립
   G.regions=regroupRegions();
   const btn=document.getElementById('saveBtn'), msg=document.getElementById('saveMsg');
   btn.disabled=true; btn.textContent='저장 중...';
   try{
-    if(await gSaveSafe(PRICING_KEY,G)){
+    const merged=await mergeKeepOthers(G);
+    if(!merged){ msg.textContent='⚠ 서버 연결 실패 — 저장하지 않았습니다.'; return; }
+    if(await gSaveSafe(PRICING_KEY,merged)){
       _dirty=false;
       msg.textContent='✅ 저장 완료 — 견적 페이지에 반영됩니다. ('+new Date().toLocaleTimeString('ko-KR')+')';
     } else {
@@ -573,6 +596,20 @@ async function saveAll(){
   }catch(e){
     msg.textContent='❌ 저장 실패: '+(e.message||e);
   }finally{ btn.disabled=false; btn.textContent='💾 저장'; }
+}
+
+/* 옮겨 간 표를 «보기만» 되게 잠근다 — 자료는 그대로 두고 손만 못 대게 한다.
+   입력칸을 전부 disabled 로 만들고, 줄을 더하거나 지우는 단추는 없앤다.
+   맨 위에 어디서 고치는지 한 줄 붙인다. */
+function lockCard(node,where){
+  const wrap=el('div','locked');
+  const note=el('div','lockmsg');
+  note.innerHTML='🔒 이 표는 <b>여기서 고치지 않습니다.</b> '+where;
+  wrap.appendChild(note);
+  node.querySelectorAll('input,select,textarea').forEach(i=>{ i.disabled=true; });
+  node.querySelectorAll('button').forEach(b=>{ b.remove(); });
+  wrap.appendChild(node);
+  return wrap;
 }
 
 /* ══════════ 렌더 헬퍼 ══════════ */
@@ -891,14 +928,21 @@ function render(){
     oc.appendChild(orow); return oc;
   };
   // 만들어만 두고 화면에는 붙이지 않는다 — 선택한 것만 창 안으로 옮겨 보여준다
+  /* ⛳ 골프장 · 🏨 호텔 · 📅 공휴일은 **사이트 관리 화면으로 옮겼다**(사장님 2026-09-08).
+     여기 남겨 두면 두 화면이 같은 자리를 두고 다투다 한쪽 작업이 통째로 지워진다.
+     실제로 2026-09-08에 골프장 12곳의 요금줄이 그렇게 날아갔다.
+     자료를 지우지는 않았고, 보기만 되게 잠가 두었다(lockCard). */
   _rateSections=[
     {key:'vehicle', label:'🚐 차량 요금',    node:vehicleCard()},
     {key:'handling',label:'🧳 핸들링 차지',  node:periodTable('🧳 핸들링 차지 (1인 기준)','기간별 핸들링 요금.',G.handlingPeriods)},
     {key:'guide',   label:'🧑‍🏫 가이드 요금',  node:guideTable()},
-    {key:'holiday', label:'📅 공휴일',       node:holidayCard()},
     {key:'etc',     label:'⚙️ 기타',         node:etcCard()},
-    {key:'golf',    label:'⛳ 골프장',       node:golfSection()},
-    {key:'hotel',   label:'🏨 호텔',         node:hotelSection()},
+    {key:'holiday', label:'📅 공휴일 (이전됨)', node:lockCard(holidayCard(),
+      '공휴일은 <b>사이트 관리 → 사이트 내용 → 📅 공휴일</b>에서 넣습니다.')},
+    {key:'golf',    label:'⛳ 골프장 (옛 표)', node:lockCard(golfSection(),
+      '골프장 요금은 <b>사이트 관리 → ⛳ 골프장</b>에서 골프장마다 넣습니다. 아래는 옛 자료라 보기만 됩니다.')},
+    {key:'hotel',   label:'🏨 호텔 (옛 표)',  node:lockCard(hotelSection(),
+      '호텔 요금은 <b>사이트 관리 → 🏨 호텔</b>에서 호텔마다 넣습니다. 아래는 옛 자료라 보기만 됩니다.')},
   ];
 
   const c=card('💰 요금표 관리','종류를 누르면 창이 열립니다. 창을 닫지 않고 상단 탭으로 바로 옮겨 다닐 수 있습니다.');

@@ -184,6 +184,12 @@ tr.subrow td{padding:0 6px 11px}
 .bkby{font-size:11.5px;color:var(--muted);font-weight:700}
 @media(max-width:640px){ .bkw{min-width:100%} .bkm{margin-left:0} }
 
+/* 📅 공휴일 — 날짜 칸을 낱개로 늘어놓는다 */
+.hdays{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hd{display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:8px;padding:4px 5px;background:#fff}
+.hd input{font:inherit;font-size:13px;border:0;background:none;padding:2px}
+.hd .del{border:0;padding:2px 5px;font-size:14px;background:none}
+
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
 .add{background:var(--fairway);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:13.5px;font-weight:800}
 .add:hover{background:var(--fairway-mid)}
@@ -309,6 +315,15 @@ const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-auth',persistSession:true,autoRefreshToken:true}});
 
 const SITE_KEY='golf_site';
+/* 이 화면이 가진 요금 칸 — 나머지(차량·핸들링·가이드…)는 /golf/admin/ 것이라 손대지 않는다 */
+const RATE_MINE=['regions','holidays'];
+async function mergeRatesForSave(cur){
+  let server=null;
+  try{ server=await loadRaw(PRICE_KEY); }catch(e){ return null; }   // 못 읽으면 저장하지 않는다
+  const out=Object.assign({},server||{});
+  RATE_MINE.forEach(k=>{ if(cur&&cur[k]!==undefined) out[k]=cur[k]; });
+  return out;
+}
 const EMAIL_DOMAIN='@wevetour.app';          /* 이 화면에서 새로 만드는 계정의 이메일 */
 const ELEVATED_ADMIN_IDS=['lds1207','sooyoung'];        /* 명단과 무관하게 항상 어드민 — 잠금 방지 */
 
@@ -762,7 +777,8 @@ function itemsPath(k,i){ return (k==='courses'||k==='hotels') ? k+'.'+i : 'items
 function subs(){
   return [{k:'hero',label:'첫 화면'}]
     .concat(catsAll().map(c=>({k:'cat:'+c.k, label:(c.ic?c.ic+' ':'')+(c.t||c.k)+(c.on===false?' (숨김)':'')})))
-    .concat([{k:'cats',label:'＋ 종류 관리'},{k:'tours',label:'기타투어'},
+    .concat([{k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
+             {k:'tours',label:'기타투어'},
              {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'}]);
 }
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
@@ -783,9 +799,17 @@ async function saveSite(){
     if(dirty['site']){
       if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); msg.push('사이트 내용'); } else ok=false;
     }
-    /* 요금은 키가 달라 따로 나간다 — 한쪽이 실패해도 다른 쪽은 남는다 */
+    /* 요금은 키가 달라 따로 나간다 — 한쪽이 실패해도 다른 쪽은 남는다.
+       ⚠ 요금표(golf_pricing) 한 덩이를 요금·코드 화면(/golf/admin/)과 같이 쓴다.
+       이 화면이 가진 것은 «regions(골프장·호텔 요금줄)»과 «holidays(공휴일)» 둘뿐이고,
+       차량·핸들링·가이드는 저쪽 것이다. 그래서 저장 직전에 서버 최신본을 다시 읽어
+       **저쪽 칸은 서버 것을 그대로 살려** 둔다 — 예전에는 덩이째 덮어써서
+       한 화면이 다른 화면의 작업을 통째로 지웠다(2026-09-08 사고). */
     if(ok&&dirty['rates']){
-      if(await saveSafe(PRICE_KEY,P)){ clearDirty('rates'); msg.push('요금'); } else ok=false;
+      const merged=await mergeRatesForSave(P);
+      if(!merged){ toast('⚠ 서버 연결 실패 — 요금을 저장하지 않았습니다'); ok=false; }
+      else if(await saveSafe(PRICE_KEY,merged)){ P=merged; clearDirty('rates'); msg.push('요금'); }
+      else ok=false;
     }
     drawTabs();
     /* 저장이 막혔을 때 아무 말도 없으면 저장된 줄 안다 — 특히 요금만 실패했을 때 */
@@ -819,7 +843,7 @@ function drawSite(){
     S=deepCopy(window.SITE_DEFAULT); markDirty('site'); drawTabs();
   };
   if(sub.indexOf('cat:')===0) subItems(sub.slice(4));
-  else ({hero:subHero,cats:subCats,tours:subTours,board:subBoard,foot:subFoot}[sub]||subHero)();
+  else ({hero:subHero,cats:subCats,holiday:subHoliday,tours:subTours,board:subBoard,foot:subFoot}[sub]||subHero)();
 }
 
 function subHero(){
@@ -1746,6 +1770,37 @@ function subTours(){
       +'<button class="del" data-del="tours" data-i="'+i+'">이 묶음 삭제</button></div></div>').join('')
     +'<div class="rowbtns"><button class="add" data-add="tour">＋ 묶음 추가</button></div></div>';
   bindRowBtns();
+}
+/* 📅 태국 공휴일 — 요금표(golf_pricing)의 holidays 에 담긴다.
+   여기 적은 날짜는 토·일과 똑같이 «주말·휴일» 요금으로 셈한다(골프장·호텔 둘 다).
+   예전에는 /golf/admin/ 에 있었는데 관리 화면을 하나로 모으려고 이리로 옮겼다(사장님 2026-09-08).
+   S(사이트 내용)가 아니라 P(요금표)에 들어가므로 data-p 방식을 못 쓰고 여기서 직접 잇는다. */
+function subHoliday(){
+  const box=document.getElementById('subpane');
+  if(!P){
+    box.innerHTML='<div class="card"><h2>📅 태국 공휴일</h2>'
+      +'<p class="desc" style="color:#B23B3B">요금표를 불러오지 못했습니다. 새로고침해 주세요.</p></div>';
+    return;
+  }
+  if(!Array.isArray(P.holidays)) P.holidays=[];
+  const list=P.holidays;
+  box.innerHTML='<div class="card"><h2>📅 태국 공휴일</h2>'
+    +'<p class="desc">여기 적은 날짜는 <b>토·일과 똑같이 「주말·휴일」 요금</b>으로 계산됩니다 — 골프장·호텔 모두. '
+    +'개수 제한이 없으니 다음 해 것을 미리 넣어 두셔도 됩니다. 넣으신 뒤 <b>저장</b>을 눌러 주세요.</p>'
+    +'<div class="hdays">'
+    +list.map((d,i)=>'<span class="hd"><input type="date" data-hd="'+i+'" value="'+esc(d||'')+'">'
+      +'<button class="del" data-hdx="'+i+'" title="빼기">×</button></span>').join('')
+    +(list.length?'':'<span class="cnt">아직 없습니다. 아래 「＋ 날짜 추가」를 눌러 주세요.</span>')
+    +'</div>'
+    +'<div class="rowbtns"><button class="add" id="hdAdd">＋ 날짜 추가</button>'
+    +'<span class="cnt">'+list.filter(Boolean).length+'일 등록됨</span></div></div>';
+  box.querySelectorAll('[data-hd]').forEach(el=>el.onchange=()=>{
+    list[Number(el.dataset.hd)]=el.value; markDirty('rates');
+  });
+  box.querySelectorAll('[data-hdx]').forEach(b=>b.onclick=()=>{
+    list.splice(Number(b.dataset.hdx),1); markDirty('rates'); subHoliday();
+  });
+  document.getElementById('hdAdd').onclick=()=>{ list.push(''); markDirty('rates'); subHoliday(); };
 }
 function subBoard(){
   document.getElementById('subpane').innerHTML=
