@@ -71,11 +71,25 @@ a{color:inherit}
 
 /* ── 신뢰 배지 줄 ── */
 .trust{background:var(--fairway-deep);color:rgba(255,255,255,.82);border-top:1px solid rgba(255,255,255,.09)}
-.trust .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;padding-left:18px;padding-right:18px}
-.trust div{padding:18px 14px;text-align:center}
-.trust b{display:block;font-size:16.5px;font-weight:900;color:#fff;letter-spacing:-.02em}
-.trust small{font-size:12px;color:rgba(255,255,255,.6)}
-@media(max-width:700px){.trust .wrap{grid-template-columns:repeat(2,1fr)}}
+/* 섹터 메뉴 — 칸 수가 종류에 따라 달라지므로 고정 4칸이 아니라 늘고 주는 줄로 둔다 */
+.trust .wrap{display:flex;flex-wrap:wrap;gap:2px;padding:6px 16px}
+.trust button{flex:1 1 118px;background:none;border:0;color:inherit;font:inherit;cursor:pointer;
+  padding:14px 8px;text-align:center;border-radius:12px;transition:background .14s ease}
+.trust button:hover{background:rgba(255,255,255,.09)}
+.trust button:active{background:rgba(255,255,255,.15)}
+/* 「실시간 견적」 — 제일 눌러 주셨으면 하는 칸이라 금색으로 도드라지게 둔다(사장님 2026-09-08) */
+.trust button.hot{background:var(--marigold)}
+.trust button.hot b{color:#2A1A00}
+.trust button.hot:hover{background:#f2b258}
+.trust button.hot:active{background:#e0952c}
+.trust em{display:block;font-style:normal;font-size:19px;line-height:1;margin-bottom:6px}
+.trust b{display:block;font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.02em;white-space:nowrap}
+@media(max-width:520px){
+  .trust .wrap{padding:4px 10px}
+  .trust button{flex:1 1 88px;padding:11px 4px}
+  .trust em{font-size:17px;margin-bottom:4px}
+  .trust b{font-size:12.5px}
+}
 
 /* ── 공통 섹션 ── */
 section{padding:64px 0}
@@ -1099,8 +1113,32 @@ function drawHero(){
     + '<div class="cta">'
     + '<a class="btn btn-gold" href="#contact">' + esc(h.cta1 || "실시간 견적 받기") + "</a>"
     + '<a class="btn btn-ghost" href="#catalog">' + esc(h.cta2 || "골프장 둘러보기") + "</a></div>";
-  $("#trustBox").innerHTML = (SITE.trust || []).map(t =>
-    "<div><b>" + esc(t.b) + "</b><small>" + esc(t.s) + "</small></div>").join("");
+  drawSectors();
+}
+/* 히어로 바로 아래 띠 — 종류로 바로 가는 «섹터 메뉴»(사장님 2026-09-08).
+   예전에는 「직영·직수배·실시간·전담」 문구가 있던 자리다(자료는 SITE.trust 에 그대로 남아 있다).
+   종류는 관리 화면 「＋ 종류 관리」에서 늘리시면 여기도 저절로 늘어난다.
+   열 칸을 넘으면 줄이 어지러워져 앞에서부터 열 개까지만 낸다. */
+const SECTOR_MAX = 10;
+function drawSectors(){
+  const items = catList().map(c => ({ ic: c.ic || "", t: c.t || c.k, go: "cat:" + c.k }));
+  if((SITE.tours || []).length) items.push({ ic:"🚌", t:"기타투어", go:"#tours" });
+  /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 금색으로 도드라지게 둔다(사장님) */
+  items.push({ ic:"⚡", t:"실시간 견적", go:"#contact", hot:true });
+  $("#trustBox").innerHTML = items.slice(0, SECTOR_MAX).map(s =>
+    '<button type="button"' + (s.hot ? ' class="hot"' : '') + ' data-go="' + esc(s.go) + '">'
+    + (s.ic ? '<em>' + esc(s.ic) + '</em>' : '')
+    + '<b>' + esc(s.t) + '</b></button>').join("");
+  $("#trustBox").querySelectorAll("button").forEach(b => b.onclick = () => {
+    const go = b.dataset.go;
+    if(go.indexOf("cat:") === 0){
+      pickCat(go.slice(4));
+      document.getElementById("catalog").scrollIntoView({ behavior:"smooth" });
+    } else {
+      const el = document.querySelector(go);
+      if(el) el.scrollIntoView({ behavior:"smooth" });
+    }
+  });
 }
 /* 섹션 제목·설명. 설명 안의 {n}은 그 섹션의 개수로 바뀐다. */
 function headHtml(s, n){
