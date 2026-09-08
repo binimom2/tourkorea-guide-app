@@ -1376,7 +1376,7 @@ function openPanel(x, kind){
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
   $("#qpHoleLab").textContent = isH ? "룸 타입" : "라운드 선택";
-  $("#qpDateLab").textContent = isH ? "체크인 날짜" : "날짜 선택";
+  $("#qpDateLab").textContent = isH ? "체크인 - 아웃 날짜를 선택해주세요" : "날짜 선택";
   $("#qpRoomsWrap").style.display  = isH ? "" : "none";   // 객실 수·성인·아동 묶음
   $("#qpPaxWrap").style.display    = isH ? "none" : "";   // 골프장만 쓰는 「인원」 칸
   /* 고르는 차례 — 호텔은 날짜 → 객실 선택 → 룸 타입,
