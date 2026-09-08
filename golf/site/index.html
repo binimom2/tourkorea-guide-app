@@ -343,10 +343,17 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .dpanel input[type=date]{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;background:#fff;color:inherit}
 /* 날짜 단추 + 달력판 — 손님은 날짜 칸에 직접 적지 않고 달력에서 고른다 */
 .qp-dbtn{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
-  font-weight:700;background:#fff;color:inherit;text-align:left;cursor:pointer}
+  font-weight:700;background:#fff;color:inherit;text-align:left;cursor:pointer;
+  display:flex;align-items:center;gap:8px}
 .qp-dbtn:hover{border-color:var(--fairway)}
 .qp-dbtn.on{border-color:var(--fairway);background:#f4faf6}
 .qp-dbtn .ph{color:var(--muted);font-weight:600}
+/* 오른쪽 끝의 달력 그림 — 눌러서 날짜를 고르는 칸임을 한눈에 알게(사장님 2026-09-08).
+   골프장·호텔·스파… 종류를 가리지 않고 같은 칸을 쓰므로 한 군데만 두면 다 붙는다. */
+.qp-dbtn .ph,.qp-dbtn .v{flex:1;min-width:0}
+.qp-dbtn .cal{flex:none;width:18px;height:18px;opacity:.45}
+.qp-dbtn.on .cal{opacity:.75}
+.qp-dbtn:hover .cal{opacity:.8}
 .qp-cal{margin-top:8px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:#fff}
 .qp-calhd{display:grid;grid-template-columns:32px 1fr 32px;align-items:center;margin-bottom:8px}
 .qp-calhd b{text-align:center;font-size:14px;font-weight:800}
@@ -596,7 +603,7 @@ body:has(.mask.on) .dock{display:none}
             <div class="qp-lab" id="qpDateLab">날짜 선택</div>
             <!-- 눌러서 달력판을 연다. 호텔은 체크인~체크아웃을 이어서 고르고, 골프장은 하루만 고른다.
                  고른 날짜는 #qpDate(감춘 칸)에 들어간다 — 요금 셈은 예전처럼 이 값을 읽는다. -->
-            <button type="button" class="qp-dbtn" id="qpDateBtn">날짜를 골라 주세요</button>
+            <button type="button" class="qp-dbtn" id="qpDateBtn"><span class="ph">날짜를 골라 주세요</span></button>
             <input type="hidden" id="qpDate">
             <div class="qp-cal" id="qpCal" hidden>
               <div class="qp-calhd">
@@ -1259,17 +1266,22 @@ function openCal(){
 }
 function closeCal(){ $("#qpCal").hidden = true; calHalf = ""; }
 /* 단추에 고른 날짜를 적는다 — 「01.17 (일) ~ 01.21 (목) · 4박」 */
+/* 날짜 칸 오른쪽 끝의 달력 그림. 색은 글자색을 따라간다(currentColor). */
+const CAL_SVG = '<svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+  + ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+/* 아직 안 고르셨을 때 칸에 뜨는 말 — 호텔은 두 날짜를 잇달아 고르는 곳이라 다르게 적는다 */
+function datePh(){
+  return qpKind === "hotels" ? "체크인 - 아웃 날짜" : "날짜를 골라 주세요";
+}
 function drawDateBtn(){
   const b = $("#qpDateBtn"), inn = $("#qpDate").value;
-  if(!inn){
-    b.classList.remove("on");
-    b.innerHTML = '<span class="ph">날짜를 골라 주세요</span>';
-    return;
-  }
-  b.classList.add("on");
-  b.textContent = (qpKind === "hotels" && qpCheckout)
-    ? dlabel(inn) + " ~ " + dlabel(qpCheckout) + " · " + qpNights + "박"
-    : dlabel(inn);
+  b.classList.toggle("on", !!inn);
+  b.innerHTML = (inn
+    ? '<span class="v">' + esc((qpKind === "hotels" && qpCheckout)
+        ? dlabel(inn) + " ~ " + dlabel(qpCheckout) + " · " + qpNights + "박"
+        : dlabel(inn)) + '</span>'
+    : '<span class="ph">' + esc(datePh()) + '</span>') + CAL_SVG;
 }
 function drawCal(){
   if($("#qpCal").hidden) return;
