@@ -378,6 +378,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 오른쪽 끝의 달력 그림 — 눌러서 날짜를 고르는 칸임을 한눈에 알게(사장님 2026-09-08).
    골프장·호텔·스파… 종류를 가리지 않고 같은 칸을 쓰므로 한 군데만 두면 다 붙는다. */
 .qp-dbtn .ph,.qp-dbtn .v{flex:1;min-width:0}
+/* 객실 선택 칸은 글자만 있어 가운데로 맞춘다(사장님) — 날짜 칸은 달력 그림이 오른쪽에 있어 그대로 둔다 */
+#qpRoomsBtn{justify-content:center;text-align:center}
 .qp-dbtn .cal{flex:none;width:18px;height:18px;opacity:.45}
 .qp-dbtn.on .cal{opacity:.75}
 .qp-dbtn:hover .cal{opacity:.8}
