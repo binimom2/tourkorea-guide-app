@@ -172,6 +172,13 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .modal .sub{margin:0 0 20px;font-size:13.5px;color:var(--muted);line-height:1.55}
 .kakao{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#FEE500;color:#191600;border:0;border-radius:11px;padding:14px;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer}
 .kakao:hover{filter:brightness(.96)}
+/* 구글은 로고·글자·테두리를 구글 안내대로 흰 바탕에 둔다 */
+.gbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;background:#fff;color:#1F1F1F;
+  border:1px solid #DADCE0;border-radius:11px;padding:13px;font:inherit;font-size:15.5px;font-weight:800;
+  cursor:pointer;margin-top:8px}
+.gbtn:hover{background:#F7F8F8}
+.gbtn svg{width:19px;height:19px;flex:none}
+.kakao.hide+.gbtn{margin-top:0}
 .orline{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:11.5px;font-weight:700}
 .orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line)}
 .mfield{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
@@ -715,11 +722,18 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
     <button class="mclose" id="loginClose" type="button" aria-label="닫기">×</button>
     <h3 id="loginTitle">간편 로그인</h3>
-    <p class="sub">로그인하시면 견적 요청이 한결 간편해지고,
-      다음에 오셔도 성함·연락처를 다시 적지 않으셔도 됩니다.</p>
+    <p class="sub">따로 가입하실 것 없이 누르시면 바로 됩니다.
+      찜·장바구니가 그대로 남고, 다음에 오셔도 성함·연락처를 다시 적지 않으셔도 됩니다.</p>
 
     <div id="loginForms">
       <button class="kakao hide" id="kakaoBtn" type="button"><span>💬</span> 카카오로 시작하기</button>
+      <button class="gbtn hide" id="googleBtn" type="button">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"/>
+          <path fill="#34A853" d="M24 46c6 0 11-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.6-3.9-12.3-9.1H4.4v5.7C7.9 40.8 15.4 46 24 46z"/>
+          <path fill="#FBBC05" d="M11.7 28.1c-.4-1.3-.7-2.7-.7-4.1s.2-2.8.7-4.1v-5.7H4.4C2.9 17.1 2 20.4 2 24s.9 6.9 2.4 9.8l7.3-5.7z"/>
+          <path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 30 2 24 2 15.4 2 7.9 7.2 4.4 14.2l7.3 5.7c1.7-5.2 6.6-9.1 12.3-9.1z"/>
+        </svg> 구글로 시작하기</button>
       <div class="orline hide" id="orLine">또는</div>
 
       <div id="emailStep">
@@ -2069,11 +2083,20 @@ $("#qCopy").onclick = async () => {
    url/key가 비어 있으면 로그인 버튼은 「준비중」 안내만 띄운다.
    ──────────────────────────────────────────────────────────── */
 const GUEST_AUTH = {
-  url:   "",      // 예: https://xxxxxxxx.supabase.co   (손님 전용 프로젝트)
-  key:   "",      // 해당 프로젝트의 publishable(anon) 키
-  kakao: true,    // 카카오 provider를 켜 두었으면 true
-  email: true     // 이메일 인증번호 로그인 사용
+  url:    "",     // 예: https://xxxxxxxx.supabase.co   (손님 전용 프로젝트)
+  key:    "",     // 해당 프로젝트의 publishable(anon) 키
+  kakao:  true,   // 카카오 provider를 켜 두었으면 true
+  google: true,   // 구글 provider를 켜 두었으면 true
+  email:  true    // 이메일 인증번호 로그인 사용
 };
+/* 소셜 단추가 하나라도 있으면 「또는」 줄을 넣는다 */
+function anySocial(){ return !!(GUEST_AUTH.kakao || GUEST_AUTH.google); }
+/* 소셜 단추들 보였다 감췄다 — 인증번호 칸으로 넘어가면 같이 감춘다 */
+function showSocial(on){
+  $("#kakaoBtn").classList.toggle("hide",  !(on && GUEST_AUTH.kakao));
+  $("#googleBtn").classList.toggle("hide", !(on && GUEST_AUTH.google));
+  $("#orLine").classList.toggle("hide",    !(on && anySocial() && GUEST_AUTH.email));
+}
 const GUEST_KEY = "golf_guest_profile";   // 성함·연락처 기억용
 
 let gsb = null, guest = null;
@@ -2087,8 +2110,7 @@ function msg(t, bad){
 function openLogin(){
   $("#menu").classList.remove("open");   /* 모바일에서 메뉴가 열린 채 겹치지 않게 */
   $("#loginMask").classList.add("on");
-  $("#kakaoBtn").classList.toggle("hide", !GUEST_AUTH.kakao);
-  $("#orLine").classList.toggle("hide", !(GUEST_AUTH.kakao && GUEST_AUTH.email));
+  showSocial(true);
   $("#emailStep").classList.toggle("hide", !GUEST_AUTH.email);
   $("#codeStep").classList.add("hide");
   msg(ready() ? "" : "아직 로그인 준비 중입니다. 아래 연락처로 문의 주시면 바로 도와드리겠습니다.");
@@ -2176,16 +2198,20 @@ $("#loginClose").onclick = closeLogin;
 $("#loginMask").onclick = e => { if(e.target === $("#loginMask")) closeLogin(); };
 document.addEventListener("keydown", e => { if(e.key === "Escape"){ closeLogin(); closeDetail(); } });
 
-$("#kakaoBtn").onclick = async () => {
+/* 카카오·구글은 같은 길이다 — 어느 provider인지만 다르다.
+   돌아올 곳은 지금 보던 쪽(origin+pathname) — Supabase 대시보드의 Redirect URLs에도 같은 주소를 넣어야 한다. */
+async function social(provider, name){
   if(!ready()){ msg("아직 로그인 준비 중입니다.", true); return; }
   try{
     const sb = await client();
     const { error } = await sb.auth.signInWithOAuth({
-      provider:"kakao", options:{ redirectTo: location.origin + location.pathname }
+      provider, options:{ redirectTo: location.origin + location.pathname }
     });
     if(error) throw error;
-  }catch(e){ msg("카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.", true); }
-};
+  }catch(e){ msg(name + " 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.", true); }
+}
+$("#kakaoBtn").onclick  = () => social("kakao",  "카카오");
+$("#googleBtn").onclick = () => social("google", "구글");
 
 let otpEmail = "";
 $("#emSend").onclick = async () => {
@@ -2199,8 +2225,7 @@ $("#emSend").onclick = async () => {
     if(error) throw error;
     otpEmail = em;
     $("#emailStep").classList.add("hide");
-    $("#orLine").classList.add("hide");
-    $("#kakaoBtn").classList.add("hide");
+    showSocial(false);
     $("#codeStep").classList.remove("hide");
     msg(em + " 으로 인증번호를 보냈습니다.\n메일이 안 보이면 스팸함도 확인해 주세요.");
     $("#emCode").focus();
@@ -2224,8 +2249,7 @@ $("#emBack").onclick = e => {
   e.preventDefault();
   $("#codeStep").classList.add("hide");
   $("#emailStep").classList.remove("hide");
-  $("#orLine").classList.toggle("hide", !(GUEST_AUTH.kakao && GUEST_AUTH.email));
-  $("#kakaoBtn").classList.toggle("hide", !GUEST_AUTH.kakao);
+  showSocial(true);
   msg("");
 };
 
