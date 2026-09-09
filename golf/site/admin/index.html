@@ -1527,16 +1527,17 @@ function roomRowHTML(x,i,rm,j,pr){
     +'<div class="rminc"><label>포함·편의시설</label>'
       +'<input data-mf="inc" value="'+esc(rm.inc||'')+'" '
       +'placeholder="에어컨 · LCD TV · 무료 Wi-Fi · 차와 커피 · 헤어드라이어 · 금고"></div>'
-    /* 3인 투숙 추가 요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
-       두 값은 서로 다른 것이고 3인일 때 «둘 다» 붙는다(사장님) — 룸당·박당 요금 + 엑스트라 베드 요금.
+    /* 추가 인원 요금 — 요금이라서 golf_site가 아니라 요금표(golf_pricing) 쪽에 들어간다.
+       한 방은 2인 기준. 3인째는 «엑스트라 베드 요금», 4인째는 아동 2명이 함께 들 때만 되고
+       침대 없이 «조식 쿠폰 요금»만 붙는다(사장님 2026-09-09) — 성인 2 + 아동 2 = 엑스트라 베드 1 + 조식 1.
        기간을 안 나눈다(시즌마다 바꾸는 값이 아니다). 마진은 안 붙는다 — 1실 1박 100밧이 이미 객실에 들어 있다.
-       ※ 저장 자리(extraAdult·extraChild)는 예전 이름 그대로 둔다 — 적어 둔 값이 그대로 살아 있어야 한다.
-       ※ 처음에 extraPax·extraBed로 넣어 둔 값이 있으면 그 값을 그대로 보여 준다. */
-    +'<div class="rminc rmex"><label>3인 투숙 추가 <span class="rhint">3명이면 둘 다 더해진다</span></label>'
-      +'<span>룸당·박당 요금</span>'
-      +'<input type="number" min="0" data-rmx="extraAdult" value="'+esc(exVal(pr,'extraAdult'))+'" placeholder="밧">'
+       ※ 저장 자리는 예전 이름 그대로다 — extraChild = 엑스트라 베드, extraAdult = 조식 쿠폰(옛 «룸당·박당» 칸).
+         이름을 바꾸면 적어 둔 값이 끊긴다. ※ 처음에 extraPax·extraBed로 넣어 둔 값이 있으면 그대로 보여 준다. */
+    +'<div class="rminc rmex"><label>추가 인원 <span class="rhint">3인째 = 엑스트라 베드 · 4인째(아동 2명일 때) = 조식 쿠폰</span></label>'
       +'<span>엑스트라 베드 요금</span>'
-      +'<input type="number" min="0" data-rmx="extraChild" value="'+esc(exVal(pr,'extraChild'))+'" placeholder="밧">'
+      +'<input type="number" min="0" data-rmx="extraChild" value="'+esc(exVal(pr,'extraChild'))+'" placeholder="밧 · 1박">'
+      +'<span>조식 쿠폰 요금</span>'
+      +'<input type="number" min="0" data-rmx="extraAdult" value="'+esc(exVal(pr,'extraAdult'))+'" placeholder="밧 · 1인 1박">'
       +'</div>'
     +'<div class="rmbody">'
       +'<div class="rmrates">'+roomRatesHTML(rates,rm)+'</div>'

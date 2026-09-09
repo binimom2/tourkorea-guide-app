@@ -374,8 +374,12 @@ async function hotelPost(B, env) {
   const date = String(B.date || '');
   const nights = Math.max(1, Math.min(30, Math.round(+B.nights || 1)));
   const rooms = Math.max(1, Math.min(20, Math.round(+B.rooms || 1)));
-  const exAdult = Math.max(0, Math.min(20, Math.round(+B.extraAdult || 0)));   // 추가 성인 수
-  const exChild = Math.max(0, Math.min(20, Math.round(+B.extraChild || 0)));   // 추가 어린이 수
+  /* 추가 인원(사장님 2026-09-09): 한 방 2인 기준.
+       extraChild = 엑스트라 베드 수(방마다 3인째) → 객실의 extraChild(엑스트라 베드 요금) × 수 × 박수
+       extraAdult = 조식 쿠폰 수(방마다 4인째, 아동 2명이 함께 들 때만) → 객실의 extraAdult(조식 쿠폰 요금) × 수 × 박수
+     자리 이름은 예전(추가 성인/어린이) 그대로다 — 저장된 값을 끊지 않으려고. 수는 손님 화면이 센다. */
+  const exAdult = Math.max(0, Math.min(20, Math.round(+B.extraAdult || 0)));   // 조식 쿠폰 수
+  const exChild = Math.max(0, Math.min(20, Math.round(+B.extraChild || 0)));   // 엑스트라 베드 수
   if (!name) return json({ ok: false, error: '호텔을 골라 주세요' }, 400);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ ok: false, error: '체크인 날짜를 골라 주세요' }, 400);
 

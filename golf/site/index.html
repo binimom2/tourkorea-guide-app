@@ -1379,9 +1379,10 @@ function roomPriceOf(x, t){
 function exLine(rp){
   if(!rp) return "";
   const L = [];
-  if(rp.adultKrw) L.push("룸당 +" + rp.adultKrw.toLocaleString("ko-KR") + "원");
-  if(rp.childKrw) L.push("엑스트라 베드 +" + rp.childKrw.toLocaleString("ko-KR") + "원");
-  return L.length ? "<i class='rex'>3인 투숙 시 " + L.join(" · ") + " <em>(1박)</em></i>" : "";
+  /* 3인째 = 엑스트라 베드(child 자리), 4인째(아동 2명일 때) = 조식 쿠폰(adult 자리) */
+  if(rp.childKrw) L.push("3인째 엑스트라 베드 +" + rp.childKrw.toLocaleString("ko-KR") + "원");
+  if(rp.adultKrw) L.push("4인째(아동) 조식 쿠폰 +" + rp.adultKrw.toLocaleString("ko-KR") + "원");
+  return L.length ? "<i class='rex'>" + L.join(" · ") + " <em>(1박)</em></i>" : "";
 }
 function drawRooms(x, kind){
   const box = $("#dRoomBox"), rooms = kind === "hotels" ? roomsOf(x) : [];
@@ -1706,38 +1707,50 @@ function openPanel(x, kind){
 }
 /* 3인 투숙 추가요금 — 그 룸타입에 적어 둔 «룸당·박당 요금»과 «엑스트라 베드 요금»이다.
    저장 자리는 예전 이름(adult=룸당·박당, child=엑스트라베드) 그대로라 그대로 읽는다. */
+/* ── 추가 인원 규칙(사장님 2026-09-09) ──
+   한 방은 2인이 기준. 3인째는 «엑스트라 베드 요금»(child 자리), 4인째는 침대 없이 들고
+   «조식 쿠폰 요금»(adult 자리)만 붙는다 — 성인 2 + 아동 2면 엑스트라 베드 1 + 조식 쿠폰 1.
+   저장 자리 이름(adult/child)은 예전 그대로다 — 적어 둔 값이 그대로 살아 있어야 한다. */
 function triplePriceOf(){
   const rp = qpKind === "hotels" && qpRoom ? roomPriceOf(qpItem, qpRoom) : null;
   if(!rp) return null;
-  const roomKrw = rp.adultKrw || 0, roomBaht = rp.adultBaht || 0;   // 룸당·박당
-  const bedKrw  = rp.childKrw || 0, bedBaht  = rp.childBaht || 0;   // 엑스트라 베드
-  if(!roomKrw && !bedKrw) return null;
-  return { roomKrw, roomBaht, bedKrw, bedBaht,
-           oneKrw: roomKrw + bedKrw, oneBaht: roomBaht + bedBaht };
+  const bedKrw = rp.childKrw || 0, bedBaht = rp.childBaht || 0;   // 엑스트라 베드(3인째)
+  const bfKrw  = rp.adultKrw || 0, bfBaht  = rp.adultBaht || 0;   // 조식 쿠폰(4인째)
+  if(!bedKrw && !bfKrw) return null;
+  return { bedKrw, bedBaht, bfKrw, bfBaht };
 }
-/* 3명이 드는 방이 몇 개인가 — 2인 1실이 기준이다.
+/* 3명 이상 드는 방이 몇 개인가(=엑스트라 베드 수) — 2인 1실이 기준이다.
    4명 2실이면 0, 3명 1실이면 1, 5명 2실이면 1, 6명 2실이면 2. */
 function tripleRooms(){
   if(qpKind !== "hotels" || qpRooms < 1) return 0;   // 룸 갯수를 아직 안 골랐으면 셈하지 않는다
   return Math.max(0, Math.min(qpRooms, qpPax - qpRooms * 2));
 }
+/* 4명 드는 방이 몇 개인가(=조식 쿠폰 수). 4인째는 **아동 2명이 함께 들 때만** 된다(사장님) —
+   성인 2 + 아동 2. 그래서 아동 2명마다 방 하나가 4인방이 될 수 있다. 4명 1실(아동 2)이면 1. */
+function quadRooms(){
+  if(qpKind !== "hotels" || qpRooms < 1) return 0;
+  return Math.max(0, Math.min(qpRooms, Math.floor(qpChild / 2), qpPax - qpRooms * 3));
+}
+/* 지금 잡은 방에 들 수 있는 최대 인원 — 방마다 3명, 아동 2명이 함께 드는 방은 4명 */
+function roomCap(){ return qpRooms * 3 + Math.min(qpRooms, Math.floor(qpChild / 2)); }
 /* 인원수와 룸 갯수로 저절로 정해지는 값이라 손님이 고르는 칸이 아니다 — 알려 주기만 한다.
    한 방에 셋까지로 보고, 그보다 많으면 룸을 더 잡으시라고 일러 준다. */
 function drawTriple(){
   const box = $("#qpTriple");
   if(qpKind !== "hotels" || qpRooms < 1){ box.style.display = "none"; return; }
-  if(qpPax > qpRooms * 3){
+  if(qpPax > roomCap()){
     box.style.display = "";
-    box.innerHTML = "한 방에 <b>세 분</b>까지 드실 수 있습니다 — "
+    box.innerHTML = "한 방에 <b>세 분</b>까지 드실 수 있습니다(성인 2명 + 아동 2명이면 네 분) — "
       + qpPax + "명이면 룸 갯수를 <b>" + Math.ceil(qpPax / 3) + "실</b> 이상으로 잡아 주세요.";
     return;
   }
-  const n = tripleRooms(), t = triplePriceOf();
-  if(!n || !t){ box.style.display = "none"; return; }
+  const n3 = tripleRooms(), n4 = quadRooms(), t = triplePriceOf();
+  if(!n3 || !t){ box.style.display = "none"; return; }
   box.style.display = "";
   /* 금액은 적지 않는다 — 아래 큰 숫자가 이미 «트리플 객실 1박 요금»이다(사장님 2026-09-08).
      여기서 또 「엑스트라 베드 52,000원」을 적으면 두 숫자를 더해 읽으시게 된다. */
-  box.innerHTML = "세 분이 드는 방 <b>" + n + "실</b> — <b>트리플 객실 요금</b>으로 부과됩니다.";
+  box.innerHTML = "세 분 이상 드는 방 <b>" + n3 + "실</b> — 3인째는 <b>엑스트라 베드</b>"
+    + (n4 ? ", 4인째는 침대 없이 <b>조식 쿠폰</b>만" : "") + " 요금이 붙습니다.";
 }
 /* 골프는 「인원」 한 칸, 호텔은 「객실 선택」 묶음 안의 객실·성인·아동을 센다 */
 function drawCnt(){
@@ -1844,12 +1857,14 @@ function paxLabel(){
 /* 3인 방에 붙는 값 — 한 방에 한 밤씩 (룸당·박당 + 엑스트라 베드).
    서버(golf-price.js)가 셈한 값과 같은 규칙이다(마진은 안 붙는다 — 1실 1박 마진에 이미 들어 있다). */
 function extraSum(){
-  const t = triplePriceOf(), n = tripleRooms();
-  if(!t || !n) return { krw: 0, baht: 0, label: "" };
+  const t = triplePriceOf(), n3 = tripleRooms(), n4 = quadRooms();
+  if(!t || !n3) return { krw: 0, baht: 0, label: "" };
+  const L = ["엑스트라 베드 " + n3 + "개"];
+  if(n4 && t.bfKrw) L.push("조식 쿠폰 " + n4 + "장");
   return {
-    krw:  t.oneKrw  * n * qpNights,
-    baht: t.oneBaht * n * qpNights,
-    label: "세 분이 드는 방 " + n + "실 × " + qpNights + "박"
+    krw:  (t.bedKrw  * n3 + t.bfKrw  * n4) * qpNights,
+    baht: (t.bedBaht * n3 + t.bfBaht * n4) * qpNights,
+    label: L.join(" + ") + " × " + qpNights + "박"
   };
 }
 /* 환율 안내줄(「… 현찰 살때(하나은행 고시) 1밧 = 42.79원 기준」)은 손님에게 안 보인다(사장님 2026-09-08).
@@ -1931,13 +1946,13 @@ async function qpCalc(){
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(qpKind === "hotels"
-        /* 3인 방 수를 두 값에 똑같이 실어 보낸다 — 서버는 «룸당·박당 × 방 수 × 박수»와
-           «엑스트라 베드 × 방 수 × 박수»를 각각 셈하므로 이러면 둘 다 붙는다. */
+        /* extraChild = 엑스트라 베드 수(3인째), extraAdult = 조식 쿠폰 수(4인째, 아동 2명일 때).
+           서버는 각각 «값 × 수 × 박수»로 셈한다. 자리 이름은 예전 그대로(저장값 보존). */
         ? { kind:"hotel", region: qpItem.r, hotel: qpItem.n, room: qpRoom,
             date, nights: qpNights, rooms: qpRooms, pax: qpPax,
             adult: qpAdult, child: qpChild,
             childAges: qpAges.filter(v => v !== "" && v != null),
-            extraAdult: tripleRooms(), extraChild: tripleRooms() }
+            extraAdult: quadRooms(), extraChild: tripleRooms() }
         : { region: qpItem.r, course: qpItem.n, holes: qpHoles, date, pax: qpPax })
     });
     const j = await r.json();
@@ -1954,20 +1969,23 @@ async function qpCalc(){
       /* 큰 숫자는 «그 방 1박 요금»이다. 잡으신 방이 **모두** 세 분 방이면
          기본값에 추가분을 더해 «트리플 객실 1박 요금»을 그대로 보여 준다(사장님 2026-09-08).
          2인방과 3인방이 섞였을 때는 한 숫자로 말할 수 없으므로 예전처럼 따로 한 줄 적는다.
-         (j.extraAdult = 세 분이 드는 방 수, j.extraKrw = 그 방들의 추가분 총액) */
-      const triN = j.extraAdult || 0;
-      const allTri = triN > 0 && triN === j.rooms && j.nights > 0;
-      const addKrw = allTri ? Math.round(j.extraKrw / (triN * j.nights)) : 0;
-      const addBt  = (allTri && j.extraBaht) ? Math.round(j.extraBaht / (triN * j.nights)) : 0;
+         (j.extraChild = 엑스트라 베드 수(3인째 방 수), j.extraAdult = 조식 쿠폰 수(4인째),
+          j.extraKrw = 그 추가분 총액) */
+      const triN = j.extraChild || 0, quadN = j.extraAdult || 0;
+      /* 모든 방이 같은 구성(전부 3인방, 또는 전부 4인방)일 때만 큰 숫자에 합쳐 보여 준다 */
+      const allTri = triN > 0 && triN === j.rooms && (quadN === 0 || quadN === j.rooms) && j.nights > 0;
+      const addKrw = allTri ? Math.round(j.extraKrw / (j.rooms * j.nights)) : 0;
+      const addBt  = (allTri && j.extraBaht) ? Math.round(j.extraBaht / (j.rooms * j.nights)) : 0;
       const bigKrw = j.perKrw + addKrw;
       const bigBt  = j.perBaht ? j.perBaht + addBt : 0;
+      const exLbl  = "엑스트라 베드 " + triN + "개" + (quadN ? " + 조식 쿠폰 " + quadN + "장" : "");
       qpBox('<div class="k">' + (j.room ? esc(j.room) + " · " : "")
-          + (allTri ? '트리플 1박 · ' : '')
+          + (allTri ? (quadN ? '성인 2+아동 2 1박 · ' : '트리플 1박 · ') : '')
           + esc(j.date) + ' 체크인 ' + j.nights + '박</div>'
         + '<div class="v">' + bigKrw.toLocaleString("ko-KR") + '<em>원</em>'
           + (bigBt ? '<b class="vbt">(' + bigBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
         /* 섞였을 때만 따로 적는다 — 위 큰 숫자에 이미 들어간 경우에는 두 번 세게 된다 */
-        + ((j.extraKrw && !allTri) ? '<div class="exline">세 분이 드는 방 ' + triN + '실 × '
+        + ((j.extraKrw && !allTri) ? '<div class="exline">' + exLbl + ' × '
             + j.nights + '박: ' + j.extraKrw.toLocaleString("ko-KR") + '원</div>' : '')
         + '<div class="sum">' + esc(paxLabel()) + ' · ' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
           + (j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
@@ -2386,11 +2404,12 @@ async function repriceCart(){
     /* 스파·티켓… 은 날짜별 요금이 없어 서버에 물을 것이 없다 — 담긴 값 그대로 둔다 */
     if(isMenuKind(c.kind)) return;
     try{
-      const tri = Math.max(0, Math.min(c.rooms, c.pax - c.rooms * 2));   // 세 분이 드는 방 수
+      const tri  = Math.max(0, Math.min(c.rooms, c.pax - c.rooms * 2));   // 엑스트라 베드 수(3인째)
+      const quad = Math.max(0, Math.min(c.rooms, Math.floor((c.child || 0) / 2), c.pax - c.rooms * 3));   // 조식 쿠폰 수(4인째, 아동 2명일 때)
       const body = c.kind === "hotels"
         ? { kind:"hotel", region:c.region, hotel:c.name, room:c.option, date:c.date,
             nights:c.nights, rooms:c.rooms, pax:c.pax, adult:c.adult, child:c.child,
-            childAges: c.ages || [], extraAdult: tri, extraChild: tri }
+            childAges: c.ages || [], extraAdult: quad, extraChild: tri }
         : { region:c.region, course:c.name, date:c.date, pax:c.pax,
             holes: (String(c.option || "").replace(/[^0-9]/g, "") || "18") };
       const r = await fetch(API + "/api/golf-price", {
