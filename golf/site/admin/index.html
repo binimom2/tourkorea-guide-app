@@ -1860,7 +1860,15 @@ function subItems(k){
 function subCats(){
   const cs=catsAll();
   document.getElementById('subpane').innerHTML=
-    '<div class="card"><h2>종류 관리</h2>'
+    /* 지역 차례 — 종류마다 표 아래에도 있지만 62줄 밑이라 찾기 어려워 여기 맨 위에도 둔다(사장님 2026-09-09).
+       같은 값(regionOrder)이라 어디서 고쳐도 같다. 골프장·호텔·스파 모두 이 차례를 쓴다. */
+    '<div class="card"><h2>지역 차례</h2>'
+    +'<p class="desc">손님 화면의 지역 탭(방콕 · 파타야 · 후아힌…)이 이 차례대로 섭니다. 골프장·호텔·스파 공용, 가운뎃점(·)으로 구분. '
+      +'<b>저장을 눌러야 반영됩니다.</b></p>'
+    +'<div class="rowbtns" style="margin:0"><div style="flex:1 1 320px">'+inpList('regionOrder',S.regionOrder,'방콕 · 파타야 · 후아힌 · 칸차나부리 · 카오야이')+'</div>'
+    +'<button type="button" class="ghost" id="regDefault">기본 차례로 채우기 (방콕 · 파타야 · 후아힌 · 칸차나부리 · 카오야이)</button></div>'
+    +'</div>'
+    +'<div class="card"><h2>종류 관리</h2>'
     +'<p class="desc">손님이 1차 화면에서 고르는 종류입니다. 여기에 한 줄 추가하면 위 메뉴에 그 종류의 표가 생기고, '
     +'항목을 한 개라도 넣고 「손님에게 보이기」를 켜면 손님 화면에도 나옵니다.</p>'
     +'<div class="tblwrap"><table><thead><tr>'
@@ -1907,6 +1915,9 @@ function subCats(){
     if(S.items) delete S.items[k];
     sub='cats'; markDirty('site'); drawTabs();
   });
+  /* 기본 차례로 — data.js 의 regionOrder(방콕 먼저)를 그대로 넣는다. 저장은 따로 눌러야 한다 */
+  const rd=document.getElementById('regDefault');
+  if(rd) rd.onclick=()=>{ S.regionOrder=deepCopy((window.SITE_DEFAULT||{}).regionOrder||[]); markDirty('site'); subCats(); };
   bindRowBtns();
 }
 function subTours(){

@@ -1113,9 +1113,10 @@ function cardOf(x, kind, idx){
        영문 이름과 소개 문구는 카드를 누르면 열리는 상세에 그대로 남아 있다.
        다른 종류(스파·투어…)는 예전처럼 설명을 보여 주고, 메뉴별 요금이 들어온 곳은
        그 아래에 «제일 싼 메뉴» 값이 붙는다(priceHtml, 2026-09-09). */
+    /* 스파·티켓… 카드에는 «포함사항»만 적는다(사장님 2026-09-09). 영문 이름·안내사항(주소·전화)은
+       카드를 눌러 여는 상세에서만 보인다 — 카드에 주소가 길게 깔리면 요금이 밀려 내려간다. */
     + ((kind === "courses" || kind === "hotels") ? ''
-       : (x.e ? '<p class="en">' + esc(x.e) + '</p>' : '')
-         + (x.d ? '<p class="keep">' + esc(x.d) + '</p>' : ''))
+       : (incOf(x, kind) ? '<p class="keep">' + esc(incOf(x, kind)) + '</p>' : ''))
     + priceHtml(p, kind)
     + '</div></button>';
 }
@@ -1123,6 +1124,11 @@ function cardOf(x, kind, idx){
    한화는 서버가 네이버(하나은행 고시) «현찰 살때»로 환산한 값이고,
    밧은 마진까지 얹은 «손님가»다. 원가·항목별 금액은 이 화면에 오지 않는다.
    요금이 아직 안 들어온 곳은 「요금 문의」로 둔다 — 0원이나 빈칸은 안 파는 곳처럼 보인다. */
+/* 그 항목의 포함사항 — 따로 적은 것이 있으면 그것, 없으면 종류별 기본 문구(SITE.incExc) */
+function incOf(x, kind){
+  const dft = (SITE.incExc && (SITE.incExc[kind] || SITE.incExc._)) || {};
+  return ((x && x.inc) || "").trim() || (dft.inc || "").trim();
+}
 function priceHtml(p, kind){
   /* 스파·티켓… 은 메뉴별 요금이 들어온 곳만 «제일 싼 메뉴»를 붙인다. 없는 곳은 예전처럼 빈칸 */
   if(isMenuKind(kind) && !(p && p.menu && p.menu.length)) return "";
