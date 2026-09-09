@@ -288,6 +288,8 @@ table.rooms td.rt{font-weight:800;color:var(--ink)}
 .rth b{position:absolute;right:0;bottom:0;background:rgba(20,20,20,.62);color:#fff;
   font-size:10px;font-weight:800;padding:1px 5px;border-radius:6px 0 0 0}
 table.rooms td.rsub{color:var(--muted);white-space:nowrap}
+/* 침대 칸 — 관리 화면에서 Enter로 나눈 줄이 그대로 줄바꿈된다 */
+table.rooms td.rbed{white-space:pre-line}
 table.rooms td.rp{text-align:right;font-weight:900;white-space:nowrap;letter-spacing:-.03em}
 table.rooms td.rp b{display:block;font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:0}
 table.rooms td.rp .ask{font-weight:800;font-size:12.5px;color:var(--muted)}
@@ -1402,7 +1404,8 @@ function drawRooms(x, kind){
       + "</span></div></td>"
       + "<td class='rsub'>" + esc(r.size || "") + "</td>"
       + "<td class='rsub'>" + esc(r.view || "") + "</td>"
-      + "<td class='rsub'>" + esc(r.bed || "") + "</td>"
+      /* 침대 칸은 관리 화면에서 나눈 줄 그대로 보인다(rbed = pre-line, 2026-09-09) */
+      + "<td class='rsub rbed'>" + esc((r.bed || "").trim()) + "</td>"
       + "<td>" + (r.bf === false ? "<span class='bf no'>불포함</span>"
                 : r.bf ? "<span class='bf'>조식 포함</span>" : "") + "</td>"
       + "<td class='rp'>" + (rp && rp.fromKrw

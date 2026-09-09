@@ -120,6 +120,8 @@ tr.subrow td{padding:0 6px 11px}
 .rmrow{border:1px solid var(--line);border-radius:9px;padding:8px 9px;background:#fff}
 .rmhead{display:grid;grid-template-columns:1.5fr 78px 96px 1.2fr 62px 44px 22px;gap:5px;align-items:center}
 .rmhead input{padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;width:100%}
+/* 침대 칸 — 줄바꿈이 되는 칸이라 textarea. 적은 줄 수만큼 높이가 따라간다(rows) */
+.rmhead textarea{padding:5px 6px;font-size:12px;font-family:inherit;line-height:1.35;border:1px solid var(--line);border-radius:6px;width:100%;resize:none;min-height:0;box-sizing:border-box;white-space:pre-wrap}
 .rmbf{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 .rmbf input{margin:0;width:auto}
 .rmcpy{background:none;border:1px solid var(--line);border-radius:6px;color:var(--fairway);
@@ -1514,7 +1516,8 @@ function roomRowHTML(x,i,rm,j,pr){
       +'<input data-mf="t" data-mt0="'+esc(rm.t||'')+'" value="'+esc(rm.t||'')+'" placeholder="디럭스 시티뷰">'
       +'<input data-mf="size" value="'+esc(rm.size||'')+'" placeholder="33㎡">'
       +'<input data-mf="view" value="'+esc(rm.view||'')+'" placeholder="시티뷰">'
-      +'<input data-mf="bed" value="'+esc(rm.bed||'')+'" placeholder="킹 1 또는 싱글 2">'
+      /* 침대 칸은 줄을 나눠 적을 수 있다(Enter) — 손님 화면에도 그 줄 그대로 나간다(사장님 2026-09-09) */
+      +'<textarea data-mf="bed" rows="'+Math.max(1,String(rm.bed||'').split('\n').length)+'" placeholder="킹 1 또는 싱글 2&#10;최대 성인 3">'+esc(rm.bed||'')+'</textarea>'
       +'<label class="rmbf"><input type="checkbox" data-mf="bf"'+(rm.bf===false?'':' checked')+'>조식</label>'
       +'<button type="button" class="rmcpy" title="이 객실을 요금까지 그대로 하나 더">복사</button>'
       +'<button type="button" class="rmdel" title="이 객실 지우기">✕</button>'
@@ -1572,6 +1575,8 @@ document.getElementById('pane').addEventListener('input',e=>{
   const x=hotelByName(cell.dataset.rn); if(!x) return;
   const rm=siteRoomsOf(x)[Number(row.dataset.mi)]; if(!rm) return;
   if(f==='bf') rm.bf=e.target.checked; else rm[f]=e.target.value;
+  /* 줄을 나눠 적는 칸(침대)은 적은 줄 수만큼 높이를 맞춘다 */
+  if(e.target.tagName==='TEXTAREA') e.target.rows=Math.max(1,String(e.target.value||'').split('\n').length);
   markDirty('site');
 });
 /* 객실 타입 이름을 고치면 요금표 쪽 이름도 같이 고친다 — 안 그러면 요금이 끊긴다.
