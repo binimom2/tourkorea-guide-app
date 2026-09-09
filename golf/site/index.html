@@ -1692,6 +1692,8 @@ function openPanel(x, kind){
     qpNights = 1; qpRooms = 1;
     closeOcc();          // 다른 곳을 열 때 펼쳐진 채로 남지 않게
     drawAges();
+  } else if(isMenuKind(kind)){
+    qpPax = 1;           // 스파·티켓… 은 늘 1명부터 시작한다(사장님 2026-09-09)
   } else {
     qpPax = golfPax;
   }
@@ -1802,7 +1804,11 @@ function drawAges(){
 }
 function syncPax(){ if(qpKind === "hotels") qpPax = qpAdult + qpChild; }
 /* 골프장 인원 — 고치시면 «골프장 인원»으로 따로 기억해 둔다(호텔 인원과 섞이지 않게) */
-function setCnt(n){ qpPax = golfPax = Math.max(1, Math.min(40, n)); drawCnt(); qpCalc(); }
+function setCnt(n){
+  qpPax = Math.max(1, Math.min(40, n));
+  if(!isMenuKind(qpKind)) golfPax = qpPax;   // 스파에서 고친 인원이 골프장 인원으로 넘어가지 않게
+  drawCnt(); qpCalc();
+}
 function curCnt(){ return qpPax; }
 function setAdult(n){
   qpAdult = Math.max(1, Math.min(40, n));
