@@ -216,6 +216,14 @@ section:nth-of-type(even) .board{background:var(--paper)}
   text-decoration:none;display:inline-block}
 .staffbtn:hover,.menu a.staffbtn:hover{background:var(--fairway-mid);color:#fff}
 @media(max-width:1080px){.loginbtn{margin-left:0;width:100%;margin-top:4px}}
+/* 맨 위로(↑) — 오른쪽 아래에 떠 있다가 조금 내려가면 나타난다(사장님 2026-09-09) */
+.totop{position:fixed;right:18px;bottom:18px;z-index:150;width:46px;height:46px;border-radius:50%;
+  background:#fff;border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.18);
+  font:inherit;font-size:20px;font-weight:900;color:var(--fairway);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.totop.on{opacity:1;pointer-events:auto}
+.totop:hover{background:var(--paper)}
 .mask{position:fixed;inset:0;z-index:200;background:rgba(8,23,15,.62);display:none;align-items:center;justify-content:center;padding:18px}
 .mask.on{display:flex}
 .modal{background:var(--paper);border-radius:18px;width:100%;max-width:392px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.36);max-height:90vh;overflow:auto}
@@ -897,6 +905,18 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     <div class="staff"><a href="../index.html">직원용 견적 시스템 →</a> <a href="admin/">사이트 관리 →</a></div>
   </div>
 </footer>
+
+<!-- 맨 위로 — 400px쯤 내려가면 나타나고, 누르면 부드럽게 맨 위로 올라간다 -->
+<button type="button" class="totop" id="toTop" aria-label="맨 위로" title="맨 위로">↑</button>
+<script>
+(function(){
+  var b = document.getElementById("toTop");
+  function chk(){ b.classList.toggle("on", window.scrollY > 400); }
+  window.addEventListener("scroll", chk, { passive: true });
+  b.onclick = function(){ window.scrollTo({ top: 0, behavior: "smooth" }); };
+  chk();
+})();
+</script>
 
 <script src="data.js"></script>
 <script>
