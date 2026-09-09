@@ -96,6 +96,8 @@ tr.subrow td{padding:0 6px 11px}
 .rhead,.rrow{display:grid;grid-template-columns:234px 84px 74px 88px 88px 26px;
   gap:5px;align-items:center}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
+/* 메뉴별 요금(스파·티켓…) — 프로그램 · 시간(단위) · 밧 세 칸 */
+.mhead,.mrow{grid-template-columns:1fr 120px 110px 26px}
 /* 기간 칸 — 위는 「자주 쓰는 기간」 고르기, 아래는 날짜 두 개.
    달력을 매번 여는 게 일이라, 한 번 담아 둔 기간을 골라 쓰는 길을 위에 뒀다. */
 .rper{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -500,6 +502,13 @@ function buildPriceIndex(){
     const r=P.regions[reg]||{};
     (r.courses||[]).forEach(c=>{ if(c&&c.name) PIDX.courses[key(c.name)]={reg,c}; });
     (r.hotels ||[]).forEach(h=>{ if(h&&h.name) PIDX.hotels [key(h.name)]={reg,h}; });
+    /* 그 밖의 종류(스파·티켓…) — 종류 키 그대로 regions[지역][키]에 담긴다(2026-09-09).
+       한 항목 = { name, menu:[{n,u,p}] } — 프로그램 이름·시간(단위)·밧 */
+    Object.keys(r).forEach(k=>{
+      if(k==='courses'||k==='hotels'||!Array.isArray(r[k])) return;
+      PIDX[k]=PIDX[k]||{};
+      r[k].forEach(o=>{ if(o&&o.name) PIDX[k][key(o.name)]={reg,o}; });
+    });
   });
 }
 
@@ -1124,8 +1133,10 @@ function itemCntHTML(k){
   const {arr,q,rows}=itemRows(k);
   const hid=arr.filter(x=>x&&x.on===false).length;   // 손님 화면에서 감춰 둔 것
   /* 요금표에 안 들어와 있는 곳이 몇 곳인지 한눈에 — 자료 넣으면서 같이 챙기라고 */
-  const noP=(P&&(k==='courses'||k==='hotels'))
+  const noP=P
     ? arr.filter(x=>{
+        /* 스파·티켓… 은 메뉴 줄이 하나라도 있으면 요금이 있는 것 */
+        if(isMenuKind(k)){ const m=menuOf(k,x); return !(m&&m.length); }
         /* 호텔은 «객실 요금»이 하나라도 들어 있으면 있는 것으로 친다 */
         if(k==='hotels'&&priceRoomsRO(x).some(r=>Array.isArray(r.rates)&&r.rates.length)) return false;
         const rs=ratesOf(k,x);
@@ -1164,8 +1175,17 @@ function priceHomeOf(k,x){
   if(!P) return null;
   const key=String(x&&x.n||'').replace(/\s+/g,'').toLowerCase();
   if(!key) return null;
-  const hit=(k==='hotels'?PIDX.hotels:PIDX.courses)[key];
-  return hit ? (hit.c||hit.h) : null;
+  const bag=PIDX[k]; if(!bag) return null;
+  const hit=bag[key];
+  return hit ? (hit.c||hit.h||hit.o) : null;
+}
+/* 골프장·호텔이 아닌 종류인가 — 이런 종류는 기간 요금줄 대신 «메뉴별 요금»을 쓴다 */
+function isMenuKind(k){ return k!=='courses'&&k!=='hotels'; }
+function menuOf(k,x){
+  const o=priceHomeOf(k,x);
+  if(!o) return null;
+  if(!Array.isArray(o.menu)) o.menu=[];
+  return o.menu;
 }
 /* 옛 요금(시즌줄)이 몇 줄 들어 있는지 — 이 화면에서는 고칠 수 없지만 있는지는 알아야 한다 */
 function oldSeasonCount(o){ return (o&&Array.isArray(o.seasons)) ? o.seasons.length : 0; }
@@ -1216,10 +1236,35 @@ function rateRowHTML(k,idx,r){
     +'<button type="button" class="rdel" title="이 줄 지우기">✕</button>'
     +'</div>';
 }
+/* 메뉴 한 줄 — 프로그램 이름 · 시간(단위) · 밧. 스파·티켓처럼 기간 요금이 아닌 종류가 쓴다 */
+function menuRowHTML(idx,m){
+  const n=v=>(v===''||v==null)?'':v;
+  return '<div class="rrow mrow" data-ri="'+idx+'">'
+    +'<input data-rf="n" value="'+esc(n(m.n))+'" placeholder="타이 마사지">'
+    +'<input data-rf="u" value="'+esc(n(m.u))+'" placeholder="60분">'
+    +'<input type="number" data-rf="p" value="'+esc(n(m.p))+'" placeholder="밧" min="0">'
+    +'<button type="button" class="rdel" title="이 줄 지우기">✕</button>'
+    +'</div>';
+}
 function priceCell(k,x){
-  if(k!=='courses'&&k!=='hotels')
-    return '<div class="iecell pcell"><b>요금</b><div class="pbox">'
-      +'<span class="pmute">이 종류는 요금표가 없습니다</span></div></div>';
+  if(isMenuKind(k)){
+    /* 스파·티켓 같은 종류의 요금 = 메뉴별 요금(사장님 2026-09-09).
+       저장 자리는 골프장과 같은 요금표(golf_pricing) — 손님에게는 서버가 마진(기본 100밧)을
+       얹어 원화로 내려보낸다. 여기 적는 밧은 원가라 손님 화면엔 안 간다. */
+    const menu=menuOf(k,x);
+    let body;
+    if(P===null) body='<div class="pbox"><span class="pmute">요금표를 못 읽었습니다</span></div>';
+    else if(menu===null) body='<div class="pbox"><span class="pno">요금표에 「'+esc(x.n||'이름 없음')
+      +'」이 없습니다 — 아래 ＋를 누르면 만들어집니다</span></div>';
+    else body='<div class="rlist">'
+      +'<div class="rhead mhead"><span>프로그램 · 메뉴</span><span>시간 · 단위</span><span>밧 (원가)</span></div>'
+      +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
+      +'</div>';
+    return '<div class="iecell pcell" data-pk="'+esc(k)+'" data-pn="'+esc(x.n||'')+'">'
+      +'<b>메뉴별 요금 <span class="rhint">1인 · 밧 — 손님에게는 마진(기본 100밧)을 얹어 원화로 보입니다</span></b>'
+      +body
+      +'<button type="button" class="radd">＋ 요금 줄 추가</button></div>';
+  }
   const rates=ratesOf(k,x);
   let body;
   if(P===null) body='<div class="pbox"><span class="pmute">요금표를 못 읽었습니다</span></div>';
@@ -1247,12 +1292,14 @@ function ensureRateHome(k,x){
   if(!P.regions) P.regions={};
   const reg=(x.r||'기타');
   if(!P.regions[reg]) P.regions[reg]={courses:[],hotels:[]};
-  const arrName=(k==='hotels')?'hotels':'courses';
+  /* 골프장·호텔은 예전 자리(courses·hotels), 그 밖의 종류는 종류 키 그대로(spa·ticket…) */
+  const arrName=(k==='hotels')?'hotels':(k==='courses')?'courses':k;
   const arr=P.regions[reg][arrName]=P.regions[reg][arrName]||[];
   const key=String(x.n||'').replace(/\s+/g,'').toLowerCase();
   let o=arr.filter(e=>String(e.name||'').replace(/\s+/g,'').toLowerCase()===key)[0];
-  if(!o){ o={name:x.n||'',rates:[]}; arr.push(o); }
-  if(!Array.isArray(o.rates)) o.rates=[];
+  if(!o){ o=isMenuKind(k)?{name:x.n||'',menu:[]}:{name:x.n||'',rates:[]}; arr.push(o); }
+  if(isMenuKind(k)){ if(!Array.isArray(o.menu)) o.menu=[]; }
+  else if(!Array.isArray(o.rates)) o.rates=[];
   buildPriceIndex();
   return o;
 }
@@ -1271,7 +1318,10 @@ document.getElementById('pane').addEventListener('click',e=>{
   const item=(itemsArr(k)||[]).filter(z=>String(z.n||'')===name)[0];
   if(!item) return;
   const o=ensureRateHome(k,item);
-  if(add){
+  if(isMenuKind(k)){                                   // 스파·티켓… 메뉴별 요금
+    if(add) o.menu.push({n:'',u:'',p:''});
+    else{ const row=e.target.closest('.rrow'); if(!row) return; o.menu.splice(Number(row.dataset.ri),1); }
+  }else if(add){
     /* 기간은 물려받는다 — 같은 기간에 오전·오후를 잇달아 넣는 일이 많다.
        이 골프장에 줄이 하나도 없으면 방금 다른 골프장에서 쓴 기간을 가져온다. */
     const last=o.rates[o.rates.length-1]||lastPeriod;
@@ -1290,8 +1340,9 @@ document.getElementById('pane').addEventListener('input',e=>{
   if(!cell||!row) return;
   const k=cell.dataset.pk, name=cell.dataset.pn;
   const item=(itemsArr(k)||[]).filter(z=>String(z.n||'')===name)[0]; if(!item) return;
-  const o=ensureRateHome(k,item), r=o.rates[Number(row.dataset.ri)]; if(!r) return;
-  r[f]=(f==='p18'||f==='p9') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
+  const o=ensureRateHome(k,item);
+  const r=(isMenuKind(k)?o.menu:o.rates)[Number(row.dataset.ri)]; if(!r) return;
+  r[f]=(f==='p18'||f==='p9'||f==='p') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
   if(f==='from'||f==='to') rememberPeriod(r.from,r.to);
   markDirty('rates');
 });
@@ -1341,8 +1392,9 @@ function copyItem(k,i){
      들어 있는 골프장을 복사할 때 요금이 하나도 안 따라온다 — 처음에 그렇게 만들어 놓쳤다. */
   const home=priceHomeOf(k,src);
   const nRate=(home&&Array.isArray(home.rates))?home.rates.length:0;
+  const nMenu=(home&&Array.isArray(home.menu))?home.menu.length:0;   // 스파·티켓… 메뉴 줄
   const nSeason=oldSeasonCount(home);
-  const priceNote=nRate?(' · 요금 '+nRate+'줄'):nSeason?(' · 옛 요금표 '+nSeason+'줄'):'';
+  const priceNote=nRate?(' · 요금 '+nRate+'줄'):nMenu?(' · 메뉴 요금 '+nMenu+'줄'):nSeason?(' · 옛 요금표 '+nSeason+'줄'):'';
   const nm=prompt('「'+(src.n||'이름 없음')+'」을(를) 그대로 베껴 새로 만듭니다.\n'
     +'지역·영문이름·소개문구·사진·포함사항'+priceNote+'이 그대로 따라옵니다.\n'
     +'(저장을 눌러야 실제로 반영됩니다)\n\n새 이름을 적어 주세요:', (src.n||'')+' 2');

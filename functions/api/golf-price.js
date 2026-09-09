@@ -242,9 +242,38 @@ export async function onRequestGet({ env }) {
     });
   });
 
+  /* ── 그 밖의 종류(스파·티켓…) — 메뉴별 요금 (2026-09-09) ──
+     요금표 regions[지역][종류키] = [{ name, margin?, menu:[{ n, u, p }] }]
+       n=프로그램 이름, u=시간(단위), p=밧 **원가**(1인).
+     손님에게는 p+마진(기본 100밧, 항목에 margin이 있으면 그 값)을 «손님가»로,
+     원화(현찰 살때 환율)와 밧 두 가지로 내려보낸다. 원가·마진 액수는 나가지 않는다. */
+  const items = {};
+  Object.entries(P.regions || {}).forEach(([region, rv]) => {
+    Object.keys(rv || {}).forEach((k) => {
+      if (k === 'courses' || k === 'hotels' || !Array.isArray(rv[k])) return;
+      rv[k].forEach((o) => {
+        if (!o || !o.name) return;
+        const m = marginOf(o.margin);
+        const menu = [];
+        let lo = null;
+        (Array.isArray(o.menu) ? o.menu : []).forEach((r) => {
+          const p = r ? +r.p : NaN;
+          if (!(p > 0)) return;                              // 밧을 안 적은 줄은 안 내보낸다
+          const v = p + m;
+          menu.push({ n: r.n || '', u: r.u || '', krw: krwUp(v * fx.rate), baht: v });
+          if (lo == null || v < lo) lo = v;
+        });
+        if (!menu.length) return;                            // 요금이 하나도 없는 곳은 값을 안 내보낸다
+        (items[k] = items[k] || []).push({
+          region, name: o.name, fromKrw: krwUp(lo * fx.rate), fromBaht: lo, menu,
+        });
+      });
+    });
+  });
+
   /* 요금을 고치면 곧 반영돼야 하지만, 카드 목록은 손님마다 매번 계산할 필요가 없다 */
   return json(
-    { ok: true, courses, hotels, fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' } },
+    { ok: true, courses, hotels, items, fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' } },
     200,
     'public, max-age=60'
   );
