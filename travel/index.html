@@ -1225,7 +1225,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 11;   // 배포마다 +1 (구버전 탭 저장차단 기준). v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 12;   // 배포마다 +1 (구버전 탭 저장차단 기준). v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2714,12 +2714,13 @@ const SUBSECTIONS=[
     {k:'remark',label:'REMARK',type:'text'},
   ]},
   {key:'shows',label:'SHOW/RESTAURANT/MASSAGE',fields:[
-    {k:'name',label:'TICKET',type:'text',vendorKeys:['RESTAURANT','MASSAGE','SHOW','TICKET']},
+    /* 제목·시간 칸은 적은 글자만큼만 차지한다(fwMin에서 시작해 fw까지) — REMARK에 자리를 넘겨 준다(사장님 2026-09-09) */
+    {k:'name',label:'TICKET',type:'text',vendorKeys:['RESTAURANT','MASSAGE','SHOW','TICKET'],fw:220,fwMin:110},
     {k:'date',label:'DATE',type:'date',fw:108},
-    {k:'time',label:'TIME',type:'text'},
+    {k:'time',label:'TIME',type:'text',fw:110,fwMin:56},
     {k:'adt',label:'ADT',type:'number',fw:44},{k:'chd',label:'CHD',type:'number',fw:44},{k:'tc',label:'T/C',type:'number',fw:44},
     {k:'cfm',label:'CFM',type:'checkbox'},
-    {k:'remark',label:'REMARK',type:'text'},
+    {k:'remark',label:'REMARK',type:'text',fw:340,fwMin:150,cls:'col-wide'},   // 호텔·골프 REMARK처럼 넓게 (사장님 2026-09-09)
   ]},
   {key:'deposits',label:'DEPOSITS',ledger:true,fields:[
     {k:'date',label:'DATE',type:'date',fw:108},
@@ -4924,14 +4925,18 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
       } else { optsHtml+=inner; }
     });
     const hasVal=val&&allNames.some(n=>n===val);
-    const fwStyle=f.fw?` style="width:${f.fw}px;min-width:${f.fw}px;box-sizing:border-box;"`:'';
+    /* fwMin이 있으면(쇼 TICKET) 고정폭이 아니라 fwMin~fw 사이에서 내용만큼만 차지한다 — REMARK에 자리를 넘겨 준다 */
+    const fwStyle=(f.fw&&f.fwMin)?` style="min-width:${f.fwMin}px;max-width:${f.fw}px;width:auto;box-sizing:border-box;"`
+                 :f.fw?` style="width:${f.fw}px;min-width:${f.fw}px;box-sizing:border-box;"`:'';
+    const agAttr=(f.fw&&f.fwMin)?` class="ag-input" data-ag-min="${f.fwMin}" data-ag-max="${f.fw}" oninput="autoGrowInput(this)"`:'';
+    const agStyle=(f.fw&&f.fwMin)?` style="min-width:0;width:${f.fwMin}px;box-sizing:border-box;"`:fwStyle;
     const wrapId=id+'-vwrap';
     const keysJson=JSON.stringify(keys);
     const phone=f.vendorPhoneField||'';
     // 목록에 없는 값(직접입력) → 텍스트 입력 모드로 렌더
     if(val&&!hasVal){
       return `<span id="${wrapId}" style="display:inline-flex;gap:3px;align-items:center;">`
-        +`<input type="text" id="${id}" value="${escapeAttr(val)}" placeholder="직접입력"${fwStyle}/>`
+        +`<input type="text" id="${id}" value="${escapeAttr(val)}" placeholder="직접입력"${agAttr}${agStyle}/>`
         +`<button type="button" title="목록 선택" onclick='vendorToSelect("${id}","${wrapId}",${keysJson},"${phone}")' style="padding:2px 6px;font-size:11px;cursor:pointer;">≡</button></span>`;
     }
     // 목록 맨 위에 '직접입력'을 둔다 — 등록된 거래처가 없거나(쇼/레스토랑처럼) 아직 아무것도 안 고른
@@ -5060,8 +5065,14 @@ function _agTextWidth(el){
 }
 function autoGrowInput(el,force){
   if(!el) return;
-  const min=parseFloat(el.dataset.agMin)||90;
-  const max=parseFloat(el.dataset.agMax)||min;
+  /* 시작 폭 = 「정한 최소폭」과 «지금 그 열이 실제로 차지한 폭» 중 큰 쪽.
+     저장된 줄들의 REMARK가 길어 열이 이미 넓은데, 입력칸만 150px로 시작하면
+     좁은 칸에 갇혀 적게 된다(사장님 2026-09-09). 열이 좁을 때는 예전처럼 글자만큼만 늘어난다. */
+  let colW=0;
+  const td=el.closest('td');
+  if(td){ const cs=getComputedStyle(td); colW=td.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0); }
+  const min=Math.max(parseFloat(el.dataset.agMin)||90, colW||0);
+  const max=Math.max(parseFloat(el.dataset.agMax)||min, min);
   const want=Math.round(Math.min(max,Math.max(min,_agTextWidth(el))));
   /* 글쇠를 칠 때마다 칸 폭이 1~2px씩 바뀌면 자동완성 목록이 그때마다 닫힌다.
      눈에 띄게 달라질 때만 넓힌다(처음 그릴 때는 force로 정확히 맞춘다). */
