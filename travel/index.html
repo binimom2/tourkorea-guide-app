@@ -213,6 +213,8 @@ table.subtbl input.numcell{text-align:center;}
 /* 복사 버튼이 붙는 칸(가이드 이름 등) — 이름은 …로 잘려도 버튼은 항상 보이게 */
 table.subtbl td.copycell{display:flex;align-items:center;gap:4px;overflow:visible;}
 table.subtbl td.copycell .cellcopy-v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* 넓은 칸(col-wide)에 복사 버튼이 붙은 경우(가이드 이름) — 자르지 않고 줄바꿈으로 전부 보인다 */
+table.subtbl td.col-wide.copycell .cellcopy-v{overflow:visible;text-overflow:clip;white-space:normal;word-break:break-word;}
 table.subtbl td.copycell .cellcopy{flex:0 0 auto;border:1px solid #dfe3ea;background:#fff;border-radius:4px;padding:0 4px;font-size:11px;line-height:16px;cursor:pointer;color:#6b7484;}
 table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
 .subtbl-empty{padding:16px;text-align:center;color:#b0b6c2;font-size:11.5px;}
@@ -1225,7 +1227,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 12;   // 배포마다 +1 (구버전 탭 저장차단 기준). v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 13;   // 배포마다 +1 (구버전 탭 저장차단 기준). v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2701,7 +2703,8 @@ const SUBSECTIONS=[
     {k:'remark',label:'REMARK',type:'text',fw:340,fwMin:150,cls:'col-wide'},   // 호텔 PAYING처럼 전문이 다 보이게
   ]},
   {key:'guides',label:'GUIDES',reorderable:true,fields:[
-    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:200,copy:true},   // 표에서 이름을 통째로 복사(⧉)
+    /* 가이드 이름은 «…»로 자르지 않고 전부 보인다(사장님 2026-09-09) — 길면 줄바꿈. 복사(⧉)는 그대로 */
+    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:400,fwMin:160,cls:'col-wide',copy:true},
     {k:'phone',label:'PHONE',type:'text'},
     {k:'lguide',label:'L-GUIDE',type:'text',fw:200},
     {k:'cfm',label:'CFM',type:'checkbox'},
