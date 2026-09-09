@@ -96,8 +96,9 @@ tr.subrow td{padding:0 6px 11px}
 .rhead,.rrow{display:grid;grid-template-columns:234px 84px 74px 88px 88px 26px;
   gap:5px;align-items:center}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
-/* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 밧 세 칸 */
-.mhead,.mrow{grid-template-columns:1fr 1.2fr 110px 26px}
+/* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 적용 기간 · 밧 네 칸 */
+.mhead,.mrow{grid-template-columns:1fr 1.1fr 236px 100px 26px}
+.mrow .rdate.mprom input{background:#FEF6E4;border-color:#E8C88A}   /* 기간이 든 줄(프로모션)은 노랗게 */
 /* 기간 칸 — 위는 「자주 쓰는 기간」 고르기, 아래는 날짜 두 개.
    달력을 매번 여는 게 일이라, 한 번 담아 둔 기간을 골라 쓰는 길을 위에 뒀다. */
 .rper{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -1254,6 +1255,13 @@ function menuRowHTML(idx,m){
        예전에 u 칸에 적어 둔 값은 저장 자료에 남아 있을 뿐 보이지 않는다. */
     +'<input data-rf="n" value="'+esc(n(m.n))+'" placeholder="아로마스파맛사지 2시간">'
     +'<input data-rf="d" value="'+esc(n(m.d))+'" placeholder="스크럽+아로마오일+허브볼">'
+    /* 적용 기간(사장님 2026-09-09) — 비우면 늘 쓰는 기본 요금. 기간을 넣으면 그 기간에만 살고,
+       같은 메뉴 이름의 기본 요금을 그 기간 동안 덮어쓴다(프로모션·성수기 요금). */
+    +'<div class="rdate'+((m.from||m.to)?' mprom':'')+'">'
+      +'<input type="date" data-rf="from" value="'+esc(n(m.from))+'" title="적용 시작 (비우면 늘)">'
+      +'<span class="rtil">~</span>'
+      +'<input type="date" data-rf="to" value="'+esc(n(m.to))+'" title="적용 끝 (비우면 늘)">'
+    +'</div>'
     +'<input type="number" data-rf="p" value="'+esc(n(m.p))+'" placeholder="밧" min="0">'
     +'<button type="button" class="rdel" title="이 줄 지우기">✕</button>'
     +'</div>';
@@ -1269,7 +1277,8 @@ function priceCell(k,x){
     else if(menu===null) body='<div class="pbox"><span class="pno">요금표에 「'+esc(x.n||'이름 없음')
       +'」이 없습니다 — 아래 ＋를 누르면 만들어집니다</span></div>';
     else body='<div class="rlist">'
-      +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스 · 내용</span><span>밧 (원가)</span></div>'
+      +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스 · 내용</span>'
+        +'<span>적용 기간 <span class="rhint">비우면 늘 · 넣으면 그 기간만(프로모션)</span></span><span>밧 (원가)</span></div>'
       +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
       +'</div>';
     return '<div class="iecell pcell" data-pk="'+esc(k)+'" data-pn="'+esc(x.n||'')+'">'
@@ -1355,7 +1364,10 @@ document.getElementById('pane').addEventListener('input',e=>{
   const o=ensureRateHome(k,item);
   const r=(isMenuKind(k)?o.menu:o.rates)[Number(row.dataset.ri)]; if(!r) return;
   r[f]=(f==='p18'||f==='p9'||f==='p') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
-  if(f==='from'||f==='to') rememberPeriod(r.from,r.to);
+  if(f==='from'||f==='to'){
+    if(isMenuKind(k)){ const dbox=e.target.closest('.rdate'); if(dbox) dbox.classList.toggle('mprom',!!(r.from||r.to)); }
+    else rememberPeriod(r.from,r.to);
+  }
   markDirty('rates');
 });
 /* 「기간 고르기」 드롭다운 — 고르면 그 줄의 시작·끝 날짜가 한 번에 채워진다 */

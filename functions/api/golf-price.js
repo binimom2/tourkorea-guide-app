@@ -255,7 +255,6 @@ export async function onRequestGet({ env }) {
         if (!o || !o.name) return;
         const m = marginOf(o.margin);
         const menu = [];
-        let lo = null;
         (Array.isArray(o.menu) ? o.menu : []).forEach((r) => {
           const p = r ? +r.p : NaN;
           if (!(p > 0)) return;                              // 밧을 안 적은 줄은 안 내보낸다
@@ -268,10 +267,22 @@ export async function onRequestGet({ env }) {
             const mm = n.match(/^(.*?)\s*[(（]([^()（）]+)[)）]\s*$/);
             if (mm && mm[1].trim()) { n = mm[1].trim(); d = mm[2].trim(); }
           }
-          menu.push({ n, d, krw: krwUp(v * fx.rate), baht: v });
-          if (lo == null || v < lo) lo = v;
+          /* 적용 기간(from·to) — 비우면 늘 쓰는 기본 요금, 넣으면 그 기간에만 살아 같은 이름의
+             기본 요금을 덮어쓴다(프로모션). 어느 줄이 그 날 사는지는 손님 화면이 날짜로 고른다. */
+          const row = { n, d, krw: krwUp(v * fx.rate), baht: v };
+          if (/^\d{4}-\d{2}-\d{2}$/.test(r.from || '')) row.from = r.from;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(r.to || '')) row.to = r.to;
+          menu.push(row);
         });
         if (!menu.length) return;                            // 요금이 하나도 없는 곳은 값을 안 내보낸다
+        /* 카드의 「~」 = 오늘(방콕 날짜) 사는 줄 가운데 제일 싼 값. 기간 줄은 그 기간에만 센다 */
+        const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+        let lo = null;
+        menu.forEach((row) => {
+          if ((row.from && today < row.from) || (row.to && today > row.to)) return;
+          if (lo == null || row.baht < lo) lo = row.baht;
+        });
+        if (lo == null) lo = Math.min.apply(null, menu.map((row) => row.baht));   // 오늘 사는 줄이 없으면 전체 최저
         (items[k] = items[k] || []).push({
           region, name: o.name, fromKrw: krwUp(lo * fx.rate), fromBaht: lo, menu,
         });
