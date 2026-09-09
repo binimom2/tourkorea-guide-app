@@ -714,7 +714,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <!-- 스파·티켓… 전용 — 메뉴별 요금. 관리 화면의 「메뉴별 요금」이 여기 한 줄씩 선다(2026-09-09) -->
         <div class="dsect" id="dMenuBox" style="display:none"><b>메뉴 · 요금</b>
           <div class="rwrap"><table class="rooms"><thead><tr>
-            <th>프로그램</th><th>시간</th><th style="text-align:right">1인 요금</th>
+            <th>프로그램</th><th style="text-align:right">1인 요금</th>
           </tr></thead><tbody id="dMenu"></tbody></table></div>
         </div>
       </div>
@@ -1489,7 +1489,7 @@ function drawMenu(x, kind){
   if(!p || !(p.menu || []).length){ box.style.display = "none"; return; }
   box.style.display = "";
   $("#dMenu").innerHTML = p.menu.map(m =>
-    '<tr><td class="rt">' + esc(m.n) + '</td><td class="rsub">' + esc(m.u) + '</td>'
+    '<tr><td class="rt">' + esc(m.n) + '</td>'
     + '<td class="rp">' + (m.krw || 0).toLocaleString("ko-KR") + '원'
     + (m.baht ? '<b>' + m.baht.toLocaleString("ko-KR") + '바트</b>' : '') + '</td></tr>').join("");
 }
@@ -1662,7 +1662,7 @@ function openPanel(x, kind){
     qpMenu = -1;
     $("#qpHoles").innerHTML = p.menu.map((m, i) =>
       '<button type="button" data-m="' + i + '">'
-      + '<b>' + esc(m.n) + (m.u ? ' <i>' + esc(m.u) + '</i>' : '') + '</b><span>'
+      + '<b>' + esc(m.n) + '</b><span>'
       + (m.krw || 0).toLocaleString("ko-KR") + '원'
       + (m.baht ? '<i>(' + m.baht.toLocaleString("ko-KR") + '바트)</i>' : '')
       + '</span></button>').join("");
@@ -1899,7 +1899,7 @@ async function qpCalc(){
       return;
     }
     qpResult = { krw: (m.krw || 0) * qpPax, baht: (m.baht || 0) * qpPax };
-    qpBox('<div class="k">' + esc(m.n) + (m.u ? ' · ' + esc(m.u) : '') + ' · 1인 기준</div>'
+    qpBox('<div class="k">' + esc(m.n) + ' · 1인 기준</div>'
       + '<div class="v">' + (m.krw || 0).toLocaleString("ko-KR") + '<em>원</em>'
         + (m.baht ? '<b class="vbt">(' + m.baht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + '<div class="sum">' + qpPax + '명 합계: ' + qpResult.krw.toLocaleString("ko-KR") + '원'
@@ -2186,7 +2186,7 @@ function cartItem(){
   const mp = isMenuKind(qpKind) ? priceOf(dCur, qpKind) : null;
   const mSel = mp && qpMenu >= 0 && mp.menu ? mp.menu[qpMenu] : null;
   const option = isH ? qpRoom : (qpKind === "courses" ? qpHoles + "홀"
-               : mSel ? (mSel.n + (mSel.u ? " " + mSel.u : "")) : "");
+               : mSel ? mSel.n : "");
   /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
   const yl = s => dparse(s).getFullYear() + "." + dlabel(s);
   const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];

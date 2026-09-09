@@ -260,7 +260,8 @@ export async function onRequestGet({ env }) {
           const p = r ? +r.p : NaN;
           if (!(p > 0)) return;                              // 밧을 안 적은 줄은 안 내보낸다
           const v = p + m;
-          menu.push({ n: r.n || '', u: r.u || '', krw: krwUp(v * fx.rate), baht: v });
+          /* 시간은 이름에 같이 적는다(「타이마사지 2시간」) — u 칸은 이제 안 내보낸다(사장님 2026-09-09) */
+          menu.push({ n: r.n || '', krw: krwUp(v * fx.rate), baht: v });
           if (lo == null || v < lo) lo = v;
         });
         if (!menu.length) return;                            // 요금이 하나도 없는 곳은 값을 안 내보낸다
