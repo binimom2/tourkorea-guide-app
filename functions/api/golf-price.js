@@ -260,8 +260,15 @@ export async function onRequestGet({ env }) {
           const p = r ? +r.p : NaN;
           if (!(p > 0)) return;                              // 밧을 안 적은 줄은 안 내보낸다
           const v = p + m;
-          /* 시간은 이름에 같이 적는다(「타이마사지 2시간」) — u 칸은 이제 안 내보낸다(사장님 2026-09-09) */
-          menu.push({ n: r.n || '', krw: krwUp(v * fx.rate), baht: v });
+          /* 메뉴 = 이름(n) + 코스·내용(d). 시간은 이름에 같이 적는다(「타이마사지 2시간」).
+             처음에 괄호로 같이 적어 둔 줄(「… (스크럽+아로마오일)」)은 괄호 안을 d로 뗀다 —
+             관리 화면(menuOf)과 같은 규칙. u(시간) 칸은 안 내보낸다(사장님 2026-09-09). */
+          let n = String(r.n || '').trim(), d = String(r.d || '').trim();
+          if (!d) {
+            const mm = n.match(/^(.*?)\s*[(（]([^()（）]+)[)）]\s*$/);
+            if (mm && mm[1].trim()) { n = mm[1].trim(); d = mm[2].trim(); }
+          }
+          menu.push({ n, d, krw: krwUp(v * fx.rate), baht: v });
           if (lo == null || v < lo) lo = v;
         });
         if (!menu.length) return;                            // 요금이 하나도 없는 곳은 값을 안 내보낸다

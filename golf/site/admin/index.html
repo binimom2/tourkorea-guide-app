@@ -96,8 +96,8 @@ tr.subrow td{padding:0 6px 11px}
 .rhead,.rrow{display:grid;grid-template-columns:234px 84px 74px 88px 88px 26px;
   gap:5px;align-items:center}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
-/* 메뉴별 요금(스파·티켓…) — 프로그램(시간 포함) · 밧 두 칸 */
-.mhead,.mrow{grid-template-columns:1fr 110px 26px}
+/* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 밧 세 칸 */
+.mhead,.mrow{grid-template-columns:1fr 1.2fr 110px 26px}
 /* 기간 칸 — 위는 「자주 쓰는 기간」 고르기, 아래는 날짜 두 개.
    달력을 매번 여는 게 일이라, 한 번 담아 둔 기간을 골라 쓰는 길을 위에 뒀다. */
 .rper{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -1187,7 +1187,15 @@ function menuOf(k,x){
   const o=priceHomeOf(k,x);
   if(!o) return null;
   if(!Array.isArray(o.menu)) o.menu=[];
+  /* 메뉴 = 이름(n) + 코스·내용(d). 처음에 「아로마스파맛사지 2시간 (스크럽+아로마오일)」처럼
+     괄호 안에 내용을 같이 적어 둔 줄은 괄호 안을 d로 떼어 낸다(사장님 2026-09-09) —
+     오른쪽 견적 패널 단추에 긴 글이 밀려 끊어져서. 서버(golf-price.js)도 같은 규칙으로 뗀다. */
+  o.menu.forEach(m=>{ if(m&&!m.d){ const s=splitMenu(m.n); if(s){ m.n=s.n; m.d=s.d; } } });
   return o.menu;
+}
+function splitMenu(n){
+  const mm=String(n||'').match(/^(.*?)\s*[(（]([^()（）]+)[)）]\s*$/);
+  return mm&&mm[1].trim()?{n:mm[1].trim(),d:mm[2].trim()}:null;
 }
 /* 옛 요금(시즌줄)이 몇 줄 들어 있는지 — 이 화면에서는 고칠 수 없지만 있는지는 알아야 한다 */
 function oldSeasonCount(o){ return (o&&Array.isArray(o.seasons)) ? o.seasons.length : 0; }
@@ -1244,7 +1252,8 @@ function menuRowHTML(idx,m){
   return '<div class="rrow mrow" data-ri="'+idx+'">'
     /* 시간은 프로그램 이름에 같이 적는다(「타이마사지 2시간」) — 시간 칸은 뺐다(사장님 2026-09-09).
        예전에 u 칸에 적어 둔 값은 저장 자료에 남아 있을 뿐 보이지 않는다. */
-    +'<input data-rf="n" value="'+esc(n(m.n))+'" placeholder="타이마사지 2시간">'
+    +'<input data-rf="n" value="'+esc(n(m.n))+'" placeholder="아로마스파맛사지 2시간">'
+    +'<input data-rf="d" value="'+esc(n(m.d))+'" placeholder="스크럽+아로마오일+허브볼">'
     +'<input type="number" data-rf="p" value="'+esc(n(m.p))+'" placeholder="밧" min="0">'
     +'<button type="button" class="rdel" title="이 줄 지우기">✕</button>'
     +'</div>';
@@ -1260,7 +1269,7 @@ function priceCell(k,x){
     else if(menu===null) body='<div class="pbox"><span class="pno">요금표에 「'+esc(x.n||'이름 없음')
       +'」이 없습니다 — 아래 ＋를 누르면 만들어집니다</span></div>';
     else body='<div class="rlist">'
-      +'<div class="rhead mhead"><span>프로그램 · 메뉴 (시간을 같이 적는다)</span><span>밧 (원가)</span></div>'
+      +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스 · 내용</span><span>밧 (원가)</span></div>'
       +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
       +'</div>';
     return '<div class="iecell pcell" data-pk="'+esc(k)+'" data-pn="'+esc(x.n||'')+'">'
