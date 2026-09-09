@@ -1209,8 +1209,12 @@ function drawHero(){
   const title = esc(h.title || "")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
+  /* 윗줄 글자 크기·색 — 관리 화면 「첫 화면」에서 고른다(사장님 2026-09-09).
+     크기 sm/md/lg, 색은 비어 있으면 포인트 색(--marigold)을 따라간다. */
+  const EYE = { sm:"font-size:11.5px;letter-spacing:.24em", md:"", lg:"font-size:clamp(17px,2.2vw,21px);letter-spacing:.08em" };
+  const eyeSt = (EYE[h.eyeSize] || "") + (h.eyeColor ? ";color:" + esc(h.eyeColor) : "");
   $("#heroBox").innerHTML =
-    '<div class="eyebrow">' + esc(h.eyebrow || "") + "</div>"
+    '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
     + "<h1>" + title + "</h1>"
     + '<p class="lead">' + esc(h.lead || "") + "</p>"
     + '<div class="keys">' + (h.keys || []).map(k => "<span>" + esc(k) + "</span>").join("") + "</div>"
@@ -1231,9 +1235,11 @@ function drawHero(){
 const SECTOR_MAX = 10;
 function drawSectors(){
   const items = catList().map(c => ({ ic: c.ic || "", t: c.t || c.k, go: "cat:" + c.k }));
-  if((SITE.tours || []).length) items.push({ ic:"🚌", t:"기타투어", go:"#tours" });
+  /* 뒤의 고정 두 칸 문구는 관리 화면 「첫 화면 → 섹터 메뉴」에서 바꾼다(SITE.sector). */
+  const sc = SITE.sector || {};
+  if((SITE.tours || []).length) items.push({ ic: sc.toursIc || "🚌", t: sc.toursT || "기타투어", go:"#tours" });
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 금색으로 도드라지게 둔다(사장님) */
-  items.push({ ic:"⚡", t:"실시간 견적", go:"#contact", hot:true });
+  items.push({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"#contact", hot:true });
   $("#trustBox").innerHTML = items.slice(0, SECTOR_MAX).map(s =>
     '<button type="button"' + (s.hot ? ' class="hot"' : '') + ' data-go="' + esc(s.go) + '">'
     + (s.ic ? '<em>' + esc(s.ic) + '</em>' : '')

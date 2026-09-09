@@ -863,11 +863,27 @@ function drawSite(){
 
 function subHero(){
   const h=S.hero||(S.hero={});
+  const sc=S.sector||(S.sector={});
   document.getElementById('subpane').innerHTML=
     '<div class="card"><h2>첫 화면</h2>'
     +'<p class="desc">사이트를 열면 가장 먼저 보이는 부분입니다.</p>'
     +'<div class="grid2">'
-    +'<div class="f"><label>윗줄 (중간 글씨)</label>'+inp('hero.eyebrow',h.eyebrow)+'</div>'
+    +'<div class="f"><label>윗줄</label>'+inp('hero.eyebrow',h.eyebrow)
+      /* 윗줄의 글자 크기·색 — 사장님 2026-09-09. 색을 안 고르면 「화면 꾸미기」 포인트 색을 따라간다. */
+      +'<p class="hint" style="margin-top:10px">윗줄 글자 크기</p>'
+      +'<div class="thpick">'
+      +[['sm','작게'],['md','중간'],['lg','크게']]
+        .map(([k,n])=>'<button type="button" class="th'+((h.eyeSize||'md')===k?' on':'')+'" data-eys="'+k+'">'+esc(n)+'</button>').join('')
+      +'</div>'
+      +'<p class="hint" style="margin-top:10px">윗줄 글자 색</p>'
+      +'<div class="thpick">'
+      +[['','포인트 색 따라감',''],['#FFFFFF','흰색','#FFFFFF'],['#E9DFC8','모래색','#E9DFC8'],
+        ['#9FE0B4','연두','#9FE0B4'],['#9CD3F0','하늘','#9CD3F0'],['#F5B7B1','연분홍','#F5B7B1']]
+        .map(([v,n,c])=>'<button type="button" class="th'+((h.eyeColor||'')===v?' on':'')+'" data-eyc="'+v+'">'
+          +(c?'<i style="background:'+c+'"></i>':'<i style="background:linear-gradient(135deg,#E8A33D,#2E9E8F)"></i>')+esc(n)+'</button>').join('')
+      +'<label class="th" style="cursor:pointer">직접 고르기 <input type="color" data-p="hero.eyeColor" value="'+esc(/^#[0-9a-fA-F]{6}$/.test(h.eyeColor||'')?h.eyeColor:'#E8A33D')+'" style="width:34px;height:22px;border:0;padding:0;background:none"></label>'
+      +'</div>'
+    +'</div>'
     +'<div class="f"><label>큰 제목 — *별표* 안은 금색, 줄바꿈은 Enter</label>'+ta('hero.title',h.title)+'</div>'
     +'<div class="f"><label>설명 문구</label>'+ta('hero.lead',h.lead)+'</div>'
     /* 두 단추는 바로 아래 섹터 메뉴와 하는 일이 겹쳐 기본은 «안 보임»이다(사장님 2026-09-08).
@@ -905,13 +921,24 @@ function subHero(){
       .map(([k,n])=>'<button class="th'+((TH().size||'md')===k?' on':'')+'" data-fs="'+k+'">'+esc(n)+'</button>').join('')
     +'</div></div>'
 
-    +'<div class="card"><h2>네 칸 강조 줄</h2>'
-    +'<p class="desc">첫 화면 바로 아래 어두운 띠에 들어가는 네 칸입니다.</p>'
-    +'<div class="tblwrap"><table><thead><tr><th style="width:180px">큰 글씨</th><th>작은 글씨</th><th style="width:70px"></th></tr></thead><tbody>'
-    +(S.trust||[]).map((t,i)=>'<tr><td>'+inp('trust.'+i+'.b',t.b)+'</td><td>'+inp('trust.'+i+'.s',t.s)+'</td>'
-      +'<td><button class="del" data-del="trust" data-i="'+i+'">삭제</button></td></tr>').join('')
-    +'</tbody></table></div>'
-    +'<div class="rowbtns"><button class="add" data-add="trust">＋ 칸 추가</button></div></div>'
+    /* 첫 화면 아래 어두운 띠 — 2026-09-08부터 「직영·직수배·실시간·전담」 네 칸 대신
+       섹터 메뉴(골프장·호텔·…·⚡실시간 견적)가 들어간다. 종류 칸은 「종류 관리」에서 고치고,
+       뒤의 고정 두 칸(기타투어·실시간 견적)만 여기서 문구를 바꾼다(사장님 2026-09-09). */
+    +'<div class="card"><h2>섹터 메뉴 (첫 화면 아래 어두운 띠)</h2>'
+    +'<p class="desc">골프장·호텔 같은 종류 칸은 <b>「종류 관리」</b>에서 그림·이름·순서·보이기를 고칩니다. '
+      +'항목이 하나도 없는 종류는 손님 화면에 안 나옵니다.</p>'
+    +'<div class="thpick" style="margin-bottom:12px">'
+      +catsAll().filter(c=>c.on!==false&&itemsArr(c.k).length).map(c=>'<span class="th" style="cursor:default">'+esc((c.ic||'')+' '+(c.t||c.k))+'</span>').join('')
+      +((S.tours||[]).length?'<span class="th" style="cursor:default">'+esc((sc.toursIc||'🚌')+' '+(sc.toursT||'기타투어'))+'</span>':'')
+      +'<span class="th on" style="cursor:default">'+esc((sc.quoteIc||'⚡')+' '+(sc.quoteT||'실시간 견적'))+'</span>'
+      +'<button type="button" class="th" id="goCats">종류 관리로 가기 →</button>'
+    +'</div>'
+    +'<div class="grid2">'
+    +'<div class="f"><label>기타투어 칸 — 그림 / 이름 (투어가 있을 때만 보임)</label>'
+      +'<div class="pwbox">'+inp('sector.toursIc',sc.toursIc||'','🚌')+inp('sector.toursT',sc.toursT||'','기타투어')+'</div></div>'
+    +'<div class="f"><label>실시간 견적 칸 — 그림 / 이름 (금색 고정)</label>'
+      +'<div class="pwbox">'+inp('sector.quoteIc',sc.quoteIc||'','⚡')+inp('sector.quoteT',sc.quoteT||'','실시간 견적')+'</div></div>'
+    +'</div></div>'
 
     +'<div class="card"><h2>각 섹션 제목</h2>'
     +'<p class="desc">설명 문구 안의 <b>{n}</b>은 등록된 개수(골프장 62 등)로 자동으로 바뀝니다.</p>'
@@ -927,6 +954,10 @@ function subHero(){
   const pane=document.getElementById('subpane');
   pane.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{ TH().accent=b.dataset.th; markDirty('site'); subHero(); });
   pane.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{ TH().size=b.dataset.fs;  markDirty('site'); subHero(); });
+  /* 윗줄 글자 크기·색 */
+  pane.querySelectorAll('[data-eys]').forEach(b=>b.onclick=()=>{ h.eyeSize=b.dataset.eys; markDirty('site'); subHero(); });
+  pane.querySelectorAll('[data-eyc]').forEach(b=>b.onclick=()=>{ h.eyeColor=b.dataset.eyc; markDirty('site'); subHero(); });
+  const gc=document.getElementById('goCats'); if(gc) gc.onclick=()=>{ sub='cats'; drawSite(); };
   bindRowBtns();
 }
 /* S.theme 이 없으면 만들어 준다 */
