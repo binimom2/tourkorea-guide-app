@@ -733,7 +733,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <!-- 스파·티켓… 전용 — 메뉴별 요금. 관리 화면의 「메뉴별 요금」이 여기 한 줄씩 선다(2026-09-09) -->
         <div class="dsect" id="dMenuBox" style="display:none"><b>메뉴 · 요금</b>
           <div class="rwrap"><table class="rooms"><thead><tr>
-            <th>메뉴</th><th>코스</th><th style="text-align:right">1인 요금</th>
+            <th>메뉴</th><th>코스</th><th style="text-align:right" id="dMenuUnit">1인 요금</th>
           </tr></thead><tbody id="dMenu"></tbody></table></div>
         </div>
       </div>
@@ -1016,6 +1016,10 @@ function priceOf(x, kind){
 }
 /* 골프장·호텔이 아닌 종류(스파·티켓…)인가 — 요금이 기간줄이 아니라 «메뉴별»이다 */
 const isMenuKind = (kind) => kind !== "courses" && kind !== "hotels";
+/* 메뉴 요금의 단위 — 종류 관리의 「단위」가 «대»(차량)면 1대 요금, 아니면 1인 요금(사장님 2026-09-09).
+   차량은 사람 수가 아니라 대수로 곱한다. */
+const unitOf = (kind) => (isMenuKind(kind) && (catOf(kind) || {}).u === "대") ? "대" : "인";
+const cntUnit = (kind) => unitOf(kind) === "대" ? "대" : "명";
 /* 요금은 화면을 먼저 그린 뒤에 붙는다 — 요금 서버가 느리거나 죽어도 사이트는 그대로 보인다 */
 async function loadPrices(){
   try{
@@ -1138,7 +1142,7 @@ function priceHtml(p, kind){
   const krw = p && (kind === "hotels" ? p.fromKrw   : kind === "courses" ? p.from18     : p.fromKrw);
   const bt  = p && (kind === "hotels" ? p.fromBaht  : kind === "courses" ? p.from18Baht : p.fromBaht);
   const inc = kind === "hotels" ? "1박 · 1실 기준" : kind === "courses" ? "그린피+캐디+카트 포함"
-            : "메뉴 " + p.menu.length + "가지 · 1인 기준";
+            : "메뉴 " + p.menu.length + "가지 · 1" + unitOf(kind) + " 기준";
   return '<div class="price"><span class="pinc">' + inc + '</span>'
     + (krw
        ? '<span class="pnum">' + krw.toLocaleString("ko-KR") + '<em>원~</em>'
@@ -1543,6 +1547,7 @@ function drawMenu(x, kind, date){
   const p = isMenuKind(kind) ? priceOf(x, kind) : null;
   if(!p || !(p.menu || []).length){ box.style.display = "none"; return; }
   box.style.display = "";
+  $("#dMenuUnit").textContent = "1" + unitOf(kind) + " 요금";     // 차량은 「1대 요금」
   /* 날짜를 골랐으면 그 날짜에 사는 줄(기간 요금이 기본 요금을 덮는다), 아니면 오늘 기준 */
   $("#dMenu").innerHTML = menuFor(p, date || "").map(m =>
     '<tr><td class="rt">' + esc(m.n)
@@ -1787,6 +1792,7 @@ function openPanel(x, kind){
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
   $("#qpTimeLab").textContent = kind === "courses" ? "희망 티타임" : "희망 시간";
+  $("#qpPaxLab").textContent  = unitOf(kind) === "대" ? "차량 대수" : "인원";
   $("#qpTime").placeholder = kind === "courses" ? "예: 오전 7시대 또는 07:30" : "예: 14:00 또는 오후 2시쯤";
   $("#qpTime").value = "";
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님).
@@ -1856,7 +1862,7 @@ function drawTriple(){
 }
 /* 골프는 「인원」 한 칸, 호텔은 「객실 선택」 묶음 안의 객실·성인·아동을 센다 */
 function drawCnt(){
-  $("#qpPaxN").textContent   = qpPax + "명";        // 골프장 전용 칸
+  $("#qpPaxN").textContent   = qpPax + cntUnit(qpKind);   // 골프장·스파는 「명」, 차량은 「대」
   $("#qpAdultN").textContent = qpAdult + "명";
   $("#qpChildN").textContent = qpChild + "명";
   $("#qpRoomN").textContent  = qpRooms + "실";
@@ -1948,7 +1954,7 @@ function setRooms(n){
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
 /* 「성인 4명 · 아동 2명(7세·4세)」 — 나이를 안 적은 아동은 나이 없이 센다 */
 function paxLabel(){
-  if(qpKind !== "hotels") return qpPax + "명";
+  if(qpKind !== "hotels") return qpPax + cntUnit(qpKind);   // 차량은 「2대」
   let s = "성인 " + qpAdult + "명";
   if(qpChild){
     const ages = qpAges.filter(v => v !== "" && v != null).map(v => v + "세");
@@ -2006,10 +2012,10 @@ async function qpCalc(){
       return;
     }
     qpResult = { krw: (m.krw || 0) * qpPax, baht: (m.baht || 0) * qpPax };
-    qpBox('<div class="k">' + esc(m.n) + ' · 1인 기준</div>'
+    qpBox('<div class="k">' + esc(m.n) + ' · 1' + unitOf(qpKind) + ' 기준</div>'
       + '<div class="v">' + (m.krw || 0).toLocaleString("ko-KR") + '<em>원</em>'
         + (m.baht ? '<b class="vbt">(' + m.baht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
-      + '<div class="sum">' + qpPax + '명 합계: ' + qpResult.krw.toLocaleString("ko-KR") + '원'
+      + '<div class="sum">' + qpPax + cntUnit(qpKind) + ' 합계: ' + qpResult.krw.toLocaleString("ko-KR") + '원'
         + (m.baht ? ' (' + qpResult.baht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + (date ? '' : '<div class="ask" style="margin-top:8px">날짜를 고르시면 담으실 수 있습니다.</div>'));
     return;

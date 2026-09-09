@@ -1282,7 +1282,7 @@ function priceCell(k,x){
       +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
       +'</div>';
     return '<div class="iecell pcell" data-pk="'+esc(k)+'" data-pn="'+esc(x.n||'')+'">'
-      +'<b>메뉴별 요금 <span class="rhint">1인 · 밧 — 손님에게는 마진(기본 100밧)을 얹어 원화로 보입니다</span></b>'
+      +'<b>메뉴별 요금 <span class="rhint">1인 기준 밧(종류 단위가 「대」면 1대 기준) — 손님에게는 마진(기본 100밧)을 얹어 원화로 보입니다</span></b>'
       +body
       +'<button type="button" class="radd">＋ 요금 줄 추가</button></div>';
   }
