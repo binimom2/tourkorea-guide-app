@@ -2188,7 +2188,8 @@ function cartItem(){
   const mp = isMenuKind(qpKind) ? priceOf(dCur, qpKind) : null;
   const mSel = mp && qpMenu >= 0 && mp.menu ? mp.menu[qpMenu] : null;
   const option = isH ? qpRoom : (qpKind === "courses" ? qpHoles + "홀"
-               : mSel ? mSel.n : "");
+               /* 장바구니에는 코스도 같이 적는다 — 이름이 같고 코스만 다른 메뉴가 서로 덮어쓰지 않게 */
+               : mSel ? (mSel.n + (mSel.d ? " (" + mSel.d + ")" : "")) : "");
   /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
   const yl = s => dparse(s).getFullYear() + "." + dlabel(s);
   const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];
