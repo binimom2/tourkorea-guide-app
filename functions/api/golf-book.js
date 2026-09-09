@@ -136,6 +136,7 @@ function cleanItem(x) {
     option:  s(x.option, 120),       // 18홀 · 디럭스 씨뷰 …
     date:    s(x.date, 10),
     dateEnd: s(x.dateEnd, 10),
+    time:    s(x.time, 40),          // 희망 시간·티타임 — 손님이 자유롭게 적은 요청사항(2026-09-09)
     nights:  num(x.nights),
     rooms:   num(x.rooms),
     pax:     num(x.pax),

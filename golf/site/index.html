@@ -436,6 +436,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-dbtn:hover{border-color:var(--fairway)}
 .qp-dbtn.on{border-color:var(--fairway);background:#f4faf6}
 .qp-dbtn .ph{color:var(--muted);font-weight:600}
+/* 원하는 시간(스파·마사지) — 날짜 단추와 같은 생김새의 글자칸 */
+.qp-time{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
+  font-weight:700;background:#fff;color:inherit;box-sizing:border-box}
+.qp-time::placeholder{color:var(--muted);font-weight:600}
 /* 오른쪽 끝의 달력 그림 — 눌러서 날짜를 고르는 칸임을 한눈에 알게(사장님 2026-09-08).
    골프장·호텔·스파… 종류를 가리지 않고 같은 칸을 쓰므로 한 군데만 두면 다 붙는다. */
 .qp-dbtn .ph,.qp-dbtn .v{flex:1;min-width:0}
@@ -752,6 +756,12 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
               <span id="qpPaxN">4명</span>
               <button type="button" id="qpPlus" aria-label="늘리기">＋</button>
             </div>
+          </div>
+          <!-- 스파·마사지 같은 종류만 — 날짜 다음에 «원하는 시간»을 적는다(사장님 2026-09-09).
+               자유롭게 적는 칸이다(「14:00」·「오후 2시쯤」). 장바구니 문구와 예약요청에 같이 실린다. -->
+          <div id="qpTimeWrap" style="display:none">
+            <div class="qp-lab" id="qpTimeLab">희망 시간</div>
+            <input type="text" class="qp-time" id="qpTime" placeholder="예: 14:00 또는 오후 2시쯤" maxlength="40">
           </div>
           <!-- 호텔에서만 나온다 — 객실 수·성인·아동을 한 칸에 묶어 두고 눌러서 펼친다(사장님).
                아동을 고르면 그 아래로 아동마다 나이·생년월일 칸이 더 펼쳐진다. -->
@@ -1686,9 +1696,15 @@ function openPanel(x, kind){
   /* 고르는 차례 — 호텔은 날짜 → 객실 선택 → 룸 타입,
      골프장은 예전 그대로 라운드 → 인원 → 날짜다. 박수 칸은 없다 — 달력에서 저절로 나온다. */
   const box = $("#qpFields");
-  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap"]
-       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpRoomsWrap", "qpTriple"])
+  /* 골프장·스파는 (라운드/메뉴) → 인원 → 날짜 → 원하는 시간 순이다(사장님 2026-09-09).
+     시간은 자유롭게 적는 요청사항이고 호텔에는 없다. 골프장은 「원하는 티타임」이라 부른다. */
+  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap", "qpTimeWrap"]
+       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
+  $("#qpTimeWrap").style.display = isH ? "none" : "";
+  $("#qpTimeLab").textContent = kind === "courses" ? "희망 티타임" : "희망 시간";
+  $("#qpTime").placeholder = kind === "courses" ? "예: 오전 7시대 또는 07:30" : "예: 14:00 또는 오후 2시쯤";
+  $("#qpTime").value = "";
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님).
      골프장은 «골프장 인원»을 따로 기억해 두었다가 되살린다 — 기본 4명이고,
      손님이 8명으로 고쳐 두었으면 다른 골프장을 열어도 8명 그대로다.
@@ -2196,9 +2212,12 @@ function cartItem(){
   if(isH)    parts.push(qpNights + "박 " + qpRooms + "실");
   if(option) parts.push(option);
   parts.push(paxLabel());
+  /* 희망 시간(골프장·스파) — 자유롭게 적은 요청사항. 장바구니 문구 끝에 붙고 예약요청에도 그대로 실린다 */
+  const time = isH ? "" : String($("#qpTime").value || "").trim();
+  if(time) parts.push((qpKind === "courses" ? "희망 티타임 " : "희망 시간 ") + time);
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
-    option, date, dateEnd: end,
+    option, date, dateEnd: end, time,
     nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
@@ -2209,7 +2228,7 @@ function cartItem(){
     img: picsOf(dCur)[0] || ""
   };
 }
-const cartKeyOf = c => [c.kind, c.name, c.option, c.date].join("|");
+const cartKeyOf = c => [c.kind, c.name, c.option, c.date, c.time || ""].join("|");
 function addToCart(){
   if(!dCur) return;
   if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 골라 주세요.");
