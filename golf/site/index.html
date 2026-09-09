@@ -1579,8 +1579,10 @@ function menuFor(p, date){
     if(spec && !curSpec) pick[k] = m;                              // 기간 줄이 기본 줄을 덮는다
     else if(spec === curSpec && (m.baht || 0) < (cur.baht || 0)) pick[k] = m;   // 같은 급이면 싼 쪽
   });
-  const seen = {};
-  return on.filter(m => { const k = keyOf(m); if(seen[k] || pick[k] !== m) return false; seen[k] = true; return true; });
+  /* 차례는 원래 목록에서 그 메뉴가 처음 나온 자리 — 기간 줄이 뒤에 적혀 있어도 메뉴가 뒤로 밀리지 않는다 */
+  const seen = {}, out = [];
+  on.forEach(m => { const k = keyOf(m); if(seen[k]) return; seen[k] = true; out.push(pick[k]); });
+  return out;
 }
 function todayStr(){ const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }
 /* 기간 줄 표시 문구 — 「9월 15일~9월 30일 요금」 */
