@@ -203,6 +203,11 @@ table.subtbl tr.subtbl-edit-row td{background:#f7f9fd;max-width:none;white-space
    내용이 길면 2줄 이상이 되더라도 «잘리지 않고 전부» 보여야 한다
    (기본 td의 overflow:hidden / text-overflow:ellipsis를 여기서 확실히 푼다). */
 table.subtbl th.col-wide,table.subtbl td.col-wide{max-width:none;white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip;}
+/* 글자만큼만 차지하는 칸(가이드 이름·전화): 자르지 않고 한 줄로 전부 보이되, 남는 자리는 안 가져간다.
+   표가 화면보다 넓어질 때 남는 폭은 REMARK 같은 넓은 칸(col-wide)이 받는다(사장님 2026-09-09). */
+table.subtbl th.col-fit,table.subtbl td.col-fit{width:1%;white-space:nowrap;max-width:none;overflow:visible;text-overflow:clip;}
+/* ACTIONS 칸도 단추만큼만 — 남는 폭이 여기로 오면 Edit·Del이 멀리 떨어져 보인다 */
+table.subtbl th:last-child,table.subtbl td:last-child{width:1%;white-space:nowrap;}
 /* CFM 처럼 체크(OK)만 들어가는 칸: 폭 최소화 + 가운데 */
 table.subtbl th.col-chk,table.subtbl td.col-chk{width:36px;min-width:36px;max-width:36px;text-align:center;padding-left:3px;padding-right:3px;}
 table.subtbl input,table.subtbl select{width:100%;min-width:80px;padding:4px 6px;font-size:11px;font-family:inherit;border:1px solid #dfe3ea;border-radius:5px;box-sizing:border-box;}
@@ -1224,7 +1229,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 14;   // 배포마다 +1 (구버전 탭 저장차단 기준). v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 15;   // 배포마다 +1 (구버전 탭 저장차단 기준). v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2702,11 +2707,12 @@ const SUBSECTIONS=[
   {key:'guides',label:'GUIDES',reorderable:true,fields:[
     /* 가이드 이름은 «…»로 자르지 않고 전부 보인다(사장님 2026-09-09) — 길면 줄바꿈.
        이름이 다 보이게 되면서 복사(⧉) 단추는 뺐다(같은 날 사장님). */
-    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:400,fwMin:160,cls:'col-wide'},
-    {k:'phone',label:'PHONE',type:'text'},
+    {k:'name',label:'GUIDE',type:'text',vendorKey:'GUIDE',vendorPhoneField:'phone',fw:400,fwMin:160,cls:'col-fit'},
+    {k:'phone',label:'PHONE',type:'text',cls:'col-fit'},        // 이름 바로 뒤에 붙는다
     {k:'lguide',label:'L-GUIDE',type:'text',fw:200},
     {k:'cfm',label:'CFM',type:'checkbox'},
-    {k:'remark',label:'REMARK',type:'text'},
+    /* 남는 폭은 REMARK가 받고, 길게 적으면 줄바꿈으로 전부 보인다 */
+    {k:'remark',label:'REMARK',type:'text',fw:340,fwMin:100,cls:'col-wide'},
   ]},
   {key:'vehicles',label:'VEHICLES',reorderable:true,fields:[
     {k:'company',label:'V.COM',type:'text',vendorKey:'VEHICLES'},
