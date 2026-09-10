@@ -1016,6 +1016,15 @@ function priceOf(x, kind){
 }
 /* 골프장·호텔이 아닌 종류(스파·티켓…)인가 — 요금이 기간줄이 아니라 «메뉴별»이다 */
 const isMenuKind = (kind) => kind !== "courses" && kind !== "hotels";
+/* 「희망 시간」 칸의 이름·예시·장바구니 앞말을 종류마다 달리 한다(사장님 2026-09-10).
+   차량(단위 「대」)은 미팅 장소까지, 패스트트랙(종류 이름으로 잡는다 — 키가 cat3처럼 자동번호라서)은
+   도착 항공편명과 도착시간을 적게 한다. 골프장은 티타임, 나머지는 원래대로 희망 시간. */
+function timeLabelOf(kind){
+  if(kind === "courses") return { lab:"희망 티타임", ph:"예: 오전 7시대 또는 07:30", pre:"희망 티타임 " };
+  if(unitOf(kind) === "대") return { lab:"미팅장소와 시간 적어주세요", ph:"예: 파타야 힐튼호텔 로비 14:00", pre:"미팅 " };
+  if(/패스트트랙/.test((catOf(kind) || {}).t || "")) return { lab:"도착항공편명과 도착시간을 정확히 적어주세요", ph:"예: TG657 15:30 도착", pre:"항공편 " };
+  return { lab:"희망 시간", ph:"예: 14:00 또는 오후 2시쯤", pre:"희망 시간 " };
+}
 /* 메뉴 요금의 단위 — 종류 관리의 「단위」가 «대»(차량)면 1대 요금, 아니면 1인 요금(사장님 2026-09-09).
    차량은 사람 수가 아니라 대수로 곱한다. */
 const unitOf = (kind) => (isMenuKind(kind) && (catOf(kind) || {}).u === "대") ? "대" : "인";
@@ -1791,12 +1800,10 @@ function openPanel(x, kind){
        : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
-  /* 차량(단위 「대」)은 시간만으로는 모자라서 미팅 장소까지 같이 적게 한다(사장님 2026-09-10). */
-  const isCar = unitOf(kind) === "대";
-  $("#qpTimeLab").textContent = kind === "courses" ? "희망 티타임" : isCar ? "미팅장소와 시간 적어주세요" : "희망 시간";
-  $("#qpPaxLab").textContent  = isCar ? "차량 대수" : "인원";
-  $("#qpTime").placeholder = kind === "courses" ? "예: 오전 7시대 또는 07:30"
-                           : isCar ? "예: 파타야 힐튼호텔 로비 14:00" : "예: 14:00 또는 오후 2시쯤";
+  const tl = timeLabelOf(kind);
+  $("#qpTimeLab").textContent = tl.lab;
+  $("#qpPaxLab").textContent  = unitOf(kind) === "대" ? "차량 대수" : "인원";
+  $("#qpTime").placeholder = tl.ph;
   $("#qpTime").value = "";
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님).
      골프장은 «골프장 인원»을 따로 기억해 두었다가 되살린다 — 기본 4명이고,
@@ -2312,7 +2319,7 @@ function cartItem(){
   parts.push(paxLabel());
   /* 희망 시간(골프장·스파) — 자유롭게 적은 요청사항. 장바구니 문구 끝에 붙고 예약요청에도 그대로 실린다 */
   const time = isH ? "" : String($("#qpTime").value || "").trim();
-  if(time) parts.push((qpKind === "courses" ? "희망 티타임 " : unitOf(qpKind) === "대" ? "미팅 " : "희망 시간 ") + time);
+  if(time) parts.push(timeLabelOf(qpKind).pre + time);
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
     option, date, dateEnd: end, time,
