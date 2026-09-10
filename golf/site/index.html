@@ -774,7 +774,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
                자유롭게 적는 칸이다(「14:00」·「오후 2시쯤」). 장바구니 문구와 예약요청에 같이 실린다. -->
           <div id="qpTimeWrap" style="display:none">
             <div class="qp-lab" id="qpTimeLab">희망 시간</div>
-            <input type="text" class="qp-time" id="qpTime" placeholder="예: 14:00 또는 오후 2시쯤" maxlength="40">
+            <input type="text" class="qp-time" id="qpTime" placeholder="예: 14:00 또는 오후 2시쯤" maxlength="80">
           </div>
           <!-- 호텔에서만 나온다 — 객실 수·성인·아동을 한 칸에 묶어 두고 눌러서 펼친다(사장님).
                아동을 고르면 그 아래로 아동마다 나이·생년월일 칸이 더 펼쳐진다. -->
@@ -1791,9 +1791,12 @@ function openPanel(x, kind){
        : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
-  $("#qpTimeLab").textContent = kind === "courses" ? "희망 티타임" : "희망 시간";
-  $("#qpPaxLab").textContent  = unitOf(kind) === "대" ? "차량 대수" : "인원";
-  $("#qpTime").placeholder = kind === "courses" ? "예: 오전 7시대 또는 07:30" : "예: 14:00 또는 오후 2시쯤";
+  /* 차량(단위 「대」)은 시간만으로는 모자라서 미팅 장소까지 같이 적게 한다(사장님 2026-09-10). */
+  const isCar = unitOf(kind) === "대";
+  $("#qpTimeLab").textContent = kind === "courses" ? "희망 티타임" : isCar ? "미팅장소와 시간 적어주세요" : "희망 시간";
+  $("#qpPaxLab").textContent  = isCar ? "차량 대수" : "인원";
+  $("#qpTime").placeholder = kind === "courses" ? "예: 오전 7시대 또는 07:30"
+                           : isCar ? "예: 파타야 힐튼호텔 로비 14:00" : "예: 14:00 또는 오후 2시쯤";
   $("#qpTime").value = "";
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님).
      골프장은 «골프장 인원»을 따로 기억해 두었다가 되살린다 — 기본 4명이고,
@@ -2309,7 +2312,7 @@ function cartItem(){
   parts.push(paxLabel());
   /* 희망 시간(골프장·스파) — 자유롭게 적은 요청사항. 장바구니 문구 끝에 붙고 예약요청에도 그대로 실린다 */
   const time = isH ? "" : String($("#qpTime").value || "").trim();
-  if(time) parts.push((qpKind === "courses" ? "희망 티타임 " : "희망 시간 ") + time);
+  if(time) parts.push((qpKind === "courses" ? "희망 티타임 " : unitOf(qpKind) === "대" ? "미팅 " : "희망 시간 ") + time);
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
     option, date, dateEnd: end, time,
