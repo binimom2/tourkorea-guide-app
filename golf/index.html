@@ -337,6 +337,88 @@ const MG=v=>(Number.isFinite(+v)&&+v>=0)?+v:100;
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
+
+/* ══ 사이트 요금 기준 (사장님 2026-09-10 "사이트에서 한 요금 기준") ══
+   손님 사이트가 쓰는 요금 API(/api/golf-price)와 같은 규칙으로 센다. 둘이 어긋나면
+   손님이 사이트에서 본 금액과 여기서 뽑은 견적서가 달라진다.
+   · 골프장 새 요금줄(rates[]: 기간·주중/주말·오전/오후·p18/p9 합산가)을 시즌줄로 펴서 같이 읽는다.
+     새 줄이 그 날짜에 하나라도 걸리면 새 줄만 보고, 여럿이면 제일 싼 값(오전·오후가 갈린 곳).
+   · 마진: 18홀 m · 9홀 m/2 · 27홀 m+m/2 · 36홀 2m (API와 같다. 전에는 홀수와 상관없이 m 한 번이었다).
+   · 호텔 객실 요금표(rooms[].rates[]: 기간·주중/주말 1실 1박 + 써차지)가 있으면 그걸로 밤마다 센다. */
+const EMBED=/[?&]embed=site\b/.test(location.search);   // 손님 사이트 팝업 안에서 열렸다
+const posNum=v=>{ const n=+v; return Number.isFinite(n)&&n>0?n:null; };
+const blank=v=>v===''||v==null;
+const partOf=v=>(v==='주말'||v==='태국휴일'||v==='주말·휴일')?'we':'wd';
+const rateCovers=(r,date)=>(blank(r.from)||date>=r.from)&&(blank(r.to)||date<=r.to);
+const margin9=m=>Math.round(m/2);
+/* 새 요금줄 → 시즌줄. 같은 기간의 주중·주말 줄을 한 시즌으로 묶고, 오전·오후가 갈리면 싼 값 */
+function ratesToSeasons(c){
+  const rates=(Array.isArray(c.rates)?c.rates:[]).filter(r=>r&&(posNum(r.p18)||posNum(r.p9)));
+  const g={}, order=[];
+  rates.forEach(r=>{
+    const k=(r.from||'')+'|'+(r.to||'');
+    if(!g[k]){ g[k]={from:blank(r.from)?'0000-01-01':r.from, to:blank(r.to)?'9999-12-31':r.to, wd18:null,we18:null,wd9:null,we9:null,
+      margin:blank(r.margin)?c.margin:r.margin}; order.push(k); }
+    const o=g[k], we=partOf(r.part)==='we', p18=posNum(r.p18), p9=posNum(r.p9);
+    const set=(key,v)=>{ if(v!=null&&(o[key]==null||v<o[key])) o[key]=v; };
+    set(we?'we18':'wd18',p18); set(we?'we9':'wd9',p9);
+  });
+  return order.map(k=>g[k]).map(o=>({ from:o.from, to:o.to, src:'rates',
+    g18:[o.wd18,o.we18], cad:0, crt:0,
+    g9:(o.wd9!=null||o.we9!=null)?[o.wd9,o.we9]:null, cad9:0, crt9:0, margin:o.margin }));
+}
+/* 그 날짜·홀수의 1인 손님가(밧). 새 줄이 걸리면 새 줄만, 여럿이면 제일 싼 값. 없으면 null */
+function bestUnit(course,dateStr,wk,holes){
+  let ss=(course.s||[]).filter(x=>dateStr>=x.from && dateStr<=x.to);
+  if(ss.some(x=>x.src==='rates')) ss=ss.filter(x=>x.src==='rates');
+  let best=null;
+  ss.forEach(s=>{
+    const m=MG(s.margin);
+    const u18=s.g18&&s.g18[wk]!=null ? s.g18[wk]+s.cad+s.crt+m : null;
+    const u9 =s.g9 &&s.g9 [wk]!=null ? s.g9 [wk]+s.cad9+s.crt9+margin9(m) : null;
+    let u=null;
+    if(holes==='18') u=u18; else if(holes==='9') u=u9;
+    else if(holes==='27') u=(u18!=null&&u9!=null)?u18+u9:null;
+    else if(holes==='36') u=u18!=null?u18*2:null;
+    if(u!=null&&(best==null||u<best)) best=u;
+  });
+  return best;
+}
+/* 호텔 객실 요금표 — /api/golf-price 의 roomOn()과 같다 */
+const isSur=r=>r&&(r.sur===true||r.sur===1||r.sur==='1');
+function roomsWithRates(h){ return (Array.isArray(h&&h.rooms)?h.rooms:[]).filter(r=>r&&String(r.t||'').trim()&&Array.isArray(r.rates)&&r.rates.some(x=>x&&(posNum(x.wd)||posNum(x.we)))); }
+function roomBaht(r,we){ const wd=posNum(r.wd), wk=posNum(r.we); return we?(wk!=null?wk:wd):(wd!=null?wd:wk); }
+function roomOn(rm,h,date,we){
+  let base=null, add=0;
+  (rm.rates||[]).forEach(r=>{
+    if(!rateCovers(r,date)) return;
+    const v=roomBaht(r,we); if(v==null) return;
+    if(isSur(r)) add+=v; else if(base==null||v<base) base=v;
+  });
+  if(base==null) return null;
+  return base+add+MG(blank(rm.margin)?h.margin:rm.margin);
+}
+/* 그 지역에서 묵는 밤들의 날짜 — 출발일 + 앞 지역들 박수만큼 지난 날부터 nn일 */
+function stayDates(r,nn){
+  const start=$('#startDate').value; if(!start) return [];
+  let off=0;
+  for(const x of ROUTE){ if(x===r) break; off+=(+x.nights||0); }
+  const out=[];
+  for(let k=0;k<nn;k++){ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+off+k); out.push(iso(d)); }
+  return out;
+}
+/* 팝업(손님 사이트)에서는 사이트에 «노출한» 골프장·호텔만 고를 수 있다(사장님 2026-09-10).
+   golf_site 의 courses/hotels 가운데 on:false 가 아닌 이름만 남긴다. */
+async function applySiteExposure(){
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_site').maybeSingle();
+    const d=row&&row.data; if(!d) return;
+    const names=arr=>new Set((Array.isArray(arr)?arr:[]).filter(x=>x&&x.on!==false&&x.n).map(x=>x.n));
+    const cs=names(d.courses), hs=names(d.hotels);
+    if(cs.size) Object.keys(COURSES).forEach(reg=>{ COURSES[reg]=(COURSES[reg]||[]).filter(c=>cs.has(c.n)); });
+    if(hs.size&&P.hotels) Object.keys(P.hotels).forEach(reg=>{ P.hotels[reg]=(P.hotels[reg]||[]).filter(h=>hs.has(h.name)); });
+  }catch(e){}
+}
 function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
 /* 기간 요금 확장: 입력된 최고 기간을 기준으로 초과 박수만큼 "1박추가시" 금액을 더함
    예) 핸들링이 2박3일까지만 있으면 3박 = 2박3일 + 1박추가시×1 */
@@ -366,6 +448,7 @@ let LAST=null;             // 마지막 계산 결과 {lines,total,per,pax,night
 let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
 let hotelNights={};        // {지역명: 박수} — 비어 있으면 그 지역 박수를 그대로 쓴다
 let hotelRoom={};          // {지역명: 'twin'|'single'|'triple'}
+let hotelRoomT={};         // {지역명: 객실 타입 이름} — 객실 요금표가 있는 호텔에서 고른 타입(사이트 요금 기준)
 const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카오야이','아유타야'];
 
 /* 총 박수. 지역을 고르기 전에도 적을 수 있어야 해서 따로 들고 있다가,
@@ -435,6 +518,7 @@ function newQuote(){
   Object.keys(hotelPick).forEach(k=>delete hotelPick[k]);
   Object.keys(hotelNights).forEach(k=>delete hotelNights[k]);
   Object.keys(hotelRoom).forEach(k=>delete hotelRoom[k]);
+  Object.keys(hotelRoomT).forEach(k=>delete hotelRoomT[k]);
   dayState.length=0;
   tripNights=0;
   LAST=null;
@@ -628,9 +712,17 @@ function renderHotels(){
     const list=H[r.region]||[];
     const rt=hotelRoom[r.region]||'twin';
     const row=document.createElement('div'); row.className='hrow';
-    const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.region])===String(idx)?' selected':''}>${h.name} · ${won(h.perNight)} THB/박</option>`).join('');
+    /* 선택지 이름: 객실 요금표가 있는 호텔은 「객실 요금표」로, 옛 1박 단가만 있으면 그 값으로.
+       팝업(손님 사이트)에서는 값을 안 붙인다 — 원가에 가까운 숫자가 손님 눈에 들면 안 된다 */
+    const tag=h=>EMBED?'':(roomsWithRates(h).length?' · 객실 요금표':` · ${won(h.perNight)} THB/박`);
+    const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.region])===String(idx)?' selected':''}>${h.name}${tag(h)}</option>`).join('');
+    /* 고른 호텔에 객실 요금표가 있으면 객실 타입 고르기 칸이 붙는다(요금이 타입마다 다르다) */
+    const hp=hotelPick[r.region], hsel=(hp!==undefined&&hp!=='')?list[+hp]:null;
+    const rws=hsel?roomsWithRates(hsel):[];
+    const rtSel=rws.length?`<select data-hrt="${r.region}">${rws.map(x=>`<option value="${x.t}"${x.t===(hotelRoomT[r.region]||rws[0].t)?' selected':''}>${x.t}</option>`).join('')}</select>`:'';
     row.innerHTML=`<span class="hreg">${r.region}</span>`+
       `<select class="hsel" data-hotel="${r.region}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`+
+      rtSel+
       `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.region}"><small>박</small>`+
       `<select data-hroom="${r.region}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
       `<span class="hrooms" data-hrooms="${r.region}">${roomCount(pax,rt)}실</span>`;
@@ -665,14 +757,9 @@ function calc(){
     const wk=we?1:0;
     const nm=`${c.n} ${st.holes}홀`, dl=`${st.date.slice(5)} ${st.region}`;
     if(!ss){ lines.push({t:nm,s:`${dl} · 해당일 요금 미등록`,v:0,warn:1}); return; }
-    let unit=null;
-    const u18 = ss.g18&&ss.g18[wk]!=null ? ss.g18[wk]+ss.cad+ss.crt : null;
-    const u9  = ss.g9 &&ss.g9 [wk]!=null ? ss.g9 [wk]+ss.cad9+ss.crt9 : null;
-    if(st.holes==='18') unit = u18;
-    else if(st.holes==='27') unit = (u18!=null&&u9!=null) ? u18+u9 : null;   // 18홀 + 9홀
-    else if(st.holes==='36') unit = u18!=null ? u18*2 : null;                // 18홀 2회
-    if(unit==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
-    const gU=unit+MG(ss.margin);   // 손님가 = 원가 + 요금표의 마진
+    /* 손님가(원가+마진) — 사이트 요금 API와 같은 규칙(bestUnit). 새 요금줄이 있으면 그쪽, 홀수별 마진 */
+    const gU=bestUnit(c,st.date,wk,String(st.holes||'18'));
+    if(gU==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
     lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(gU)} × ${pax}명`,v:gU*pax});
   });
   // 2) 차량 (선택한 지역 조합의 기간값 + 1박추가 확장)
@@ -709,6 +796,20 @@ function calc(){
     const nn=hotelNightsOf(r); if(!nn) return;
     const rt=hotelRoom[r.region]||'twin';
     const rms=roomCount(pax,rt);
+    /* 객실 요금표(사이트 기준)가 있으면 그 객실 타입으로 밤마다 센다 — 주말·성수기·써차지가 밤마다 다르다 */
+    const rws=roomsWithRates(h);
+    if(rws.length){
+      const rm=rws.find(x=>x.t===hotelRoomT[r.region])||rws[0];
+      let sum=0, miss='';
+      stayDates(r,nn).forEach(d=>{
+        if(miss) return;
+        const v=roomOn(rm,h,d,isWeekend(new Date(d+'T00:00:00'))||isHoliday(d));
+        if(v==null) miss=d; else sum+=v;
+      });
+      if(miss){ lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${miss} 요금 미등록`,v:0,warn:1}); return; }
+      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`,v:sum*rms});
+      return;
+    }
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
     lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
   });
@@ -819,6 +920,7 @@ function quoteSnapshot(){
   const end=(()=>{ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); })();
   return {
     quoteNo: QUOTE_NO||'',
+    via: EMBED?'site':'',            // 손님 사이트 팝업에서 만든 견적 — 이력에 표시가 붙는다
     issued: iso(new Date()),
     savedAt: new Date().toISOString(),
     start, end,
@@ -1016,7 +1118,7 @@ function renderQuoteHistory(){
     const krw=(r.fx>0)?krwUp(r.per*r.fx)*r.pax:0;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #efeada;">
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:800;font-size:13px;">${esc(r.quoteNo)} <span style="font-weight:600;color:#5E6F66;">${esc(r.team||'-')}</span></div>
+        <div style="font-weight:800;font-size:13px;">${esc(r.quoteNo)} <span style="font-weight:600;color:#5E6F66;">${esc(r.team||'-')}</span>${r.via==='site'?' <span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:#E8A33D;border-radius:999px;padding:1px 7px;vertical-align:middle">사이트 견적</span>':''}</div>
         <div style="font-size:11.5px;color:#5E6F66;margin-top:2px;">${esc(r.start)} · ${esc(r.route)} · ${r.pax}명 · ${r.nights}박</div>
         <div style="font-size:12px;font-weight:700;margin-top:3px;">${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}</div>
       </div>
@@ -1213,7 +1315,8 @@ document.addEventListener('change',e=>{
   // 직원이 직접 고르면 자동 적용 안내는 지운다(직접 고른 값이 우선)
   if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; syncVehShown(); calc(); return; }
   if(t.id==='noVeh'){ const w=$('#vehGroup'); if(w) w.closest('.f').style.display=t.checked?'none':''; autoFold('s5'); calc(); return; }
-  if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; calc(); return; }
+  if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; delete hotelRoomT[t.dataset.hotel]; renderHotels(); calc(); return; }   // 호텔이 바뀌면 객실 타입 칸을 다시 그린다
+  if(t.dataset.hrt!==undefined){ hotelRoomT[t.dataset.hrt]=t.value; calc(); return; }
   if(t.dataset.hroom!==undefined){ hotelRoom[t.dataset.hroom]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
   if(t.dataset.reg!==undefined){ const i=+t.dataset.reg; dayState[i].region=t.value; dayState[i].course=''; fillCourses(i); }
@@ -1265,17 +1368,17 @@ async function loadPricing(){
       vehicleNotes:Array.isArray(d.vehicleNotes)?d.vehicleNotes:[],
       transfers:Array.isArray(d.transfers)?d.transfers:[]
     };
-      // 저장된 골프장(새 구조)이 있으면 반영
-      if(d.regions){ const fs=Object.values(d.regions)[0]?.courses?.[0]?.seasons?.[0];
-        if(fs && fs.gf18!==undefined){
-          const conv={}, hot={};
-          Object.entries(d.regions).forEach(([reg,rv])=>{
-            conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'', s:(c.seasons||[]).map(s=>({ from:s.from, to:s.to, g18:[s.gf18?.wd??null,s.gf18?.we??null], cad:s.caddie||0, crt:s.cart||0, g9:(s.gf9&&(s.gf9.wd!=null||s.gf9.we!=null))?[s.gf9.wd??null,s.gf9.we??null]:null, cad9:s.caddie9||0, crt9:s.cart9||0, margin:s.margin })) }));
-            if(rv.hotels&&rv.hotels.length) hot[reg]=rv.hotels;
-          });
-          Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
-          if(Object.keys(hot).length) P.hotels=hot;
-        }
+      // 저장된 골프장(새 구조)이 있으면 반영.
+      // (전에는 첫 골프장의 첫 시즌줄이 있어야만 읽었다 — 새 요금줄(rates[])만 있는 골프장은 통째로 빠졌다. 2026-09-10 고침)
+      if(d.regions && Object.keys(d.regions).length){
+        const conv={}, hot={};
+        Object.entries(d.regions).forEach(([reg,rv])=>{
+          conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'',
+            s:ratesToSeasons(c).concat((c.seasons||[]).map(s=>({ from:s.from, to:s.to, g18:[s.gf18?.wd??null,s.gf18?.we??null], cad:s.caddie||0, crt:s.cart||0, g9:(s.gf9&&(s.gf9.wd!=null||s.gf9.we!=null))?[s.gf9.wd??null,s.gf9.we??null]:null, cad9:s.caddie9||0, crt9:s.cart9||0, margin:s.margin }))) }));
+          if(rv.hotels&&rv.hotels.length) hot[reg]=rv.hotels;
+        });
+        Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
+        if(Object.keys(hot).length) P.hotels=hot;
       }
     }
   }catch(e){}
@@ -1310,7 +1413,7 @@ function buildGuideOptions(){
     : '<option value="">등록된 가이드 요금 없음</option>';
   if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
 }
-function startApp(user){
+async function startApp(user){
   GROLE=golfRoleOf(user);
   const wb=document.getElementById('whoBadge');
   // 골프 명단에 없는 사람 — 로그인은 됐지만 이 사이트는 쓸 수 없다
@@ -1333,6 +1436,7 @@ function startApp(user){
   }
   if(wb) wb.textContent=`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
   const d0=new Date(); d0.setDate(d0.getDate()+14); $('#startDate').value=iso(d0);
+  if(EMBED) await applySiteExposure();   // 팝업에서는 사이트에 노출한 골프장·호텔만
   buildGuideOptions();
   window._ready=true;
   refreshAll();
