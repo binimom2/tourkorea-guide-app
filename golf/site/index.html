@@ -35,6 +35,15 @@ a{color:inherit}
 .brand{display:flex;align-items:baseline;gap:8px;text-decoration:none;white-space:nowrap}
 .brand b{font-size:19px;font-weight:900;letter-spacing:-.04em;color:var(--fairway)}
 .brand span{font-size:16px;font-weight:800;letter-spacing:-.02em;color:var(--fairway)}   /* 「투어코리아」 — 키움(사장님 2026-09-10) */
+/* 실시간 견적 팝업 */
+.qmodal{position:fixed;inset:0;z-index:90;background:rgba(8,23,15,.62);display:flex;align-items:center;justify-content:center;padding:18px}
+.qmodal[hidden]{display:none}
+.qbox{position:relative;width:min(1120px,100%);height:min(920px,94vh);background:var(--paper);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.qbox iframe{width:100%;height:100%;border:0;display:block;background:var(--paper)}
+.qclose{position:absolute;top:10px;right:10px;z-index:2;width:38px;height:38px;border-radius:999px;border:0;background:var(--fairway);color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.qclose:hover{background:var(--fairway-mid)}
+@media(max-width:640px){ .qmodal{padding:0} .qbox{width:100%;height:100%;border-radius:0} }
+body.qopen{overflow:hidden}
 /* 메뉴 링크(골프장·호텔…·실시간 견적)는 감춘다 — 섹터 띠가 대신한다(사장님 2026-09-10) */
 .navlinks{display:none}
 /* 검색창 — 로고와 오른쪽 도구 사이. 결과는 아래로 펼쳐진다 */
@@ -673,6 +682,15 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
   </div>
 </nav>
+
+<!-- 실시간 견적 팝업 — 기존 견적 계산기(/golf/)를 사이트 안에 창으로 띄운다(사장님 2026-09-10).
+     새 탭으로 나가면 사이트를 잃어버리니 iframe 으로 안에서 연다. 한 번 연 화면은 닫아도 남겨 둔다(로그인·입력 유지). -->
+<div class="qmodal" id="qModal" hidden>
+  <div class="qbox">
+    <button type="button" class="qclose" id="qClose" aria-label="닫기">✕</button>
+    <iframe id="qFrame" title="실시간 견적"></iframe>
+  </div>
+</div>
 
 <header class="hero" id="top">
   <div class="wrap" id="heroBox"></div>
@@ -1342,7 +1360,7 @@ function drawHero(){
        「두 단추 보이기」를 켜면 그대로 되살아난다 — 문구도 그대로 남아 있다. */
     + (h.ctaOn === true
         ? '<div class="cta">'
-          + '<a class="btn btn-gold" href="' + esc(quoteHref()) + '"' + (quoteHref().charAt(0) === "#" ? "" : ' target="_blank" rel="noopener"') + '>' + esc(h.cta1 || "실시간 견적 받기") + "</a>"
+          + '<a class="btn btn-gold" href="' + esc(quoteHref()) + '" onclick="goQuote();return false">' + esc(h.cta1 || "실시간 견적 받기") + "</a>"
           + '<a class="btn btn-ghost" href="#catalog">' + esc(h.cta2 || "골프장 둘러보기") + "</a></div>"
         : "");
   drawSectors();
@@ -1359,8 +1377,21 @@ function quoteHref(){ return ((SITE.sector || {}).quoteHref || "").trim() || "/g
 function goQuote(){
   const go = quoteHref();
   if(go.charAt(0) === "#"){ const el = document.querySelector(go); if(el) el.scrollIntoView({ behavior:"smooth" }); }
-  else window.open(go, "_blank", "noopener");
+  else openQuoteModal(go);
 }
+/* 팝업으로 연다(사장님 2026-09-10). 주소가 딴 도메인이면 iframe 을 막을 수 있어 그때만 새 탭 */
+function openQuoteModal(go){
+  const m = $("#qModal"), f = $("#qFrame");
+  let sameOrigin = true;
+  try{ sameOrigin = new URL(go, location.href).origin === location.origin; }catch(e){}
+  if(!sameOrigin){ window.open(go, "_blank", "noopener"); return; }
+  if(f.getAttribute("src") !== go) f.setAttribute("src", go);   /* 처음 한 번만 — 닫았다 열어도 입력이 남는다 */
+  m.hidden = false; document.body.classList.add("qopen");
+}
+function closeQuoteModal(){ $("#qModal").hidden = true; document.body.classList.remove("qopen"); }
+$("#qClose").onclick = closeQuoteModal;
+$("#qModal").addEventListener("click", e => { if(e.target === e.currentTarget) closeQuoteModal(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#qModal").hidden) closeQuoteModal(); });
 function drawSectors(){
   const items = catList().map(c => ({ ic: c.ic || "", t: c.t || c.k, go: "cat:" + c.k }));
   /* 뒤의 고정 두 칸 문구는 관리 화면 「첫 화면 → 섹터 메뉴」에서 바꾼다(SITE.sector). */
@@ -1385,12 +1416,7 @@ function drawSectors(){
   });
   /* 맨 위 메뉴의 「실시간 견적」도 같은 곳으로 */
   const nq = $("#navQuote");
-  if(nq){
-    const go = quoteHref();
-    nq.href = go;
-    if(go.charAt(0) === "#"){ nq.removeAttribute("target"); nq.removeAttribute("rel"); }
-    else { nq.target = "_blank"; nq.rel = "noopener"; }
-  }
+  if(nq){ nq.href = quoteHref(); nq.onclick = (e) => { e.preventDefault(); goQuote(); }; }
 }
 /* 섹션 제목·설명. 설명 안의 {n}은 그 섹션의 개수로 바뀐다. */
 function headHtml(s, n){
