@@ -1425,12 +1425,20 @@ function applyTheme(){
   document.body.classList.remove("fs-sm", "fs-lg");
   if(t.size === "sm" || t.size === "lg") document.body.classList.add("fs-" + t.size);
 }
+let RENDERED_ONCE = false;   /* renderAll 은 기본값으로 한 번, 서버 자료가 오면 또 한 번 돈다 — 시작 종류 판정은 첫 번에만 */
 function renderAll(){
   applyTheme();
   drawHero();
-  /* 주소가 #hotels·#spa 처럼 종류 이름이면 그 페이지를 연다(링크 공유·새로고침) */
-  const hk = String(location.hash || "").replace(/^#/, "");
+  /* 주소가 #hotels·#spa 처럼 종류 이름이면 그 페이지를 연다(링크 공유).
+     단 «새로 고침»은 늘 골프장(첫 종류)에서 시작한다 — 마지막에 보던 패스트트랙 등으로 되돌아가면
+     헷갈린다(사장님 2026-09-10). 새로 고침이면 주소의 # 도 지운다. */
+  let hk = String(location.hash || "").replace(/^#/, "");
+  let reloaded = false;
+  try{ const nav = performance.getEntriesByType("navigation")[0]; reloaded = !!nav && nav.type === "reload"; }catch(e){}
+  if(reloaded && !RENDERED_ONCE){ hk = ""; try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){} }
   if(hk && catList().some(c => c.k === hk)) curCat = hk;
+  else if(!RENDERED_ONCE) curCat = (catList()[0] || {}).k || "courses";
+  RENDERED_ONCE = true;
   if(!catList().some(c => c.k === curCat)) curCat = (catList()[0] || {}).k || "courses";
   drawCatPick(); drawHeads(); drawCatalog();
   drawTours(); drawBoard(); drawContact();
