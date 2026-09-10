@@ -115,6 +115,8 @@ body.fs-sm .qp-price .v{font-size:25px}
 .trust button:hover{background:rgba(255,255,255,.09)}
 .trust button:active{background:rgba(255,255,255,.15)}
 /* 「실시간 견적」 — 제일 눌러 주셨으면 하는 칸이라 금색으로 도드라지게 둔다(사장님 2026-09-08) */
+/* 지금 보고 있는 종류 — 아래 칩줄을 감춘 뒤로는 여기서만 «어느 페이지인지» 보인다 */
+.trust button.on{background:rgba(255,255,255,.16);box-shadow:inset 0 -3px 0 var(--marigold)}
 .trust button.hot{background:var(--marigold)}
 .trust button.hot b{color:#2A1A00}
 .trust button.hot:hover{background:var(--marigold-hi)}
@@ -322,14 +324,16 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 
 /* ── 1차 화면: 종류 고르기(골프장·호텔·스파·차량…) ── */
 /* 종류 단추 — 이제 «그 섹션으로 건너뛰는» 길잡이다. 위에 붙어 다녀 어디서든 옮겨 갈 수 있다. */
-.catpick{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px;
+/* 종류 칩줄은 감춘다(사장님 2026-09-10) — 히어로 아래 «섹터 메뉴»(.trust)가 같은 일을 해서
+   메뉴가 둘일 까닭이 없다. 자료·코드는 그대로 두고 화면에서만 뺀다. 고른 종류는 위 띠에 켜진다. */
+.catpick{display:none;flex-wrap:wrap;gap:10px;margin-bottom:6px;
   position:sticky;top:60px;z-index:40;background:var(--paper);padding:12px 0 10px}
 /* 종류마다 한 칸씩 — 골프장 아래 호텔, 그 아래 스파… */
 /* 종류는 «페이지»처럼 한 번에 하나만 보인다(사장님 2026-09-09) — 골프장·호텔·스파를 세로로 다 쌓으면
    자료가 많아져 끝없이 길어진다. 위 종류 단추(catpick)가 페이지 탭이다. */
-.catsec{display:none;padding:26px 0 8px;scroll-margin-top:124px}
+.catsec{display:none;padding:26px 0 8px;scroll-margin-top:70px}
 .catsec.on{display:block}
-@media(max-width:860px){ .catpick{top:60px} .catsec{scroll-margin-top:150px} }
+@media(max-width:860px){ .catpick{top:60px} .catsec{scroll-margin-top:70px} }
 .catpick button{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font:inherit;font-size:15px;font-weight:800;color:var(--fairway);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
 .catpick button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(18,58,43,.10)}
 .catpick button em{font-style:normal;font-size:20px;line-height:1}
@@ -1175,6 +1179,9 @@ function drawCatPick(){
     + '<em>' + esc(c.ic || "") + '</em>' + esc(c.t)
     + ' <small>' + itemsOf(c.k).length + esc(c.u || "곳") + '</small></button>').join("");
   $("#catPick").querySelectorAll("button").forEach(b => b.onclick = () => pickCat(b.dataset.k));
+  /* 히어로 아래 섹터 띠에도 고른 종류를 켠다 — 칩줄을 감춘 뒤로는 이게 유일한 표시다 */
+  $("#trustBox").querySelectorAll("button[data-go]").forEach(b =>
+    b.classList.toggle("on", b.dataset.go === "cat:" + curCat));
   /* 맨 위 메뉴 — 종류마다 아래로 «지역»이 펼쳐진다(사장님 2026-09-08).
      골프장이 60곳이 넘어 이름을 다 늘어놓으면 화면을 덮으므로 지역으로 묶는다.
      지역 차례는 관리 화면의 「지역 순서」를 그대로 따른다(regionsOf). */
