@@ -13,6 +13,12 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 /* 3박4일(4줄) 일정이 스크롤 없이 한 화면에 들어오도록 전체 밀도를 높였다 */
 .wrap{max-width:1040px;margin:0 auto;padding:11px 14px 16px}
 .head{border-bottom:2px solid var(--fairway);padding-bottom:6px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+/* ── 손님 사이트 팝업 안에서 열릴 때(?embed=site) — 사장님 2026-09-10 ──
+   오른쪽 단추(새 견적·코드·요금 관리·사이트 관리·예약관리·로그아웃)와 내부용 견적서·견적 이력은 감춘다.
+   손님용 견적서만 남는다. 견적 이력 보관은 내려받을 때 그대로 되므로 어드민(/golf/)에서 본다. */
+html.embed .head .top{display:none}
+html.embed #dlInternal,html.embed #dlHistory{display:none}
+html.embed .wrap{padding-top:6px}
 .head .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .eyebrow{font-size:10px;letter-spacing:.2em;color:var(--muted);font-weight:600}
 .head h1{margin:1px 0 0;font-size:clamp(18px,2.6vw,22px);font-weight:800;letter-spacing:-.03em}
@@ -151,6 +157,8 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
   <div id="gerr" style="color:#c0492f;font-size:12.5px;margin-top:10px;min-height:16px"></div>
 </div></div>
 
+<script>/* 손님 사이트 팝업 안(?embed=site)이면 화면이 그려지기 전에 표시를 붙인다 — 단추가 잠깐 보였다 사라지지 않게 */
+if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.add('embed');</script>
 <div class="wrap" id="golfApp" style="display:none">
   <header class="head">
     <div>
