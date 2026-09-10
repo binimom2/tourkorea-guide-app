@@ -1056,6 +1056,10 @@ function subHero(){
       +'<div class="pwbox">'+inp('sector.toursIc',sc.toursIc||'','🚌')+inp('sector.toursT',sc.toursT||'','기타투어')+'</div></div>'
     +'<div class="f"><label>실시간 견적 칸 — 그림 / 이름 (금색 고정)</label>'
       +'<div class="pwbox">'+inp('sector.quoteIc',sc.quoteIc||'','⚡')+inp('sector.quoteT',sc.quoteT||'','실시간 견적')+'</div></div>'
+    /* 견적 단추가 여는 곳 — 맨 위 메뉴·섹터 띠·첫 화면 단추가 다 같이 따른다. 비우면 기존 견적 계산기(/golf/) */
+    +'<div class="f" style="grid-column:1/-1"><label>실시간 견적 단추가 여는 주소 — 비우면 기존 견적 계산기 <b>/golf/</b> (로그인 필요). '
+      +'<b>#contact</b> 처럼 적으면 그 자리로 스크롤만 합니다</label>'
+      +inp('sector.quoteHref',sc.quoteHref||'','/golf/')+'</div>'
     +'</div></div>'
 
     +'<div class="card"><h2>각 섹션 제목</h2>'
