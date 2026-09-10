@@ -187,6 +187,18 @@ tr.subrow td{padding:0 6px 11px}
 .bkfoot select{padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13px;font-weight:700}
 .bkfoot input{flex:1;min-width:160px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13px}
 .bkby{font-size:11.5px;color:var(--muted);font-weight:700}
+/* 바우처 줄 — 컨펌 전엔 단추 하나, 발급 뒤엔 확정번호·열기·보내기 */
+.bkvc{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:9px;padding:9px 10px;border-radius:9px;background:rgba(232,163,61,.10)}
+.bkvc.on{background:rgba(46,125,79,.10)}
+.bkvc .ghost{padding:6px 11px;font-size:12.5px}
+.bkvhint{font-size:12px;color:var(--muted);font-weight:700}
+.bkvno{font-size:13px;font-weight:700}
+.bkvno b{font-weight:900;font-variant-numeric:tabular-nums}
+.bkvopen{font-size:13px;font-weight:800;color:var(--fairway);text-decoration:none;border:1px solid var(--fairway);border-radius:8px;padding:5px 11px;background:#fff}
+.bkvopen:hover{background:rgba(18,58,43,.07)}
+.bkvsent{flex-basis:100%;font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.5}
+.vcell{grid-column:1/-1}
+.vcell input{margin-top:3px}
 @media(max-width:640px){ .bkw{min-width:100%} .bkm{margin-left:0} }
 
 /* 🎨 화면 꾸미기 — 고르는 단추 */
@@ -649,6 +661,7 @@ function draw(){
    금액은 «손님 화면에 그때 보이던 값»이다 — 확정가가 아니라 요금표로 다시 확인해야 한다. */
 const BOOK_STATUS=[
   {k:'new',   t:'접수',   c:'#E8A33D'},
+  {k:'confirmed', t:'컨펌 (바우처 발급)', c:'#2E7D4F'},   /* 「컨펌」 단추를 누르면 서버가 이 상태로 바꾼다 */
   {k:'doing', t:'진행중', c:'#1C5B42'},
   {k:'done',  t:'완료',   c:'#3C6E71'},
   {k:'cancel',t:'취소',   c:'#9AA5A0'}
@@ -735,6 +748,7 @@ function bookCardHtml(b){
     +'<div class="bkwho"><b>'+esc(c.name||'')+'</b> <span>'+esc(who)+'</span></div>'
     +(c.memo?'<div class="bkmemo">“'+esc(c.memo)+'”</div>':'')
     +'<ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul>'
+    +voucherRowHtml(b)
     +'<div class="bkfoot">'
       +'<select data-st="'+esc(b.no)+'">'
       +BOOK_STATUS.map(s=>'<option value="'+s.k+'"'+(s.k===b.status?' selected':'')+'>'+s.t+'</option>').join('')
@@ -744,7 +758,100 @@ function bookCardHtml(b){
       +((b.staff&&b.staff.by)?'<span class="bkby">'+esc(b.staff.by)+' · '+esc(bookWhen(b.staff.at))+'</span>':'')
     +'</div></div>';
 }
+/* ══ 바우처(예약 확정서) — 직원이 「컨펌」을 누르면 서버가 확정번호·링크를 만든다(사장님 2026-09-10).
+   손님에게는 링크를 카톡(문구 복사해서 붙여넣기)이나 이메일(서버 자동 발송)로 보낸다.
+   카톡은 알림톡(사업자 채널·템플릿 심사)이 없으면 서버가 직접 못 보낸다 — 그래서 문구 복사다. */
+function voucherUrlOf(b){
+  return location.origin+'/golf/site/voucher/?no='+encodeURIComponent(b.no)+'&t='+encodeURIComponent(b.voucher.token);
+}
+function voucherRowHtml(b){
+  const v=b.voucher;
+  if(!v||!v.token){
+    if(b.status==='cancel') return '';
+    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ 컨펌 · 바우처 발급</button>'
+      +'<span class="bkvhint">컨펌하면 예약 확정서(바우처)가 만들어지고 카톡·이메일로 보낼 수 있습니다</span></div>';
+  }
+  const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
+  return '<div class="bkvc on">'
+    +'<span class="bkvno">확정번호 <b>'+esc(v.cno)+'</b></span>'
+    +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">바우처 열기 ↗</a>'
+    +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
+    +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
+    +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
+    +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="바우처에 실리는 Agent Memo(호텔 컨펌번호 등)">✎ 바우처 메모</button>'
+    +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
+    +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
+    +'</div>';
+}
+function kakaoTextOf(b){
+  const co=(S.voucher&&S.voucher.name)||'투어코리아';
+  const lines=(b.items||[]).map(it=>'· '+it.name+(it.option?' '+it.option:'')+' — '+(it.date||'')
+    +(it.dateEnd&&it.dateEnd!==it.date?' ~ '+it.dateEnd:''));
+  return '['+co+'] '+((b.customer&&b.customer.name)||'')+' 님, 예약이 확정되었습니다.\n'
+    +'예약번호 '+b.no+' · 확정번호 '+b.voucher.cno+'\n'
+    +lines.join('\n')+'\n'
+    +'▶ 예약 확정서(바우처): '+voucherUrlOf(b)+'\n'
+    +'이용 시 위 바우처를 제시해 주세요. 화면을 캡처해 보여 주셔도 됩니다.';
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }catch(e){}
+  try{ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+    const ok=document.execCommand('copy'); ta.remove(); return ok; }catch(e){ return false; }
+}
+function bookOf(no){ return (BOOKS.list||[]).find(x=>x.no===no); }
+function bookReplace(rec){ const i=(BOOKS.list||[]).findIndex(x=>x.no===rec.no); if(i>=0) BOOKS.list[i]=rec; }
+function bindVoucherBtns(p){
+  p.querySelectorAll('[data-confirm]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.confirm); if(!b) return;
+    const had=!!(b.voucher&&b.voucher.token);
+    const memo=prompt((had?'바우처 메모를 고칩니다.':'컨펌합니다 — 바우처(예약 확정서)를 발급합니다.')
+      +'\n바우처에 실을 메모(호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.',
+      (b.voucher&&b.voucher.memo)||'');
+    if(memo===null) return;
+    btn.disabled=true; btn.textContent='처리 중…';
+    const j=await bookApi('confirm',{no:b.no,memo});
+    btn.disabled=false;
+    if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'컨펌 실패')); drawBooks(); return; }
+    bookReplace(j.rec);
+    toast(had?'바우처 메모를 고쳤습니다':'✅ 컨펌 — 바우처가 발급되었습니다');
+    drawBooks();
+  });
+  p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.vlink); if(!b) return;
+    toast((await copyText(voucherUrlOf(b)))?'🔗 바우처 링크를 복사했습니다':'복사 실패 — 「바우처 열기」로 주소를 복사해 주세요');
+  });
+  p.querySelectorAll('[data-vkakao]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.vkakao); if(!b) return;
+    const t=kakaoTextOf(b);
+    /* 휴대폰이면 공유창(카톡 고르기)이 바로 뜬다. PC는 복사해서 카톡 창에 붙여넣는다. */
+    if(navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)){
+      try{ await navigator.share({text:t}); return; }catch(e){}
+    }
+    toast((await copyText(t))?'💬 카톡 문구를 복사했습니다 — 손님 카톡 창에 붙여넣으세요':'복사 실패');
+  });
+  p.querySelectorAll('[data-vmail]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.vmail); if(!b) return;
+    const to=prompt('바우처를 보낼 이메일 주소', (b.customer&&b.customer.email)||'');
+    if(to===null) return;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to.trim())){ toast('⚠ 이메일 주소를 확인해 주세요'); return; }
+    btn.disabled=true; btn.textContent='보내는 중…';
+    const j=await bookApi('send',{no:b.no,to:to.trim()});
+    btn.disabled=false; btn.textContent='📧 이메일 보내기';
+    if(j&&j.setup){
+      /* 서버에 메일 열쇠(RESEND_API_KEY)가 아직 없다 — 내 메일 앱을 열어 대신 보낸다 */
+      const subj='['+((S.voucher&&S.voucher.name)||'투어코리아')+'] 예약 확정서 (Voucher) · '+b.no;
+      location.href='mailto:'+encodeURIComponent(to.trim())+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(kakaoTextOf(b));
+      toast('서버 자동 발송이 아직 설정되지 않아 메일 앱을 열었습니다');
+      return;
+    }
+    if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'발송 실패')); return; }
+    bookReplace(j.rec);
+    toast('📧 '+j.to+' 로 보냈습니다');
+    drawBooks();
+  });
+}
 function bindBookCards(p){
+  bindVoucherBtns(p);
   p.querySelectorAll('[data-save]').forEach(btn=>btn.onclick=async()=>{
     const no=btn.dataset.save;
     const st=p.querySelector('[data-st="'+CSS.escape(no)+'"]').value;
@@ -754,8 +861,7 @@ function bindBookCards(p){
     btn.disabled=false; btn.textContent='저장';
     if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'저장 실패')); return; }
     /* 서버가 돌려준 최신본으로 그 한 건만 갈아 끼운다 — 목록 전체를 다시 받지 않는다 */
-    const i=(BOOKS.list||[]).findIndex(x=>x.no===no);
-    if(i>=0) BOOKS.list[i]=j.rec;
+    bookReplace(j.rec);
     toast('저장했습니다');
     drawBooks();
   });
@@ -1778,6 +1884,10 @@ function itemBodyHTML(k){
           : '<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
             +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
             +priceCell(k,o.x))
+        /* 바우처(예약 확정서) 머리에 찍히는 업체 주소·전화 — 손님 화면에는 안 나온다 */
+        +'<div class="iecell vcell"><b>바우처용 주소 · 전화 <span class="rhint">예약 확정서 머리에 찍힙니다</span></b>'
+          +inp(p+'.addr',o.x.addr||'','주소 (영문) — 예: 300 Sukhumvit 55, Bangkok 10110, Thailand')
+          +inp(p+'.tel',o.x.tel||'','전화 — 예: +66(0) 2 020 8000')+'</div>'
       +'</div></td></tr>';
   }).join('');
 }
@@ -2021,8 +2131,31 @@ function subFoot(){
     +(S.footer||[]).map((f,i)=>'<tr><td>'+inp('footer.'+i,f)+'</td>'
       +'<td><button class="del" data-del="footer" data-i="'+i+'">삭제</button></td></tr>').join('')
     +'</tbody></table></div>'
-    +'<div class="rowbtns"><button class="add" data-add="footer">＋ 줄 추가</button></div></div>';
+    +'<div class="rowbtns"><button class="add" data-add="footer">＋ 줄 추가</button></div></div>'
+    +voucherInfoCard();
   bindRowBtns();
+}
+/* 바우처(예약 확정서)에 찍히는 회사 정보 — 「예약요청 → 컨펌」으로 발급되는 확정서의 아래쪽에 실린다.
+   저장 위치는 golf_site.voucher. 서버(/api/golf-book)가 바우처를 열 때마다 여기서 읽어 붙인다. */
+function voucherInfoCard(){
+  const v=(S.voucher=S.voucher||{});
+  const f=(k,label,ph)=>'<div class="f"><label>'+label+'</label>'+inp('voucher.'+k,v[k]||'',ph)+'</div>';
+  return '<div class="card"><h2>바우처 (예약 확정서) 발행 정보</h2>'
+    +'<p class="desc">📋 예약요청에서 <b>컨펌</b>하면 발급되는 예약 확정서의 「Booked and payable by · Issued by · 유의 사항」에 들어갑니다. '
+    +'골프장·호텔의 주소·전화는 각 종류 표의 줄 아래 「바우처용 주소 · 전화」에 적으세요.</p>'
+    +'<div class="grid2">'
+    +f('name','회사 이름 (바우처 머리·Booked and payable by)','투어코리아 (TOURKOREA)')
+    +f('en','영문 이름','We\'ve Tour Thailand')
+    +f('regNo','Registration No (사업자등록번호)','000-00-00000')
+    +f('tel','대표 전화 (Tel)','+66(0)2-000-0000')
+    +f('tel2','전화 한 줄 더 (한국 번호 등)','070-0000-0000 (한국)')
+    +f('email','이메일','voucher@tourkorea.biz')
+    +f('issuer','Issued by (발행 담당·연락처)','wevetour, +82 10-0000-0000')
+    +f('emergency','비상연락망 (유의 사항 맨 아래)','+66(0)80-000-0000 (태국번호, 취침 시간에는 긴급건 ONLY)')
+    +'</div>'
+    +'<div class="f" style="margin-top:10px"><label>중요 안내 (비워 두면 이 칸이 안 나갑니다 — 아동·간이침대·보증금 안내 등)</label>'+ta('voucher.notes',v.notes||'','예) 숙소 도착 시 1박당 THB 1,000 의 보증금이 필요합니다.\n보증금은 체크아웃 시 전액 환불됩니다.')+'</div>'
+    +'<div class="f" style="margin-top:10px"><label>유의 사항 — 한 줄에 하나 (비워 두면 기본 문구가 나갑니다)</label>'+ta('voucher.terms',v.terms||'','호텔 체크인 시 프론트 데스크에 여권과 함께 예약확정서(바우처)를 제시해 주세요.\n객실 요금은 모두 지불되었으며 …')+'</div>'
+    +'</div>';
 }
 
 /* 추가·삭제 버튼은 모양이 다 같아서 한곳에서 묶어 처리한다 */

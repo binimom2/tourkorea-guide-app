@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>예약 확정서 (Voucher)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   예약 확정서(Voucher) — 손님이 카톡·이메일로 받은 링크로 연다.
+   주소: /golf/site/voucher/?no=<접수번호>&t=<토큰>
+   자료는 /api/golf-book {action:'voucher'} 한 번으로 받는다(회사 정보·업체 주소까지 서버가 붙여 준다).
+   모양은 여행사 바우처 관례(토토부킹 등)를 따랐다 — 호텔 프론트가 익숙한 배치.
+   인쇄·화면 캡처로도 쓰이므로 한 단(세로 한 줄)으로만 짠다.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --navy:#1F2B4D; --fairway:#123A2B; --ink:#15211C; --muted:#6B7570; --line:#E3E6EA;
+  --paper:#F5F6F8; --font:"Pretendard Variable",Pretendard,-apple-system,system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+.sheet{max-width:760px;margin:0 auto;padding:22px 20px 60px}
+.brand{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--ink);font-weight:900;font-size:15px}
+.brand small{font-weight:600;color:var(--muted);font-size:12px}
+h1{margin:22px 0 4px;font-size:34px;font-weight:900;letter-spacing:-.03em;line-height:1.1}
+h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
+.tip{margin:0 0 16px;font-size:12.5px;color:var(--muted)}
+.head{background:var(--navy);color:#fff;border-radius:6px 6px 0 0;padding:16px 18px}
+.head .bn{font-size:15px;margin-bottom:6px}
+.head .bn b{font-size:17px;font-weight:900;letter-spacing:.02em}
+.head h2{margin:0 0 6px;font-size:18px;font-weight:900}
+.head p{margin:0;font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.6}
+.body{background:var(--paper);padding:18px 18px 20px;margin-bottom:22px;border-radius:0 0 6px 6px}
+.body h3{margin:0 0 10px;font-size:15px;font-weight:900}
+.body .line{font-size:13.5px;margin:3px 0}
+.body .line b{font-weight:800}
+.tbl{background:#fff;border-radius:6px;padding:8px 14px;margin:12px 0 6px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.tbl div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:13.5px;border-bottom:1px solid var(--line)}
+.tbl div:last-child{border-bottom:0}
+.tbl span{color:var(--muted)}
+.tbl b{font-weight:700;text-align:right}
+.sec{margin:0 0 22px}
+.sec h3{margin:0 0 6px;font-size:14.5px;font-weight:900}
+.sec p{margin:0;font-size:13.5px;white-space:pre-wrap;line-height:1.65}
+.sec p.small{font-size:12px;color:var(--muted)}
+.box{background:var(--paper);border-radius:6px;padding:16px 18px;margin-bottom:16px}
+.box h3{margin:0 0 10px;font-size:15px;font-weight:900}
+.box ul{margin:0;padding:0;list-style:none}
+.box li{font-size:12.5px;line-height:1.6;padding-left:12px;text-indent:-12px;margin:2px 0}
+.box li.red{color:#D9412B}
+.box p{margin:0;font-size:12.5px;white-space:pre-wrap;line-height:1.65}
+.act{position:fixed;right:16px;bottom:16px;display:flex;gap:8px;z-index:9}
+.act button{background:var(--fairway);color:#fff;border:0;border-radius:999px;padding:12px 18px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.err{max-width:560px;margin:80px auto;padding:0 20px;text-align:center}
+.err h2{font-size:20px;font-weight:900;margin:0 0 8px}
+.err p{color:var(--muted);font-size:14px}
+.total{display:flex;justify-content:space-between;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:6px;font-size:14px;font-weight:800;margin-bottom:22px}
+.total i{font-style:normal;color:var(--muted);font-weight:600;font-size:12px;margin-left:6px}
+@media print{ .act{display:none} .sheet{padding:0} body{background:#fff} .head{-webkit-print-color-adjust:exact;print-color-adjust:exact} .body,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+</style>
+</head>
+<body>
+<div id="app"><div class="err"><p>예약 확정서를 불러오는 중…</p></div></div>
+<div class="act" id="act" style="display:none"><button type="button" onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function dfmt(s){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || "");
+  if(!m) return s || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return s + "(" + DOW[d.getDay()] + ")";
+}
+const KIND_T = { courses: "골프장 / Golf Course", hotels: "호텔 / Hotel" };
+function won(n){ return Number(n || 0).toLocaleString("ko-KR") + "원"; }
+
+/* 담긴 줄 하나 = 확정서 한 장(업체 머리 + 상세표). 종류마다 표의 줄이 다르다. */
+function itemHtml(v, it, i){
+  const ven = it.venue || {};
+  const date = dfmt(it.date) + (it.dateEnd && it.dateEnd !== it.date ? " ~ " + dfmt(it.dateEnd) : "");
+  const rows = [];
+  if(it.kind === "hotels"){
+    rows.push(["Nights (투숙 박수)", (it.nights || 1) + " Night(s)"]);
+    rows.push(["Room Type (객실 타입)", it.option || "-"]);
+    if(ven.bed) rows.push(["Bed Type (침대 타입)", ven.bed]);
+    rows.push(["Room(s) (객실 수)", (it.rooms || 1) + " Room(s)"]);
+    rows.push(["Adult (성인)", "Total " + (it.adult || it.pax || 0)]);
+    if(it.child) rows.push(["Child (아동)", "Total " + it.child + ((it.ages || []).length ? " (" + it.ages.map(a => a + "세").join(", ") + ")" : "")]);
+    rows.push(["Meal Plan (식사)", ven.bf === true ? "Breakfast Included" : ven.bf === false ? "Room Only" : "-"]);
+  } else if(it.kind === "courses"){
+    rows.push(["Tee Date (라운드 날짜)", date]);
+    if(it.option) rows.push(["Round (라운드)", it.option]);
+    rows.push(["Players (인원)", (it.pax || 0) + " Player(s)"]);
+    if(it.time) rows.push(["Tee Time (희망 티타임)", it.time]);
+  } else {
+    rows.push(["Date (이용일)", date]);
+    if(it.option) rows.push(["Item (내용)", it.option]);
+    if(it.pax) rows.push(["Qty (인원 · 수량)", String(it.pax)]);
+    if(it.time) rows.push(["Note (미팅 · 시간 · 편명)", it.time]);
+  }
+  return '<div class="head">'
+    + '<div class="bn">Booking No. (예약번호) <b>' + esc(v.no) + (v.items.length > 1 ? "-" + (i + 1) : "") + '</b></div>'
+    + '<h2>' + esc(ven.en || it.name) + (ven.en ? ' <span style="font-weight:600;font-size:14px">' + esc(it.name) + '</span>' : '') + '</h2>'
+    + '<p>' + (ven.addr ? '· ' + esc(ven.addr) + '<br>' : '') + (ven.tel ? '· ' + esc(ven.tel) + '<br>' : '')
+    + '· ' + esc(KIND_T[it.kind] || (it.kindT || "")) + (it.region ? ' · ' + esc(it.region) : '') + '</p>'
+    + '</div><div class="body">'
+    + '<h3>Booking Details</h3>'
+    + '<div class="line">- Date (이용일) : <b>' + esc(date) + '</b></div>'
+    + '<div class="line">- Guest Name (이용자명) : <b>' + esc(v.guest) + '</b></div>'
+    + '<div class="tbl">' + rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>').join("") + '</div>'
+    + '</div>';
+}
+
+function render(v){
+  const c = v.company || {};
+  const total = v.items.reduce((a, x) => a + (x.asked ? 0 : (x.krw || 0)), 0);
+  const askedN = v.items.filter(x => x.asked).length;
+  const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).filter(Boolean);
+  $("#app").innerHTML = '<div class="sheet">'
+    + '<div class="brand">' + esc(c.name || "") + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>'
+    + '<h1>Voucher<small>예약 확정서</small></h1>'
+    + '<p class="tip">※ 상품 이용 시 예약 확정서를 제시해 주세요. 확정번호 (Confirm No.) <b>' + esc(v.cno) + '</b></p>'
+    + v.items.map((it, i) => itemHtml(v, it, i)).join("")
+    + (total ? '<div class="total"><span>Total (합계)</span><span>' + won(total) + (askedN ? '<i>+ 요금 문의 ' + askedN + '건</i>' : '') + '</span></div>' : '')
+    + '<div class="sec"><h3>Agent Memo</h3><p>Confirm No. ' + esc(v.cno)
+      + (v.memo ? '\n' + esc(v.memo) : '') + '\nThis booking is confirmed and payable by ' + esc(c.name || "") + '.</p></div>'
+    + '<div class="sec"><h3>Booked and payable by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
+      + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
+      + (c.tel2 ? '<p class="small">- Tel : ' + esc(c.tel2) + '</p>' : '')
+      + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '') + '</div>'
+    + (c.issuer ? '<div class="sec"><h3>Issued by : <span style="font-weight:600">' + esc(c.issuer) + '</span></h3></div>' : '')
+    + (c.notes ? '<div class="box"><h3>중요 안내</h3><p>' + esc(c.notes) + '</p></div>' : '')
+    + '<div class="box"><h3>유의 사항</h3><ul>'
+      + '<li class="red">- This voucher can be shown as captured picture with mobile phone.</li>'
+      + terms.map(t => '<li>- ' + esc(t) + '</li>').join("")
+      + (c.emergency ? '<li>- 비상연락망 ' + esc(c.emergency) + '</li>' : '')
+    + '</ul></div>'
+    + '</div>';
+  document.title = "예약 확정서 " + v.no + " · " + (c.name || "");
+  $("#act").style.display = "";
+}
+function fail(msg){
+  $("#app").innerHTML = '<div class="err"><h2>예약 확정서를 열 수 없습니다</h2><p>' + esc(msg) + '</p></div>';
+}
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const no = q.get("no") || "", t = q.get("t") || "";
+  if(!no || !t) return fail("바우처 주소가 올바르지 않습니다. 받으신 링크를 그대로 열어 주세요.");
+  try{
+    const r = await fetch("/api/golf-book", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "voucher", no, t }) });
+    const j = await r.json().catch(() => ({}));
+    if(!j || !j.ok) return fail((j && j.error) || "서버 응답이 없습니다. 잠시 뒤 다시 열어 주세요.");
+    render(j.v);
+  }catch(e){ fail("서버 연결에 실패했습니다. 잠시 뒤 다시 열어 주세요."); }
+})();
+</script>
+</body>
+</html>
