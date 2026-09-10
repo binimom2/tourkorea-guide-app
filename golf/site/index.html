@@ -1373,7 +1373,7 @@ const SECTOR_MAX = 10;
 /* 「실시간 견적」 단추(맨 위 메뉴·섹터 띠·첫 화면 단추)가 여는 곳 — 기존 견적 계산기 /golf/ 다(사장님 2026-09-10).
    전에는 아래 연락처 칸(#contact)으로만 내려갔다. 관리 화면 「첫 화면 → 섹터 메뉴」에서 주소를 바꿀 수 있고,
    #contact 처럼 # 으로 시작하면 옛날처럼 그 자리로 스크롤한다. /golf/ 는 로그인이 있어야 열린다. */
-function quoteHref(){ return ((SITE.sector || {}).quoteHref || "").trim() || "/golf/"; }
+function quoteHref(){ return ((SITE.sector || {}).quoteHref || "").trim() || "/golf/?embed=site"; }   /* embed=site: 계산기가 팝업용으로 단추를 감춘다 */
 function goQuote(){
   const go = quoteHref();
   if(go.charAt(0) === "#"){ const el = document.querySelector(go); if(el) el.scrollIntoView({ behavior:"smooth" }); }
