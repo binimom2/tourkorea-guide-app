@@ -144,7 +144,12 @@ body.fs-sm .qp-price .v{font-size:25px}
 .btn-ghost:hover{background:rgba(255,255,255,.18)}
 
 /* ── 신뢰 배지 줄 ── */
-.trust{background:linear-gradient(90deg,var(--hero-bar,#153F35) 0%,var(--hero-a,#145A44) 100%);color:rgba(255,255,255,.82);border-top:1px solid rgba(255,255,255,.12)}
+.trust{background:linear-gradient(90deg,var(--bar-a,#153F35) 0%,var(--bar-b,#145A44) 100%);color:rgba(255,255,255,.82);border-top:1px solid rgba(255,255,255,.12)}
+/* 띠 바탕을 밝은 색으로 고르면 글자·선을 짙게 */
+body.bar-light .trust{color:rgba(0,0,0,.7);border-top-color:rgba(0,0,0,.1)}
+body.bar-light .trust b{color:#15211C}
+body.bar-light .trust button:hover{background:rgba(0,0,0,.06)}
+body.bar-light .trust button.on{background:rgba(0,0,0,.08)}
 /* 섹터 메뉴 — 칸 수가 종류에 따라 달라지므로 고정 4칸이 아니라 늘고 주는 줄로 둔다 */
 .trust .wrap{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px}   /* 칸 사이 간격·위아래 여백(사장님 2026-09-11) */
 .trust button{flex:1 1 118px;background:none;border:0;color:inherit;font:inherit;cursor:pointer;
@@ -1499,6 +1504,15 @@ function applyTheme(){
     ? { a: shade(hh.bgHex, -0.35), b: hh.bgHex, c: shade(hh.bgHex, 0.28), bar: shade(hh.bgHex, -0.58) }
     : (HERO_BG[hh.bg] || HERO_BG.fresh);
   r.setProperty("--hero-a", bg.a); r.setProperty("--hero-b", bg.b); r.setProperty("--hero-c", bg.c); r.setProperty("--hero-bar", bg.bar);
+  /* 섹터 메뉴(첫 화면 아래 띠) 바탕색 — 관리 화면 「섹터 메뉴 → 띠 바탕색」에서 따로 고르면 그 색(살짝 밝아지는 그라데이션),
+     안 고르면 첫 화면 색감을 따라간다. 흰색처럼 밝은 색이면 글자를 짙게 바꾼다(사장님 2026-09-11) */
+  const sbg = (SITE.sector || {}).bg;
+  const barOk = /^#[0-9a-fA-F]{6}$/.test(sbg || "");
+  r.setProperty("--bar-a", barOk ? sbg : bg.bar);
+  r.setProperty("--bar-b", barOk ? shade(sbg, 0.14) : bg.a);
+  const n = barOk ? parseInt(sbg.slice(1), 16) : 0;
+  const light = barOk && ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) > 150;
+  document.body.classList.toggle("bar-light", light);
   document.body.classList.remove("fs-sm", "fs-lg");
   if(t.size === "sm" || t.size === "lg") document.body.classList.add("fs-" + t.size);
 }

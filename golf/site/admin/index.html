@@ -1095,6 +1095,15 @@ function subHero(){
     +'<div class="f" style="grid-column:1/-1"><label>실시간 견적 단추가 여는 주소 — 비우면 기존 견적 계산기 <b>/golf/</b> (로그인 필요). '
       +'<b>#contact</b> 처럼 적으면 그 자리로 스크롤만 합니다</label>'
       +inp('sector.quoteHref',sc.quoteHref||'','/golf/')+'</div>'
+    /* 띠 바탕색 — 비우면 첫 화면 색감을 따라간다(사장님 2026-09-11) */
+    +'<div class="f" style="grid-column:1/-1"><label>띠 바탕색 — 안 고르면 첫 화면 색감을 따라갑니다</label>'
+      +'<div class="thpick">'
+      +[['','첫 화면 색감 따라감',''],['#08170F','짙은 초록','#08170F'],['#153F35','초록','#153F35'],['#0C3F47','청록','#0C3F47'],
+        ['#142B47','남색','#142B47'],['#2A1A00','갈색','#2A1A00'],['#1E1E1E','검정','#1E1E1E'],['#FFFFFF','흰색','#FFFFFF']]
+        .map(([v,n,c])=>'<button type="button" class="th'+((sc.bg||'')===v?' on':'')+'" data-sbg="'+v+'">'
+          +(c?'<i style="background:'+c+'"></i>':'<i style="background:linear-gradient(135deg,#145A44,#49B9CF)"></i>')+esc(n)+'</button>').join('')
+      +'<label class="th'+(/^#[0-9a-fA-F]{6}$/.test(sc.bg||'')&&![ '#08170F','#153F35','#0C3F47','#142B47','#2A1A00','#1E1E1E','#FFFFFF'].includes(sc.bg)?' on':'')+'" style="cursor:pointer">직접 고르기 <input type="color" data-p="sector.bg" value="'+esc(/^#[0-9a-fA-F]{6}$/.test(sc.bg||'')?sc.bg:'#153F35')+'" style="width:34px;height:22px;border:0;padding:0;background:none"></label>'
+      +'</div></div>'
     +'</div></div>'
 
     +'<div class="card"><h2>각 섹션 제목</h2>'
@@ -1118,6 +1127,7 @@ function subHero(){
   pane.querySelectorAll('[data-tic]').forEach(b=>b.onclick=()=>{ h.titleColor=b.dataset.tic; markDirty('site'); subHero(); });
   pane.querySelectorAll('[data-lec]').forEach(b=>b.onclick=()=>{ h.leadColor=b.dataset.lec; markDirty('site'); subHero(); });
   pane.querySelectorAll('[data-hbg]').forEach(b=>b.onclick=()=>{ h.bg=b.dataset.hbg; markDirty('site'); subHero(); });
+  pane.querySelectorAll('[data-sbg]').forEach(b=>b.onclick=()=>{ sc.bg=b.dataset.sbg; markDirty('site'); subHero(); });
   /* 직접 고른 색은 «custom» 으로 표시해 두어야 손님 화면이 프리셋 대신 그 색을 쓴다(값 자체는 공통 input 처리가 저장) */
   const bh=document.getElementById('heroBgHex');
   if(bh){ bh.addEventListener('input',()=>{ h.bg='custom'; }); bh.addEventListener('change',()=>{ h.bg='custom'; markDirty('site'); subHero(); }); }
