@@ -2109,9 +2109,12 @@ function subTours(){
         +inp('tours.'+i+'.icon',t.icon)+inp('tours.'+i+'.t',t.t)+'</div></div>'
       +'<div class="f"><label>묶음 설명</label>'+inp('tours.'+i+'.d',t.d)+'</div></div>'
       +'<div class="tblwrap" style="margin-top:10px"><table style="min-width:520px"><thead><tr>'
-      +'<th style="width:200px">항목</th><th>부가 설명</th><th style="width:64px"></th></tr></thead><tbody>'
+      /* 메뉴 · 상세 메뉴 안내 · 요금 · 비고 네 칸(사장님 2026-09-11). 요금을 비우면 손님 화면에 요금이 안 붙는다 */
+      +'<th style="width:170px">메뉴</th><th>상세 메뉴 안내</th><th style="width:130px">요금 (밧 · 1인)</th><th style="width:180px">비고 (소요시간·포함 등)</th><th style="width:64px"></th></tr></thead><tbody>'
       +(t.items||[]).map((it,j)=>'<tr><td>'+inp('tours.'+i+'.items.'+j+'.n',it.n)+'</td>'
-        +'<td>'+inp('tours.'+i+'.items.'+j+'.s',it.s)+'</td>'
+        +'<td>'+ta('tours.'+i+'.items.'+j+'.s',it.s)+'</td>'
+        +'<td>'+inp('tours.'+i+'.items.'+j+'.p',it.p,'예: 1500')+'</td>'
+        +'<td>'+inp('tours.'+i+'.items.'+j+'.m',it.m,'예: 약 6시간 · 점심 포함')+'</td>'
         +'<td><button class="del" data-del="tours.'+i+'.items" data-i="'+j+'">삭제</button></td></tr>').join('')
       +'</tbody></table></div>'
       +'<div class="rowbtns"><button class="add" data-add="touritem" data-i="'+i+'">＋ 항목 추가</button>'
