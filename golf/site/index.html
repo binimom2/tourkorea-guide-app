@@ -510,7 +510,12 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 원하는 시간(스파·마사지) — 날짜 단추와 같은 생김새의 글자칸 */
 .qp-time{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
   font-weight:700;background:#fff;color:inherit;box-sizing:border-box}
-.qp-time::placeholder{color:rgba(94,111,102,.5);font-weight:400;font-size:13px}   /* 예시 글은 연하고 가늘게 — 적은 글과 헷갈리지 않게(사장님 2026-09-11) */
+.qp-time::placeholder{color:rgba(94,111,102,.5);font-weight:400;font-size:13px}
+/* 차량 탑승 인원수 — 숫자칸 + 「명」, 화살표는 없이 숫자만 */
+.qp-riders{display:flex;align-items:center;gap:8px}
+.qp-riders input{width:120px;text-align:right;-moz-appearance:textfield;appearance:textfield}
+.qp-riders input::-webkit-inner-spin-button,.qp-riders input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.qp-riders span{font-size:14px;font-weight:800}   /* 예시 글은 연하고 가늘게 — 적은 글과 헷갈리지 않게(사장님 2026-09-11) */
 /* 오른쪽 끝의 달력 그림 — 눌러서 날짜를 고르는 칸임을 한눈에 알게(사장님 2026-09-08).
    골프장·호텔·스파… 종류를 가리지 않고 같은 칸을 쓰므로 한 군데만 두면 다 붙는다. */
 .qp-dbtn .ph,.qp-dbtn .v{flex:1;min-width:0}
@@ -847,6 +852,11 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
           </div>
           <!-- 스파·마사지 같은 종류만 — 날짜 다음에 «원하는 시간»을 적는다(사장님 2026-09-09).
                자유롭게 적는 칸이다(「14:00」·「오후 2시쯤」). 장바구니 문구와 예약요청에 같이 실린다. -->
+          <!-- 차량(단위 「대」)에서만 — 대수 다음에 «탑승 인원수»를 적는다(사장님 2026-09-11). 장바구니 문구·예약요청·바우처에 실린다 -->
+          <div id="qpRidersWrap" style="display:none">
+            <div class="qp-lab">탑승 인원수</div>
+            <div class="qp-riders"><input type="number" class="qp-time" id="qpRiders" inputmode="numeric" min="1" max="99" placeholder="예: 8"> <span>명</span></div>
+          </div>
           <div id="qpTimeWrap" style="display:none">
             <div class="qp-lab" id="qpTimeLab">희망 시간</div>
             <input type="text" class="qp-time" id="qpTime" placeholder="예: 14:00 또는 오후 2시쯤" maxlength="80">
@@ -1959,10 +1969,12 @@ function openPanel(x, kind){
   const box = $("#qpFields");
   /* 골프장·스파는 (라운드/메뉴) → 인원 → 날짜 → 원하는 시간 순이다(사장님 2026-09-09).
      시간은 자유롭게 적는 요청사항이고 호텔에는 없다. 골프장은 「원하는 티타임」이라 부른다. */
-  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap", "qpTimeWrap"]
-       : ["qpHoleWrap", "qpPaxWrap", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
+  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap", "qpRidersWrap", "qpTimeWrap"]
+       : ["qpHoleWrap", "qpPaxWrap", "qpRidersWrap", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
+  $("#qpRidersWrap").style.display = unitOf(kind) === "대" ? "" : "none";   // 차량에서만 탑승 인원수
+  $("#qpRiders").value = "";
   const tl = timeLabelOf(kind);
   $("#qpTimeLab").textContent = tl.lab;
   $("#qpPaxLab").textContent  = unitOf(kind) === "대" ? "차량 대수" : "인원";
@@ -2483,9 +2495,12 @@ function cartItem(){
   /* 희망 시간(골프장·스파) — 자유롭게 적은 요청사항. 장바구니 문구 끝에 붙고 예약요청에도 그대로 실린다 */
   const time = isH ? "" : String($("#qpTime").value || "").trim();
   if(time) parts.push(timeLabelOf(qpKind).pre + time);
+  /* 차량 탑승 인원수 — 대수와 별개로 몇 명이 타는지(사장님 2026-09-11) */
+  const riders = unitOf(qpKind) === "대" ? Math.max(0, Math.min(99, Number($("#qpRiders").value) || 0)) : 0;
+  if(riders) parts.push("탑승 " + riders + "명");
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
-    option, date, dateEnd: end, time,
+    option, date, dateEnd: end, time, riders,
     nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],

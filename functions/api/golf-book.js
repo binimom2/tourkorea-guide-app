@@ -255,6 +255,7 @@ function cleanItem(x) {
     date:    s(x.date, 10),
     dateEnd: s(x.dateEnd, 10),
     time:    s(x.time, 80),          // 희망 시간·티타임·차량 미팅장소 — 손님이 자유롭게 적은 요청사항(2026-09-09, 차량은 장소까지 09-10)
+    riders:  num(x.riders),          // 차량 탑승 인원수(2026-09-11) — pax 는 차량 «대수»라 따로 둔다
     nights:  num(x.nights),
     rooms:   num(x.rooms),
     pax:     num(x.pax),

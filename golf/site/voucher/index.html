@@ -98,6 +98,7 @@ function itemHtml(v, it, i){
     rows.push(["Date (이용일)", date]);
     if(it.option) rows.push(["Item (내용)", it.option]);
     if(it.pax) rows.push(["Qty (인원 · 수량)", String(it.pax)]);
+    if(it.riders) rows.push(["Passengers (탑승 인원)", it.riders + " pax"]);   // 차량 탑승 인원수(2026-09-11)
     if(it.time) rows.push(["Note (미팅 · 시간 · 편명)", it.time]);
   }
   return '<div class="head">'
