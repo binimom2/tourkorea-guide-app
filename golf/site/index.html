@@ -510,7 +510,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 원하는 시간(스파·마사지) — 날짜 단추와 같은 생김새의 글자칸 */
 .qp-time{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
   font-weight:700;background:#fff;color:inherit;box-sizing:border-box}
-.qp-time::placeholder{color:var(--muted);font-weight:600}
+.qp-time::placeholder{color:rgba(94,111,102,.5);font-weight:400;font-size:13px}   /* 예시 글은 연하고 가늘게 — 적은 글과 헷갈리지 않게(사장님 2026-09-11) */
 /* 오른쪽 끝의 달력 그림 — 눌러서 날짜를 고르는 칸임을 한눈에 알게(사장님 2026-09-08).
    골프장·호텔·스파… 종류를 가리지 않고 같은 칸을 쓰므로 한 군데만 두면 다 붙는다. */
 .qp-dbtn .ph,.qp-dbtn .v{flex:1;min-width:0}
@@ -1096,7 +1096,7 @@ const isMenuKind = (kind) => kind !== "courses" && kind !== "hotels";
    도착 항공편명과 도착시간을 적게 한다. 골프장은 티타임, 나머지는 원래대로 희망 시간. */
 function timeLabelOf(kind){
   if(kind === "courses") return { lab:"희망 티타임", ph:"예: 오전 7시대 또는 07:30", pre:"희망 티타임 " };
-  if(unitOf(kind) === "대") return { lab:"미팅장소와 시간 적어주세요", ph:"예: 파타야 힐튼호텔 로비 14:00", pre:"미팅 " };
+  if(unitOf(kind) === "대") return { lab:"미팅장소와 시간을 적어주세요 (공항미팅일경우 항공편명도 꼭 기재해주세요)", ph:"예: 수완나폼공항 TG657 15:30 도착 / 파타야 힐튼호텔 로비 14:00", pre:"미팅 " };   // 사장님 2026-09-11
   if(/패스트트랙/.test((catOf(kind) || {}).t || "")) return { lab:"도착항공편명과 도착시간을 정확히 적어주세요", ph:"예: TG657 15:30 도착", pre:"항공편 " };
   return { lab:"희망 시간", ph:"예: 14:00 또는 오후 2시쯤", pre:"희망 시간 " };
 }
