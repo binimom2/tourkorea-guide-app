@@ -979,9 +979,22 @@ function drawSite(){
   else ({hero:subHero,cats:subCats,holiday:subHoliday,tours:subTours,board:subBoard,foot:subFoot}[sub]||subHero)();
 }
 
+/* 첫 화면 글자색 고르기 한 줄 — 윗줄·큰 제목·설명 문구가 같은 모양을 쓴다(사장님 2026-09-11: 전에는 윗줄만 됐다).
+   attr = 단추의 data-속성 이름, pkey = 직접 고르기 color 칸이 저장할 S 경로 */
+function heroColorPick(cur,attr,pkey,none){
+  return '<div class="thpick">'
+    +[['',none,''],['#FFFFFF','흰색','#FFFFFF'],['#E9DFC8','모래색','#E9DFC8'],
+      ['#9FE0B4','연두','#9FE0B4'],['#9CD3F0','하늘','#9CD3F0'],['#F5B7B1','연분홍','#F5B7B1'],['#FFE08A','연노랑','#FFE08A']]
+      .map(([v,n,c])=>'<button type="button" class="th'+((cur||'')===v?' on':'')+'" '+attr+'="'+v+'">'
+        +(c?'<i style="background:'+c+'"></i>':'<i style="background:linear-gradient(135deg,#E8A33D,#2E9E8F)"></i>')+esc(n)+'</button>').join('')
+    +'<label class="th" style="cursor:pointer">직접 고르기 <input type="color" data-p="'+pkey+'" value="'+esc(/^#[0-9a-fA-F]{6}$/.test(cur||'')?cur:'#FFFFFF')+'" style="width:34px;height:22px;border:0;padding:0;background:none"></label>'
+    +'</div>';
+}
 function subHero(){
   const h=S.hero||(S.hero={});
   const sc=S.sector||(S.sector={});
+  /* 바탕 색감 — 손님 화면 HERO_BG 와 같은 이름·색 */
+  const BGS=[['fresh','밝은 초록','#1E6F55,#2C9B7B'],['classic','짙은 초록(예전)','#123A2B,#08170F'],['teal','청록','#0E5F6B,#1D8A93'],['navy','남색','#1E3A5F,#2A5286'],['sunset','노을','#7A3B2E,#B5573E']];
   document.getElementById('subpane').innerHTML=
     '<div class="card"><h2>첫 화면</h2>'
     +'<p class="desc">사이트를 열면 가장 먼저 보이는 부분입니다.</p>'
@@ -1002,8 +1015,13 @@ function subHero(){
       +'<label class="th" style="cursor:pointer">직접 고르기 <input type="color" data-p="hero.eyeColor" value="'+esc(/^#[0-9a-fA-F]{6}$/.test(h.eyeColor||'')?h.eyeColor:'#E8A33D')+'" style="width:34px;height:22px;border:0;padding:0;background:none"></label>'
       +'</div>'
     +'</div>'
-    +'<div class="f"><label>큰 제목 — *별표* 안은 금색, 줄바꿈은 Enter</label>'+ta('hero.title',h.title)+'</div>'
-    +'<div class="f"><label>설명 문구</label>'+ta('hero.lead',h.lead)+'</div>'
+    +'<div class="f"><label>큰 제목 — *별표* 안은 금색, 줄바꿈은 Enter</label>'+ta('hero.title',h.title)
+      +'<p class="hint" style="margin-top:10px">큰 제목 글자 색</p>'+heroColorPick(h.titleColor,'data-tic','hero.titleColor','흰색(기본)')+'</div>'
+    +'<div class="f"><label>설명 문구</label>'+ta('hero.lead',h.lead)
+      +'<p class="hint" style="margin-top:10px">설명 문구 글자 색</p>'+heroColorPick(h.leadColor,'data-lec','hero.leadColor','흰색(기본)')+'</div>'
+    +'<div class="f"><label>배경 색감 — 첫 화면 바탕과 아래 섹터 띠</label>'
+      +'<div class="thpick">'+BGS.map(([k,n,g])=>'<button type="button" class="th'+((h.bg||'fresh')===k?' on':'')+'" data-hbg="'+k+'">'
+        +'<i style="background:linear-gradient(135deg,'+g+')"></i>'+esc(n)+'</button>').join('')+'</div></div>'
     /* 두 단추는 바로 아래 섹터 메뉴와 하는 일이 겹쳐 기본은 «안 보임»이다(사장님 2026-09-08).
        문구는 그대로 두고 이 체크만 켜면 되살아난다. */
     +'<div class="f"><label>버튼 1 / 버튼 2'
@@ -1079,6 +1097,10 @@ function subHero(){
   /* 윗줄 글자 크기·색 */
   pane.querySelectorAll('[data-eys]').forEach(b=>b.onclick=()=>{ h.eyeSize=b.dataset.eys; markDirty('site'); subHero(); });
   pane.querySelectorAll('[data-eyc]').forEach(b=>b.onclick=()=>{ h.eyeColor=b.dataset.eyc; markDirty('site'); subHero(); });
+  /* 큰 제목·설명 문구 글자 색, 배경 색감 */
+  pane.querySelectorAll('[data-tic]').forEach(b=>b.onclick=()=>{ h.titleColor=b.dataset.tic; markDirty('site'); subHero(); });
+  pane.querySelectorAll('[data-lec]').forEach(b=>b.onclick=()=>{ h.leadColor=b.dataset.lec; markDirty('site'); subHero(); });
+  pane.querySelectorAll('[data-hbg]').forEach(b=>b.onclick=()=>{ h.bg=b.dataset.hbg; markDirty('site'); subHero(); });
   const gc=document.getElementById('goCats'); if(gc) gc.onclick=()=>{ sub='cats'; drawSite(); };
   bindRowBtns();
 }
