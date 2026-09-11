@@ -1367,17 +1367,20 @@ function drawHero(){
   /* 윗줄 글자 크기·색 — 관리 화면 「첫 화면」에서 고른다(사장님 2026-09-09).
      크기 sm/md/lg, 색은 비어 있으면 포인트 색(--marigold)을 따라간다. */
   const EYE = { sm:"font-size:11.5px;letter-spacing:.24em", md:"", lg:"font-size:clamp(17px,2.2vw,21px);letter-spacing:.08em" };
-  const eyeSt = (EYE[h.eyeSize] || "") + (h.eyeColor ? ";color:" + esc(h.eyeColor) : "");
+  /* 글자 크기(px)·진하기(100~900)는 관리 화면에서 숫자로 적는다(사장님 2026-09-11). 비면 기본값.
+     크기는 휴대폰에서 화면 폭(vw)을 넘지 않게 min()으로 묶는다 — 52px 제목이 좁은 화면에서 넘치지 않게. */
+  const szSt = (px, w, cap) => (+px > 0 ? "font-size:min(" + (+px) + "px," + cap + ");" : "") + (+w >= 100 ? "font-weight:" + Math.min(900, +w) + ";" : "");
+  const eyeSt = (EYE[h.eyeSize] || "") + (h.eyeColor ? ";color:" + esc(h.eyeColor) : "") + ";" + szSt(h.eyePx, h.eyeW, "5.2vw");
   /* 큰 제목·설명 문구도 각각 색을 고를 수 있다(사장님 2026-09-11 — 전에는 윗줄만 됐다). 비면 흰색 그대로 */
-  const colSt = c => (c ? ' style="color:' + esc(c) + '"' : "");
+  const colSt = (c, sz) => ((c || sz) ? ' style="' + (c ? "color:" + esc(c) + ";" : "") + (sz || "") + '"' : "");
   /* 배경 사진 — 관리 화면 사진칸의 첫 장(h.img)만 쓴다 */
   const heroEl = $("#top");
   heroEl.classList.toggle("has-img", !!h.img);
   heroEl.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : "none");
   $("#heroBox").innerHTML =
     '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
-    + "<h1" + colSt(h.titleColor) + ">" + title + "</h1>"
-    + '<p class="lead"' + colSt(h.leadColor) + ">" + esc(h.lead || "") + "</p>"
+    + "<h1" + colSt(h.titleColor, szSt(h.titlePx, h.titleW, "9vw")) + ">" + title + "</h1>"
+    + '<p class="lead"' + colSt(h.leadColor, szSt(h.leadPx, h.leadW, "5.4vw")) + ">" + esc(h.lead || "") + "</p>"
     + '<div class="keys">' + (h.keys || []).map(k => "<span>" + esc(k) + "</span>").join("") + "</div>"
     /* 「실시간 견적받기 · 골프장 둘러보기」 두 단추 — 바로 아래 섹터 메뉴가 같은 일을 해서
        겹치므로 2026-09-08부터 기본은 «안 보임»이다(사장님). 관리 화면 「첫 화면」의

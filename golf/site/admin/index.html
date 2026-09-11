@@ -981,6 +981,17 @@ function drawSite(){
 
 /* 첫 화면 글자색 고르기 한 줄 — 윗줄·큰 제목·설명 문구가 같은 모양을 쓴다(사장님 2026-09-11: 전에는 윗줄만 됐다).
    attr = 단추의 data-속성 이름, pkey = 직접 고르기 color 칸이 저장할 S 경로 */
+/* 글자 크기(px)·진하기(100~900) 숫자칸 한 줄 — 비우면 손님 화면 기본값. 0을 미리 넣지 않는다 */
+function heroSizeRow(pxKey,pxVal,pxPh,wKey,wVal,wPh){
+  const num=v=>(+v>0?String(+v):'');
+  return '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">글자 크기 '
+      +'<input type="number" data-p="'+pkey_(pxKey)+'" value="'+num(pxVal)+'" placeholder="'+esc(pxPh)+'" min="8" max="120" step="1" style="width:78px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right"> px</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)">진하기 '
+      +'<input type="number" data-p="'+pkey_(wKey)+'" value="'+num(wVal)+'" placeholder="'+esc(wPh)+'" min="100" max="900" step="100" style="width:78px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right"> <span style="font-weight:600">(100 가늘게 ~ 900 굵게)</span></label>'
+    +'</div>';
+}
+function pkey_(k){ return esc(k); }
 function heroColorPick(cur,attr,pkey,none){
   return '<div class="thpick">'
     +[['',none,''],['#FFFFFF','흰색','#FFFFFF'],['#E9DFC8','모래색','#E9DFC8'],
@@ -1001,11 +1012,8 @@ function subHero(){
     +'<div class="grid2">'
     +'<div class="f"><label>윗줄</label>'+inp('hero.eyebrow',h.eyebrow)
       /* 윗줄의 글자 크기·색 — 사장님 2026-09-09. 색을 안 고르면 「화면 꾸미기」 포인트 색을 따라간다. */
-      +'<p class="hint" style="margin-top:10px">윗줄 글자 크기</p>'
-      +'<div class="thpick">'
-      +[['sm','작게'],['md','중간'],['lg','크게']]
-        .map(([k,n])=>'<button type="button" class="th'+((h.eyeSize||'md')===k?' on':'')+'" data-eys="'+k+'">'+esc(n)+'</button>').join('')
-      +'</div>'
+      /* 글자 크기·진하기는 숫자로 직접(사장님 2026-09-11 — 셋 중 고르기 대신). 비우면 기본값 */
+      +heroSizeRow('hero.eyePx',h.eyePx,'기본 16','hero.eyeW',h.eyeW,'기본 800')
       +'<p class="hint" style="margin-top:10px">윗줄 글자 색</p>'
       +'<div class="thpick">'
       +[['','포인트 색 따라감',''],['#FFFFFF','흰색','#FFFFFF'],['#E9DFC8','모래색','#E9DFC8'],
@@ -1016,8 +1024,10 @@ function subHero(){
       +'</div>'
     +'</div>'
     +'<div class="f"><label>큰 제목 — *별표* 안은 금색, 줄바꿈은 Enter</label>'+ta('hero.title',h.title)
+      +heroSizeRow('hero.titlePx',h.titlePx,'기본 52','hero.titleW',h.titleW,'기본 900')
       +'<p class="hint" style="margin-top:10px">큰 제목 글자 색</p>'+heroColorPick(h.titleColor,'data-tic','hero.titleColor','흰색(기본)')+'</div>'
     +'<div class="f"><label>설명 문구</label>'+ta('hero.lead',h.lead)
+      +heroSizeRow('hero.leadPx',h.leadPx,'기본 18','hero.leadW',h.leadW,'기본 400')
       +'<p class="hint" style="margin-top:10px">설명 문구 글자 색</p>'+heroColorPick(h.leadColor,'data-lec','hero.leadColor','흰색(기본)')+'</div>'
     +'<div class="f"><label>배경 색감 — 첫 화면 바탕과 아래 섹터 띠</label>'
       +'<div class="thpick">'+BGS.map(([k,n,g])=>'<button type="button" class="th'+((h.bg||'fresh')===k?' on':'')+'" data-hbg="'+k+'">'
