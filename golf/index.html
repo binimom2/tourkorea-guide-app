@@ -35,6 +35,10 @@ html.embed .wrap{padding-top:6px}
 /* 기본 정보는 가장 자주 만지는 칸이라 크게. 대신 날짜·인원·박수는 좁혀서
    팀명이 남는 폭을 다 쓰게 하고, 5칸이 한 줄에 여유 있게 들어가도록 했다. */
 #pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
+/* 인원수·박 칸은 화살표 없이 숫자만 찍는다(사장님 2026-09-11). 일 칸은 읽기 전용이라 원래 없다 */
+#pax::-webkit-inner-spin-button,#pax::-webkit-outer-spin-button,
+#nights::-webkit-inner-spin-button,#nights::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+#pax,#nights{-moz-appearance:textfield;appearance:textfield}
 .basic{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
 .fx-date{flex:0 0 250px}
 /* 출발·귀국 날짜 단추 + 달력판 — 손님 사이트 호텔 칸처럼 눌러서 두 날짜를 이어 고른다(사장님 2026-09-11) */
