@@ -74,6 +74,9 @@ html.embed .wrap{padding-top:6px}
 /* 다 채운 칸은 한 줄로 접힌다 — 화면이 넘치지 않게. 다시 만지면 펴진다. */
 .step .steph{display:flex;align-items:center;gap:8px}
 .sublab{font-weight:400;font-size:11.5px;color:var(--muted);white-space:nowrap}
+/* 2·3번의 안내말은 빨간색으로 눈에 띄게, 다 골라 접힌 뒤에는 감춘다(사장님 2026-09-11) */
+.sublab.tip{color:#c0392b;font-weight:700}
+.step.folded .sublab.tip{display:none}
 .csum{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .18s ease}
 .step.folded .csum{opacity:1}
 .cedit{display:none;font-size:11.5px;font-weight:700;color:var(--fairway);border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer;white-space:nowrap}
@@ -245,7 +248,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   </div>
 
   <div class="card step" id="s2">
-    <h2 class="steph">2. 지역선택 <span class="sublab" style="color:#c0392b;font-weight:700">머무르실 곳을 순서로 클릭해주세요</span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">2. 지역선택 <span class="sublab tip">머무르실 곳을 순서로 클릭해주세요</span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div class="chips" id="regChips"></div>
       <div class="picked" id="regPicked"></div>
@@ -256,7 +259,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   <div class="card step" id="s3">
     <!-- 호텔은 지역을 고르면 기본으로 펼쳐진다. 필요 없을 때만 아래 체크로 접는다 —
          제목줄은 남겨 두어 다시 고를 수 있다(사장님 2026-09-11). -->
-    <h2 class="steph">3. 호텔 <span class="sublab">지역을 고르면 나옵니다</span><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">3. 호텔 <span class="sublab tip">지역을 고르면 나옵니다</span><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div id="hotelWrap"></div>
       <div class="hint" id="hotelHint" style="display:none"></div>
