@@ -429,8 +429,11 @@ async function afterAuth(user){
   }
   document.getElementById('savebar').classList.remove('hidden');
   // 계정관리(골프 권한 지정)는 어드민만
-  if(GROLE==='admin') document.getElementById('accBtn').style.display='';
-  if(GROLE==='admin'||GROLE==='manager') document.getElementById('siteAdminLink').style.display='';
+  /* 사이트 관리 안에 끼워 넣은(?embed=1) 때는 이 단추들이 미리 지워져 있다(위 embed 스크립트) —
+     없는 요소를 만지면 여기서 멈춰 요금표·코드가 통째로 안 그려진다(2026-09-11 사고). 있을 때만 켠다 */
+  const accB=document.getElementById('accBtn'), saL=document.getElementById('siteAdminLink');
+  if(GROLE==='admin'&&accB) accB.style.display='';
+  if((GROLE==='admin'||GROLE==='manager')&&saL) saL.style.display='';
   // 코드를 먼저 불러와야 요금표의 지역 선택칸이 코드 목록으로 채워진다
   loadCodes().then(loadPricing);
 }
