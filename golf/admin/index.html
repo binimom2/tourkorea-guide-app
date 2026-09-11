@@ -77,15 +77,6 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .hotel input.hp{width:110px}
 .hotel input.ht{flex:2;min-width:120px}
 .hotel input{font:inherit;font-size:13.5px;padding:8px 9px;border:1px solid var(--line);border-radius:8px}
-.holidays{display:flex;flex-wrap:wrap;gap:8px}
-.holidays .hd{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:4px 6px;background:var(--paper)}
-.holidays .hd input{font:inherit;font-size:13px;border:0;background:none}
-.holidays .hd button{border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800}
-/* 사이트 관리로 옮겨 간 표 — 보기만 되게 잠근 모습 */
-.lockmsg{background:rgba(232,163,61,.15);border:1px solid rgba(232,163,61,.45);border-radius:9px;
-  padding:10px 12px;font-size:13px;font-weight:700;color:#7a4a00;margin-bottom:12px;line-height:1.55}
-.locked{opacity:.72}
-.locked input,.locked select,.locked textarea{background:#f2efe8;color:var(--muted);cursor:not-allowed}
 
 .savebar{position:fixed;left:0;right:0;bottom:0;background:var(--fairway);color:var(--sand);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:30}
 .savebar .msg{font-size:13px}
@@ -220,7 +211,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 <div id="rateModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px" onmousedown="if(event.target===this)closeRate()">
   <div style="background:#fff;border-radius:14px;max-width:1100px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
-      <b style="font-size:15px">💰 요금표 관리</b>
+      <b style="font-size:15px">💰 실시간견적 요금표 관리</b>
       <div style="display:flex;gap:8px;align-items:center">
         <span id="rateMsg" style="font-size:12px;color:var(--muted)"></span>
         <button class="btn sm" id="rateSaveBtn" onclick="saveFromRate()" style="background:var(--marigold);color:#3a2600;border-color:var(--marigold);font-weight:800">💾 저장</button>
@@ -541,16 +532,7 @@ async function saveAll(){
 /* 옮겨 간 표를 «보기만» 되게 잠근다 — 자료는 그대로 두고 손만 못 대게 한다.
    입력칸을 전부 disabled 로 만들고, 줄을 더하거나 지우는 단추는 없앤다.
    맨 위에 어디서 고치는지 한 줄 붙인다. */
-function lockCard(node,where){
-  const wrap=el('div','locked');
-  const note=el('div','lockmsg');
-  note.innerHTML='🔒 이 표는 <b>여기서 고치지 않습니다.</b> '+where;
-  wrap.appendChild(note);
-  node.querySelectorAll('input,select,textarea').forEach(i=>{ i.disabled=true; });
-  node.querySelectorAll('button').forEach(b=>{ b.remove(); });
-  wrap.appendChild(node);
-  return wrap;
-}
+/* 잠긴 표(lockCard)는 2026-09-11 삭제 — 잠가 두던 옛 표들이 다 없어졌다 */
 
 /* ══════════ 렌더 헬퍼 ══════════ */
 function el(tag,cls,txt){ const e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
@@ -877,12 +859,10 @@ function render(){
     {key:'handling',label:'🧳 핸들링 차지',  node:periodTable('🧳 핸들링 차지 (1인 기준)','기간별 핸들링 요금.',G.handlingPeriods)},
     {key:'guide',   label:'🧑‍🏫 가이드 요금',  node:guideTable()},
     {key:'etc',     label:'⚙️ 기타',         node:etcCard()},
-    {key:'holiday', label:'📅 공휴일 (이전됨)', node:lockCard(holidayCard(),
-      '공휴일은 <b>사이트 관리 → 사이트 내용 → 📅 공휴일</b>에서 넣습니다.')},
-    /* ⛳ 골프장·🏨 호텔 «옛 표»는 2026-09-11 삭제 — 사이트 내용의 골프장·호텔에서 넣는 요금줄만 쓴다(사장님) */
+    /* ⛳ 골프장·🏨 호텔 «옛 표»·📅 공휴일(이전됨) 칸은 2026-09-11 삭제 — 골프장·호텔 요금줄과 공휴일은 사이트 내용에서 넣는다(사장님) */
   ];
 
-  const c=card('💰 요금표 관리','종류를 누르면 창이 열립니다. 창을 닫지 않고 상단 탭으로 바로 옮겨 다닐 수 있습니다.');
+  const c=card('💰 실시간견적 요금표 관리','종류를 누르면 창이 열립니다. 창을 닫지 않고 상단 탭으로 바로 옮겨 다닐 수 있습니다.');
   const cats=el('div','ccats');
   _rateSections.forEach(s=>{
     const b=el('button','ccat',s.label);
@@ -939,23 +919,7 @@ function tierCard(title,desc,obj){
   });
   c.appendChild(t); return c;
 }
-function holidayCard(){
-  const c=card('📅 공휴일 (주말 요금 적용)','태국 공휴일·주말요금이 적용될 날짜.');
-  const box=el('div','holidays');
-  function draw(){
-    box.innerHTML='';
-    G.holidays.forEach((d,idx)=>{
-      const hd=el('div','hd');
-      const i=document.createElement('input'); i.type='date'; i.value=d;
-      i.oninput=()=>{ G.holidays[idx]=i.value; _touch(); };
-      const x=el('button',null,'×'); x.onclick=()=>{ G.holidays.splice(idx,1); _touch(); draw(); };
-      hd.appendChild(i); hd.appendChild(x); box.appendChild(hd);
-    });
-    const add=el('button','btn ghost sm','＋ 날짜'); add.onclick=()=>{ G.holidays.push(''); _touch(); draw(); };
-    box.appendChild(add);
-  }
-  draw(); c.appendChild(box); return c;
-}
+/* 공휴일 칸(holidayCard)은 2026-09-11 삭제 — 사이트 내용 → 📅 공휴일에서 넣는다 */
 /* ── 골프장·숙소: 가로 표(한 줄=한 골프장 시즌) ── */
 /* ══════════ 데이터 보기 ══════════ */
 function buildCurrentData(){ return G; }
