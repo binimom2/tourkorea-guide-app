@@ -213,8 +213,8 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <div class="top">
       <span class="who" id="whoBadge"></span>
       <a onclick="newQuote()" style="cursor:pointer;">🆕 새 견적</a>
-      <a href="/golf/admin/" id="adminLink" style="display:none;background:var(--fairway);color:var(--sand)">🔧 코드·요금 관리</a>
-      <a href="/golf/site/admin/" id="siteLink" style="display:none">🌐 사이트 관리</a>
+      <!-- 요금·코드는 2026-09-11부터 사이트 관리 → 사이트 내용의 하위 탭이다(사장님). 단추 하나로 합쳤다 -->
+      <a href="/golf/site/admin/" id="siteLink" style="display:none;background:var(--fairway);color:var(--sand)">🌐 사이트 관리 (요금·코드)</a>
       <a href="/travel/">← 예약관리</a>
       <button class="link" onclick="doLogout()">로그아웃</button>
     </div>
@@ -1553,7 +1553,8 @@ async function loadPricing(){
         const conv={}, hot={};
         Object.entries(d.regions).forEach(([reg,rv])=>{
           conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'',
-            s:ratesToSeasons(c).concat((c.seasons||[]).map(s=>({ from:s.from, to:s.to, g18:[s.gf18?.wd??null,s.gf18?.we??null], cad:s.caddie||0, crt:s.cart||0, g9:(s.gf9&&(s.gf9.wd!=null||s.gf9.we!=null))?[s.gf9.wd??null,s.gf9.we??null]:null, cad9:s.caddie9||0, crt9:s.cart9||0, margin:s.margin }))) }));
+            /* 옛 시즌줄(seasons[], 엑셀 요금표)은 2026-09-11부터 안 읽는다 — 사이트 관리에서 넣는 새 요금줄(rates[])만(사장님) */
+            s:ratesToSeasons(c) }));
           if(rv.hotels&&rv.hotels.length) hot[reg]=rv.hotels;
         });
         Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
@@ -1610,8 +1611,7 @@ async function startApp(user){
   }
   // 코드·요금 관리는 어드민과 매니저만. 에이전트는 견적 화면만 쓴다.
   if(GROLE==='admin'||GROLE==='manager'){
-    document.getElementById('adminLink').style.display='';
-    document.getElementById('siteLink').style.display='';   // 사이트 내용 관리도 같은 두 권한
+    document.getElementById('siteLink').style.display='';   // 사이트 관리(요금·코드 포함)는 어드민·매니저만
   }
   if(wb) wb.textContent=`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
   // 출발일자는 빈 칸으로 시작한다(사장님 2026-09-11) — 예전엔 2주 뒤 날짜를 미리 넣었다

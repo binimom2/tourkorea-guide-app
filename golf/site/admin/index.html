@@ -316,7 +316,6 @@ tr.mainrow.offrow td:first-child{box-shadow:inset 3px 0 0 var(--marigold)}
       <nav class="jump">
         <a href="../index.html">🌐 손님 사이트</a>
         <a href="/golf/">⛳ 견적</a>
-        <a href="/golf/admin/">🔧 요금·코드</a>
       </nav>
       <span class="who" id="who"></span>
       <button class="lnk" id="outBtn" type="button">로그아웃</button>
@@ -630,10 +629,7 @@ const TABS=[
      guide_data 에 **한 건이 한 줄**로 담긴다(data_key = golf_book_<접수번호>).
      읽고 고치는 것은 서버 함수 /api/golf-book 이 한다 — 브라우저에서 바로 못 읽는다. */
   {k:'books',  label:'📋 예약요청'},
-  /* 요금표는 /golf/admin/ 화면을 그대로 끼워 넣는다. 같은 로그인(gs-auth)을 쓰므로
-     다시 로그인할 필요가 없고, 요금 코드가 두 벌로 갈라지지 않는다. */
-  {k:'rates',  label:'💰 요금표'},
-  {k:'codes',  label:'코드관리'},
+  /* 요금표(차량·핸들링·가이드)·코드관리는 2026-09-11부터 「사이트 내용」의 하위 탭이다(사장님) — subs() 참고 */
   {k:'accounts',label:'계정관리', adminOnly:true}
 ];
 let tab='site';
@@ -874,13 +870,15 @@ async function loadBooks(){
 /* 요금표 — /golf/admin/ 을 그대로 끼워 넣는다. 옮겨 적지 않은 이유는,
    요금 계산이 견적기·손님 사이트·API와 얽혀 있어 두 벌이 되면 반드시 어긋나기 때문이다.
    저장·백업도 저쪽 화면 것을 그대로 쓴다. */
+/* 견적 계산기(/golf/)가 읽는 차량·핸들링·가이드 요금 — /golf/admin/ 화면을 그대로 끼워 넣는다.
+   같은 로그인(gs-auth)을 쓰므로 다시 로그인할 필요가 없고, 요금 코드가 두 벌로 갈라지지 않는다.
+   골프장·호텔·스파… 요금은 여기가 아니라 각 종류 탭에서 넣는다(사장님 2026-09-11). */
 function drawRates(){
-  document.getElementById('pane').innerHTML=
+  document.getElementById('subpane').innerHTML=
     '<div class="card" style="padding:12px 13px 13px">'
-    +'<h2>💰 요금표 · 코드</h2>'
-    +'<p class="desc">골프장·호텔의 <b>원가</b>입니다. 손님에게는 안 보입니다 — '
-    +'손님 화면에는 마진을 더한 원화 금액만 나갑니다. '
-    +'<a href="/golf/admin/" target="_blank" rel="noopener">따로 큰 화면으로 열기 ↗</a></p>'
+    +'<h2>💰 요금표 (차량 · 핸들링 차지 · 가이드)</h2>'
+    +'<p class="desc">실시간 견적 계산기가 쓰는 <b>기간별 원가</b>입니다. 손님에게는 안 보입니다. '
+    +'골프장·호텔·스파 등의 요금은 위 종류 탭에서 각각 넣습니다.</p>'
     +'<iframe id="ratesFrame" src="/golf/admin/?embed=1" title="요금표"></iframe>'
     +'</div>';
   /* 안쪽 화면 높이에 맞춰 늘려 준다 — 스크롤이 두 겹이면 표를 못 읽는다 */
@@ -912,7 +910,9 @@ function subs(){
     .concat(catsAll().map(c=>({k:'cat:'+c.k, label:(c.ic?c.ic+' ':'')+(c.t||c.k)+(c.on===false?' (숨김)':'')})))
     .concat([{k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
              {k:'tours',label:'기타투어'},
-             {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'}]);
+             {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'},
+             /* 견적 계산기가 읽는 차량·핸들링·가이드 요금과 코드 — 상단 탭에서 이리로 내렸다(사장님 2026-09-11) */
+             {k:'rates',label:'💰 요금표 (차량·핸들링·가이드)'},{k:'codes',label:'🏷 코드관리'}]);
 }
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
 /* 지역순 보기는 처음부터 켜져 있다 — 62곳을 지역별로 나눠 봐야 찾기 쉽다. 끄면 넣은 차례대로. */
@@ -960,6 +960,16 @@ document.addEventListener('keydown',e=>{
 function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
   if(!SUB.some(s=>s.k===sub)) sub='hero';
+  clearInterval(ratesTimer);          // 요금표 하위 탭을 떠나면 높이 맞추기를 멈춘다
+  /* 요금표·코드관리는 자기 저장 단추를 쓴다 — 사이트 내용 저장줄은 감춘다 */
+  if(sub==='rates'||sub==='codes'){
+    p.innerHTML='<div class="subtabs">'
+      +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
+      +'</div><div id="subpane"></div>';
+    p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
+    if(sub==='rates') drawRates(); else drawCodes();
+    return;
+  }
   p.innerHTML='<div class="subtabs">'
     +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
     +'</div><div id="subpane"></div>'
@@ -2267,12 +2277,12 @@ const CODE_CATS=[
 let ccat='region';
 function drawCodes(){
   const list=C[ccat]||[];
-  document.getElementById('pane').innerHTML=
+  document.getElementById('subpane').innerHTML=
     '<div class="subtabs">'+CODE_CATS.map(c=>
       '<button data-c="'+c.key+'" class="'+(c.key===ccat?'on':'')+'">'+esc(c.label)
       +' ('+((C[c.key]||[]).length)+')</button>').join('')+'</div>'
     +'<div class="card"><h2>코드관리</h2>'
-    +'<p class="desc">골프 견적에서 쓰는 코드입니다. <b>요금관리(/golf/admin/)와 같은 데이터</b>라 한쪽에서 고치면 양쪽에 반영됩니다. 예약관리(/travel/)의 코드와는 완전히 별개입니다.</p>'
+    +'<p class="desc">골프 견적에서 쓰는 코드(지역·환율 등)입니다. 예약관리(/travel/)의 코드와는 완전히 별개입니다.</p>'
     +'<div class="tblwrap"><table style="min-width:560px"><thead><tr>'
     +'<th style="width:150px">코드</th><th>이름</th><th style="width:88px">사용</th><th style="width:64px"></th>'
     +'</tr></thead><tbody>'
@@ -2287,7 +2297,7 @@ function drawCodes(){
     +'<div class="rowbtns"><button class="add" id="cAdd">＋ 코드 추가</button>'
     +'<button class="save" id="cSave">저장</button></div></div>';
 
-  const p=document.getElementById('pane');
+  const p=document.getElementById('subpane');
   p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ ccat=b.dataset.c; drawCodes(); });
   p.querySelectorAll('[data-c][data-f]').forEach(el=>el.oninput=()=>{
     const i=Number(el.dataset.c), f=el.dataset.f;

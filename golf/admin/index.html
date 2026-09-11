@@ -118,15 +118,6 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .ptable input.pin{width:100%;font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper)}
 .ptable input.pin:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
 /* 골프장/숙소 가로 표 */
-.gtwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin-top:4px}
-.gt{border-collapse:collapse;font-size:12px;min-width:1180px;width:100%}
-.gt th{position:sticky;top:0;background:var(--sand);font-size:10.5px;font-weight:700;color:var(--fairway);padding:7px 5px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line);z-index:1}
-.gt td{padding:3px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
-.gt input,.gt select{width:100%;font:inherit;font-size:12px;padding:6px 5px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
-.gt input:focus,.gt select:focus{outline:2px solid var(--marigold);outline-offset:-1px;background:#fff}
-.gt input.n{text-align:right}
-.gt input.cnum{min-width:56px}.gt input.cname{min-width:110px}.gt input.cnote{min-width:150px}.gt input.cdate{min-width:126px}
-.gt td.cx{color:var(--danger);cursor:pointer;font-weight:800;text-align:center;font-size:13px}
 .hidden{display:none!important}
 </style>
 </head>
@@ -281,42 +272,7 @@ const DEFAULT = {
   handling:  { base:500, baseNights:3, perExtraNight:100 },
   localGuide:{ 0:2000, 1:3500, 2:5000, 3:6500, 4:8000, 5:9500, extraNight:1500 },
   korGuide:  { 0:4000, 1:7000, 2:10000, 3:13000, 4:16000, 5:19000, extraNight:3000 },
-  regions: {
-    "방콕": { courses:[
-      { name:"수파프룩", note:"주말 11:30 이후 1,000밧 · 9홀추가 15:00 이후 · TK", seasons:[{ label:"비수기", from:"2026-03-01", to:"2026-10-31", gf18:{wd:600,we:1800}, caddie:450, cart:700, gf9:{wd:450,we:900}, caddie9:250, cart9:350 }]},
-      { name:"시암방콕", note:"주중4 주말4 · 카트 진입(의무) · 갤러리 2,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:3400,we:4800}, caddie:500, cart:1000, gf9:{wd:2050,we:2700}, caddie9:300, cart9:600 }]},
-      { name:"알파인", note:"주말·휴일 12:00 이후 · 주중4 주말4 · 카트 진입(의무)", seasons:[
-        { label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:4600,we:6100}, caddie:0, cart:0, gf9:{wd:null,we:null}, caddie9:0, cart9:0 },
-        { label:"성수기", from:"2026-10-01", to:"2027-03-31", gf18:{wd:6800,we:null}, caddie:0, cart:0, gf9:{wd:null,we:null}, caddie9:0, cart9:0 }]},
-      { name:"카스카타", note:"36홀", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:900,we:1700}, caddie:430, cart:770, gf9:{wd:500,we:900}, caddie9:300, cart9:420 }]}
-    ], hotels:[
-      { name:"방콕 시내 4성 호텔", perNight:2200, note:"2인 1실 기준 1박" },
-      { name:"방콕 시내 5성 호텔", perNight:3800, note:"2인 1실 기준 1박" }
-    ]},
-    "파타야": { courses:[
-      { name:"그린우드", note:"27홀 · 주중5 주말 오전4 오후5 · 갤러리 300밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:650,we:850}, caddie:350, cart:600, gf9:{wd:300,we:400}, caddie9:200, cart9:300 }]},
-      { name:"람차방", note:"27홀 · 주중5 주말4 · 카트 진입(의무) · 갤러리 600밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:2400,we:2700}, caddie:450, cart:980, gf9:{wd:1350,we:1500}, caddie9:300, cart9:500 }]},
-      { name:"라용그린밸리", note:"스포츠데이(수) 2,150밧 · 주중5 주말5 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1000,we:1200}, caddie:450, cart:900, gf9:{wd:500,we:600}, caddie9:250, cart9:450 }]},
-      { name:"방프라", note:"스포츠데이(월·수) 1,650밧 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1650,we:2150}, caddie:0, cart:0, gf9:{wd:1100,we:1300}, caddie9:0, cart9:0 }]},
-      { name:"부라파", note:"36홀 · 스포츠데이(월·수) 2,150밧 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1200,we:1500}, caddie:400, cart:850, gf9:{wd:650,we:800}, caddie9:200, cart9:450 }]},
-      { name:"뿌탈루앙", note:"주중5 주말5 · 갤러리 300밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1300,we:1400}, caddie:0, cart:0, gf9:{wd:1000,we:1100}, caddie9:0, cart9:0 }]},
-      { name:"세인트앤드류2000", note:"스포츠데이(월) 2,150밧 · 주중 12시 이후 2,150밧 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1000,we:1200}, caddie:450, cart:900, gf9:{wd:500,we:600}, caddie9:250, cart9:450 }]},
-      { name:"시암올드", note:"비수기 월요일 휴장 · 주중4 주말4 · 갤러리 2,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:3800,we:5250}, caddie:500, cart:1000, gf9:{wd:2200,we:2900}, caddie9:300, cart9:600 }]},
-      { name:"시암플랜/워터/롤링", note:"플랜 27홀, 워터·롤링 18홀 · 갤러리 2,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:3100,we:4100}, caddie:500, cart:1000, gf9:{wd:1800,we:2200}, caddie9:300, cart9:600 }]},
-      { name:"이스턴스타", note:"주중 오전5 오후6 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:2350,we:3400}, caddie:0, cart:0, gf9:{wd:1400,we:1700}, caddie9:0, cart9:0 }]},
-      { name:"찌짠", note:"주중4 주말4 · 카트 진입(의무) · 갤러리 1,500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-09-30", gf18:{wd:3400,we:4200}, caddie:450, cart:850, gf9:{wd:2350,we:2850}, caddie9:250, cart9:450 }]},
-      { name:"카오키여우", note:"주중5 주말5 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1950,we:2550}, caddie:0, cart:0, gf9:{wd:1100,we:1400}, caddie9:0, cart9:0 }]},
-      { name:"트레져힐", note:"주중6 주말6 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:500,we:600}, caddie:380, cart:700, gf9:{wd:300,we:350}, caddie9:220, cart9:400 }]},
-      { name:"파타나", note:"27홀 · 스포츠데이(화) 2,000밧 · 갤러리 800밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1300,we:1800}, caddie:400, cart:800, gf9:{wd:900,we:1300}, caddie9:200, cart9:400 }]},
-      { name:"파타비아", note:"주중 오전5 오후6 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:500,we:800}, caddie:350, cart:600, gf9:{wd:500,we:700}, caddie9:200, cart9:300 }]},
-      { name:"파타야", note:"스포츠데이(목) 1,900밧 · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:900,we:1100}, caddie:400, cart:700, gf9:{wd:600,we:700}, caddie9:200, cart9:350 }]},
-      { name:"피닉스", note:"27홀 · 주중5 주말5 · 카트 진입(의무) · 갤러리 500밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:1400,we:1900}, caddie:400, cart:700, gf9:{wd:800,we:1050}, caddie9:200, cart9:350 }]},
-      { name:"헤르매스", note:"주중5 주말5 · 카트 진입(의무) · 갤러리 1,300밧", seasons:[{ label:"비수기", from:"2026-04-01", to:"2026-10-31", gf18:{wd:2000,we:2300}, caddie:0, cart:0, gf9:{wd:1250,we:1400}, caddie9:0, cart9:0 }]}
-    ], hotels:[
-      { name:"파타야 비치 4성 호텔", perNight:1800, note:"2인 1실 기준 1박" },
-      { name:"파타야 비치 5성 호텔", perNight:3200, note:"2인 1실 기준 1박" }
-    ]}
-  },
+  /* 옛 골프장·호텔 요금표(엑셀 시드)는 2026-09-11 삭제 — 골프장·호텔 요금은 사이트 관리(regions)에서만 넣는다(사장님) */
   guideOptions: [
     { id:"none",  label:"노가이드",            desc:"차량 기사분과 미팅부터 아웃하실 때까지 진행" },
     { id:"local", label:"한국말 가능 로컬가이드", desc:"현지 가이드 · 전 일정 동행" },
@@ -340,7 +296,6 @@ const DEFAULT = {
 };
 
 let G = null;      // 편집 중인 요금 데이터
-let RA = [];       // 지역 편집용 배열 [{name,courses,hotels}]
 let currentUser = null;
 
 /* ══════════ 안전 저장 (덮어쓰기 방지 + 백업) ══════════
@@ -528,17 +483,7 @@ function normalize(d){
   });
   if(!Array.isArray(g.vehicleNotes)) g.vehicleNotes=DEFAULT.vehicleNotes.slice();
   if(!Array.isArray(g.transfers))    g.transfers=JSON.parse(JSON.stringify(DEFAULT.transfers));
-  if(!g.regions) g.regions={};
-  Object.values(g.regions).forEach(r=>{
-    (r.courses||[]).forEach(c=>{
-      (c.seasons||[]).forEach(s=>{
-        if(!s.gf18) s.gf18={wd:s.green?.wd??null,we:s.green?.we??null};
-        if(!s.gf9) s.gf9={wd:null,we:null};
-        if(s.caddie9==null) s.caddie9=0;
-        if(s.cart9==null) s.cart9=0;
-      });
-    });
-  });
+  /* regions(골프장·호텔 요금줄)는 이 화면 몫이 아니다 — 사이트 관리가 넣고, 저장 때 서버 것을 그대로 살린다(NOT_MINE) */
   return g;
 }
 async function loadPricing(){
@@ -548,14 +493,8 @@ async function loadPricing(){
     if(row && row.data) data=row.data;
   }catch(e){}
   _gBase[PRICING_KEY]=_gSnap(data);   // 「내가 불러온 시점의 서버 상태」 = 덮어쓰기 판단 기준
-  // 저장된 골프장이 옛 구조(green)거나 없으면 새 기본 골프장(24개, 18/9홀)으로 대체
-  let savedNewCourses=false;
-  if(data && data.regions){ const fs=Object.values(data.regions)[0]?.courses?.[0]?.seasons?.[0]; if(fs && fs.gf18!==undefined) savedNewCourses=true; }
   G = normalize(data || DEFAULT);
-  if(!savedNewCourses){ G.regions = JSON.parse(JSON.stringify(DEFAULT.regions)); }
   if(!(G.holidays||[]).includes('2026-05-04')) G.holidays = DEFAULT.holidays.slice();  // 옛 공휴일이면 새 13개로
-  RA = Object.entries(G.regions).map(([name,v])=>({ name, courses:v.courses||[], hotels:v.hotels||[] }));
-  flattenRegions();
   render();
   document.getElementById('saveMsg').textContent = data ? '저장된 요금을 불러왔습니다.' : '저장된 값이 없어 기본 요금을 불러왔습니다. 저장하면 반영됩니다.';
 }
@@ -580,8 +519,6 @@ async function mergeKeepOthers(cur){
   return out;
 }
 async function saveAll(){
-  // 표(CR/HR) → G.regions 재조립
-  G.regions=regroupRegions();
   const btn=document.getElementById('saveBtn'), msg=document.getElementById('saveMsg');
   btn.disabled=true; btn.textContent='저장 중...';
   try{
@@ -939,10 +876,7 @@ function render(){
     {key:'etc',     label:'⚙️ 기타',         node:etcCard()},
     {key:'holiday', label:'📅 공휴일 (이전됨)', node:lockCard(holidayCard(),
       '공휴일은 <b>사이트 관리 → 사이트 내용 → 📅 공휴일</b>에서 넣습니다.')},
-    {key:'golf',    label:'⛳ 골프장 (옛 표)', node:lockCard(golfSection(),
-      '골프장 요금은 <b>사이트 관리 → ⛳ 골프장</b>에서 골프장마다 넣습니다. 아래는 옛 자료라 보기만 됩니다.')},
-    {key:'hotel',   label:'🏨 호텔 (옛 표)',  node:lockCard(hotelSection(),
-      '호텔 요금은 <b>사이트 관리 → 🏨 호텔</b>에서 호텔마다 넣습니다. 아래는 옛 자료라 보기만 됩니다.')},
+    /* ⛳ 골프장·🏨 호텔 «옛 표»는 2026-09-11 삭제 — 사이트 내용의 골프장·호텔에서 넣는 요금줄만 쓴다(사장님) */
   ];
 
   const c=card('💰 요금표 관리','종류를 누르면 창이 열립니다. 창을 닫지 않고 상단 탭으로 바로 옮겨 다닐 수 있습니다.');
@@ -992,10 +926,6 @@ function renderRateModal(){
   const cur=_rateSections.find(s=>s.key===_rateTab);
   if(!cur) return;
   body.appendChild(cur.node);   // 옮겨 붙이는 것이라 입력값·이벤트가 그대로 유지된다
-  /* 골프장·호텔 표는 tbody를 id로 찾아 채우는 구조라, 창에 붙인 «뒤에» 그려야 한다.
-     (창 밖에 있는 동안에는 못 찾아서 빈 표가 된다. 지역 코드가 바뀐 경우도 여기서 반영된다) */
-  if(cur.key==='golf')  renderGolfBody();
-  if(cur.key==='hotel') renderHotelBody();
 }
 function card(title,desc){ const c=el('div','card'); c.appendChild(el('h2',null,title)); if(desc)c.appendChild(el('p','desc',desc)); return c; }
 function tierCard(title,desc,obj){
@@ -1024,139 +954,8 @@ function holidayCard(){
   draw(); c.appendChild(box); return c;
 }
 /* ── 골프장·숙소: 가로 표(한 줄=한 골프장 시즌) ── */
-let CR=[], HR=[];
-function flattenRegions(){
-  CR=[]; HR=[];
-  RA.forEach(r=>{
-    (r.courses||[]).forEach(c=>{
-      const seasons=(c.seasons&&c.seasons.length)?c.seasons:[{}];
-      seasons.forEach(s=>{
-        CR.push({ region:r.name, name:c.name||'', note:c.note||'', label:s.label||'비수기', from:s.from||'', to:s.to||'',
-          gf18wd:s.gf18?.wd??null, gf18we:s.gf18?.we??null, caddie:s.caddie??0, cart:s.cart??0,
-          gf9wd:s.gf9?.wd??null, gf9we:s.gf9?.we??null, caddie9:s.caddie9??0, cart9:s.cart9??0, margin:s.margin??100 });
-      });
-    });
-    (r.hotels||[]).forEach(h=>HR.push({ region:r.name, name:h.name||'', perNight:h.perNight??0, margin:h.margin??100, note:h.note||'' }));
-  });
-}
-function regroupRegions(){
-  const regions={}; const ensure=r=>{ if(!regions[r]) regions[r]={courses:[],hotels:[]}; return regions[r]; };
-  CR.forEach(row=>{
-    const reg=(row.region||'').trim(), nm=(row.name||'').trim(); if(!reg||!nm) return;
-    const R=ensure(reg); let c=R.courses.find(x=>x.name===nm);
-    if(!c){ c={name:nm,note:row.note||'',seasons:[]}; R.courses.push(c); }
-    if(row.note) c.note=row.note;
-    c.seasons.push({ label:row.label||'', from:row.from||'', to:row.to||'',
-      gf18:{wd:row.gf18wd??null,we:row.gf18we??null}, caddie:row.caddie??0, cart:row.cart??0,
-      gf9:{wd:row.gf9wd??null,we:row.gf9we??null}, caddie9:row.caddie9??0, cart9:row.cart9??0, margin:row.margin??100 });
-  });
-  HR.forEach(h=>{ const reg=(h.region||'').trim(); if(!reg) return; ensure(reg).hotels.push({name:(h.name||'').trim(),perNight:h.perNight??0,margin:h.margin??100,note:h.note||''}); });
-  return regions;
-}
-function regionSelect(obj){
-  const s=document.createElement('select');
-  // 코드관리의 지역 목록 + (이미 쓰이고 있는데 코드에서 빠진 지역은 그대로 유지)
-  const opts=regionOpts().slice(); if(obj.region&&!opts.includes(obj.region)) opts.push(obj.region);
-  s.innerHTML=opts.map(r=>`<option ${obj.region===r?'selected':''}>${r}</option>`).join('');
-  s.onchange=()=>{ obj.region=s.value; _touch(); };
-  return s;
-}
-function numCell(obj,key,nullable){
-  const i=document.createElement('input'); i.type='number'; i.className='n cnum'; i.value=(obj[key]==null?'':obj[key]);
-  i.oninput=()=>{ const v=i.value.trim(); obj[key]=v===''?(nullable?null:0):Number(v); _touch(); }; return i;
-}
-function txtCell(obj,key,cls){ const i=document.createElement('input'); i.type='text'; if(cls)i.className=cls; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;_touch();}; return i; }
-function dateCell(obj,key){ const i=document.createElement('input'); i.type='date'; i.className='cdate'; i.value=obj[key]||''; i.oninput=()=>{obj[key]=i.value;_touch();}; return i; }
-function tdw(node){ const td=document.createElement('td'); td.appendChild(node); return td; }
-/* 골프장과 숙소는 입력 시점이 달라 탭을 따로 둔다(예전엔 한 화면에 붙어 있었다) */
-function golfSection(){
-  const c=card('⛳ 골프장','한 줄에 골프장 하나(시즌별). 좌우로 스크롤하며 입력하세요. 같은 골프장에 시즌이 2개면 같은 이름으로 2줄 넣으면 됩니다. 빈 칸은 "요금 없음".');
-  // 골프장이 20개가 넘어 스크롤로 찾기 번거롭다 — 이름·지역·시즌으로 걸러본다(원본은 안 건드림)
-  const fbar=el('div'); fbar.style.cssText='display:flex;gap:8px;align-items:center;margin:2px 0 8px;flex-wrap:wrap';
-  const fin=document.createElement('input'); fin.type='text'; fin.id='gtFilter'; fin.placeholder='🔎 골프장명·지역·시즌으로 찾기';
-  fin.style.cssText='flex:1;min-width:200px;font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--paper)';
-  fin.value=_gtFilter;
-  fin.oninput=()=>{ _gtFilter=fin.value; renderGolfBody(); };
-  const fcnt=el('span','desc'); fcnt.id='gtCount'; fcnt.style.cssText='font-size:12px;white-space:nowrap';
-  fbar.appendChild(fin); fbar.appendChild(fcnt); c.appendChild(fbar);
-  const wrap=el('div','gtwrap'); const tbl=document.createElement('table'); tbl.className='gt';
-  tbl.innerHTML='<thead><tr>'+['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','마진','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="gtbody"></tbody>';
-  wrap.appendChild(tbl); c.appendChild(wrap);
-  const addC=el('button','btn ghost sm','＋ 골프장 줄 추가'); addC.style.marginTop='9px';
-  addC.onclick=()=>{ CR.push({region:'방콕',name:'',note:'',label:'비수기',from:'',to:'',gf18wd:null,gf18we:null,caddie:0,cart:0,gf9wd:null,gf9we:null,caddie9:0,cart9:0,margin:100});
-    _gtFilter=''; const fi=document.getElementById('gtFilter'); if(fi) fi.value='';   // 새 줄이 필터에 가려지지 않게
-    _touch(); renderGolfBody(); };
-  c.appendChild(addC);
-  return c;
-}
-function hotelSection(){
-  const c=card('🏨 호텔','한 줄에 숙소 하나. 1박 요금 기준입니다.');
-  const hwrap=el('div','gtwrap'); const htbl=document.createElement('table'); htbl.className='gt'; htbl.style.minWidth='620px';
-  htbl.innerHTML='<thead><tr>'+['지역','숙소명','1박요금','마진','메모',''].map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody id="htbody"></tbody>';
-  hwrap.appendChild(htbl); c.appendChild(hwrap);
-  const addH=el('button','btn ghost sm','＋ 호텔 줄 추가'); addH.style.marginTop='9px';
-  addH.onclick=()=>{ HR.push({region:'방콕',name:'',perNight:0,margin:100,note:'2인 1실 기준 1박'}); _touch(); renderHotelBody(); };
-  c.appendChild(addH);
-  return c;
-}
-let _gtFilter='';
-function renderGolfBody(){
-  const tb=document.getElementById('gtbody'); if(!tb) return; tb.innerHTML='';
-  const q=_gtFilter.trim().toLowerCase();
-  // 필터를 걸어도 삭제·수정이 올바른 줄에 가도록 원본 인덱스(i)를 그대로 들고 다닌다
-  const rows=CR.map((row,i)=>({row,i})).filter(({row})=>!q||
-    [row.name,row.region,row.label,row.note].some(v=>String(v||'').toLowerCase().includes(q)));
-  const cnt=document.getElementById('gtCount');
-  if(cnt) cnt.textContent = q ? `${rows.length} / ${CR.length}줄` : `${CR.length}줄`;
-  if(!rows.length){
-    const tr=document.createElement('tr'); const td=document.createElement('td');
-    td.colSpan=15; td.style.cssText='padding:16px;text-align:center;color:var(--muted)';
-    td.textContent='조건에 맞는 골프장이 없습니다';
-    tr.appendChild(td); tb.appendChild(tr); return;
-  }
-  rows.forEach(({row,i})=>{
-    const tr=document.createElement('tr');
-    tr.appendChild(tdw(regionSelect(row)));
-    tr.appendChild(tdw(txtCell(row,'name','cname')));
-    tr.appendChild(tdw(txtCell(row,'label')));
-    tr.appendChild(tdw(dateCell(row,'from')));
-    tr.appendChild(tdw(dateCell(row,'to')));
-    tr.appendChild(tdw(numCell(row,'gf18wd',false)));
-    tr.appendChild(tdw(numCell(row,'gf18we',true)));
-    tr.appendChild(tdw(numCell(row,'caddie',false)));
-    tr.appendChild(tdw(numCell(row,'cart',false)));
-    tr.appendChild(tdw(numCell(row,'gf9wd',true)));
-    tr.appendChild(tdw(numCell(row,'gf9we',true)));
-    tr.appendChild(tdw(numCell(row,'caddie9',true)));
-    tr.appendChild(tdw(numCell(row,'cart9',true)));
-    tr.appendChild(tdw(numCell(row,'margin',false)));   // 손님가에 얹는 마진(밧) — 비우면 0
-    tr.appendChild(tdw(txtCell(row,'note','cnote')));
-    const x=document.createElement('td'); x.className='cx'; x.textContent='✕'; x.title='이 줄 삭제';
-    x.onclick=()=>{ if(!confirm(`[${row.name||'이름없음'} · ${row.label||''}] 줄을 삭제할까요?`)) return; CR.splice(i,1); _touch(); renderGolfBody(); };
-    tr.appendChild(x);
-    tb.appendChild(tr);
-  });
-}
-function renderHotelBody(){
-  const tb=document.getElementById('htbody'); if(!tb) return; tb.innerHTML='';
-  HR.forEach((row,i)=>{
-    const tr=document.createElement('tr');
-    tr.appendChild(tdw(regionSelect(row)));
-    tr.appendChild(tdw(txtCell(row,'name','cname')));
-    tr.appendChild(tdw(numCell(row,'perNight',false)));
-    tr.appendChild(tdw(numCell(row,'margin',false)));   // 1실 1박당 마진(밧)
-    tr.appendChild(tdw(txtCell(row,'note','cnote')));
-    const x=document.createElement('td'); x.className='cx'; x.textContent='✕';
-    x.onclick=()=>{ if(!confirm(`[${row.name||'이름없음'}] 숙소 줄을 삭제할까요?`)) return; HR.splice(i,1); _touch(); renderHotelBody(); };
-    tr.appendChild(x);
-    tb.appendChild(tr);
-  });
-}
-
 /* ══════════ 데이터 보기 ══════════ */
-function buildCurrentData(){
-  return Object.assign({}, G, {regions:regroupRegions()});
-}
+function buildCurrentData(){ return G; }
 function showData(){
   document.getElementById('dataView').textContent = JSON.stringify(buildCurrentData(), null, 2);
   document.getElementById('dataModal').classList.remove('hidden');
@@ -1238,15 +1037,7 @@ async function downloadGolfXlsx(){
     await ensureExcelJS();
     const wb=new ExcelJS.Workbook(); wb.created=new Date();
 
-    _gxSheet(wb,'골프장',
-      ['지역','골프장명','시즌','시작일','종료일','18홀주중','18홀주말','캐디','전동카','9홀주중','9홀주말','캐디9','전동카9','마진','메모'],
-      CR.map(r=>[r.region||'',r.name||'',r.label||'',r.from||'',r.to||'',
-        _gxNum(r.gf18wd),_gxNum(r.gf18we),_gxNum(r.caddie),_gxNum(r.cart),
-        _gxNum(r.gf9wd),_gxNum(r.gf9we),_gxNum(r.caddie9),_gxNum(r.cart9),_gxNum(r.margin),r.note||'']));
-
-    _gxSheet(wb,'숙소',['지역','숙소명','1박요금','마진','메모'],
-      HR.map(h=>[h.region||'',h.name||'',_gxNum(h.perNight),_gxNum(h.margin),h.note||'']));
-
+    /* 골프장·숙소 시트는 옛 표와 함께 삭제(2026-09-11) — 그 요금은 사이트 관리에 있다 */
     // 차량: 지역 조합마다 열 하나
     const vgs=G.vehicleGroups||[];
     _gxSheet(wb,'차량요금',['기간'].concat(vgs.map(v=>v.label||'조합')),
@@ -1419,9 +1210,6 @@ function renderCodes(){
   });
   c.appendChild(cats);
   pane.appendChild(c);
-  // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
-  // 두 함수는 자기 표가 화면에 없으면 알아서 건너뛴다(골프장·호텔 탭이 따로라 각각 검사)
-  renderGolfBody(); renderHotelBody();
 }
 
 /* 종류를 누르면 그 종류만 팝업 창으로 열어 편집한다 */
@@ -1489,9 +1277,6 @@ function renderCodeList(){
     body.appendChild(row);
   });
   c.appendChild(body);
-  // 지역 코드가 바뀌면 요금표의 지역 선택칸도 바로 따라가야 한다
-  // 두 함수는 자기 표가 화면에 없으면 알아서 건너뛴다(골프장·호텔 탭이 따로라 각각 검사)
-  renderGolfBody(); renderHotelBody();
 }
 async function addCode(){
   const ic=document.getElementById('gc-code'), il=document.getElementById('gc-label');

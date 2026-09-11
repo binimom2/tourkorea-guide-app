@@ -67,16 +67,7 @@ const DEFAULT_MARGIN = 100;
 const marginOf = (v) => (Number.isFinite(+v) && +v >= 0 ? +v : DEFAULT_MARGIN);
 const margin9Of = (m) => Math.round(m / 2);
 
-/* 한 시즌 줄에서 «1인 18홀 / 1인 9홀» 손님가(밧)를 뽑는다. wk: 0=주중 1=주말 */
-function unitsOf(s, wk) {
-  const m = marginOf(s.margin);
-  const g18 = s.gf18 && s.gf18[wk === 1 ? 'we' : 'wd'];
-  const g9 = s.gf9 && s.gf9[wk === 1 ? 'we' : 'wd'];
-  return {
-    u18: g18 != null ? g18 + (s.caddie || 0) + (s.cart || 0) + m : null,
-    u9: g9 != null ? g9 + (s.caddie9 || 0) + (s.cart9 || 0) + margin9Of(m) : null,
-  };
-}
+/* 옛 시즌줄(seasons[], 엑셀 요금표)은 2026-09-11부터 읽지 않는다 — 새 요금줄(rates[])만 본다(사장님) */
 
 /* ══════ 새 요금줄(rates[]) ══════
    사이트 관리(/golf/site/admin/)에서 골프장 줄 아래에 바로 넣는 요금이다.
@@ -184,14 +175,12 @@ export async function onRequestGet({ env }) {
   const courses = [];
   Object.entries(P.regions || {}).forEach(([region, rv]) => {
     (rv.courses || []).forEach((c) => {
-      /* 최저가 = 등록된 모든 요금 중 가장 싼 값. 카드의 「~」가 이 뜻이다.
-         옛 시즌줄과 새 요금줄이 섞여 있어도 둘을 통틀어 제일 싼 값을 쓴다. */
+      /* 최저가 = 새 요금줄(rates[]) 가운데 가장 싼 값. 카드의 「~」가 이 뜻이다. 옛 시즌줄은 안 본다 */
       let lo18 = null, lo9 = null;
       const take = (u) => {
         if (u.u18 != null && (lo18 == null || u.u18 < lo18)) lo18 = u.u18;
         if (u.u9 != null && (lo9 == null || u.u9 < lo9)) lo9 = u.u9;
       };
-      (c.seasons || []).forEach((s) => { [0, 1].forEach((wk) => take(unitsOf(s, wk))); });
       if (Array.isArray(c.rates)) take(lowestOf(c.rates, c));
       if (lo18 == null && lo9 == null) return;   // 요금이 하나도 없는 골프장은 값을 안 내보낸다
       /* 밧도 같이 내려보낸다(사장님 지시) — 카드에 「94,700원~ (฿2,150~)」로 붙는다.
@@ -350,11 +339,7 @@ export async function onRequestPost({ request, env }) {
       seasonLabel = (blank(r0.from) && blank(r0.to)) ? '' : (r0.from || '') + '~' + (r0.to || '');
     }
   }
-  if (!u) {
-    const season = (course.seasons || []).find((s) => s.from && s.to && date >= s.from && date <= s.to);
-    if (season) { u = unitsOf(season, we ? 1 : 0); seasonLabel = season.label || ''; }
-  }
-  if (!u) return json({ ok: false, error: '고르신 날짜의 요금이 아직 등록되어 있지 않습니다', needAsk: true }, 200);
+  if (!u) return json({ ok: false, error: '선택하신 날짜의 요금이 아직 등록되어 있지 않습니다', needAsk: true }, 200);
 
   let baht = null;
   if (holes === '18') baht = u.u18;
