@@ -49,8 +49,13 @@ function adminHeaders(key) {
   return { apikey: key, Authorization: 'Bearer ' + key, 'content-type': 'application/json' };
 }
 
+/* 이메일로 계정을 찾는다. 정확히 같은 이메일이 없으면 «아이디»(이메일의 @ 앞부분)로 한 번 더 찾는다 —
+   옛 계정(lds1207 등)은 새 규칙(아이디@도메인)과 다른 이메일로 만들어져 있어 못 찾고
+   「대상 계정을 찾지 못했습니다」가 났다(2026-09-11). 아이디는 이메일 앞부분 또는 계정에 적힌 acc_id/login_name 으로 맞춘다. */
 async function findUserByEmail(key, email) {
   const target = (email || '').toLowerCase();
+  const local = target.split('@')[0];
+  let byLocal = null;
   // GoTrue admin 목록은 페이지네이션. 넉넉히 몇 페이지만 훑는다.
   for (let page = 1; page <= 10; page++) {
     const r = await fetch(SUPABASE_URL + '/auth/v1/admin/users?page=' + page + '&per_page=200', { headers: adminHeaders(key) });
@@ -60,9 +65,17 @@ async function findUserByEmail(key, email) {
     if (!users.length) break;
     const hit = users.find((x) => (x.email || '').toLowerCase() === target);
     if (hit) return hit;
+    if (!byLocal && local) {
+      byLocal = users.find((x) => {
+        const m = x.user_metadata || {};
+        return (x.email || '').toLowerCase().split('@')[0] === local
+          || String(m.acc_id || '').toLowerCase() === local
+          || String(m.login_name || '').toLowerCase() === local;
+      }) || null;
+    }
     if (users.length < 200) break;
   }
-  return null;
+  return byLocal;
 }
 
 export async function onRequest(context) {
