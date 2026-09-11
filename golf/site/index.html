@@ -129,6 +129,8 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero.has-img::after{opacity:.45}
 .hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
 .hero .eyebrow{font-size:clamp(14px,1.7vw,16.5px);font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:14px}
+/* 관리 화면에 적은 띄어쓰기(여러 칸)가 그대로 보이게 — 브라우저는 원래 빈칸을 하나로 줄인다(사장님 2026-09-11) */
+.hero .eyebrow,.hero h1,.hero p.lead{white-space:pre-wrap}
 .hero h1{margin:0;font-size:clamp(29px,5.4vw,52px);font-weight:900;letter-spacing:-.045em;line-height:1.2}
 .hero h1 em{font-style:normal;color:var(--marigold)}
 .hero p.lead{margin:16px 0 0;font-size:clamp(15px,1.9vw,18px);color:rgba(255,255,255,.86);max-width:620px}
@@ -1475,13 +1477,24 @@ const HERO_BG = {
   navy:    { a:"#172F52", b:"#2A5286", c:"#4A85C4", bar:"#142B47" },   // 남색
   sunset:  { a:"#6B2F26", b:"#B5573E", c:"#E6935A", bar:"#4E261D" }    // 노을
 };
+/* 색을 어둡게(f<0)·밝게(f>0) — 0~1 비율만큼 검정/흰색 쪽으로 당긴다 */
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16);
+  const t = f < 0 ? 0 : 255, p = Math.min(1, Math.abs(f));
+  return "#" + [n >> 16, (n >> 8) & 255, n & 255]
+    .map(v => Math.round(v + (t - v) * p).toString(16).padStart(2, "0")).join("");
+}
 function applyTheme(){
   const t = SITE.theme || {};
   const p = THEMES[t.accent] || THEMES.gold;
   const r = document.documentElement.style;
   r.setProperty("--marigold", p.c);
   r.setProperty("--marigold-hi", p.hi);
-  const bg = HERO_BG[(SITE.hero || {}).bg] || HERO_BG.fresh;
+  /* 「직접 고르기」로 찍은 색 하나(hero.bgHex)면 그 색을 가운데 두고 어둡게→밝게 흐르는 그라데이션을 만든다 */
+  const hh = SITE.hero || {};
+  const bg = (hh.bg === "custom" && /^#[0-9a-fA-F]{6}$/.test(hh.bgHex || ""))
+    ? { a: shade(hh.bgHex, -0.35), b: hh.bgHex, c: shade(hh.bgHex, 0.28), bar: shade(hh.bgHex, -0.58) }
+    : (HERO_BG[hh.bg] || HERO_BG.fresh);
   r.setProperty("--hero-a", bg.a); r.setProperty("--hero-b", bg.b); r.setProperty("--hero-c", bg.c); r.setProperty("--hero-bar", bg.bar);
   document.body.classList.remove("fs-sm", "fs-lg");
   if(t.size === "sm" || t.size === "lg") document.body.classList.add("fs-" + t.size);

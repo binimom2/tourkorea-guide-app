@@ -1021,7 +1021,10 @@ function subHero(){
       +'<p class="hint" style="margin-top:10px">설명 문구 글자 색</p>'+heroColorPick(h.leadColor,'data-lec','hero.leadColor','흰색(기본)')+'</div>'
     +'<div class="f"><label>배경 색감 — 첫 화면 바탕과 아래 섹터 띠</label>'
       +'<div class="thpick">'+BGS.map(([k,n,g])=>'<button type="button" class="th'+((h.bg||'fresh')===k?' on':'')+'" data-hbg="'+k+'">'
-        +'<i style="background:linear-gradient(135deg,'+g+')"></i>'+esc(n)+'</button>').join('')+'</div></div>'
+        +'<i style="background:linear-gradient(135deg,'+g+')"></i>'+esc(n)+'</button>').join('')
+      /* 직접 고르기 — 색 하나를 찍으면 손님 화면이 그 색으로 어둡게→밝게 흐르는 그라데이션을 만든다(사장님 2026-09-11) */
+      +'<label class="th'+((h.bg||'')==='custom'?' on':'')+'" style="cursor:pointer">직접 고르기 <input type="color" id="heroBgHex" data-p="hero.bgHex" value="'+esc(/^#[0-9a-fA-F]{6}$/.test(h.bgHex||'')?h.bgHex:'#2A9C78')+'" style="width:34px;height:22px;border:0;padding:0;background:none"></label>'
+      +'</div></div>'
     /* 배경 사진 — 골프장 사진칸과 같은 칸(올리기·끌어놓기·✕). 첫 장만 손님 화면 바탕에 깔린다.
        path 'hero' 라서 올리면 S.hero.img 에 주소가 들어간다(사장님 2026-09-11). */
     +'<div class="f"><label>배경 사진 — 올리면 색감 위에 사진이 깔립니다 (첫 장만 씀 · 가로 1600px 안팎 권장 · ✕로 빼면 다시 색감만)</label>'
@@ -1105,6 +1108,9 @@ function subHero(){
   pane.querySelectorAll('[data-tic]').forEach(b=>b.onclick=()=>{ h.titleColor=b.dataset.tic; markDirty('site'); subHero(); });
   pane.querySelectorAll('[data-lec]').forEach(b=>b.onclick=()=>{ h.leadColor=b.dataset.lec; markDirty('site'); subHero(); });
   pane.querySelectorAll('[data-hbg]').forEach(b=>b.onclick=()=>{ h.bg=b.dataset.hbg; markDirty('site'); subHero(); });
+  /* 직접 고른 색은 «custom» 으로 표시해 두어야 손님 화면이 프리셋 대신 그 색을 쓴다(값 자체는 공통 input 처리가 저장) */
+  const bh=document.getElementById('heroBgHex');
+  if(bh){ bh.addEventListener('input',()=>{ h.bg='custom'; }); bh.addEventListener('change',()=>{ h.bg='custom'; markDirty('site'); subHero(); }); }
   const gc=document.getElementById('goCats'); if(gc) gc.onclick=()=>{ sub='cats'; drawSite(); };
   bindRowBtns();
 }
