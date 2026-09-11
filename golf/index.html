@@ -286,7 +286,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   </div>
 
   <div class="card step" id="s4">
-    <h2 class="steph">4. 라운딩하실 날만 선택 후 골프장을 고르세요 <span class="sublab">그린피+캐디+전동카 포함</span><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">4. 라운딩하실 날만 선택 후 골프장을 선택하세요 <span class="sublab">그린피+캐디+전동카 포함</span><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
     <div class="cbody"><div id="days"></div></div>
   </div>
 
@@ -301,7 +301,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
           <label>차량</label>
           <div id="vehShown" style="font-weight:700;font-size:15px;padding:2px 0;">12인승 밴</div>
           <div class="hint" id="vehAuto" style="color:#2e7d32;margin-top:2px;"></div>
-          <a id="vehPickToggle" style="display:inline-block;margin-top:4px;font-size:12px;color:#5E6F66;text-decoration:underline dotted;cursor:pointer;">요금 기준 직접 고르기</a>
+          <a id="vehPickToggle" style="display:inline-block;margin-top:4px;font-size:12px;color:#5E6F66;text-decoration:underline dotted;cursor:pointer;">요금 기준 직접 선택</a>
           <div id="vehPickWrap" style="display:none;margin-top:5px;">
             <select id="vehGroup"></select>
           </div>
@@ -576,7 +576,7 @@ function drawTripCal(){
     cells.push(`<button type="button" data-td="${ds}" class="${cls.join(' ')}">${d}</button>`);
   }
   $('#tcGrid').innerHTML=cells.join('');
-  $('#tcFoot').textContent=tcHalf?'한국에 돌아오는 날(귀국일)을 골라 주세요':'출발일을 골라 주세요';
+  $('#tcFoot').textContent=tcHalf?'한국에 돌아오는 날(귀국일)을 선택해 주세요':'출발일을 선택해 주세요';
 }
 /* 출발일 → 귀국일 순서로 두 번 누른다. 귀국일 앞의 날을 누르면 출발일을 다시 잡는다. */
 function tripCalPick(ds){
@@ -647,7 +647,7 @@ function newQuote(){
   const vg=$('#vehGroup'); if(vg) vg.value='0';
   const vf=vg&&vg.closest('.f'); if(vf) vf.style.display='';
   const vp=$('#vehPickWrap'); if(vp) vp.style.display='none';
-  const vt=$('#vehPickToggle'); if(vt) vt.textContent='요금 기준 직접 고르기';
+  const vt=$('#vehPickToggle'); if(vt) vt.textContent='요금 기준 직접 선택';
   const va=$('#vehAuto'); if(va) va.textContent='';
 
   ROUTE.length=0;
@@ -1315,7 +1315,7 @@ function showQuotePreview(url,name){
 }
 async function downloadQuote(mode){
   if(!LAST||!LAST.lines.length){ alert('먼저 라운딩할 날을 체크해 주세요. 견적이 있어야 견적서를 만들 수 있습니다.'); return; }
-  if(!$('#startDate').value){ alert('출발 일자를 먼저 골라주세요.'); return; }
+  if(!$('#startDate').value){ alert('출발 일자를 먼저 선택해 주세요.'); return; }
   // 손님용은 금액이 전부 원화라, 환율이 없으면 만들 수 없다(0원짜리 견적서가 나가면 안 된다)
   if(mode!=='internal'&&!(FX_RATE>0)){
     alert('환율이 등록되어 있지 않아 손님용 견적서를 만들 수 없습니다.\n\n코드·요금 관리 > 코드관리 > 환율에 1밧당 원화(예: 46)를 등록해 주세요.');
@@ -1436,7 +1436,7 @@ document.addEventListener('click',e=>{
     const w=$('#vehPickWrap'); if(!w) return;
     const open=w.style.display==='none';
     w.style.display=open?'':'none';
-    e.target.textContent=open?'요금 기준 접기':'요금 기준 직접 고르기';
+    e.target.textContent=open?'요금 기준 접기':'요금 기준 직접 선택';
     e.stopPropagation();
     return;
   }

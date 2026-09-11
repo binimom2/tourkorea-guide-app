@@ -1649,7 +1649,7 @@ function drawRooms(x, kind){
     openLbox(0, pics[Number(el.dataset.r)]);
   });
   $("#dRoomFoot").textContent =
-    "1실 1박 기준입니다. 날짜(성수기·주말)에 따라 달라져, 오른쪽에서 객실과 날짜를 고르시면 그날 요금으로 계산해 드립니다.";
+    "1실 1박 기준입니다. 날짜(성수기·주말)에 따라 달라져, 오른쪽에서 객실과 날짜를 선택하시면 그날 요금으로 계산해 드립니다.";
 }
 
 function openDetail(x, kind){
@@ -1867,8 +1867,8 @@ function drawCal(){
   /* 이번 달보다 앞으로는 넘기지 않는다 — 넘겨 봐야 다 막힌 날이라 헛걸음이다 */
   const t = dparse(tdy);
   $("#qpCalPrev").disabled = (y * 12 + m) <= (t.getFullYear() * 12 + t.getMonth());
-  $("#qpCalFoot").textContent = qpKind !== "hotels" ? "라운드 하실 날짜를 골라 주세요"
-    : calHalf ? "체크아웃 날짜를 골라 주세요" : "체크인 날짜를 골라 주세요";
+  $("#qpCalFoot").textContent = qpKind !== "hotels" ? "라운드 하실 날짜를 선택해 주세요"
+    : calHalf ? "체크아웃 날짜를 선택해 주세요" : "체크인 날짜를 선택해 주세요";
 }
 function calPick(s){
   if(qpKind !== "hotels"){
@@ -1883,7 +1883,7 @@ function calPick(s){
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
   qpResult = null;                 // 앞에 보던 곳의 금액이 남아 담기지 않게
-  qpTell("");                      // 「담았습니다」·「날짜를 골라 주세요」도 지운다
+  qpTell("");                      // 「담았습니다」·「날짜를 선택해 주세요」도 지운다
   $("#qpReg").textContent  = x.r || "";
   $("#qpName").textContent = x.n || "";
   $("#qpEn").textContent   = x.e || "";
@@ -2164,8 +2164,8 @@ async function qpCalc(){
      인원수·박수·룸 갯수는 2명 1박 1실에서 시작하니, 아직 안 고른 것은 룸 타입뿐이다. */
   if(qpKind === "hotels" && !qpRoom){
     qpResult = null;
-    qpBox('<div class="ask"><b>룸 타입</b>을 골라 주세요.<br>'
-        + '날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입을 고르시면 그날 요금으로 계산해 드립니다.</div>');
+    qpBox('<div class="ask"><b>룸 타입</b>을 선택해 주세요.<br>'
+        + '날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입을 선택하시면 그날 요금으로 계산해 드립니다.</div>');
     return;
   }
   /* 스파·티켓… — 메뉴를 고르면 그 값(1인 손님가)×인원이 곧 금액이다. 날짜마다 다르지 않아
@@ -2179,7 +2179,7 @@ async function qpCalc(){
     if(!m){
       qpResult = null;
       const lo = rows.length ? rows.reduce((a, r) => (a == null || r.krw < a.krw) ? r : a, null) : null;
-      qpBox('<div class="ask"><b>메뉴</b>를 골라 주세요.<br>메뉴 · 인원 · 날짜를 고르시면 금액이 나옵니다.</div>'
+      qpBox('<div class="ask"><b>메뉴</b>를 선택해 주세요.<br>메뉴 · 인원 · 날짜를 선택하시면 금액이 나옵니다.</div>'
         + (lo ? '<div class="sum" style="margin-top:8px">최저 ' + (lo.krw || 0).toLocaleString("ko-KR") + '원~'
           + (lo.baht ? ' (' + lo.baht.toLocaleString("ko-KR") + '바트)' : '') + '</div>' : ''));
       return;
@@ -2190,7 +2190,7 @@ async function qpCalc(){
         + (m.baht ? '<b class="vbt">(' + m.baht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + '<div class="sum">' + qpPax + cntUnit(qpKind) + ' 합계: ' + qpResult.krw.toLocaleString("ko-KR") + '원'
         + (m.baht ? ' (' + qpResult.baht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
-      + (date ? '' : '<div class="ask" style="margin-top:8px">날짜를 고르시면 담으실 수 있습니다.</div>'));
+      + (date ? '' : '<div class="ask" style="margin-top:8px">날짜를 선택하시면 담으실 수 있습니다.</div>'));
     return;
   }
   /* 날짜 전 — 카드와 같은 최저가를 보여 준다 */
@@ -2218,8 +2218,8 @@ async function qpCalc(){
         + (base * cnt + ex.krw).toLocaleString("ko-KR") + '원'
         + (baseBt ? ' (' + (baseBt * cnt + ex.baht).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + '<div class="ask" style="margin-top:6px">'
-        + (qpKind === "hotels" ? "체크인 날짜를 고르시면 그날 요금으로 계산해 드립니다."
-                               : "날짜를 고르시면 그날 요금으로 계산해 드립니다.") + '</div>'
+        + (qpKind === "hotels" ? "체크인 날짜를 선택하시면 그날 요금으로 계산해 드립니다."
+                               : "날짜를 선택하시면 그날 요금으로 계산해 드립니다.") + '</div>'
       + fxNote());
     return;
   }
@@ -2499,13 +2499,13 @@ function cartItem(){
 const cartKeyOf = c => [c.kind, c.name, c.option, c.date, c.time || ""].join("|");
 function addToCart(){
   if(!dCur) return;
-  if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 골라 주세요.");
-  if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 골라 주세요.");
+  if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
+  if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 선택해 주세요.");
   /* 스파·티켓… 은 메뉴 요금이 있는 곳이면 메뉴를 골라야 담긴다(요금 없는 곳은 「문의」로 담긴다) */
   { const mp = isMenuKind(qpKind) ? priceOf(dCur, qpKind) : null;
-    if(mp && (mp.menu || []).length && qpMenu < 0) return qpTell("<b>메뉴</b>를 골라 주세요."); }
+    if(mp && (mp.menu || []).length && qpMenu < 0) return qpTell("<b>메뉴</b>를 선택해 주세요."); }
   if(qpResult && qpResult.loading)     return qpTell("요금을 확인하고 있습니다. 잠시만 기다려 주세요.");
-  if(!qpResult)                        return qpTell("날짜와 인원을 고르시면 담으실 수 있습니다.");
+  if(!qpResult)                        return qpTell("날짜와 인원을 선택하시면 담으실 수 있습니다.");
   const it = cartItem();
   /* 같은 곳·같은 날·같은 조건이면 겹쳐 담지 않고 새 내용으로 바꾼다 */
   const i = CART.findIndex(c => cartKeyOf(c) === cartKeyOf(it));
@@ -2533,7 +2533,7 @@ function rowHtml(it, mode, i){
       + (mode === "cart" ? '<div class="cdesc">' + esc(it.label || "") + '</div>' : '')
       + (found
           ? '<button type="button" class="copen" data-open="' + i + '">'
-            + (mode === "cart" ? "다시 고르기" : "날짜 고르고 담기") + '</button>'
+            + (mode === "cart" ? "다시 선택" : "날짜 선택하고 담기") + '</button>'
           : '<div class="cdesc">지금은 안내하지 않는 곳입니다.</div>')
     + '</div>'
     + '<div class="cright">'
