@@ -238,9 +238,9 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .board .brow:last-of-type{border-bottom:0}
 
 /* ── 문의 ── */
-/* 맨 아래 실시간 견적(연락처·문의 폼) 섹션은 감춘다 — 게시판은 남긴다(사장님 2026-09-10). 견적은 팝업(견적 계산기)이 대신한다.
-   기타투어(#tours)는 2026-09-11 다시 보인다(사장님) — 섹터 메뉴 칸도 drawSectors 의 TOURS_HIDDEN 과 같이 켰다. */
-#contact{display:none}
+/* 기타투어 섹션과 맨 아래 실시간 견적(연락처·문의 폼) 섹션은 감춘다 — 게시판은 남긴다(사장님 2026-09-10, 기타투어는 09-11 저녁 재확인).
+   자료·코드는 그대로 두고 화면에서만 뺐다. 되살리려면 이 줄과 drawSectors 의 TOURS_HIDDEN 을 같이 바꾼다. */
+#tours,#contact{display:none}
 .contact{background:linear-gradient(160deg,var(--fairway) 0%,var(--fairway-deep) 100%);color:#fff}
 .contact .sechead h2{color:#fff}
 .contact .sechead p{color:rgba(255,255,255,.8)}
@@ -1450,7 +1450,7 @@ function drawSectors(){
   /* 뒤의 고정 두 칸 문구는 관리 화면 「첫 화면 → 섹터 메뉴」에서 바꾼다(SITE.sector). */
   const sc = SITE.sector || {};
   /* 기타투어 칸 — 섹션을 감춘 뒤로는(2026-09-10) 띠에서도 뺀다. 되살리려면 위 CSS의 #tours 와 이 줄을 같이 */
-  const TOURS_HIDDEN = false;   // 2026-09-11 다시 노출(사장님) — 요금까지 넣은 기타투어를 손님에게 보인다
+  const TOURS_HIDDEN = true;    // 2026-09-11 저녁 다시 감춤(사장님 「노출 삭제」) — 자료·어드민 탭은 그대로
   if(!TOURS_HIDDEN && (SITE.tours || []).length) items.push({ ic: sc.toursIc || "🚌", t: sc.toursT || "기타투어", go:"#tours" });
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 «맨 앞»에 금색으로 도드라지게 둔다(사장님 2026-09-11, 전에는 맨 뒤) */
   items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true });
