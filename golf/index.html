@@ -1068,7 +1068,7 @@ function quoteSnapshot(){
     team: ($('#teamName').value||'').trim(),
     pax: LAST.pax, nights: n, tripDays: tripDays(n),
     route: ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-',
-    flight: [amDepOn()?'한국 오전 출발':'한국 야간 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · '),
+    flight: [amDepOn()?'한국 오전 출발':'한국 오후 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · '),   // 「야간」→「오후」(사장님 2026-09-11)
     days: dayState.map(st=>({
       date:st.date, region:st.region||'', course:st.course||'', holes:st.holes||'', round:!!st.round,
       we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
