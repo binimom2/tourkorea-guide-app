@@ -769,7 +769,6 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <label>출발일<input type="date" id="qDate"></label>
         <label>인원<input type="number" id="qPax" min="1" placeholder="명"></label>
         <label>박수<input type="number" id="qNights" min="0" placeholder="박"></label>
-        <label>라운딩<input type="number" id="qRounds" min="0" placeholder="회"></label>
         <label>지역<input type="text" id="qRegion" placeholder="파타야 / 방콕"></label>
         <label>성함<input type="text" id="qName" placeholder="예약자 성함"></label>
         <label>연락처<input type="text" id="qTel" placeholder="연락 받으실 번호"></label>
@@ -2759,7 +2758,6 @@ function askText(){
   if(g("qPax"))    L.push("· 인원: " + g("qPax") + "명");
   if(askRoomNote)  L.push("· 객실: " + askRoomNote);
   if(g("qNights")) L.push("· 일정: " + g("qNights") + "박 " + (Number(g("qNights")) + 1) + "일");
-  if(g("qRounds")) L.push("· 라운딩: " + g("qRounds") + "회");
   if(wish.length)  L.push("· 희망 골프장·호텔: " + wish.join(", "));
   if(g("qName"))   L.push("· 성함: " + g("qName"));
   if(g("qTel"))    L.push("· 연락처: " + g("qTel"));
