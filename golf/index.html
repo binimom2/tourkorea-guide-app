@@ -859,9 +859,12 @@ function calc(){
   const nights=totalNights();
   updateRoomTags(pax);
   renderStepSummaries();   // 접힌 칸에 보이는 한 줄 요약을 늘 최신으로
-  $('#paxInfo').textContent=ROUTE.length
+  /* 지역을 고르기 전에는 아무 말도 안 띄운다(사장님 2026-09-11 — 「4명 · 지역을 선택하세요」 삭제) */
+  const pi=$('#paxInfo');
+  pi.textContent=ROUTE.length
     ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${tripDays(nights)}일`
-    : `${pax}명 · 지역을 선택하세요`;
+    : '';
+  pi.style.display=ROUTE.length?'':'none';
   const lines=[];
   // 1) 골프 (체크된 날)
   dayState.forEach(st=>{
