@@ -138,6 +138,11 @@ html.embed .wrap{padding-top:6px}
 .pick input{width:64px;font:inherit;font-size:15px;text-align:right;padding:9px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper)}
 .pick .x{color:var(--danger);cursor:pointer;font-weight:800;padding-left:2px;font-size:15px}
 .pick small{font-weight:600;color:var(--muted);font-size:13px}
+/* 지역별 박 칸은 화살표 없이 손님이 숫자를 직접 적는다(사장님 2026-09-11) */
+.pick input::-webkit-inner-spin-button,.pick input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.pick input{-moz-appearance:textfield;appearance:textfield}
+/* 숙소 줄의 정거장 번호 — 같은 지역이 두 번 나올 때 몇 번째인지 보이게 */
+.hreg .seq{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--fairway);color:var(--sand);font-size:11px;font-weight:800;align-items:center;justify-content:center;margin-right:5px;vertical-align:middle}
 /* 날짜별 라운딩 — 한 줄에 한 날짜(날짜·요일·구분을 한 줄로 붙여 높이를 줄임) */
 .day{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper)}
 .day .dlabel{font-weight:700;font-size:15px;min-width:172px;display:flex;align-items:center;gap:7px;white-space:nowrap}
@@ -259,7 +264,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   </div>
 
   <div class="card step" id="s2">
-    <h2 class="steph">2. 지역선택 <span class="sublab tip">머무르실 곳을 순서로 클릭해주세요</span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">2. 지역선택 <span class="sublab tip">머무르실 곳을 순서로 클릭해주세요 <span style="font-weight:600">(다시 가는 곳은 한 번 더 클릭)</span></span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div class="chips" id="regChips"></div>
       <div class="picked" id="regPicked"></div>
@@ -601,19 +606,22 @@ function applyTripToRoute(n){
     ROUTE[i].nights=(+ROUTE[i].nights||0)-take; d+=take;
   }
 }
+/* 지역 칩을 누를 때마다 동선 «뒤에» 한 정거장이 붙는다 — 같은 지역을 두 번 갈 수 있다
+   (방콕 1박 → 파타야 2박 → 방콕 1박, 사장님 2026-09-11). 빼는 건 아래 ✕로.
+   정거장마다 sid(고유 번호)를 붙여 숙소 선택(hotelPick 등)의 열쇠로 쓴다 — 지역 이름을
+   열쇠로 쓰면 같은 지역 두 정거장이 한 숙소를 나눠 갖게 된다. */
+let STOP_SEQ=0;
 function toggleRegion(name){
-  const i=ROUTE.findIndex(r=>r.region===name);
-  if(i>=0){ ROUTE.splice(i,1); delete hotelPick[name]; delete hotelNights[name]; delete hotelRoom[name]; }
   // 첫 지역이면 위에 적어둔 총 박수를 그대로 준다. 두 번째부터는 0박으로 두고 직접 나눠 적는다.
-  else ROUTE.push({region:name,nights:ROUTE.length?0:tripNights});
+  ROUTE.push({region:name,nights:ROUTE.length?0:tripNights,sid:'s'+(++STOP_SEQ)});
   autoPickVehicleGroup();   // 고른 지역에 맞는 차량 요금열로 바꿔준다
   refreshAll();
 }
 function renderRegions(){
   const chips=$('#regChips');
   chips.innerHTML=REGIONS.map(r=>{
-    const i=ROUTE.findIndex(x=>x.region===r);
-    return `<button type="button" class="chip${i>=0?' on':''}" data-reg-pick="${r}">${i>=0?`<span class="seq">${i+1}</span>`:''}${r}</button>`;
+    const pos=ROUTE.map((x,i)=>x.region===r?i+1:0).filter(Boolean);   // 그 지역이 몇 번째 정거장들인지
+    return `<button type="button" class="chip${pos.length?' on':''}" data-reg-pick="${r}">${pos.length?`<span class="seq">${pos.join('·')}</span>`:''}${r}</button>`;
   }).join('');
   $('#regPicked').innerHTML=ROUTE.map((r,i)=>
     `<span class="pick"><span class="seq">${i+1}</span>${r.region}
@@ -820,7 +828,7 @@ const ROOM_SHORT={twin:'트윈',single:'싱글',triple:'트리플'};
 function roomCount(pax,rt){ return rt==='single'?pax:(rt==='triple'?Math.ceil(pax/3):Math.ceil(pax/2)); }
 // 박수는 지역 박수를 그대로 쓰되, 손으로 고쳤으면 고친 값을 쓴다
 function hotelNightsOf(r){
-  const v=hotelNights[r.region];
+  const v=hotelNights[r.sid];
   return (v===undefined||v==='')?(+r.nights||0):Math.max(0,+v||0);
 }
 // 숙소는 「숙소도 원하시나요?」를 체크했을 때, 고른 지역 중 1박 이상인 곳만 칸을 만든다
@@ -838,23 +846,23 @@ function renderHotels(){
   if(!on) return;
   const pax=Math.max(1,+$('#pax').value||1);
   stay.forEach(r=>{
-    const list=H[r.region]||[];
-    const rt=hotelRoom[r.region]||'twin';
+    const list=H[r.region]||[];   // 숙소 목록은 지역 이름으로, 고른 값은 정거장 번호(sid)로
+    const rt=hotelRoom[r.sid]||'twin';
     const row=document.createElement('div'); row.className='hrow';
     /* 선택지 이름: 객실 요금표가 있는 호텔은 「객실 요금표」로, 옛 1박 단가만 있으면 그 값으로.
        팝업(손님 사이트)에서는 값을 안 붙인다 — 원가에 가까운 숫자가 손님 눈에 들면 안 된다 */
     const tag=h=>EMBED?'':(roomsWithRates(h).length?' · 객실 요금표':` · ${won(h.perNight)} THB/박`);
-    const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.region])===String(idx)?' selected':''}>${h.name}${tag(h)}</option>`).join('');
+    const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.sid])===String(idx)?' selected':''}>${h.name}${tag(h)}</option>`).join('');
     /* 고른 호텔에 객실 요금표가 있으면 객실 타입 고르기 칸이 붙는다(요금이 타입마다 다르다) */
-    const hp=hotelPick[r.region], hsel=(hp!==undefined&&hp!=='')?list[+hp]:null;
+    const hp=hotelPick[r.sid], hsel=(hp!==undefined&&hp!=='')?list[+hp]:null;
     const rws=hsel?roomsWithRates(hsel):[];
-    const rtSel=rws.length?`<select data-hrt="${r.region}">${rws.map(x=>`<option value="${x.t}"${x.t===(hotelRoomT[r.region]||rws[0].t)?' selected':''}>${x.t}</option>`).join('')}</select>`:'';
-    row.innerHTML=`<span class="hreg">${r.region}</span>`+
-      `<select class="hsel" data-hotel="${r.region}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`+
+    const rtSel=rws.length?`<select data-hrt="${r.sid}">${rws.map(x=>`<option value="${x.t}"${x.t===(hotelRoomT[r.sid]||rws[0].t)?' selected':''}>${x.t}</option>`).join('')}</select>`:'';
+    row.innerHTML=`<span class="hreg"><span class="seq">${ROUTE.indexOf(r)+1}</span>${r.region}</span>`+
+      `<select class="hsel" data-hotel="${r.sid}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`+
       rtSel+
-      `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.region}"><small>박</small>`+
-      `<select data-hroom="${r.region}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
-      `<span class="hrooms" data-hrooms="${r.region}">${roomCount(pax,rt)}실</span>`;
+      `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.sid}"><small>박</small>`+
+      `<select data-hroom="${r.sid}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
+      `<span class="hrooms" data-hrooms="${r.sid}">${roomCount(pax,rt)}실</span>`;
     wrap.appendChild(row);
   });
 }
@@ -922,16 +930,16 @@ function calc(){
   const H=P.hotels||{};
   if(useHotelOn()) ROUTE.forEach(r=>{
     if(!(+r.nights||0)) return;
-    const idx=hotelPick[r.region];
+    const idx=hotelPick[r.sid];
     if(idx===undefined||idx==='') return;
     const h=(H[r.region]||[])[+idx]; if(!h) return;
     const nn=hotelNightsOf(r); if(!nn) return;
-    const rt=hotelRoom[r.region]||'twin';
+    const rt=hotelRoom[r.sid]||'twin';
     const rms=roomCount(pax,rt);
     /* 객실 요금표(사이트 기준)가 있으면 그 객실 타입으로 밤마다 센다 — 주말·성수기·써차지가 밤마다 다르다 */
     const rws=roomsWithRates(h);
     if(rws.length){
-      const rm=rws.find(x=>x.t===hotelRoomT[r.region])||rws[0];
+      const rm=rws.find(x=>x.t===hotelRoomT[r.sid])||rws[0];
       let sum=0, miss='';
       stayDates(r,nn).forEach(d=>{
         if(miss) return;
@@ -999,10 +1007,10 @@ function quoteIncludes(mode){
   if(useHotelOn()){
     const pax=Math.max(1,+$('#pax').value||1);
     ROUTE.forEach(r=>{
-      const idx=hotelPick[r.region];
+      const idx=hotelPick[r.sid];
       if(!(+r.nights||0)||idx===undefined||idx==='') return;
       const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
-      const rt=hotelRoom[r.region]||'twin';
+      const rt=hotelRoom[r.sid]||'twin';
       out.push(`숙소 · ${r.region} ${h.name} ${hotelNightsOf(r)}박 (${ROOM_SHORT[rt]} ${roomCount(pax,rt)}실)`);
     });
   }
@@ -1354,7 +1362,7 @@ function stepDone(id){
     case 's3': {
       if(!useHotelOn()) return true;
       const stay=ROUTE.filter(r=>(+r.nights||0)>0);
-      return stay.length>0 && stay.every(r=>hotelPick[r.region]!==undefined);
+      return stay.length>0 && stay.every(r=>hotelPick[r.sid]!==undefined);
     }
     case 's4': return dayState.some(st=>st.round&&st.course);
     case 's5': return true;
@@ -1377,10 +1385,10 @@ function stepSummary(id){
       if(!useHotelOn()) return '호텔 없이';
       const out=[];
       ROUTE.forEach(r=>{
-        const idx=hotelPick[r.region];
+        const idx=hotelPick[r.sid];
         if(!(+r.nights||0)||idx===undefined||idx==='') return;
         const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
-        const rt=hotelRoom[r.region]||'twin';
+        const rt=hotelRoom[r.sid]||'twin';
         out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${ROOM_SHORT[rt]}${roomCount(pax,rt)}실`);
       });
       return out.join(' · ')||'숙소 미선택';
@@ -1449,7 +1457,7 @@ document.addEventListener('click',e=>{
   const del=e.target.closest('[data-reg-del]');
   if(del){
     const i=+del.dataset.regDel; const r=ROUTE[i];
-    if(r){ delete hotelPick[r.region]; delete hotelNights[r.region]; delete hotelRoom[r.region]; }
+    if(r){ delete hotelPick[r.sid]; delete hotelNights[r.sid]; delete hotelRoom[r.sid]; delete hotelRoomT[r.sid]; }
     ROUTE.splice(i,1); autoPickVehicleGroup(); refreshAll(); return;
   }
 });
