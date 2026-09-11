@@ -122,6 +122,11 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero::after{content:"";position:absolute;inset:0;background:
   radial-gradient(900px 440px at 80% 6%,rgba(255,204,110,.38),transparent 62%),
   radial-gradient(760px 400px at 6% 98%,rgba(255,255,255,.16),transparent 60%);pointer-events:none}
+/* 배경 사진 — 관리 화면 「첫 화면 → 배경 사진」에 올리면 색감 위에 사진이 깔린다(사장님 2026-09-11).
+   글자가 읽히도록 사진 위에 짙은 초록 막을 한 겹 얹는다(왼쪽이 더 짙다 — 글자가 왼쪽에 있으니). */
+.hero.has-img{background-image:linear-gradient(115deg,rgba(8,34,24,.82) 0%,rgba(8,34,24,.48) 50%,rgba(8,34,24,.34) 100%),var(--hero-img);
+  background-size:cover,cover;background-position:center,center}
+.hero.has-img::after{opacity:.45}
 .hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
 .hero .eyebrow{font-size:clamp(14px,1.7vw,16.5px);font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:14px}
 .hero h1{margin:0;font-size:clamp(29px,5.4vw,52px);font-weight:900;letter-spacing:-.045em;line-height:1.2}
@@ -1363,6 +1368,10 @@ function drawHero(){
   const eyeSt = (EYE[h.eyeSize] || "") + (h.eyeColor ? ";color:" + esc(h.eyeColor) : "");
   /* 큰 제목·설명 문구도 각각 색을 고를 수 있다(사장님 2026-09-11 — 전에는 윗줄만 됐다). 비면 흰색 그대로 */
   const colSt = c => (c ? ' style="color:' + esc(c) + '"' : "");
+  /* 배경 사진 — 관리 화면 사진칸의 첫 장(h.img)만 쓴다 */
+  const heroEl = $("#top");
+  heroEl.classList.toggle("has-img", !!h.img);
+  heroEl.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : "none");
   $("#heroBox").innerHTML =
     '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
     + "<h1" + colSt(h.titleColor) + ">" + title + "</h1>"

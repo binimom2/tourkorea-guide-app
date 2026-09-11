@@ -1022,6 +1022,10 @@ function subHero(){
     +'<div class="f"><label>배경 색감 — 첫 화면 바탕과 아래 섹터 띠</label>'
       +'<div class="thpick">'+BGS.map(([k,n,g])=>'<button type="button" class="th'+((h.bg||'fresh')===k?' on':'')+'" data-hbg="'+k+'">'
         +'<i style="background:linear-gradient(135deg,'+g+')"></i>'+esc(n)+'</button>').join('')+'</div></div>'
+    /* 배경 사진 — 골프장 사진칸과 같은 칸(올리기·끌어놓기·✕). 첫 장만 손님 화면 바탕에 깔린다.
+       path 'hero' 라서 올리면 S.hero.img 에 주소가 들어간다(사장님 2026-09-11). */
+    +'<div class="f"><label>배경 사진 — 올리면 색감 위에 사진이 깔립니다 (첫 장만 씀 · 가로 1600px 안팎 권장 · ✕로 빼면 다시 색감만)</label>'
+      +picsTa('hero',{n:'첫화면배경',img:h.img||'',imgs:h.imgs||[]})+'</div>'
     /* 두 단추는 바로 아래 섹터 메뉴와 하는 일이 겹쳐 기본은 «안 보임»이다(사장님 2026-09-08).
        문구는 그대로 두고 이 체크만 켜면 되살아난다. */
     +'<div class="f"><label>버튼 1 / 버튼 2'
