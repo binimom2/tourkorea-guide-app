@@ -862,7 +862,7 @@ function renderHotels(){
       rtSel+
       `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.sid}"><small>박</small>`+
       `<select data-hroom="${r.sid}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
-      `<span class="hrooms" data-hrooms="${r.sid}">${roomCount(pax,rt)}실</span>`;
+      `<span class="hrooms" data-hrooms="${r.sid}">${roomCount(pax,rt)}룸</span>`;   // 「실」→「룸」(사장님 2026-09-11)
     wrap.appendChild(row);
   });
 }
@@ -870,7 +870,7 @@ function renderHotels(){
 function updateRoomTags(pax){
   document.querySelectorAll('[data-hrooms]').forEach(el=>{
     const reg=el.dataset.hrooms;
-    el.textContent=roomCount(pax,hotelRoom[reg]||'twin')+'실';
+    el.textContent=roomCount(pax,hotelRoom[reg]||'twin')+'룸';
   });
 }
 
@@ -947,11 +947,11 @@ function calc(){
         if(v==null) miss=d; else sum+=v;
       });
       if(miss){ lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${miss} 요금 미등록`,v:0,warn:1}); return; }
-      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`,v:sum*rms});
+      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`,v:sum*rms});   // 「2트윈」꼴로 표기(사장님)
       return;
     }
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
-    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ROOM_SHORT[rt]} ${rms}실 × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
+    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
   });
   const total=lines.reduce((a,b)=>a+b.v,0);
   const per=Math.round(total/pax);
@@ -1011,7 +1011,7 @@ function quoteIncludes(mode){
       if(!(+r.nights||0)||idx===undefined||idx==='') return;
       const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
       const rt=hotelRoom[r.sid]||'twin';
-      out.push(`숙소 · ${r.region} ${h.name} ${hotelNightsOf(r)}박 (${ROOM_SHORT[rt]} ${roomCount(pax,rt)}실)`);
+      out.push(`숙소 · ${r.region} ${h.name} ${hotelNightsOf(r)}박 (${roomCount(pax,rt)}${ROOM_SHORT[rt]})`);
     });
   }
   return out;
@@ -1389,7 +1389,7 @@ function stepSummary(id){
         if(!(+r.nights||0)||idx===undefined||idx==='') return;
         const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
         const rt=hotelRoom[r.sid]||'twin';
-        out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${ROOM_SHORT[rt]}${roomCount(pax,rt)}실`);
+        out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);
       });
       return out.join(' · ')||'숙소 미선택';
     }
