@@ -1877,7 +1877,9 @@ function drawCal(){
   /* 이번 달보다 앞으로는 넘기지 않는다 — 넘겨 봐야 다 막힌 날이라 헛걸음이다 */
   const t = dparse(tdy);
   $("#qpCalPrev").disabled = (y * 12 + m) <= (t.getFullYear() * 12 + t.getMonth());
-  $("#qpCalFoot").textContent = qpKind !== "hotels" ? "라운드 하실 날짜를 선택해 주세요"
+  /* 「라운드」는 골프장에서만 — 차량·스파 등은 「이용하실 날짜」(사장님 2026-09-11) */
+  $("#qpCalFoot").textContent = qpKind === "courses" ? "라운드 하실 날짜를 선택해 주세요"
+    : qpKind !== "hotels" ? "이용하실 날짜를 선택해 주세요"
     : calHalf ? "체크아웃 날짜를 선택해 주세요" : "체크인 날짜를 선택해 주세요";
 }
 function calPick(s){
