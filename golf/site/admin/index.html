@@ -908,8 +908,9 @@ function itemsPath(k,i){ return (k==='courses'||k==='hotels') ? k+'.'+i : 'items
 function subs(){
   return [{k:'hero',label:'첫 화면'}]
     .concat(catsAll().map(c=>({k:'cat:'+c.k, label:(c.ic?c.ic+' ':'')+(c.t||c.k)+(c.on===false?' (숨김)':'')})))
-    .concat([{k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
-             {k:'tours',label:'기타투어'},
+    /* 기타투어는 종류(cats) 바로 뒤 — 패스트트랙 다음에 온다(사장님 2026-09-11) */
+    .concat([{k:'tours',label:'✈ 기타투어'},
+             {k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
              {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'},
              /* 견적 계산기가 읽는 차량·핸들링·가이드 요금과 코드 — 상단 탭에서 이리로 내렸다(사장님 2026-09-11) */
              {k:'rates',label:'💰 요금표 (차량·핸들링·가이드)'},{k:'codes',label:'🏷 코드관리'}]);
