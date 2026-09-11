@@ -34,9 +34,32 @@ html.embed .wrap{padding-top:6px}
 .f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
 /* 기본 정보는 가장 자주 만지는 칸이라 크게. 대신 날짜·인원·박수는 좁혀서
    팀명이 남는 폭을 다 쓰게 하고, 5칸이 한 줄에 여유 있게 들어가도록 했다. */
-#startDate,#pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
+#pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
 .basic{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
-.fx-date{flex:0 0 156px}
+.fx-date{flex:0 0 250px}
+/* 출발·귀국 날짜 단추 + 달력판 — 손님 사이트 호텔 칸처럼 눌러서 두 날짜를 이어 고른다(사장님 2026-09-11) */
+#dateBtn{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:10px 11px;font:inherit;font-size:15px;
+  font-weight:700;background:var(--paper);color:var(--ink);text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px}
+#dateBtn:hover,#dateBtn.open{border-color:var(--fairway);background:#fff}
+#dateBtn .ph{color:var(--muted);font-weight:600}
+#dateBtn .v,#dateBtn .ph{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dateBtn .cal{flex:none;width:18px;height:18px;opacity:.5}
+.tcal{width:300px;max-width:100%;box-sizing:border-box;margin-top:10px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.tcal-hd{display:grid;grid-template-columns:32px 1fr 32px;align-items:center;margin-bottom:8px}
+.tcal-hd b{text-align:center;font-size:14px;font-weight:800}
+.tcal-hd button{border:1.5px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:15px;padding:3px 0;cursor:pointer;color:inherit}
+.tcal-hd button:hover{border-color:var(--fairway)}
+.tcal-dow,.tcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.tcal-dow i{text-align:center;font-style:normal;font-size:11px;font-weight:700;color:var(--muted);padding-bottom:4px}
+.tcal-dow i:first-child{color:#c0392b}
+.tcal-grid button{border:none;background:none;font:inherit;font-size:12.5px;font-weight:700;padding:7px 0;border-radius:8px;cursor:pointer;color:inherit}
+.tcal-grid button:hover:not(:disabled){background:var(--paper)}
+.tcal-grid button:disabled{color:#cfcfcf;cursor:default}
+.tcal-grid button.sun:not(:disabled){color:#c0392b}
+.tcal-grid button.mid{background:#eaf4ee;border-radius:0}
+.tcal-grid button.edge{background:var(--fairway);color:#fff}
+.tcal-grid span{padding:7px 0}
+.tcal-foot{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;line-height:1.4}
 .fx-team{flex:1 1 180px;max-width:290px}
 .fx-pax,.fx-stay{flex:0 0 auto}
 /* 명·박·일 세 칸은 같은 너비로 */
@@ -180,32 +203,46 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <div class="cbody">
       <!-- 날짜·인원·박수는 좁게, 팀명은 남는 폭을 다 쓰게 -->
       <div class="basic">
-        <div class="f fx-date"><label>며칠에 출발하시나요?</label><input type="date" id="startDate"></div>
-        <div class="f fx-team"><label>팀명</label><input type="text" id="teamName" autocomplete="off" placeholder="예: 홍길동 팀"></div>
-        <div class="f fx-pax"><label>몇 명인가요?</label>
-          <div class="unit"><input type="number" id="pax" min="1" value="4"><span>명</span></div>
+        <!-- 출발일자: 눌러서 달력판을 열고 출발일 → 귀국일을 이어 고른다(사장님 2026-09-11).
+             #startDate·#endDate 는 감춘 칸 — 요금 셈·견적서는 예전처럼 #startDate 를 읽는다. -->
+        <div class="f fx-date"><label>출발일자 <span style="font-weight:600">(출발 ~ 귀국)</span></label>
+          <button type="button" id="dateBtn"></button>
+          <input type="hidden" id="startDate"><input type="hidden" id="endDate">
         </div>
-        <!-- 박수만 적으면 일수는 자동(박수+1). 빈 칸은 0을 미리 넣지 않는다 — 숫자를 찍을 때 밀린다 -->
-        <div class="f fx-stay"><label>며칠간 머무르시나요?</label>
+        <div class="f fx-team"><label>여행사명 또는 이름</label><input type="text" id="teamName" autocomplete="off"></div>
+        <div class="f fx-pax"><label>인원수</label>
+          <div class="unit"><input type="number" id="pax" min="1" inputmode="numeric"><span>명</span></div>
+        </div>
+        <!-- 몇박몇일은 달력에서 저절로 나온다. 밤 비행기로 돌아오면 박수+2일(3박5일),
+             태국에서 오전 출국이면 박수+1일(3박4일). 박수는 직접 고쳐도 된다(귀국일이 따라 움직인다).
+             빈 칸은 0을 미리 넣지 않는다 — 숫자를 찍을 때 밀린다 -->
+        <div class="f fx-stay"><label>몇박몇일 <span style="font-weight:600">(자동)</span></label>
           <div class="unit">
             <input type="number" id="nights" min="0" max="14" inputmode="numeric"><span>박</span>
             <input type="text" id="daysOut" readonly tabindex="-1"><span>일</span>
           </div>
         </div>
       </div>
+      <!-- 달력판은 줄 아래에 펼쳐진다(카드가 overflow:hidden 이라 띄우면 잘린다) -->
+      <div class="tcal" id="tripCal" hidden>
+        <div class="tcal-hd"><button type="button" id="tcPrev">‹</button><b id="tcTitle"></b><button type="button" id="tcNext">›</button></div>
+        <div class="tcal-dow"><i>일</i><i>월</i><i>화</i><i>수</i><i>목</i><i>금</i><i>토</i></div>
+        <div class="tcal-grid" id="tcGrid"></div>
+        <div class="tcal-foot" id="tcFoot"></div>
+      </div>
       <div class="opts">
         <label class="amdep" title="한국에서 오전에 출발하면 첫날부터 라운딩·차량·가이드를 온종일 씁니다">
-          <input type="checkbox" id="amDep"> 한국에서 오전 출발
+          <input type="checkbox" id="amDep"> 한국에서 오전 출발 시 체크
         </label>
-        <label class="amdep" title="태국에서 오전에 출국하면 마지막 날은 라운딩을 할 수 없습니다">
-          <input type="checkbox" id="amRet"> 태국에서 오전 출국
+        <label class="amdep" title="태국에서 오전에 출국하면 그날 한국에 도착합니다 — 3박4일처럼 박수+1일이 되고, 마지막 날은 라운딩을 할 수 없습니다">
+          <input type="checkbox" id="amRet"> 태국에서 오전 출국 시 체크
         </label>
       </div>
     </div>
   </div>
 
   <div class="card step" id="s2">
-    <h2 class="steph">2. 머무르실 곳 <span class="sublab">가시는 순서대로 클릭하세요</span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">2. 지역선택 <span class="sublab">머무르실 곳을 순서로 클릭</span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div class="chips" id="regChips"></div>
       <div class="picked" id="regPicked"></div>
@@ -214,10 +251,15 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   </div>
 
   <div class="card step" id="s3">
-    <h2 class="steph askh"><input type="checkbox" id="useHotel"><label for="useHotel">3. 숙소도 원하시나요?</label><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
+    <!-- 호텔은 지역을 고르면 기본으로 펼쳐진다. 필요 없을 때만 아래 체크로 접는다 —
+         제목줄은 남겨 두어 다시 고를 수 있다(사장님 2026-09-11). -->
+    <h2 class="steph">3. 호텔 <span class="sublab">지역을 고르면 나옵니다</span><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
-      <div id="hotelWrap" style="display:none"></div>
+      <div id="hotelWrap"></div>
       <div class="hint" id="hotelHint" style="display:none"></div>
+      <label for="noHotel" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="noHotel"> 호텔이 필요 없으면 체크
+      </label>
     </div>
   </div>
 
@@ -228,7 +270,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
 
   <div class="row2">
     <div class="card step" id="s5">
-      <h2 class="steph">5. 차량<span class="csum" id="sum5"></span><span class="cedit">수정</span></h2>
+      <h2 class="steph">5. 차량 선택<span class="csum" id="sum5"></span><span class="cedit">수정</span></h2>
       <!-- 차량은 기본 포함. 필요 없을 때만 빼도록 체크를 둔다(대부분 쓰기 때문). -->
       <div class="cbody">
         <!-- 요금 기준(지역 조합)은 내부 정보라 손님 앞에서 펼쳐 두지 않는다.
@@ -249,7 +291,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     </div>
 
     <div class="card step" id="s6">
-      <h2 class="steph askh"><input type="checkbox" id="useGuide"><label for="useGuide">6. 가이드 원하시나요?</label><span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
+      <h2 class="steph askh"><input type="checkbox" id="useGuide"><label for="useGuide">6. 가이드 <span class="sublab">원하시면 체크</span></label><span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
       <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
       <div class="cbody">
         <div class="f" id="guideWrap" style="display:none"><label>가이드 종류</label><select id="guide"></select></div>
@@ -462,7 +504,74 @@ function syncTripInput(){
   const n=totalNights();
   const el=$('#nights');
   if(el&&document.activeElement!==el) el.value=numval(n);   // 입력 중이면 건드리지 않는다
-  const d=$('#daysOut'); if(d) d.value=n>0?String(n+1):'';
+  const d=$('#daysOut'); if(d) d.value=n>0?String(tripDays(n)):'';
+  /* 귀국일은 박수에서 따라온다(달력에서 고른 귀국일 → 박수 → 다시 같은 귀국일로 돌아온다) */
+  const ed=$('#endDate'); if(ed) ed.value=endFromNights(n);
+  drawDateBtn();
+}
+/* ── 몇박몇일 ──
+   밤 비행기로 돌아오면 한국 도착이 다음날이라 «박수+2일»(3박5일).
+   태국에서 오전에 출국하면 그날 한국에 닿으니 «박수+1일»(3박4일). 당일치기(0박)는 1일. */
+function tripDays(n){ n=+n||0; return n<=0?1:n+(amRetOn()?1:2); }
+function nightsFromDays(days){ return Math.max(0,(+days||0)-(amRetOn()?1:2)); }
+function endFromNights(n){
+  const s=$('#startDate').value; if(!s||!(+n>0)) return '';
+  const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+tripDays(n)-1); return iso(d);
+}
+/* ── 출발·귀국 달력판 ── */
+let tcMonth=null, tcHalf='';   // tcHalf = 출발일만 고른 도중 상태
+const TC_SVG='<svg class="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+function tcLabel(s){ const d=new Date(s+'T00:00:00'); return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} (${'일월화수목금토'[d.getDay()]})`; }
+function tcGap(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+function drawDateBtn(){
+  const b=$('#dateBtn'); if(!b) return;
+  const s=$('#startDate').value, e=$('#endDate').value;
+  b.innerHTML=(s
+    ? `<span class="v">${tcLabel(s)} ~ ${e?tcLabel(e):'<span class="ph">귀국일 선택</span>'}</span>`
+    : '<span class="ph">출발일 ~ 귀국일 선택</span>')+TC_SVG;
+}
+function openTripCal(){
+  const s=$('#startDate').value;
+  tcMonth=s?new Date(s+'T00:00:00'):new Date(); tcMonth.setDate(1);
+  tcHalf='';
+  $('#tripCal').hidden=false; $('#dateBtn').classList.add('open');
+  drawTripCal();
+}
+function closeTripCal(){ const c=$('#tripCal'); if(c) c.hidden=true; tcHalf=''; const b=$('#dateBtn'); if(b) b.classList.remove('open'); }
+function drawTripCal(){
+  const y=tcMonth.getFullYear(), m=tcMonth.getMonth();
+  $('#tcTitle').textContent=`${y}년 ${m+1}월`;
+  const first=new Date(y,m,1), last=new Date(y,m+1,0);
+  const s=$('#startDate').value, e=$('#endDate').value;
+  const cells=[];
+  for(let i=0;i<first.getDay();i++) cells.push('<span></span>');
+  for(let d=1;d<=last.getDate();d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, cls=[];
+    if(new Date(y,m,d).getDay()===0) cls.push('sun');
+    if(tcHalf){ if(ds===tcHalf) cls.push('edge'); }
+    else if(s&&e){ if(ds===s||ds===e) cls.push('edge'); else if(ds>s&&ds<e) cls.push('mid'); }
+    else if(ds===s) cls.push('edge');
+    cells.push(`<button type="button" data-td="${ds}" class="${cls.join(' ')}">${d}</button>`);
+  }
+  $('#tcGrid').innerHTML=cells.join('');
+  $('#tcFoot').textContent=tcHalf?'한국에 돌아오는 날(귀국일)을 골라 주세요':'출발일을 골라 주세요';
+}
+/* 출발일 → 귀국일 순서로 두 번 누른다. 귀국일 앞의 날을 누르면 출발일을 다시 잡는다. */
+function tripCalPick(ds){
+  if(!tcHalf||ds<=tcHalf){ tcHalf=ds; drawTripCal(); return; }
+  $('#startDate').value=tcHalf; $('#endDate').value=ds;
+  const n=Math.min(14,nightsFromDays(tcGap(tcHalf,ds)+1));
+  closeTripCal();
+  applyTripToRoute(n);
+  refreshAll();
+}
+/* 태국 오전 출국을 켜고 끄면 날짜는 그대로 두고 박수가 바뀐다(3박5일 ↔ 4박5일) */
+function reNightsFromDates(){
+  const s=$('#startDate').value, e=$('#endDate').value;
+  if(!s||!e) return false;
+  const n=Math.min(14,nightsFromDays(tcGap(s,e)+1));
+  if(n===totalNights()) return false;
+  applyTripToRoute(n); refreshAll(); return true;
 }
 // 박수를 직접 고치면 뒤쪽 지역 박수를 늘리거나(추가) 뒤에서부터 깎아서(감소) 합을 맞춘다
 function applyTripToRoute(n){
@@ -504,9 +613,11 @@ function newQuote(){
   const tn=$('#teamName'); if(tn) tn.value='';
   // 출발일은 처음 켤 때처럼 2주 뒤로 — 빈 칸이면 달력이 이번 달로 열려 매번 넘겨야 한다
   const sd=$('#startDate'); if(sd){ const d0=new Date(); d0.setDate(d0.getDate()+14); sd.value=iso(d0); }
+  const ed=$('#endDate'); if(ed) ed.value='';
+  closeTripCal();
   const px=$('#pax'); if(px) px.value='';
   const ng=$('#nights'); if(ng) ng.value='';
-  ['amDep','amRet','useHotel','useGuide','noVeh'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
+  ['amDep','amRet','noHotel','useGuide','noVeh'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
   const vg=$('#vehGroup'); if(vg) vg.value='0';
   const vf=vg&&vg.closest('.f'); if(vf) vf.style.display='';
@@ -534,7 +645,8 @@ function newQuote(){
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
 function amDepOn(){ const c=$('#amDep'); return !!(c&&c.checked); }
 function amRetOn(){ const c=$('#amRet'); return !!(c&&c.checked); }
-function useHotelOn(){ const c=$('#useHotel'); return !!(c&&c.checked); }
+// 호텔은 기본 포함 — '필요 없으면 체크'를 켰을 때만 뺀다(차량과 같은 방식, 사장님 2026-09-11)
+function useHotelOn(){ const c=$('#noHotel'); return !(c&&c.checked); }
 function useGuideOn(){ const c=$('#useGuide'); return !!(c&&c.checked); }
 // 차량은 기본 포함 — '필요 없습니다'를 체크했을 때만 뺀다(숙소·가이드와 반대)
 function useVehOn(){ const c=$('#noVeh'); return !(c&&c.checked); }
@@ -745,7 +857,7 @@ function calc(){
   updateRoomTags(pax);
   renderStepSummaries();   // 접힌 칸에 보이는 한 줄 요약을 늘 최신으로
   $('#paxInfo').textContent=ROUTE.length
-    ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${nights+1}일`
+    ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${tripDays(nights)}일`
     : `${pax}명 · 지역을 선택하세요`;
   const lines=[];
   // 1) 골프 (체크된 날)
@@ -917,7 +1029,8 @@ async function ensureQuoteNo(){
 function quoteSnapshot(){
   const start=$('#startDate').value;
   const n=LAST.nights;
-  const end=(()=>{ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); })();
+  /* 귀국일 = 출발일 + 일수 - 1 (밤 비행기면 박수+2일, 태국 오전 출국이면 박수+1일) */
+  const end=(()=>{ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+tripDays(n)-1); return iso(d); })();
   return {
     quoteNo: QUOTE_NO||'',
     via: EMBED?'site':'',            // 손님 사이트 팝업에서 만든 견적 — 이력에 표시가 붙는다
@@ -925,7 +1038,7 @@ function quoteSnapshot(){
     savedAt: new Date().toISOString(),
     start, end,
     team: ($('#teamName').value||'').trim(),
-    pax: LAST.pax, nights: n,
+    pax: LAST.pax, nights: n, tripDays: tripDays(n),
     route: ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-',
     flight: [amDepOn()?'한국 오전 출발':'한국 야간 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · '),
     days: dayState.map(st=>({
@@ -1010,7 +1123,7 @@ function buildQuoteHtml(mode, Q){
       </tr>
       <tr>
         <td style="width:78px;padding:6px 0;color:#5E6F66;font-weight:700">일정</td>
-        <td style="padding:6px 0;font-weight:700">${esc(start)} ~ ${esc(end)} <span style="color:#5E6F66;font-weight:600">(${n}박 ${n+1}일)</span></td>
+        <td style="padding:6px 0;font-weight:700">${esc(start)} ~ ${esc(end)} <span style="color:#5E6F66;font-weight:600">(${n}박 ${Q.tripDays||(n+1)}일)</span></td>
         <td style="width:70px;padding:6px 0;color:#5E6F66;font-weight:700">인원</td>
         <td style="padding:6px 0;font-weight:700">${pax}명</td>
       </tr>
@@ -1208,11 +1321,12 @@ function stepSummary(id){
     case 's1': {
       const team=($('#teamName').value||'').trim();
       const mark=[amDepOn()?'오전출발':'', amRetOn()?'오전출국':''].filter(Boolean).join(' · ');
-      return [$('#startDate').value, team, `${pax}명`, `${n}박 ${n+1}일`, mark].filter(Boolean).join(' · ');
+      const s=$('#startDate').value, e=$('#endDate').value;
+      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join(' · ');
     }
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
-      if(!useHotelOn()) return '숙소 없이';
+      if(!useHotelOn()) return '호텔 없이';
       const out=[];
       ROUTE.forEach(r=>{
         const idx=hotelPick[r.region];
@@ -1275,6 +1389,13 @@ document.addEventListener('click',e=>{
     const st=ed.closest('.step');
     if(st){ touched.add(st.id); autoFold(st.classList.contains('folded')?st.id:null); return; }
   }
+  // 출발·귀국 달력판 — 단추로 열고 닫고, 날짜를 누르고, 바깥을 누르면 닫힌다
+  if(e.target.closest('#dateBtn')){ const c=$('#tripCal'); if(c.hidden) openTripCal(); else closeTripCal(); return; }
+  const td=e.target.closest('[data-td]');
+  if(td){ tripCalPick(td.dataset.td); return; }
+  if(e.target.id==='tcPrev'){ tcMonth.setMonth(tcMonth.getMonth()-1); drawTripCal(); return; }
+  if(e.target.id==='tcNext'){ tcMonth.setMonth(tcMonth.getMonth()+1); drawTripCal(); return; }
+  if(!e.target.closest('#tripCal')) closeTripCal();
   const pick=e.target.closest('[data-reg-pick]');
   if(pick){ toggleRegion(pick.dataset.regPick); return; }
   const del=e.target.closest('[data-reg-del]');
@@ -1308,9 +1429,11 @@ document.addEventListener('change',e=>{
   /* 오전 출발/오전 출국: 1일차·마지막날 라운딩 칸만 열고 닫는다
      (차량·가이드는 calc에서 풀 요금으로 바뀜). 다시 그리면 이미 체크해 둔
      다른 날 라운딩이 날아가므로 해당 칸만 손댄다. */
-  if(t.id==='amDep'||t.id==='amRet'){ refreshDayLocks(); calc(); return; }
+  /* 태국 오전 출국은 날짜를 그대로 두고 박수를 바꾼다(3박5일 ↔ 4박5일) — 박수가 바뀌면 날짜 줄을 다시 그린다 */
+  if(t.id==='amRet'&&reNightsFromDates()) return;
+  if(t.id==='amDep'||t.id==='amRet'){ refreshDayLocks(); syncTripInput(); calc(); return; }
   // 접힌 채로 체크만 하면 고를 칸이 안 보이므로, 그 칸을 펴 준다
-  if(t.id==='useHotel'){ renderHotels(); autoFold('s3'); calc(); return; }
+  if(t.id==='noHotel'){ renderHotels(); autoFold('s3'); calc(); return; }
   if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; autoFold('s6'); calc(); return; }
   // 직원이 직접 고르면 자동 적용 안내는 지운다(직접 고른 값이 우선)
   if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; syncVehShown(); calc(); return; }
