@@ -604,6 +604,9 @@ function dateInput(obj,key){
 
 /* ══════════ 기간별 요금표 ══════════ */
 const PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
+/* 화면에 보이는 기간 이름 — 저장 키('1일')는 견적기·API·엑셀이 그대로 읽으므로 바꾸지 않고 글자만 바꾼다(사장님 2026-09-14) */
+const PERIOD_LABEL={'1일':'풀1일 (10시간 기준)'};
+const plabel=p=>PERIOD_LABEL[p]||p;
 const GUIDE_PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
 /* 지방 숙박비: 방콕 외 지역(파타야·후아힌…)에서 자는 밤마다 가이드 숙박비가 붙는다(사장님 2026-09-14).
    방콕 3박과 방콕1박+파타야2박은 가이드 요금이 달라야 해서 기간표와 별도 줄로 둔다.
@@ -623,7 +626,7 @@ function periodTable(title,desc,dataObj){
   PERIODS.forEach(p=>{
     if(!dataObj[p]) dataObj[p]={amount:null,remark:''};
     const tr=document.createElement('tr');
-    const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
+    const td0=document.createElement('td'); td0.className='pname'; td0.textContent=plabel(p); tr.appendChild(td0);
     const tdA=document.createElement('td'); const a=numInput(dataObj[p],'amount'); a.className='pin'; tdA.appendChild(a); tr.appendChild(tdA);
     const tdR=document.createElement('td'); const r=txtInput(dataObj[p],'remark',{ph:'비고'}); r.className='pin'; tdR.appendChild(r); tr.appendChild(tdR);
     tb.appendChild(tr);
@@ -750,7 +753,7 @@ function vehicleCard(){
     head+='<th style="min-width:56px;"><a id="vgAdd" style="color:var(--fairway);cursor:pointer;font-weight:800;" title="지역 조합 추가">＋</a></th></tr></thead>';
     let body='<tbody>';
     PERIODS.forEach(p=>{
-      body+=`<tr><td class="pname" style="font-weight:700;white-space:nowrap;">${p}</td>`;
+      body+=`<tr><td class="pname" style="font-weight:700;white-space:nowrap;">${plabel(p)}</td>`;
       gs.forEach((grp,gi)=>{ body+=`<td><input type="text" class="n" data-vg="${gi}" data-vp="${escapeAttr(p)}" placeholder="X = 불가"></td>`; });
       body+='<td></td></tr>';
     });
@@ -866,7 +869,7 @@ function guideTable(){
       if(p===GUIDE_LODGING){
         tr.className='plodge';
         td0.innerHTML='🏨 지방 숙박비 <small style="font-weight:600;color:var(--muted)">방콕 외 1박당</small>';
-      } else td0.textContent=p;
+      } else td0.textContent=plabel(p);
       tr.appendChild(td0);
       cells.forEach(o=>{ const td=document.createElement('td'); const b=numInput(o,'bkk'); b.className='pin'; td.appendChild(b); tr.appendChild(td); });
       // 비고는 기간당 한 칸 — 모든 종류에 같은 값을 넣어 기존 저장 구조를 유지한다
