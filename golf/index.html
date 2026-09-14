@@ -1337,7 +1337,7 @@ function buildQuoteHtml(mode, Q){
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
-        ${(Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
+        <div style="padding:3px 0">${(Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t)).join(' &nbsp;·&nbsp; ')}</div>   <!-- 한 줄 가로 표기(사장님 2026-09-14) -->
       </div>
     </div>
     ${detail}
