@@ -319,7 +319,8 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
           <!-- 차량 설명(관리 → 차량 열 수정창 「설명」) — 손님에게 보이는 글. 없으면 안 보인다(사장님 2026-09-14) -->
           <div class="hint" id="vehDesc" style="display:none;margin-top:3px;white-space:pre-wrap;"></div>
           <div class="hint" id="vehAuto" style="color:#2e7d32;margin-top:2px;"></div>
-          <a id="vehPickToggle" style="display:inline-block;margin-top:4px;font-size:12px;color:#5E6F66;text-decoration:underline dotted;cursor:pointer;">요금 기준 직접 선택</a>
+          <!-- 「요금 기준 직접 선택」은 차종 드롭다운이 열을 자동으로 고르므로 숨김(사장님 2026-09-14). 필요하면 display만 되살린다 -->
+          <a id="vehPickToggle" style="display:none;margin-top:4px;font-size:12px;color:#5E6F66;text-decoration:underline dotted;cursor:pointer;">요금 기준 직접 선택</a>
           <div id="vehPickWrap" style="display:none;margin-top:5px;">
             <select id="vehGroup"></select>
           </div>
