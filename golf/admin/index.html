@@ -748,11 +748,11 @@ function openVgEditor(gs, gi, onDone){
 }
 
 /* ── 차량 요금: 지역 조합별 열 + 안내문구 + 수송밴 ── */
-function vehicleCard(){
-  const c=card('🚐 차량 요금 (12인승 밴 1대 기준)','지역 조합마다 열을 하나씩 둡니다. 요금이 없는 칸은 비워두거나 X를 입력하세요.');
-
-  // 안내 문구
-  c.appendChild(el('div','mini','· 안내 문구 (견적서에 함께 표시)'));
+/* 안내 문구(견적서에 함께 표시되는 줄들) — 차량 탭에 있던 것을 ⚙️ 기타 탭으로 옮겼다(사장님 2026-09-14).
+   저장 자리는 그대로 G.vehicleNotes 라 견적기 쪽은 손대지 않았다. */
+function vehicleNotesEditor(){
+  const box=el('div');
+  box.appendChild(el('div','mini','· 안내 문구 (견적서에 함께 표시)'));
   const nbox=el('div');
   const drawNotes=()=>{
     nbox.innerHTML='';
@@ -769,7 +769,12 @@ function vehicleCard(){
     add.onclick=()=>{ (G.vehicleNotes=G.vehicleNotes||[]).push(''); _touch(); drawNotes(); };
     nbox.appendChild(add);
   };
-  drawNotes(); c.appendChild(nbox);
+  drawNotes(); box.appendChild(nbox);
+  return box;
+}
+
+function vehicleCard(){
+  const c=card('🚐 차량 요금 (12인승 밴 1대 기준)','지역 조합마다 열을 하나씩 둡니다. 요금이 없는 칸은 비워두거나 X를 입력하세요. 안내 문구는 ⚙️ 기타 탭에 있습니다.');
 
   // 지역 조합별 기간 요금표
   c.appendChild(el('div','mini','· 기간별 요금'));
@@ -951,7 +956,9 @@ function render(){
     const orow=el('div','row');
     orow.appendChild(field('밴 1대당 최대 인원(명)',numInput(G,'paxPerVan')));
     orow.appendChild(field('공항 미팅 아따비 (1인당 ฿)',numInput(G,'airportTip')));
-    oc.appendChild(orow); return oc;
+    oc.appendChild(orow);
+    const nb=vehicleNotesEditor(); nb.style.marginTop='12px'; oc.appendChild(nb);   // 안내 문구(차량 탭에서 옮김)
+    return oc;
   };
   // 만들어만 두고 화면에는 붙이지 않는다 — 선택한 것만 창 안으로 옮겨 보여준다
   /* ⛳ 골프장 · 🏨 호텔 · 📅 공휴일은 **사이트 관리 화면으로 옮겼다**(사장님 2026-09-08).
