@@ -660,8 +660,11 @@ function openVgEditor(gs, gi, onDone){
   const IN='width:100%;box-sizing:border-box;border:1.5px solid #d8d2c4;border-radius:8px;padding:7px 9px;font-size:13px;font-family:inherit;';
   ov.innerHTML=`<div style="background:#fff;border-radius:14px;width:100%;max-width:460px;max-height:86vh;overflow:auto;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25);">
     <div style="font-weight:800;font-size:15px;margin-bottom:12px;">🚐 차량 요금 열 수정</div>
-    ${F('표시명 <span style="color:#2e7d32">· 손님 견적서에 나갑니다</span>',
-        `<input id="vgName" style="${IN}" value="${escapeAttr(g.name||'')}" placeholder="예: 12인승 밴">`)}
+    ${F('표시명 <span style="color:#2e7d32">· 손님 견적서에 나갑니다 · 차종만 짧게</span>',
+        `<input id="vgName" style="${IN}" value="${escapeAttr(g.name||'')}" placeholder="예: 신형 도요타 커뮤터 밴">`)}
+    ${F('설명 <span style="color:#2e7d32">· 견적 화면 차량 이름 아래와 견적서 차량 줄에 함께 나갑니다</span>',
+        `<textarea id="vgDesc" rows="2" style="${IN}resize:vertical;" placeholder="예: 8인 골프팀은 골프백 적재로 실제 탑승 인원 최대 6~7명">${escapeHtml(g.desc||'')}</textarea>`,
+        '손님이 보는 글입니다. 내부 메모는 아래 「내부 메모」에 적으세요.')}
     <div style="display:flex;gap:8px;">
       <div style="flex:1;">${F('인승',`<input id="vgSeats" type="number" min="1" style="${IN}" value="${g.seats==null?'':g.seats}" placeholder="12">`)}</div>
       <div style="flex:1;">${F('최대 탑승',`<input id="vgMax" type="number" min="1" style="${IN}" value="${g.maxPax==null?'':g.maxPax}" placeholder="7">`,'이 인원을 넘으면 다음 대')}</div>
@@ -731,6 +734,7 @@ function openVgEditor(gs, gi, onDone){
     const v=id=>ov.querySelector('#'+id).value.trim();
     g.name=v('vgName'); g.memo=v('vgMemo'); g.label=v('vgLabel');
     g.img=v('vgImg');                                                   // 차량 사진 주소(없으면 빈 값)
+    g.desc=v('vgDesc');                                                 // 손님에게 보이는 설명글(사장님 2026-09-14)
     const s=v('vgSeats'), m=v('vgMax');
     g.seats = s===''?null:Number(s);
     g.maxPax= m===''?null:Number(m);
