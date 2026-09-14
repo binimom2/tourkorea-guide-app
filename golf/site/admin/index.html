@@ -876,8 +876,8 @@ async function loadBooks(){
 function drawRates(){
   document.getElementById('subpane').innerHTML=
     '<div class="card" style="padding:12px 13px 13px">'
-    +'<h2>💰 요금표 (차량 · 핸들링 차지 · 가이드)</h2>'
-    +'<p class="desc">실시간 견적 계산기가 쓰는 <b>기간별 원가</b>입니다. 손님에게는 안 보입니다. '
+    +'<h2>💰 실시간 요금표 &amp; 코드관리 (차량 · 핸들링 차지 · 가이드)</h2>'
+    +'<p class="desc">실시간 견적 계산기가 쓰는 <b>기간별 원가</b>와 코드(지역·가이드·차량·핸들링·환율)입니다. 손님에게는 안 보입니다. '
     +'골프장·호텔·스파 등의 요금은 위 종류 탭에서 각각 넣습니다.</p>'
     +'<iframe id="ratesFrame" src="/golf/admin/?embed=1" title="요금표"></iframe>'
     +'</div>';
@@ -913,7 +913,8 @@ function subs(){
              {k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
              {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'},
              /* 견적 계산기가 읽는 차량·핸들링·가이드 요금과 코드 — 상단 탭에서 이리로 내렸다(사장님 2026-09-11) */
-             {k:'rates',label:'💰 요금표 (차량·핸들링·가이드)'},{k:'codes',label:'🏷 코드관리'}]);
+             /* 코드관리는 요금표 안(끼워 넣은 /golf/admin/)에 이미 있어 따로 노출하지 않는다(사장님 2026-09-14) */
+             {k:'rates',label:'💰 실시간 요금표&코드관리'}]);
 }
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
 /* 지역순 보기는 처음부터 켜져 있다 — 62곳을 지역별로 나눠 봐야 찾기 쉽다. 끄면 넣은 차례대로. */
@@ -962,8 +963,8 @@ function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
   if(!SUB.some(s=>s.k===sub)) sub='hero';
   clearInterval(ratesTimer);          // 요금표 하위 탭을 떠나면 높이 맞추기를 멈춘다
-  /* 요금표·코드관리는 자기 저장 단추를 쓴다 — 사이트 내용 저장줄은 감춘다 */
-  if(sub==='rates'||sub==='codes'){
+  /* 요금표(코드관리 포함)는 자기 저장 단추를 쓴다 — 사이트 내용 저장줄은 감춘다 */
+  if(sub==='rates'||sub==='codes'){   // 'codes'는 예전 링크·저장된 탭 상태 호환용(메뉴에는 없음)
     p.innerHTML='<div class="subtabs">'
       +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
       +'</div><div id="subpane"></div>';

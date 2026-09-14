@@ -17,6 +17,9 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 140px}
 /* 사이트 관리 안에 끼워 넣었을 때 — 바깥 화면에 이미 여백이 있어 위쪽을 줄인다 */
 .embed body{background:transparent}
+/* 끼워 넣은(?embed=1) 화면은 바깥에서 이미 로그인한 상태라 세션 확인이 끝날 때까지 로그인 화면을 안 보인다 —
+   잠깐 비쳤다 사라지는 깜빡임 방지(사장님 2026-09-14). 세션이 정말 없으면 init()가 다시 보여 준다. */
+.embed #login{display:none}
 .embed .wrap{max-width:none;padding:4px 2px 60px}
 .embed .head{border-bottom:0;padding-bottom:0;margin-bottom:12px;justify-content:flex-end}
 
@@ -1117,7 +1120,9 @@ document.addEventListener('click',e=>{
 
 /* ══════════ 코드관리 (독립 저장: golf_codes) ══════════ */
 const GOLF_CODE_CATS=[
-  {key:'region',label:'지역'},{key:'club',label:'골프장'},{key:'hotel',label:'호텔'},
+  /* 골프장·호텔 코드는 2026-09-14 노출 삭제(사장님) — 골프장·호텔은 사이트 관리의 종류 탭에서 다루고,
+     여기 요금표(차량·핸들링·가이드)는 그 코드를 쓰지 않는다. 데이터(golf_codes.club/hotel)는 그대로 둔다. */
+  {key:'region',label:'지역'},
   {key:'guide',label:'가이드'},{key:'vehicle',label:'차량'},{key:'handling',label:'핸들링차지'},
   /* 환율: 코드=통화(예: KRW), 라벨=1밧당 원화(예: 39.5).
      견적 페이지에서 «사용중»인 첫 항목의 라벨을 숫자로 읽어 1인 요금을 한화로 함께 보여준다. */
@@ -1301,6 +1306,7 @@ async function delCode(i){ const it=GC[gcTab][i]; if(!confirm('['+it.code+'] '+i
     const { data:{ session } } = await sb.auth.getSession();
     if(session && session.user){ afterAuth(session.user); return; }
   }catch(e){}
+  document.getElementById('login').style.display='flex';   // 끼워 넣은 화면(.embed #login 숨김)에서도 세션이 없으면 보여 준다
   document.getElementById('lid').focus();
 })();
 </script>
