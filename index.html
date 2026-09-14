@@ -118,6 +118,9 @@
   .tab-btn.day-tab { padding-right:22px; }
   .tab-btn-add-day { flex:none; padding:6px 9px; border:none; background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.85); font-size:14px; font-weight:700; cursor:pointer; border-radius:6px; margin:4px 4px 4px 0; font-family:inherit; transition:all 0.2s; }
   .tab-btn-add-day:hover { background:rgba(255,255,255,0.3); }
+  /* 일차 화면 제목 옆 「＋ 이 일차 앞에 끼워넣기」 — 날짜 사이에 빈 일차 삽입 */
+  .btn-insert-day { flex:none; padding:4px 9px; border:1px dashed var(--primary); background:#fff; color:var(--primary); font-size:11px; font-weight:700; border-radius:6px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.2s; }
+  .btn-insert-day:hover { background:var(--primary); color:#fff; }
 
   /* ── CONTENT ── */
   .content { padding:14px; max-width:820px; margin:0 auto; }
@@ -401,7 +404,7 @@
     /* ── 기본 숨김 ── */
     #loginScreen,
     .tab-bar,.btn-add,.btn-delete,.btn-print,.btn-reset,
-    .tab-btn-add-day,.close-day,.logout-btn,.lock-notice,
+    .tab-btn-add-day,.btn-insert-day,.close-day,.logout-btn,.lock-notice,
     #miniInfoBar,.print-hide,#viewBanner,#_toast,
     .report-title,               /* 화면용 큰 타이틀 제거 */
     #tab-summary > .summary-card:nth-child(3),  /* 정산방법 선택 카드 숨김 */
@@ -2732,6 +2735,44 @@ function makeDayTabBtn(d) {
 // ══════════════════════════════════
 //  DAY 동적 추가/삭제
 // ══════════════════════════════════
+// 일차 패널 HTML (신규 추가·끼워넣기·복원 3곳이 공통으로 쓴다)
+function dayPanelHTML(dayId, label) {
+  return `
+    <div class="section-card">
+      <div class="section-header">
+        <h3 id="${dayId}-hdr">${label} - 행사진행비 <span class="thb-badge">฿ 바트</span></h3>
+        <button type="button" class="btn-insert-day" onclick="insertDayBefore('${dayId}')" title="이 일차 앞에 빈 일차를 하나 끼워 넣습니다. 뒤 일차들은 한 칸씩 밀립니다.">＋ 이 일차 앞에 끼워넣기</button>
+      </div>
+      <div class="col-headers">
+        <span>구분</span><span>내용</span><span>인원/개수</span><span class="col-amount">금액 (฿)</span><span></span>
+      </div>
+      <div class="expense-list" id="${dayId}-list"></div>
+      <button class="btn-add" onclick="addExpenseRow('${dayId}')">＋ 항목 추가</button>
+      <div class="total-row" style="background:#f1f5f9;">
+        <span id="${dayId}-daylbl" style="color:#475569;font-size:12px;">${label} 당일 합계</span>
+        <span id="${dayId}-total">฿0</span>
+      </div>
+      <div class="total-row" id="${dayId}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
+        <span id="${dayId}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;"></span>
+        <span id="${dayId}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
+      </div>
+    </div>
+  `;
+}
+
+// 일차 번호 다시 매기기 (삭제·끼워넣기 뒤) — 라벨·제목·당일합계 문구
+function relabelDays() {
+  state.days.forEach((d,i) => {
+    d.label = (i+1)+'일차';
+    const hdr = document.getElementById(d.id+'-hdr');
+    if (hdr) hdr.innerHTML = `${d.label} - 행사진행비 <span class="thb-badge">฿ 바트</span>`;
+    const lbl = document.getElementById(d.id+'-daylbl');
+    if (lbl) lbl.textContent = `${d.label} 당일 합계`;
+  });
+  // 순서가 바뀌었으니 「1~N일차 누적」 문구·금액도 다시 계산 (삭제 때 갱신 안 되던 것도 함께 해결)
+  try { updateCumulativeTotals(); } catch(e) {}
+}
+
 function addDay(noSwitch) {
   const dayNum = state.days.length + 1;
   const dayId = 'day' + uid();
@@ -2741,26 +2782,7 @@ function addDay(noSwitch) {
   const panel = document.createElement('div');
   panel.id = 'tab-' + dayId;
   panel.className = 'tab-panel day-panel';
-  panel.innerHTML = `
-    <div class="section-card">
-      <div class="section-header">
-        <h3 id="${dayId}-hdr">${dayNum}일차 - 행사진행비 <span class="thb-badge">฿ 바트</span></h3>
-      </div>
-      <div class="col-headers">
-        <span>구분</span><span>내용</span><span>인원/개수</span><span class="col-amount">금액 (฿)</span><span></span>
-      </div>
-      <div class="expense-list" id="${dayId}-list"></div>
-      <button class="btn-add" onclick="addExpenseRow('${dayId}')">＋ 항목 추가</button>
-      <div class="total-row" style="background:#f1f5f9;">
-        <span style="color:#475569;font-size:12px;">${dayNum}일차 당일 합계</span>
-        <span id="${dayId}-total">฿0</span>
-      </div>
-      <div class="total-row" id="${dayId}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
-        <span id="${dayId}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;"></span>
-        <span id="${dayId}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
-      </div>
-    </div>
-  `;
+  panel.innerHTML = dayPanelHTML(dayId, dayNum+'일차');
   const optPanel = document.getElementById('tab-option');
   document.querySelector('.content').insertBefore(panel, optPanel);
   renderExpenses(dayId);
@@ -2769,16 +2791,37 @@ function addDay(noSwitch) {
   scheduleSave();
 }
 
+// 날짜 사이에 빈 일차 끼워넣기 — 가이드가 2·3·4일차 내용을 1·2·3일차에 써버린 경우
+// 1일차 앞에 끼우면 새 빈 1일차가 생기고 기존 1·2·3이 2·3·4로 밀린다. (내용은 그대로, 번호만 바뀜)
+function insertDayBefore(dayId) {
+  const idx = state.days.findIndex(d => d.id === dayId);
+  if (idx < 0) return;
+  const dayNum = idx + 1;
+  if (!confirm(`${dayNum}일차 앞에 빈 일차를 끼워 넣을까요?\n지금 ${dayNum}일차부터 뒤 일차들은 한 칸씩 밀립니다. (내용은 그대로 유지)`)) return;
+  const newId = 'day' + uid();
+  state.days.splice(idx, 0, { id:newId, label:dayNum+'일차' });
+  state.expenses[newId] = defaultRows();
+
+  const panel = document.createElement('div');
+  panel.id = 'tab-' + newId;
+  panel.className = 'tab-panel day-panel';
+  panel.innerHTML = dayPanelHTML(newId, dayNum+'일차');
+  const target = document.getElementById('tab-'+dayId) || document.getElementById('tab-option');
+  document.querySelector('.content').insertBefore(panel, target);
+  relabelDays();
+  renderExpenses(newId);   // 누적 합계도 여기서 다시 계산됨
+  rebuildTabBar();
+  switchTab(newId);
+  scheduleSave();
+  showToast(`✅ ${dayNum}일차 앞에 빈 일차를 끼워 넣었습니다.`);
+}
+
 function deleteDay(dayId) {
   if (state.days.length <= 1) { alert('최소 1일차는 유지해야 합니다.'); return; }
   if (!confirm('이 일차를 삭제하시겠습니까?')) return;
   state.days = state.days.filter(d => d.id !== dayId);
   delete state.expenses[dayId];
-  state.days.forEach((d,i) => {
-    d.label = (i+1)+'일차';
-    const hdr = document.getElementById(d.id+'-hdr');
-    if (hdr) hdr.innerHTML = `${i+1}일차 - 행사진행비 <span class="thb-badge">฿ 바트</span>`;
-  });
+  relabelDays();
   const panel = document.getElementById('tab-'+dayId);
   if (panel) panel.remove();
   rebuildTabBar();
@@ -4368,7 +4411,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 11;   // 배포마다 +1 (구버전 탭 저장차단). v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
+const G_APP_VERSION = 12;   // 배포마다 +1 (구버전 탭 저장차단). v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -4508,25 +4551,7 @@ function loadData() {
       const panel = document.createElement('div');
       panel.id = 'tab-' + d.id;
       panel.className = 'tab-panel day-panel';
-      panel.innerHTML = `
-        <div class="section-card">
-          <div class="section-header">
-            <h3 id="${d.id}-hdr">${d.label} - 행사진행비 <span class="thb-badge">฿ 바트</span></h3>
-          </div>
-          <div class="col-headers">
-            <span>구분</span><span>내용</span><span>인원/개수</span><span class="col-amount">금액 (฿)</span><span></span>
-          </div>
-          <div class="expense-list" id="${d.id}-list"></div>
-          <button class="btn-add" onclick="addExpenseRow('${d.id}')">＋ 항목 추가</button>
-          <div class="total-row" style="background:#f1f5f9;">
-            <span style="color:#475569;font-size:12px;">${dayNum}일차 당일 합계</span>
-            <span id="${d.id}-total">฿0</span>
-          </div>
-          <div class="total-row" id="${d.id}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
-            <span id="${d.id}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;"></span>
-            <span id="${d.id}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
-          </div>
-        </div>`;
+      panel.innerHTML = dayPanelHTML(d.id, d.label || (dayNum+'일차'));
       const optPanel = document.getElementById('tab-option');
       document.querySelector('.content').insertBefore(panel, optPanel);
     });
@@ -6623,25 +6648,7 @@ function applyStateToUI() {
       const panel = document.createElement('div');
       panel.id = 'tab-' + d.id;
       panel.className = 'tab-panel day-panel';
-      panel.innerHTML = `
-        <div class="section-card">
-          <div class="section-header">
-            <h3 id="${d.id}-hdr">${d.label} - 행사진행비 <span class="thb-badge">฿ 바트</span></h3>
-          </div>
-          <div class="col-headers">
-            <span>구분</span><span>내용</span><span>인원/개수</span><span class="col-amount">금액 (฿)</span><span></span>
-          </div>
-          <div class="expense-list" id="${d.id}-list"></div>
-          <button class="btn-add" onclick="addExpenseRow('${d.id}')">＋ 항목 추가</button>
-          <div class="total-row" style="background:#f1f5f9;">
-            <span style="color:#475569;font-size:12px;">${dayNum}일차 당일 합계</span>
-            <span id="${d.id}-total">฿0</span>
-          </div>
-          <div class="total-row" id="${d.id}-cumulative" style="display:none;background:#dbeafe;border-top:2px solid #3b82f6;">
-            <span id="${d.id}-cumulative-label" style="color:#1d4ed8;font-weight:700;font-size:12px;"></span>
-            <span id="${d.id}-cumulative-val" style="color:#1d4ed8;font-weight:800;">฿0</span>
-          </div>
-        </div>`;
+      panel.innerHTML = dayPanelHTML(d.id, d.label || (dayNum+'일차'));
       const optPanel = document.getElementById('tab-option');
       document.querySelector('.content').insertBefore(panel, optPanel);
     });
