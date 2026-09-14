@@ -1445,7 +1445,7 @@ function stepSummary(id){
       const team=($('#teamName').value||'').trim();
       const mark=[amDepOn()?'오전출발':'', amRetOn()?'오전출국':''].filter(Boolean).join(' · ');
       const s=$('#startDate').value, e=$('#endDate').value;
-      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join(' · ');
+      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join('  /  ');   // 날짜 / 여행사 / 인원 / 박수를 「/」로 구분(사장님 2026-09-14)
     }
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
