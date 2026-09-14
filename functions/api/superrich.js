@@ -49,8 +49,7 @@ export async function onRequestGet() {
         'accept': 'text/html,application/xhtml+xml',
         'accept-language': 'en-US,en;q=0.9,th;q=0.8',
       },
-      cache: 'no-store',
-      cf: { cacheTtl: 0, cacheEverything: false },
+      cache: 'no-store',   // cf.cacheTtl과 같이 쓰면 Cloudflare가 거부한다(502) — 이것 하나만 둔다
     });
     if (!r.ok) throw new Error('superrich ' + r.status);
     const html = await r.text();
