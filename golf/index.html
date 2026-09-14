@@ -304,7 +304,10 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         <!-- 요금 기준(지역 조합)은 내부 정보라 손님 앞에서 펼쳐 두지 않는다.
              평소에는 차량명만 보이고, 직접 골라야 할 때만 편다. -->
         <div class="f">
-          <!-- 작은 「차량」 라벨은 제목(5. 차량 선택)과 겹쳐 뺐다(사장님 2026-09-14). 차량 사진(관리 → 차량 열 수정창에서 올림)은 이름 왼쪽에 작게, 없으면 안 보인다 -->
+          <!-- 차종 드롭다운(밴·버스·짐밴… + 차량 필요 없음) — 관리 차량 열의 표시명을 모아 만든다(사장님 2026-09-14).
+               고르면 경로에 맞는 요금 열이 자동으로 걸리고, 「요금 기준 직접 선택」은 예외용으로 남긴다. -->
+          <select id="vehType" style="margin-bottom:8px;font-size:14px;font-weight:700;"></select>
+          <!-- 차량 사진(관리 → 차량 열 수정창에서 올림)은 이름 왼쪽에 작게, 없으면 안 보인다 -->
           <div style="display:flex;align-items:center;gap:10px;">
             <img id="vehImg" alt="" style="display:none;height:54px;max-width:112px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid #e3ded2;" onerror="this.style.display='none'">
             <div id="vehShown" style="font-weight:700;font-size:15px;padding:2px 0;">12인승 밴</div>
@@ -323,16 +326,20 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
           <select id="busGuide"></select>
           <div class="hint">버스에는 로컬가이드가 함께 탑니다. 한국어 가능 / 영어만 중 선택하세요. 요금은 견적에 자동으로 더해집니다.</div>
         </div>
-        <div><label for="noVeh" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
+        <!-- 「차량이 필요 없습니다」는 위 드롭다운의 선택지로 옮겼다 — 체크박스는 계산 로직용으로 숨겨 둔다 -->
+        <div><label for="noVeh" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="noVeh"> 차량이 필요 없습니다
-        </label><span id="noVehWarn" style="display:none;margin-left:10px;font-size:13px;font-weight:800;color:#c62828;"></span></div>
+        </label><span id="noVehWarn" style="display:none;font-size:13px;font-weight:800;color:#c62828;"></span></div>
       </div>
     </div>
 
     <div class="card step" id="s6">
-      <h2 class="steph askh"><input type="checkbox" id="useGuide"><label for="useGuide">6. 가이드 <span class="sublab">원하시면 체크</span></label><span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
-      <!-- 선택지는 buildGuideOptions()가 관리자 요금표의 가이드 종류로 채운다 -->
+      <!-- 가이드도 드롭다운 하나로: 종류들 + 「가이드 필요 없습니다」(사장님 2026-09-14).
+           예전 체크박스(#useGuide)와 종류칸(#guide)은 계산 로직이 그대로 쓰므로 숨겨 둔다. -->
+      <h2 class="steph">6. 가이드 선택<span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
       <div class="cbody">
+        <div class="f"><select id="guideSel" style="font-size:14px;font-weight:700;"></select></div>
+        <input type="checkbox" id="useGuide" style="display:none">
         <div class="f" id="guideWrap" style="display:none"><label>가이드 종류</label><select id="guide"></select></div>
       </div>
     </div>
@@ -364,7 +371,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     </div>
   </div>
   <div class="hint" id="vehNotes"></div>
-  <div class="hint">※ 표시 금액은 THB 기준, 항공료 미포함. 태국 공휴일·토·일은 주말 요금 적용.</div>
+  <!-- 「※ 표시 금액은 THB 기준, 항공료 미포함…」 고정 문구는 뺐다(사장님 2026-09-14). 필요하면 관리 → 기타 → 안내 문구로 넣는다 -->
 </div>
 
 <script>
@@ -666,6 +673,7 @@ function newQuote(){
   const ng=$('#nights'); if(ng) ng.value='';
   ['amDep','amRet','noHotel','useGuide','noVeh'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
+  const gsl=$('#guideSel'); if(gsl) gsl.value=''; guideNone=false;
   const vg=$('#vehGroup'); if(vg) vg.value='0';
   const vf=vg&&vg.closest('.f'); if(vf) vf.style.display='';
   const vp=$('#vehPickWrap'); if(vp) vp.style.display='none';
@@ -720,6 +728,10 @@ function syncVehShown(){
   if(im){ const u=(g&&g.img)?String(g.img).trim():''; if(u){ im.src=u; im.style.display=''; } else { im.removeAttribute('src'); im.style.display='none'; } }
   const de=$('#vehDesc');
   if(de){ const d=(g&&g.desc)?String(g.desc).trim():''; de.textContent=d; de.style.display=d?'':'none'; }
+  /* 차종 드롭다운도 지금 열에 맞춘다 */
+  const vt=$('#vehType');
+  if(vt&&vt.options.length){ const want=useVehOn()?vehTypeKey(g):VEH_NONE; if([...vt.options].some(o=>o.value===want)) vt.value=want; }
+  setVehInfoVisible(useVehOn());
   syncBusGuide();
 }
 /* 버스 동승 로컬가이드 칸 — 고른 차량 열이 관리에서 「버스」로 표시돼 있을 때만 보인다.
@@ -727,7 +739,7 @@ function syncVehShown(){
 function curVehGroup(){ return (P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)]; }
 function syncBusGuide(){
   const w=$('#busGuideWrap'), sel=$('#busGuide'); if(!w||!sel) return;
-  const g=curVehGroup(); const on=!!(g&&g.bus);
+  const g=curVehGroup(); const on=!!(g&&g.bus)&&useVehOn();
   w.style.display=on?'':'none';
   if(!on) return;
   const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
@@ -739,6 +751,63 @@ function syncBusGuide(){
     :(types.find(t=>/로컬|local/i.test(t))||types[0]||'');
 }
 function busGuideName(){ const g=curVehGroup(); return (useVehOn()&&g&&g.bus)?(($('#busGuide')||{}).value||''):''; }
+
+/* ── 차종 드롭다운(#vehType) — 관리 차량 열의 표시명을 모아 「밴 / 버스 / 짐밴 … / 차량이 필요 없습니다」로(사장님 2026-09-14) ── */
+const VEH_NONE='__none';
+function vehTypeKey(g){ return String((g&&g.name)||'').trim()||VEH_DEFAULT_NAME; }
+function buildVehTypeOptions(){
+  const sel=$('#vehType'); if(!sel) return;
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const seen=new Set(), opts=[];
+  (P.vehicleGroups||[]).forEach(g=>{ const k=vehTypeKey(g); if(seen.has(k)) return; seen.add(k); opts.push(`<option value="${esc(k)}">${esc(vehName(g))}</option>`); });
+  opts.push(`<option value="${VEH_NONE}">차량이 필요 없습니다</option>`);
+  const cur=sel.value;
+  sel.innerHTML=opts.join('');
+  if(cur&&[...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+/* 차종을 고르면: 같은 이름의 요금 열 중 경로에 맞는 열 → 없으면 그 이름의 첫 열 */
+function onVehTypeChange(){
+  const sel=$('#vehType'), gsel=$('#vehGroup'); if(!sel||!gsel) return;
+  const v=sel.value, no=$('#noVeh');
+  if(v===VEH_NONE){ if(no) no.checked=true; }
+  else{
+    if(no) no.checked=false;
+    const gs=P.vehicleGroups||[];
+    const key=a=>[...new Set(a.map(x=>String(x).trim()))].sort().join('|');
+    const want=key(ROUTE.map(r=>r.region).filter(Boolean));
+    let hit=gs.findIndex(g=>vehTypeKey(g)===v&&want&&(g.combos||[]).some(c=>key(c)===want));
+    if(hit<0) hit=gs.findIndex(g=>vehTypeKey(g)===v);
+    if(hit>=0) gsel.value=String(hit);
+    const tag=$('#vehAuto'); if(tag) tag.textContent='';
+  }
+  syncVehShown(); touched.add('s5'); autoFold('s5'); calc();
+}
+/* 차량 없음이면 사진·이름·설명·요금기준 줄은 감춘다(드롭다운만 남김) */
+function setVehInfoVisible(on){
+  const im=$('#vehImg'); const row=im&&im.parentElement; if(row) row.style.display=on?'':'none';
+  ['vehDesc','vehAuto','vehPickToggle','vehPickWrap'].forEach(id=>{ const e=$('#'+id); if(!e) return; if(!on) e.dataset.prevDisp=e.style.display, e.style.display='none'; else if(e.dataset.prevDisp!==undefined){ e.style.display=e.dataset.prevDisp; delete e.dataset.prevDisp; } });
+}
+
+/* ── 가이드 드롭다운(#guideSel) — 종류들 + 「가이드 필요 없습니다」. 계산은 예전 #useGuide/#guide 를 그대로 쓴다 ── */
+let guideNone=false;   // 「가이드 필요 없습니다」를 골랐는지(안 고른 것과 구분)
+function buildGuideSelOptions(){
+  const sel=$('#guideSel'); if(!sel) return;
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  const cur=sel.value;
+  sel.innerHTML=`<option value="">가이드 선택</option>`
+    +types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('')
+    +`<option value="${VEH_NONE}">가이드 필요 없습니다</option>`;
+  if(cur&&[...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+function onGuideSelChange(){
+  const v=($('#guideSel')||{}).value||'';
+  const ug=$('#useGuide'), g=$('#guide');
+  if(v===VEH_NONE){ guideNone=true; if(ug) ug.checked=false; if(g) g.value=''; }
+  else if(!v){ guideNone=false; if(ug) ug.checked=false; if(g) g.value=''; }
+  else { guideNone=false; if(ug) ug.checked=true; if(g){ if(![...g.options].some(o=>o.value===v)) buildGuideOptions(); g.value=v; } }
+  touched.add('s6'); autoFold('s6'); calc();
+}
 // 한 대에 몇 명까지 태우는지. 관리에서 안 넣었으면 기존 동작(7명)을 유지한다.
 function vehMaxPax(g){ const n=+(g&&g.maxPax); return n>0?n:7; }
 /* 고른 지역과 요금 열의 «적용 지역 조합»이 같으면 그 열을 자동으로 고른다.
@@ -751,7 +820,10 @@ function autoPickVehicleGroup(){
   const key=a=>[...new Set(a.map(x=>String(x).trim()))].sort().join('|');
   const want=key(picked);
   const gs=P.vehicleGroups||[];
-  const hit=gs.findIndex(g=>(g.combos||[]).some(c=>key(c)===want));
+  /* 고른 차종(밴/버스…)이 있으면 같은 이름의 열 안에서 먼저 찾는다 — 차종이 바뀌지 않게 */
+  const curName=vehTypeKey(gs[+(sel.value||0)]);
+  let hit=gs.findIndex(g=>vehTypeKey(g)===curName&&(g.combos||[]).some(c=>key(c)===want));
+  if(hit<0) hit=gs.findIndex(g=>(g.combos||[]).some(c=>key(c)===want));
   if(hit>=0 && String(sel.value)!==String(hit)){
     sel.value=String(hit);
     const tag=$('#vehAuto'); if(tag) tag.textContent='지역에 맞는 요금이 자동으로 적용되었습니다';
@@ -859,6 +931,7 @@ function renderVehicleUI(){
     const combos=(g.combos||[]).map(c=>c.join('+')).join(' / ');
     return `<option value="${i}">${vehName(g)}${combos?' — '+combos:(g.label?' — '+g.label:'')}</option>`;
   }).join('') || '<option value="">등록된 차량요금 없음</option>';
+  buildVehTypeOptions();
   syncVehShown();
   if(cur && groups[+cur]) sel.value=cur;
   const nt=$('#vehNotes');
@@ -1435,7 +1508,7 @@ function stepDone(id){
     }
     case 's4': return dayState.some(st=>st.round&&st.course);
     case 's5': return true;
-    case 's6': return !useGuideOn() || !!$('#guide').value;
+    case 's6': return useGuideOn() ? !!$('#guide').value : guideNone;   // 드롭다운에서 종류나 「필요 없음」을 골라야 끝난 것
   }
   return false;
 }
@@ -1478,7 +1551,7 @@ function stepSummary(id){
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
-    case 's6': return useGuideOn()?($('#guide').value||'가이드 종류를 선택하지 않으셨습니다'):(ROUTE.length?'가이드를 선택하지 않으셨습니다':'');
+    case 's6': return useGuideOn()?(guideLabel($('#guide').value)||'가이드 종류를 선택하지 않으셨습니다'):(guideNone?'가이드 없이':(ROUTE.length?'가이드를 선택하지 않으셨습니다':''));
   }
   return '';
 }
@@ -1585,6 +1658,8 @@ document.addEventListener('change',e=>{
   // 직원이 직접 고르면 자동 적용 안내는 지운다(직접 고른 값이 우선)
   if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; syncVehShown(); calc(); return; }
   if(t.id==='busGuide'){ calc(); return; }
+  if(t.id==='vehType'){ onVehTypeChange(); return; }
+  if(t.id==='guideSel'){ onGuideSelChange(); return; }
   if(t.id==='noVeh'){ const w=$('#vehGroup'); if(w) w.closest('.f').style.display=t.checked?'none':''; autoFold('s5'); calc(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; delete hotelRoomT[t.dataset.hotel]; renderHotels(); calc(); return; }   // 호텔이 바뀌면 객실 타입 칸을 다시 그린다
   if(t.dataset.hrt!==undefined){ hotelRoomT[t.dataset.hrt]=t.value; calc(); return; }
@@ -1710,6 +1785,7 @@ async function startApp(user){
   // 출발일자는 빈 칸으로 시작한다(사장님 2026-09-11) — 예전엔 2주 뒤 날짜를 미리 넣었다
   if(EMBED) await applySiteExposure();   // 팝업에서는 사이트에 노출한 골프장·호텔만
   buildGuideOptions();
+  buildGuideSelOptions();
   window._ready=true;
   refreshAll();
   $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
