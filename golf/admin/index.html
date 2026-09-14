@@ -302,6 +302,8 @@ const DEFAULT = {
   paxPerVan: 7,
   airportTip: 50,   // 공항 미팅 아따비 — 1인당 ฿, 차량이 들어가는 견적에 자동으로 붙는다(사장님 2026-09-14)
   // 차량 요금 아래에 붙는 안내 문구 (견적서에도 그대로 노출)
+  // 견적서 「불포함 사항」 — 기타 탭에서 고친다(사장님 2026-09-14)
+  excludeNotes: ['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','여행자보험'],
   vehicleNotes: [
     '일정외지역으로 운행시 추가유류비가 발생될 수 있습니다',
     '19시 초과시 시간당 300밧씩 추가 요금이 발생됩니다',
@@ -524,6 +526,7 @@ function normalize(d){
     PERIODS.forEach(p=>{ if(!grp.periods[p]) grp.periods[p]={amount:null,remark:''}; });
   });
   if(!Array.isArray(g.vehicleNotes)) g.vehicleNotes=DEFAULT.vehicleNotes.slice();
+  if(!Array.isArray(g.excludeNotes)) g.excludeNotes=DEFAULT.excludeNotes.slice();
   if(!Array.isArray(g.transfers))    g.transfers=JSON.parse(JSON.stringify(DEFAULT.transfers));
   /* regions(골프장·호텔 요금줄)는 이 화면 몫이 아니다 — 사이트 관리가 넣고, 저장 때 서버 것을 그대로 살린다(NOT_MINE) */
   return g;
@@ -761,23 +764,23 @@ function openVgEditor(gs, gi, onDone){
 /* ── 차량 요금: 지역 조합별 열 + 안내문구 + 수송밴 ── */
 /* 안내 문구(견적서에 함께 표시되는 줄들) — 차량 탭에 있던 것을 ⚙️ 기타 탭으로 옮겼다(사장님 2026-09-14).
    저장 자리는 그대로 G.vehicleNotes 라 견적기 쪽은 손대지 않았다. */
-function vehicleNotesEditor(){
+function notesEditor(key,title){   // key: G의 문구 배열 이름(vehicleNotes / excludeNotes)
   const box=el('div');
-  box.appendChild(el('div','mini','· 안내 문구 (견적서에 함께 표시)'));
+  box.appendChild(el('div','mini',title));
   const nbox=el('div');
   const drawNotes=()=>{
     nbox.innerHTML='';
-    (G.vehicleNotes||[]).forEach((t,i)=>{
+    (G[key]||[]).forEach((t,i)=>{
       const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;';
       const inp=document.createElement('input'); inp.type='text'; inp.value=t;
       inp.style.cssText='flex:1;font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
-      inp.oninput=()=>{ G.vehicleNotes[i]=inp.value; _touch(); };
+      inp.oninput=()=>{ G[key][i]=inp.value; _touch(); };
       const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
-      x.onclick=()=>{ G.vehicleNotes.splice(i,1); _touch(); drawNotes(); };
+      x.onclick=()=>{ G[key].splice(i,1); _touch(); drawNotes(); };
       row.appendChild(inp); row.appendChild(x); nbox.appendChild(row);
     });
     const add=el('button','btn ghost sm','＋ 문구 추가');
-    add.onclick=()=>{ (G.vehicleNotes=G.vehicleNotes||[]).push(''); _touch(); drawNotes(); };
+    add.onclick=()=>{ (G[key]=G[key]||[]).push(''); _touch(); drawNotes(); };
     nbox.appendChild(add);
   };
   drawNotes(); box.appendChild(nbox);
@@ -968,7 +971,8 @@ function render(){
     orow.appendChild(field('밴 1대당 최대 인원(명)',numInput(G,'paxPerVan')));
     orow.appendChild(field('공항 미팅 아따비 (1인당 ฿)',numInput(G,'airportTip')));
     oc.appendChild(orow);
-    const nb=vehicleNotesEditor(); nb.style.marginTop='12px'; oc.appendChild(nb);   // 안내 문구(차량 탭에서 옮김)
+    const nb=notesEditor('vehicleNotes','· 안내 문구 (견적서에 함께 표시)'); nb.style.marginTop='12px'; oc.appendChild(nb);   // 안내 문구(차량 탭에서 옮김)
+    const xb=notesEditor('excludeNotes','· 불포함 사항 (견적서 「불포함 사항」에 한 줄씩 표시)'); xb.style.marginTop='14px'; oc.appendChild(xb);   // 사장님 2026-09-14
     return oc;
   };
   // 만들어만 두고 화면에는 붙이지 않는다 — 선택한 것만 창 안으로 옮겨 보여준다
@@ -1140,6 +1144,7 @@ async function downloadGolfXlsx(){
     _gxSheet(wb,'수송밴',['구간','금액(THB)'],
       (G.transfers||[]).map(t=>[t.label||'',_gxNum(t.amount)]));
     _gxSheet(wb,'차량 안내문구',['문구'],(G.vehicleNotes||[]).filter(Boolean).map(t=>[t]));
+    _gxSheet(wb,'불포함 사항',['문구'],(G.excludeNotes||[]).filter(Boolean).map(t=>[t]));
 
     _gxSheet(wb,'핸들링차지',['기간','금액(THB)','비고'],
       PERIODS.map(p=>[p,_gxNum((G.handlingPeriods[p]||{}).amount),(G.handlingPeriods[p]||{}).remark||'']));

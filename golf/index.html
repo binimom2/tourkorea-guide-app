@@ -1123,6 +1123,8 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;'
 const WDAY=['일','월','화','수','목','금','토'];
 function fmtDay(ds){ const d=new Date(ds+'T00:00:00'); return `${ds.slice(5).replace('-','/')} (${WDAY[d.getDay()]})`; }
 
+/* 견적서 '불포함 사항' — 고정 목록(사장님 2026-09-14). 바꿀 일이 있으면 여기만 고친다 */
+const QUOTE_EXCLUDES=['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','여행자보험'];
 /* 견적서에 적을 '포함 사항' — 실제로 담긴 항목만 손님 말로 바꿔 적는다.
    핸들링 차지는 손님용에 적지 않는다(금액에는 그대로 들어간다). */
 function quoteIncludes(mode){
@@ -1322,6 +1324,13 @@ function buildQuoteHtml(mode, Q){
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
         ${(((Q.includes||{})[mode==='internal'?'internal':'customer'])||[]).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
+      </div>
+    </div>
+    <!-- 불포함 사항(사장님 2026-09-14) — QUOTE_EXCLUDES 상수 -->
+    <div style="margin-top:12px">
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
+      <div style="font-size:12.5px;color:#2b3a33">
+        ${(Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
       </div>
     </div>
     ${detail}
@@ -1706,6 +1715,7 @@ async function loadPricing(){
       hotels:DEFAULT_PRICING.hotels,
       handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{},
       airportTip:(d.airportTip==null)?50:(+d.airportTip||0),   // 공항 미팅 아따비(1인당 ฿) — 관리 → 기타. 안 정했으면 50
+      excludeNotes:Array.isArray(d.excludeNotes)?d.excludeNotes:null,   // 견적서 불포함 사항(관리 → 기타). 없으면 QUOTE_EXCLUDES 기본
       // 가이드 종류는 관리자에서 추가·삭제할 수 있다(없으면 저장된 요금의 종류를 그대로 씀)
       guideTypes:(Array.isArray(d.guideTypes)&&d.guideTypes.length)?d.guideTypes:Object.keys(d.guidePeriods||{}),
       // 차량: 지역 조합별 요금 열. 예전 데이터(단일 vehiclePeriods)만 있으면 한 열로 취급.
