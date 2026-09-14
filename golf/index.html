@@ -118,13 +118,13 @@ html.embed .wrap{padding-top:6px}
 .askh label{cursor:pointer}
 /* 견적 결과: 1인 요금 × 인원수 = 총액 */
 .sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 2px}
-.sum-k{font-size:13px;opacity:.85}
+.sum-k{font-size:18px;opacity:.85}   /* 1인 요금·인원수 글자 13→18px(사장님 2026-09-14: 4pt 키움) */
 .sum-v{font-size:19px;font-weight:800;letter-spacing:.2px}
 .sum-v em{font-style:normal;font-size:12px;font-weight:700;opacity:.7;margin-left:2px}
 .sum-mul{border-top:1px dashed rgba(18,58,43,.25)}
 .sum-mul .sum-v{font-size:15px}
 .sum-total{border-top:2px solid var(--marigold);margin-top:4px;padding-top:12px}
-.sum-total .sum-k{font-size:15px;font-weight:800;opacity:1}
+.sum-total .sum-k{font-size:20px;font-weight:800;opacity:1}   /* 총액 15→20px */
 .sum-total .sum-v{font-size:26px;color:var(--fairway)}
 .sum-empty{opacity:.6;padding:10px 2px;font-size:13px}
 .sum-warn{margin-top:10px;font-size:12.5px;font-weight:700;color:#a8410f}
@@ -171,7 +171,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .res tfoot td.n{font-size:21px;color:var(--fairway)}
 .perp{padding-top:7px;font-size:12.5px;opacity:.8}
 /* 견적서 내려받기 버튼 */
-.dlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(18,58,43,.18)}
+.dlrow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(18,58,43,.18)}   /* 단추는 오른쪽 줄 맞춤(사장님 2026-09-14) */
 .dlbtn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--fairway);background:var(--fairway);color:var(--sand);cursor:pointer}
 /* 견적서 미리보기 창 — 「견적서 보기」는 파일을 바로 받지 않고 여기에 띄운다(사장님 2026-09-11) */
 #qvModal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
