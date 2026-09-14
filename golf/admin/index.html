@@ -160,8 +160,9 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
   if(new URLSearchParams(location.search).get('embed')==='1'){
     document.documentElement.classList.add('embed');
     addEventListener('DOMContentLoaded',()=>{
-      ['gTitle','siteAdminLink'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); });
-      document.querySelectorAll('#gNav a[href="/golf/site/"]').forEach(e=>e.remove());
+      /* 계정관리(accBtn)·견적 페이지 링크도 바깥(사이트 관리 상단)에 있으니 여기서는 안 보인다(사장님 2026-09-14). 엑셀·백업복원은 남긴다. */
+      ['gTitle','siteAdminLink','accBtn'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); });
+      document.querySelectorAll('#gNav a[href="/golf/site/"], #gNav a[href="/golf/"]').forEach(e=>e.remove());
       document.querySelectorAll('#gNav button').forEach(b=>{ if(/로그아웃/.test(b.textContent)) b.remove(); });
     });
   }
