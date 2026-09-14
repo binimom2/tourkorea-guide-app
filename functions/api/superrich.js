@@ -19,8 +19,9 @@ const json = (o, s = 200) =>
     status: s,
     headers: {
       'content-type': 'application/json;charset=utf-8',
-      // 환율은 하루 몇 번 바뀐다 — 5분 캐시로 충분하고 SuperRich 과호출도 막는다
-      'cache-control': 'public, max-age=300',
+      // 사장님이 정산하며 누르는 「그 순간」 값이어야 한다(2026-09-14) — 캐시 없이 매번 새로 읽는다.
+      // 하루에 몇 번 누르는 정도라 SuperRich 과호출 걱정은 없다.
+      'cache-control': 'no-store',
       'access-control-allow-origin': '*',
     },
   });
@@ -48,7 +49,8 @@ export async function onRequestGet() {
         'accept': 'text/html,application/xhtml+xml',
         'accept-language': 'en-US,en;q=0.9,th;q=0.8',
       },
-      cf: { cacheTtl: 300, cacheEverything: true },
+      cache: 'no-store',
+      cf: { cacheTtl: 0, cacheEverything: false },
     });
     if (!r.ok) throw new Error('superrich ' + r.status);
     const html = await r.text();
