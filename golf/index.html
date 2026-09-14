@@ -1446,7 +1446,8 @@ function stepSummary(id){
     }
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
-      if(!useHotelOn()) return '호텔 없이';
+      /* 「필요 없음」에 체크돼 있어도 호텔을 안 고른 상태이므로 빨갛게 표시 — 물어보지 않고 넘어간 건지 바로 보이게(사장님 2026-09-14) */
+      if(!useHotelOn()) return '⚠ 호텔 없이 · 미선택';
       const out=[];
       ROUTE.forEach(r=>{
         const idx=hotelPick[r.sid];
@@ -1455,7 +1456,7 @@ function stepSummary(id){
         const rt=hotelRoom[r.sid]||'twin';
         out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);
       });
-      return out.join(' · ')||'⚠ 숙소 미선택';
+      return out.join(' · ')||'⚠ 호텔 미선택';
     }
     case 's4': {
       const done=dayState.filter(st=>st.round&&st.course);
