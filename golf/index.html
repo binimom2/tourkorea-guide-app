@@ -1054,19 +1054,22 @@ function fmtDay(ds){ const d=new Date(ds+'T00:00:00'); return `${ds.slice(5).rep
    핸들링 차지는 손님용에 적지 않는다(금액에는 그대로 들어간다). */
 function quoteIncludes(mode){
   const out=[];
-  const rounds=dayState.filter(s=>s.round&&s.course).length;
-  if(rounds) out.push(`골프 ${rounds}회 — 그린피 · 캐디피 · 전동카트 포함`);
+  /* 「골프 3회」 → 「18홀×3회」 — 홀수가 섞이면 「18홀×2회 · 9홀×1회」(사장님 2026-09-14) */
+  const byHoles={};
+  dayState.filter(s=>s.round&&s.course).forEach(s=>{ const h=String(s.holes||'18'); byHoles[h]=(byHoles[h]||0)+1; });
+  const golfTxt=Object.keys(byHoles).sort((a,b)=>+b-+a).map(h=>`${h}홀×${byHoles[h]}회`).join(' · ');
+  if(golfTxt) out.push(`골프 ${golfTxt} — 그린피 · 캐디피 · 전동카트 포함`);
   if(useVehOn()){
     const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
     const pax=Math.max(1,+$('#pax').value||1);
     const cap=vehMaxPax(vg), vans=Math.ceil(pax/cap);
     /* 12인승인데 7명 기준으로 대수를 잡으면 손님이 «왜 8명에 2대냐»고 묻는다.
        인승보다 탑승 기준이 적을 때만 이유를 적어 둔다. */
-    const why=(vg&&vg.seats&&cap<vg.seats)?` (수화물·골프백 적재로 1대 ${cap}명 기준)`:'';
+    /* 「(수화물·골프백 적재로 1대 N명 기준)」 문구는 뺐다 — 차량 열의 「설명」 칸으로 대신 적는다(사장님 2026-09-14).
+       공항 미팅 아따비는 금액엔 들어가지만 포함 사항에는 적지 않는다(사장님). */
     // 손님용에는 표시명만. 요금기준 라벨(내부 메모 포함)은 내부용에만 붙인다.
-    out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} — 전 일정 이용${why}${(vg&&vg.desc)?` · ${String(vg.desc).trim()}`:''}${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
+    out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} — 전 일정 이용${(vg&&vg.desc)?` · ${String(vg.desc).trim()}`:''}${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
     if(vg&&vg.bus&&busGuideName()) out.push(`버스 동승 로컬가이드 · ${busGuideName()}`);
-    if(+P.airportTip>0) out.push(`공항 미팅 아따비 — 1인 ${won(+P.airportTip)}`);
   }
   if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);

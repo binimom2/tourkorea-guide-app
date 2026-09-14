@@ -263,7 +263,7 @@ export async function onRequestPost({ request, env }) {
   if (hotelNights) includes.push('숙소 ' + hotelNights + '박');
   if (B.vehicle !== false) includes.push('전용 차량 · 기사');
   if (busGuideName) includes.push('버스 동승 로컬가이드 · ' + busGuideName);
-  if (airportTip > 0) includes.push('공항 미팅 아따비 (1인 ' + airportTip + '฿)');
+  /* 공항 미팅 아따비는 금액에는 들어가지만 포함 내역에는 적지 않는다(사장님 2026-09-14, 직원용 견적서와 동일) */
   if (gt) includes.push(gt + (guideLodgeNights ? ' (지방 숙박 ' + guideLodgeNights + '박 포함)' : ''));
 
   return json({
