@@ -306,6 +306,12 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
             <select id="vehGroup"></select>
           </div>
         </div>
+        <!-- 버스는 로컬가이드가 의무 동승한다(사장님 2026-09-14). 관리에서 「버스」로 표시한 차량을 고르면 이 칸이 열린다 -->
+        <div class="f" id="busGuideWrap" style="display:none;margin-top:8px;">
+          <label>🚌 버스 동승 로컬가이드 <span class="sublab">필수</span></label>
+          <select id="busGuide"></select>
+          <div class="hint">버스에는 로컬가이드가 함께 탑니다. 한국어 가능 / 영어만 중 선택하세요. 요금은 견적에 자동으로 더해집니다.</div>
+        </div>
         <label for="noVeh" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="noVeh"> 차량이 필요 없습니다
         </label>
@@ -489,6 +495,9 @@ function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
 /* 오전 출발(full=true)이면 첫날부터 온종일 쓰므로 '풀' 요금표를 쓴다.
    밤 비행기면 첫날은 이동뿐이라 일반 요금표를 쓴다.
    '풀' 요금이 입력돼 있지 않으면 일반 요금으로 되돌아간다(견적이 비지 않게). */
+/* 가이드 지방 숙박비 저장 키(관리 화면 GUIDE_LODGING과 같은 글자) · 방콕 판정은 지역 이름으로 */
+const GUIDE_LODGING_KEY='지방숙박(1박당)';
+function isBkkRegion(n){ return /방콕|bangkok|bkk/i.test(String(n||'')); }
 function tierValue(obj, N, key, full){
   const NORMAL=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];
   const FULL  =[['풀1박2일',1],['풀2박3일',2],['풀3박4일',3]];
@@ -694,7 +703,25 @@ function syncVehShown(){
   const el=$('#vehShown'); if(!el) return;
   const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
   el.textContent=vehName(g);
+  syncBusGuide();
 }
+/* 버스 동승 로컬가이드 칸 — 고른 차량 열이 관리에서 「버스」로 표시돼 있을 때만 보인다.
+   선택지는 가이드 요금 표의 종류(한국어 가능 / 영어만 …). 기본값은 관리에서 정한 기본 동승 가이드. */
+function curVehGroup(){ return (P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)]; }
+function syncBusGuide(){
+  const w=$('#busGuideWrap'), sel=$('#busGuide'); if(!w||!sel) return;
+  const g=curVehGroup(); const on=!!(g&&g.bus);
+  w.style.display=on?'':'none';
+  if(!on) return;
+  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const cur=sel.value;
+  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  sel.value=(cur&&types.includes(cur))?cur
+    :(g.busGuideType&&types.includes(g.busGuideType))?g.busGuideType
+    :(types.find(t=>/로컬|local/i.test(t))||types[0]||'');
+}
+function busGuideName(){ const g=curVehGroup(); return (useVehOn()&&g&&g.bus)?(($('#busGuide')||{}).value||''):''; }
 // 한 대에 몇 명까지 태우는지. 관리에서 안 넣었으면 기존 동작(7명)을 유지한다.
 function vehMaxPax(g){ const n=+(g&&g.maxPax); return n>0?n:7; }
 /* 고른 지역과 요금 열의 «적용 지역 조합»이 같으면 그 열을 자동으로 고른다.
@@ -911,6 +938,18 @@ function calc(){
     // 내부 화면·내부용 견적서에만 요금기준 라벨을 붙인다(라벨에 내부 메모가 섞여 있음)
     if(vt){ const vans=Math.ceil(pax/vehMaxPax(vGroup)); lines.push({t:`${vehName(vGroup)}${vGroup&&vGroup.label?' · '+vGroup.label:''}`,s:`${won(vt.value)}${vt.extra?` (기본 ${won(vt.base)} +1박추가 ${won(vt.oneMore)}×${vt.extra})`:''} × ${vans}대`,v:vt.value*vans}); }
     else lines.push({t:'차량',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
+    /* 버스 동승 로컬가이드(필수) — 기간표 요금 + 지방 숙박비. 서버 API(golf-quote.js)와 같은 규칙 */
+    if(vGroup&&vGroup.bus){
+      const bt=($('#busGuide')||{}).value||'';
+      const BG=(P.guidePeriods||{})[bt];
+      const bv=BG?tierValue(BG,nights,'bkk',amDep):null;
+      if(bv){
+        lines.push({t:`${bt} (버스 동승)`,s:`${won(bv.value)}${bv.extra?` (기본 ${won(bv.base)} +1박추가 ${won(bv.oneMore)}×${bv.extra})`:''}`,v:bv.value});
+        const lodge=+(((BG||{})[GUIDE_LODGING_KEY]||{}).bkk)||0;
+        const regN=ROUTE.reduce((a,r)=>a+(isBkkRegion(r.region)?0:(+r.nights||0)),0);
+        if(lodge>0&&regN>0) lines.push({t:`${bt} (버스 동승) · 지방 숙박비`,s:`방콕 외 ${regN}박 × ${won(lodge)}`,v:lodge*regN});
+      } else lines.push({t:'버스 동승 로컬가이드',s:bt?'요금 미입력':'종류 선택 필요',v:0,warn:1});
+    }
   }
   // 3) 핸들링
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
@@ -925,6 +964,11 @@ function calc(){
       // 이름은 관리자에 등록된 종류를 그대로 쓴다(종류를 추가해도 견적서에 그 이름으로 나온다)
       lines.push({t:gt,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
+    /* 지방 숙박비 — 방콕 외 지역에서 자는 밤마다 가이드 숙박비를 더한다
+       (사장님 2026-09-14: 방콕 3박과 방콕1박+파타야2박은 가이드 요금이 달라야 한다). 관리 → 가이드 요금 맨 아래 줄. */
+    const lodge=+(((G||{})[GUIDE_LODGING_KEY]||{}).bkk)||0;
+    const regNights=ROUTE.reduce((a,r)=>a+(isBkkRegion(r.region)?0:(+r.nights||0)),0);
+    if(lodge>0&&regNights>0) lines.push({t:`${gt} · 지방 숙박비`,s:`방콕 외 ${regNights}박 × ${won(lodge)}`,v:lodge*regNights});
   }
   // 5) 숙소 — '숙소도 원하시나요?'를 체크했을 때, 고른 지역별로. 실수는 룸타입에 따라 달라진다.
   const H=P.hotels||{};
@@ -1001,6 +1045,7 @@ function quoteIncludes(mode){
     const why=(vg&&vg.seats&&cap<vg.seats)?` (수화물·골프백 적재로 1대 ${cap}명 기준)`:'';
     // 손님용에는 표시명만. 요금기준 라벨(내부 메모 포함)은 내부용에만 붙인다.
     out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} — 전 일정 이용${why}${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
+    if(vg&&vg.bus&&busGuideName()) out.push(`버스 동승 로컬가이드 · ${busGuideName()}`);
   }
   if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
@@ -1400,7 +1445,7 @@ function stepSummary(id){
     case 's5': {
       if(!useVehOn()) return '차량 없이';
       const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
-      return g?vehName(g):'';
+      return g?vehName(g)+(busGuideName()?` · 동승 ${busGuideName()}`:''):'';
     }
     case 's6': return useGuideOn()?($('#guide').value||''):'가이드 없이';
   }
@@ -1493,6 +1538,7 @@ document.addEventListener('change',e=>{
   if(t.id==='useGuide'){ $('#guideWrap').style.display=t.checked?'':'none'; autoFold('s6'); calc(); return; }
   // 직원이 직접 고르면 자동 적용 안내는 지운다(직접 고른 값이 우선)
   if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; syncVehShown(); calc(); return; }
+  if(t.id==='busGuide'){ calc(); return; }
   if(t.id==='noVeh'){ const w=$('#vehGroup'); if(w) w.closest('.f').style.display=t.checked?'none':''; autoFold('s5'); calc(); return; }
   if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; delete hotelRoomT[t.dataset.hotel]; renderHotels(); calc(); return; }   // 호텔이 바뀌면 객실 타입 칸을 다시 그린다
   if(t.dataset.hrt!==undefined){ hotelRoomT[t.dataset.hrt]=t.value; calc(); return; }

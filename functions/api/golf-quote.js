@@ -181,6 +181,7 @@ export async function onRequestPost({ request, env }) {
   });
 
   /* 2) 차량 */
+  let busGuideName = '';   // 버스 동승 로컬가이드 종류(붙었을 때만) — includes에 적는다
   if (B.vehicle !== false) {
     const groups = Array.isArray(P.vehicleGroups) && P.vehicleGroups.length
       ? P.vehicleGroups
@@ -190,6 +191,25 @@ export async function onRequestPost({ request, env }) {
     const vt = tierValue((g && g.periods) || {}, nights, 'amount', amDep);
     if (vt) total += vt.value * Math.ceil(pax / (+(g && g.maxPax) > 0 ? +g.maxPax : 7));
     else warnings.push('차량 요금이 등록되어 있지 않습니다');
+    /* 버스는 로컬가이드가 의무 동승한다(사장님 2026-09-14) — 관리에서 차량 열에 「버스」를 켜 두면
+       동승 가이드 요금(기간표 + 지방 숙박비)이 자동으로 붙는다. 종류는 손님이 고른 것(B.busGuide) →
+       관리의 기본 동승 가이드 → 이름에 '로컬'이 든 첫 종류 순. */
+    if (g && g.bus) {
+      const types = (Array.isArray(P.guideTypes) && P.guideTypes.length) ? P.guideTypes : Object.keys(P.guidePeriods || {});
+      const want = String(B.busGuide || '');
+      const bt = (want && types.includes(want)) ? want
+        : (g.busGuideType && types.includes(g.busGuideType)) ? g.busGuideType
+        : (types.find((t) => /로컬|local/i.test(t)) || types[0] || '');
+      const BG = (P.guidePeriods || {})[bt] || {};
+      const bv = bt ? tierValue(BG, nights, 'bkk', amDep) : null;
+      if (bv) {
+        total += bv.value;
+        const lodge = +((BG['지방숙박(1박당)'] || {}).bkk) || 0;
+        const regN = route.reduce((a, r) => a + (/방콕|bangkok|bkk/i.test(String(r.region || '')) ? 0 : Math.max(0, Math.round(+r.nights || 0))), 0);
+        if (lodge > 0 && regN > 0) total += lodge * regN;
+        busGuideName = bt;
+      } else warnings.push('버스 동승 로컬가이드 요금이 등록되어 있지 않습니다');
+    }
   }
 
   /* 3) 핸들링 차지 — 직원용 견적기와 같이 항상 붙는다 */
@@ -199,10 +219,17 @@ export async function onRequestPost({ request, env }) {
 
   /* 4) 가이드 — 고른 종류가 있을 때만 */
   const gt = String(B.guide || '');
+  let guideLodgeNights = 0;
   if (gt) {
-    const gv = tierValue((P.guidePeriods || {})[gt] || {}, nights, 'bkk', amDep);
+    const GP = (P.guidePeriods || {})[gt] || {};
+    const gv = tierValue(GP, nights, 'bkk', amDep);
     if (gv) total += gv.value;
     else warnings.push(gt + ' 요금이 등록되어 있지 않습니다');
+    /* 지방 숙박비 — 방콕 외 지역에서 자는 밤마다 가이드 숙박비(관리 → 가이드 요금 맨 아래 줄)를 더한다.
+       직원용 견적기(/golf/ calc)와 같은 규칙(사장님 2026-09-14). */
+    const lodge = +((GP['지방숙박(1박당)'] || {}).bkk) || 0;
+    const regNights = route.reduce((a, r) => a + (/방콕|bangkok|bkk/i.test(String(r.region || '')) ? 0 : Math.max(0, Math.round(+r.nights || 0))), 0);
+    if (lodge > 0 && regNights > 0) { total += lodge * regNights; guideLodgeNights = regNights; }
   }
 
   /* 5) 숙소 — (1박 요금 + 마진) × 박수 × 실수. 마진은 인원과 무관하게 «1실 1박당». */
@@ -231,7 +258,8 @@ export async function onRequestPost({ request, env }) {
   if (golfCount) includes.push('골프 ' + golfCount + '회 (그린피·캐디피·카트비 포함)');
   if (hotelNights) includes.push('숙소 ' + hotelNights + '박');
   if (B.vehicle !== false) includes.push('전용 차량 · 기사');
-  if (gt) includes.push(gt);
+  if (busGuideName) includes.push('버스 동승 로컬가이드 · ' + busGuideName);
+  if (gt) includes.push(gt + (guideLodgeNights ? ' (지방 숙박 ' + guideLodgeNights + '박 포함)' : ''));
 
   return json({
     ok: true,

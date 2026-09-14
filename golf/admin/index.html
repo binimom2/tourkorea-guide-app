@@ -111,6 +111,22 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .ptable td.pname{font-weight:700;font-size:13.5px;white-space:nowrap;color:var(--fairway)}
 .ptable input.pin{width:100%;font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper)}
 .ptable input.pin:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
+/* ── 요금표 손질(사장님 2026-09-14: 창이 작아 불편 + 디자인) ── */
+.ptable thead th{position:sticky;top:0;z-index:1;background:var(--paper);font-size:12px;letter-spacing:.02em;padding:9px 8px;border-bottom:2px solid var(--line)}
+.ptable td{padding:6px 6px}
+.ptable tbody tr:nth-child(even) td{background:#fbfbf8}
+.ptable tbody tr:hover td{background:#f3f6ef}
+.ptable td.pname{padding-left:10px;border-left:3px solid transparent}
+.ptable tbody tr:hover td.pname{border-left-color:var(--marigold)}
+.ptable input.pin{min-width:96px}
+.ptable input.pin[inputmode]{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--fairway)}
+.ptable tr.plodge td{background:#fff8e6!important;border-top:2px solid var(--marigold)}
+/* 사이트 관리에 끼워 넣었을 때(.embed)는 팝업 대신 화면 전체 폭·전체 높이의 판으로 편다 —
+   팝업은 iframe 높이 안에 갇혀 표를 조금씩만 볼 수 있었다. 바깥 페이지가 길어지며 통째로 보인다. */
+.embed #rateModal{position:static!important;padding:0!important;background:transparent!important;display:block}
+.embed #rateModal>div{max-width:none!important;max-height:none!important;border:1px solid var(--line);box-shadow:0 8px 30px rgba(11,35,26,.08)}
+.embed #rateBody{overflow:visible!important}
+.embed.rate-open #editor{display:none}   /* 판이 펴져 있는 동안 종류 단추 카드는 감춘다(탭이 그 역할) */
 /* 골프장/숙소 가로 표 */
 .hidden{display:none!important}
 </style>
@@ -213,7 +229,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 
 <!-- 요금표 관리: 창 하나에 상단 탭으로 종류를 바꾼다(여행수배서 코드관리와 같은 방식) -->
 <div id="rateModal" class="hidden" style="position:fixed;inset:0;background:rgba(11,35,26,.6);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px" onmousedown="if(event.target===this)closeRate()">
-  <div style="background:#fff;border-radius:14px;max-width:1100px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+  <div style="background:#fff;border-radius:14px;max-width:1400px;width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">
       <b style="font-size:15px">💰 실시간견적 요금표 관리</b>
       <div style="display:flex;gap:8px;align-items:center">
@@ -224,6 +240,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
     </div>
     <div id="rateTabs" class="rtabs"></div>
     <div id="rateBody" style="padding:16px 18px;overflow:auto"></div>
+    <!-- 표가 길어 위쪽 저장 단추가 멀어진다 — 아래에도 같은 단추를 둔다 (끼워 넣은 화면에서는 위 단추가 스크롤에 밀려 올라간다) -->
+    <div id="rateFoot" style="display:flex;justify-content:flex-end;gap:8px;padding:10px 18px;border-top:1px solid var(--line);background:var(--paper)">
+      <button class="btn sm" onclick="saveFromRate()" style="background:var(--marigold);color:#3a2600;border-color:var(--marigold);font-weight:800">💾 저장</button>
+      <button class="btn ghost sm" onclick="closeRate()">닫기</button>
+    </div>
   </div>
 </div>
 
@@ -456,7 +477,17 @@ function normalize(d){
       ? [...pref.filter(t=>found.includes(t)), ...found.filter(t=>!pref.includes(t))]
       : pref.slice();
   }
-  g.guideTypes.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_PERIODS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
+  /* 로컬가이드는 「한국어 가능」과 「영어만」으로 나눈다(사장님 2026-09-14, 버스 동승 가이드 선택용).
+     옛 이름 '로컬가이드'는 요금을 그대로 들고 '로컬가이드(한국어 가능)'으로 바뀌고, '로컬가이드(영어만)'은 빈 열로 추가된다.
+     (이름은 가이드 요금 표에서 언제든 고칠 수 있다) */
+  const LG_KO='로컬가이드(한국어 가능)', LG_EN='로컬가이드(영어만)';
+  if(g.guideTypes.includes('로컬가이드') && !g.guideTypes.includes(LG_KO)){
+    g.guideTypes[g.guideTypes.indexOf('로컬가이드')]=LG_KO;
+    if(g.guidePeriods['로컬가이드']){ g.guidePeriods[LG_KO]=g.guidePeriods['로컬가이드']; delete g.guidePeriods['로컬가이드']; }
+    (g.vehicleGroups||[]).forEach(v=>{ if(v&&v.busGuideType==='로컬가이드') v.busGuideType=LG_KO; });
+  }
+  if(!g.guideTypes.includes(LG_EN)) g.guideTypes.push(LG_EN);
+  g.guideTypes.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_ROWS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
 
   /* 차량: 지역 조합별 요금 열(그룹). 예전의 단일 vehiclePeriods는 첫 그룹으로 이관한다. */
   if(!Array.isArray(g.vehicleGroups) || !g.vehicleGroups.length){
@@ -572,6 +603,11 @@ function dateInput(obj,key){
 /* ══════════ 기간별 요금표 ══════════ */
 const PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
 const GUIDE_PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
+/* 지방 숙박비: 방콕 외 지역(파타야·후아힌…)에서 자는 밤마다 가이드 숙박비가 붙는다(사장님 2026-09-14).
+   방콕 3박과 방콕1박+파타야2박은 가이드 요금이 달라야 해서 기간표와 별도 줄로 둔다.
+   저장 자리는 guidePeriods[종류][이 키].bkk — 견적기·API가 경로의 방콕 외 박수 × 이 값을 더한다. */
+const GUIDE_LODGING='지방숙박(1박당)';
+const GUIDE_ROWS=[...GUIDE_PERIODS, GUIDE_LODGING];
 const GUIDE_TYPES=['한국인가이드','로컬가이드'];
 function thEl(t){ const th=document.createElement('th'); th.textContent=t; return th; }
 // 기간 × [금액,비고] 단순 표 (차량·핸들링)
@@ -632,6 +668,15 @@ function openVgEditor(gs, gi, onDone){
         `한 줄에 조합 하나, 지역은 + 로 잇습니다. 견적에서 고른 지역이 이 조합과 같으면 이 요금이 자동으로 걸립니다.<br>등록된 지역: ${regions.length?escapeHtml(regions.join(' · ')):'(코드관리에서 지역을 먼저 등록하세요)'}`)}
     ${F('요금기준 라벨 <span style="color:#8b948e">· 관리 화면에서만 보임</span>',
         `<input id="vgLabel" style="${IN}" value="${escapeAttr(g.label||'')}">`)}
+    <div style="margin:4px 0 10px;padding:10px 11px;border:1px dashed #d8d2c4;border-radius:9px;background:#fffaf0;">
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;cursor:pointer;">
+        <input id="vgBus" type="checkbox" ${g.bus?'checked':''}> 🚌 버스 — 로컬가이드 동승 필수
+      </label>
+      <div style="font-size:10.5px;color:#8b948e;margin:3px 0 7px;">버스는 의무적으로 로컬가이드가 함께 탑니다. 견적에서 이 차량을 고르면 동승 로컬가이드를 선택하는 칸이 생기고, 그 가이드 요금(지방 숙박비 포함)이 더해집니다.</div>
+      ${F('기본 동승 가이드 <span style="color:#8b948e">· 견적에서 바꿀 수 있음</span>',
+        `<select id="vgBusGuide" style="${IN}">${(G.guideTypes||[]).map(t=>`<option value="${escapeAttr(t)}"${t===(g.busGuideType||'')?' selected':''}>${escapeHtml(t)}</option>`).join('')}</select>`,
+        '가이드 종류(한국어 가능 / 영어만 등)는 「가이드 요금」 표에서 추가·이름 수정')}
+    </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button id="vgCancel" class="btn ghost sm">취소</button>
       <button id="vgOk" class="btn sm">저장</button>
@@ -647,6 +692,8 @@ function openVgEditor(gs, gi, onDone){
     const s=v('vgSeats'), m=v('vgMax');
     g.seats = s===''?null:Number(s);
     g.maxPax= m===''?null:Number(m);
+    g.bus = !!ov.querySelector('#vgBus').checked;                       // 버스: 로컬가이드 동승 필수(사장님 2026-09-14)
+    g.busGuideType = g.bus ? v('vgBusGuide') : '';
     g.combos = v('vgCombos').split('\n')
       .map(l=>l.split('+').map(x=>x.trim()).filter(Boolean))
       .filter(a=>a.length);
@@ -777,7 +824,8 @@ function escapeAttr(s){ return escapeHtml(s); }
    비고는 기간당 한 칸만 쓰되 저장 구조는 그대로 둔다 — 두 구분 모두에 같은 값을 넣는다.
    (엑셀 내려받기가 구분별 비고를 읽기 때문. 견적 페이지는 금액만 쓴다) */
 function guideTable(){
-  const c=card('🧑‍🏫 가이드 요금','기간은 모든 종류 공통입니다. 이름을 누르면 수정, ✕로 삭제, 아래 버튼으로 종류를 추가합니다.');
+  const c=card('🧑‍🏫 가이드 요금','기간은 모든 종류 공통입니다. 이름을 누르면 수정, ✕로 삭제, 아래 버튼으로 종류를 추가합니다. '
+    +'맨 아래 「지방 숙박비」는 방콕 외 지역에서 자는 밤마다 더해집니다 (예: 방콕1박+파타야2박 → 2박분).');
   const wrap=el('div'); c.appendChild(wrap);
   const draw=()=>{
     const types=G.guideTypes;
@@ -809,10 +857,15 @@ function guideTable(){
     hr.appendChild(thEl('비고'));
     thead.appendChild(hr); tbl.appendChild(thead);
     const tb=document.createElement('tbody');
-    GUIDE_PERIODS.forEach(p=>{
+    GUIDE_ROWS.forEach(p=>{
       const cells=types.map(t=>{ const T=(G.guidePeriods[t]=G.guidePeriods[t]||{}); if(!T[p]) T[p]={bkk:null,remark:''}; return T[p]; });
       const tr=document.createElement('tr');
-      const td0=document.createElement('td'); td0.className='pname'; td0.textContent=p; tr.appendChild(td0);
+      const td0=document.createElement('td'); td0.className='pname';
+      if(p===GUIDE_LODGING){
+        tr.className='plodge';
+        td0.innerHTML='🏨 지방 숙박비 <small style="font-weight:600;color:var(--muted)">방콕 외 1박당</small>';
+      } else td0.textContent=p;
+      tr.appendChild(td0);
       cells.forEach(o=>{ const td=document.createElement('td'); const b=numInput(o,'bkk'); b.className='pin'; td.appendChild(b); tr.appendChild(td); });
       // 비고는 기간당 한 칸 — 모든 종류에 같은 값을 넣어 기존 저장 구조를 유지한다
       const tR=document.createElement('td');
@@ -830,7 +883,7 @@ function guideTable(){
       if(nv===null) return;
       const nn=nv.trim()||'새 가이드';
       if(types.includes(nn)){ gToast('⚠ 이미 있는 이름입니다'); return; }
-      const T={}; GUIDE_PERIODS.forEach(p=>T[p]={bkk:null,remark:''});
+      const T={}; GUIDE_ROWS.forEach(p=>T[p]={bkk:null,remark:''});
       G.guidePeriods[nn]=T; types.push(nn); _touch(); draw();
     };
     wrap.appendChild(add);
@@ -879,14 +932,17 @@ function render(){
 function openRate(key){
   _rateTab=key;
   document.getElementById('rateModal').classList.remove('hidden');
+  document.documentElement.classList.add('rate-open');
   renderRateModal();
   updateRateMsg();
+  if(document.documentElement.classList.contains('embed')) window.scrollTo(0,0);   // 판이 위에서부터 펴진다
 }
 /* 저장하지 않은 채 창을 닫고 새로고침해 입력이 날아간 사고가 있었다.
    닫기 전에 반드시 한 번 확인받는다. */
 function closeRate(){
   if(_dirty && !confirm('⚠ 아직 저장하지 않은 변경이 있습니다.\n\n[취소]를 눌러 창에 머문 뒤 💾 저장을 눌러주세요.\n[확인]을 누르면 창만 닫습니다 — 값은 남아 있지만,\n저장하지 않고 새로고침하면 사라집니다.')) return;
   document.getElementById('rateModal').classList.add('hidden');
+  document.documentElement.classList.remove('rate-open');
 }
 /* 창이 열려 있는 동안엔 화면 아래 저장 바가 창에 가려 눌리지 않는다.
    → 창 안에서도 바로 저장할 수 있게 한다. (닫기만으로는 저장되지 않는다) */
@@ -1026,7 +1082,7 @@ async function downloadGolfXlsx(){
     const grows=[];
     (G.guideTypes||GUIDE_TYPES).forEach(t=>{   // 관리자에서 추가한 종류까지 내려받기에 포함
       const T=G.guidePeriods[t]||{};
-      GUIDE_PERIODS.forEach(p=>grows.push([t,p,_gxNum((T[p]||{}).bkk),(T[p]||{}).remark||'']));
+      GUIDE_ROWS.forEach(p=>grows.push([t,p,_gxNum((T[p]||{}).bkk),(T[p]||{}).remark||'']));   // 지방 숙박비 줄도 함께
     });
     _gxSheet(wb,'가이드요금',['구분','기간','금액(THB)','비고'],grows);
 
