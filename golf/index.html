@@ -1220,10 +1220,11 @@ function quoteSnapshot(){
     pax: LAST.pax, nights: n, tripDays: tripDays(n),
     route: ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-',
     flight: [amDepOn()?'한국 오전 출발':'한국 오후 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · '),   // 「야간」→「오후」(사장님 2026-09-11)
-    days: dayState.map(st=>({
+    days: (()=>{ const hb=hotelByDate(); return dayState.map(st=>({
       date:st.date, region:st.region||'', course:st.course||'', holes:st.holes||'', round:!!st.round,
+      hotel: hb[st.date]||'',   // 그날 자는 호텔(마지막 날은 빈칸)
       we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
-    })),
+    })); })(),
     includes: { customer: quoteIncludes('customer'), internal: quoteIncludes('internal') },
     fx: FX_RATE||0,
     lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
@@ -1231,6 +1232,20 @@ function quoteSnapshot(){
   };
 }
 
+/* 날짜별 숙박 호텔 — 일정표 「지역/호텔」 칸용. 자는 밤에만 적힌다(3박이면 앞 3일, 마지막 날은 없음)(사장님 2026-09-14) */
+function hotelByDate(){
+  const m={};
+  if(!useHotelOn()) return m;
+  const H=P.hotels||{};
+  ROUTE.forEach(r=>{
+    const idx=hotelPick[r.sid]; if(idx===undefined||idx==='') return;
+    const h=(H[r.region]||[])[+idx]; if(!h) return;
+    const nn=hotelNightsOf(r); if(!nn) return;
+    const nm=String(h.name||'').replace(new RegExp('\\s*'+String(r.region||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim()||h.name;
+    stayDates(r,nn).forEach(d=>{ m[d]=nm; });
+  });
+  return m;
+}
 function buildQuoteHtml(mode, Q){
   Q = Q || quoteSnapshot();
   const start=Q.start, end=Q.end, team=Q.team;
@@ -1243,8 +1258,7 @@ function buildQuoteHtml(mode, Q){
     const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'<span style="color:#9aa4a0">라운딩 없음</span>';
     return `<tr>
       <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;font-weight:700">${fmtDay(st.date)}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${we?'주말/휴일':'주중'}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${esc(st.region)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${esc(st.region)}${st.hotel?` / ${esc(st.hotel)}`:''}</td><!-- 구분(주중/주말) 칸은 뺐다(사장님 2026-09-14) -->
       <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8">${play}</td>
     </tr>`;
   }).join('');
@@ -1319,8 +1333,7 @@ function buildQuoteHtml(mode, Q){
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead><tr style="background:#F7F3E9">
           <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">날짜</th>
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">구분</th>
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">지역</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">지역/호텔</th>
           <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>
         </tr></thead>
         <tbody>${days}</tbody>
