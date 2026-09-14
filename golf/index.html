@@ -1458,7 +1458,9 @@ function stepSummary(id){
         if(!(+r.nights||0)||idx===undefined||idx==='') return;
         const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
         const rt=hotelRoom[r.sid]||'twin';
-        out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);
+        /* 호텔 이름 끝에 지역명이 또 있으면(「브라이튼 그랜드 호텔 파타야」) 요약에서는 뒤의 것을 뗀다 — 지역 이중 노출(사장님 2026-09-14) */
+        const hn=String(h.name||'').replace(new RegExp('\\s*'+String(r.region||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim()||h.name;
+        out.push(`${r.region} ${hn} ${hotelNightsOf(r)}박 ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);
       });
       return out.join(' · ');   // 아직 안 고른 상태는 제목에 아무것도 안 적는다(초기 화면에 「미선택」이 뜨지 않게)
     }
