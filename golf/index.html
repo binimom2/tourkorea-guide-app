@@ -1531,7 +1531,7 @@ function stepSummary(id){
       const team=($('#teamName').value||'').trim();
       const mark=[amDepOn()?'오전출발':'', amRetOn()?'오전출국':''].filter(Boolean).join(' · ');
       const s=$('#startDate').value, e=$('#endDate').value;
-      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join('  /  ');   // 날짜 / 여행사 / 인원 / 박수를 「/」로 구분(사장님 2026-09-14)
+      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join(' · ');   // 날짜 · 여행사 · 인원 · 박수(사장님 2026-09-14: 가운뎃점으로)
     }
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
@@ -1546,13 +1546,13 @@ function stepSummary(id){
         const rt=hotelRoom[r.sid]||'twin';
         /* 호텔 이름 끝에 지역명이 또 있으면(「브라이튼 그랜드 호텔 파타야」) 요약에서는 뒤의 것을 뗀다 — 지역 이중 노출(사장님 2026-09-14) */
         const hn=String(h.name||'').replace(new RegExp('\\s*'+String(r.region||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim()||h.name;
-        out.push(`${r.region} ${hn} ${hotelNightsOf(r)}박 ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);
+        out.push(`${r.region} ${hn} · ${hotelNightsOf(r)}박 · ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);   // 호텔명 · 3박 · 3트윈(사장님 2026-09-14)
       });
       return out.join(' · ');   // 아직 안 고른 상태는 제목에 아무것도 안 적는다(초기 화면에 「미선택」이 뜨지 않게)
     }
     case 's4': {
       const done=dayState.filter(st=>st.round&&st.course);
-      return done.length?`${done.length}회 · ${done.map(st=>`${st.course} ${st.holes||'18'}홀`).join(', ')}`:'';   // 골프장마다 홀수 표시(사장님 2026-09-14)
+      return done.length?`${done.length}회 · ${done.map(st=>`${st.course}(${st.holes||'18'}홀)`).join(' · ')}`:'';   // 골프장(18홀) · 골프장(18홀)(사장님 2026-09-14)
     }
     case 's5': {
       if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않으셨습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
