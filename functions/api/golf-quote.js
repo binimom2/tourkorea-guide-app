@@ -182,6 +182,7 @@ export async function onRequestPost({ request, env }) {
 
   /* 2) 차량 */
   let busGuideName = '';   // 버스 동승 로컬가이드 종류(붙었을 때만) — includes에 적는다
+  let airportTip = 0;      // 공항 미팅 아따비 1인당(붙었을 때만)
   if (B.vehicle !== false) {
     const groups = Array.isArray(P.vehicleGroups) && P.vehicleGroups.length
       ? P.vehicleGroups
@@ -210,6 +211,9 @@ export async function onRequestPost({ request, env }) {
         busGuideName = bt;
       } else warnings.push('버스 동승 로컬가이드 요금이 등록되어 있지 않습니다');
     }
+    /* 공항 미팅 아따비 — 차량이 들어가면 공항 미팅이 있으므로 1인당 금액(관리 → 기타, 기본 50฿) × 인원 (사장님 2026-09-14) */
+    airportTip = (P.airportTip == null) ? 50 : (+P.airportTip || 0);
+    if (airportTip > 0) total += airportTip * pax;
   }
 
   /* 3) 핸들링 차지 — 직원용 견적기와 같이 항상 붙는다 */
@@ -259,6 +263,7 @@ export async function onRequestPost({ request, env }) {
   if (hotelNights) includes.push('숙소 ' + hotelNights + '박');
   if (B.vehicle !== false) includes.push('전용 차량 · 기사');
   if (busGuideName) includes.push('버스 동승 로컬가이드 · ' + busGuideName);
+  if (airportTip > 0) includes.push('공항 미팅 아따비 (1인 ' + airportTip + '฿)');
   if (gt) includes.push(gt + (guideLodgeNights ? ' (지방 숙박 ' + guideLodgeNights + '박 포함)' : ''));
 
   return json({

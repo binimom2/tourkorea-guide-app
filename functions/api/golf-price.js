@@ -280,8 +280,11 @@ export async function onRequestGet({ env }) {
   });
 
   /* 요금을 고치면 곧 반영돼야 하지만, 카드 목록은 손님마다 매번 계산할 필요가 없다 */
+  /* 공항 미팅 아따비(1인당) — 손님 사이트 차량 요금에 탑승 인원수만큼 붙는다(사장님 2026-09-14). 관리 → 기타, 기본 50฿ */
+  const tipBaht = (P.airportTip == null) ? 50 : (+P.airportTip || 0);
+  const airportTip = tipBaht > 0 ? { baht: tipBaht, krw: krwUp(tipBaht * fx.rate) } : null;
   return json(
-    { ok: true, courses, hotels, items, fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' } },
+    { ok: true, courses, hotels, items, airportTip, fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' } },
     200,
     'public, max-age=60'
   );

@@ -950,6 +950,9 @@ function calc(){
         if(lodge>0&&regN>0) lines.push({t:`${bt} (버스 동승) · 지방 숙박비`,s:`방콕 외 ${regN}박 × ${won(lodge)}`,v:lodge*regN});
       } else lines.push({t:'버스 동승 로컬가이드',s:bt?'요금 미입력':'종류 선택 필요',v:0,warn:1});
     }
+    /* 공항 미팅 아따비 — 차량이 들어가면 공항 미팅이 있으므로 1인당 금액 × 인원을 자동으로 붙인다(사장님 2026-09-14) */
+    const tip=+P.airportTip||0;
+    if(tip>0) lines.push({t:'공항 미팅 아따비',s:`${won(tip)} × ${pax}명`,v:tip*pax});
   }
   // 3) 핸들링
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
@@ -1046,6 +1049,7 @@ function quoteIncludes(mode){
     // 손님용에는 표시명만. 요금기준 라벨(내부 메모 포함)은 내부용에만 붙인다.
     out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} — 전 일정 이용${why}${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
     if(vg&&vg.bus&&busGuideName()) out.push(`버스 동승 로컬가이드 · ${busGuideName()}`);
+    if(+P.airportTip>0) out.push(`공항 미팅 아따비 — 1인 ${won(+P.airportTip)}`);
   }
   if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
@@ -1584,6 +1588,7 @@ async function loadPricing(){
       holidays:(d.holidays&&d.holidays.includes('2026-05-04'))?d.holidays:DEFAULT_PRICING.holidays,
       hotels:DEFAULT_PRICING.hotels,
       handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{},
+      airportTip:(d.airportTip==null)?50:(+d.airportTip||0),   // 공항 미팅 아따비(1인당 ฿) — 관리 → 기타. 안 정했으면 50
       // 가이드 종류는 관리자에서 추가·삭제할 수 있다(없으면 저장된 요금의 종류를 그대로 씀)
       guideTypes:(Array.isArray(d.guideTypes)&&d.guideTypes.length)?d.guideTypes:Object.keys(d.guidePeriods||{}),
       // 차량: 지역 조합별 요금 열. 예전 데이터(단일 vehiclePeriods)만 있으면 한 열로 취급.

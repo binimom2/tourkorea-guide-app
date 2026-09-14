@@ -1130,6 +1130,7 @@ async function loadPrices(){
                                         if(!bag[nkey(o.name)]) bag[nkey(o.name)] = o; });
     });
     PRICE.fx = j.fx || null;
+    PRICE.airportTip = j.airportTip || null;   // 공항 미팅 아따비(1인당, 원·밧) — 차량에 탑승 인원수만큼 붙는다
     PRICE.loaded = true;
     drawAllItems();   // 카드에 요금줄을 붙여 다시 그린다
   }catch(e){ /* 요금을 못 받아도 사이트는 정상 동작한다 */ }
@@ -2198,11 +2199,26 @@ async function qpCalc(){
       return;
     }
     qpResult = { krw: (m.krw || 0) * qpPax, baht: (m.baht || 0) * qpPax };
+    /* 차량(단위 「대」)은 공항 미팅 아따비가 탑승 인원수만큼 붙는다(사장님 2026-09-14) — 실시간 견적과 같은 규칙.
+       탑승 인원수를 아직 안 적었으면 붙일 수 없으니 안내만 한다. */
+    let tipHtml = "";
+    if(unitOf(qpKind) === "대" && PRICE.airportTip){
+      const riders = Math.max(0, Math.min(99, Number($("#qpRiders").value) || 0));
+      const tip = PRICE.airportTip;
+      if(riders > 0){
+        qpResult.krw += (tip.krw || 0) * riders;
+        qpResult.baht += (tip.baht || 0) * riders;
+        tipHtml = '<div class="sum">공항 미팅 아따비 ' + (tip.baht || 0).toLocaleString("ko-KR") + '바트 × 탑승 ' + riders + '명 포함</div>';
+      } else {
+        tipHtml = '<div class="ask" style="margin-top:6px">탑승 인원수를 적어 주세요 — 공항 미팅 아따비(1인 ' + (tip.baht || 0).toLocaleString("ko-KR") + '바트)가 인원수만큼 더해집니다.</div>';
+      }
+    }
     qpBox('<div class="k">' + esc(m.n) + ' · 1' + unitOf(qpKind) + ' 기준</div>'
       + '<div class="v">' + (m.krw || 0).toLocaleString("ko-KR") + '<em>원</em>'
         + (m.baht ? '<b class="vbt">(' + m.baht.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + '<div class="sum">' + qpPax + cntUnit(qpKind) + ' 합계: ' + qpResult.krw.toLocaleString("ko-KR") + '원'
         + (m.baht ? ' (' + qpResult.baht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
+      + tipHtml
       + (date ? '' : '<div class="ask" style="margin-top:8px">날짜를 선택하시면 담으실 수 있습니다.</div>'));
     return;
   }
@@ -2959,6 +2975,8 @@ $("#emBack").onclick = e => {
 
 $("#qName").addEventListener("change", remember);
 $("#qTel").addEventListener("change", remember);
+/* 차량 탑승 인원수를 적으면 공항 미팅 아따비가 바로 합계에 반영된다 */
+$("#qpRiders").addEventListener("input", () => { try{ qpCalc(); }catch(e){} });
 paint();
 
 /* 직원·어드민이 이 브라우저에서 업무 화면에 로그인해 뒀으면 「⚙ 관리」 버튼을 띄운다.
