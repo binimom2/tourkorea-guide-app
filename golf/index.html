@@ -1436,6 +1436,7 @@ function stepDone(id){
   }
   return false;
 }
+function isFolded(id){ const e=document.getElementById(id); return !!(e&&e.classList.contains('folded')); }
 function stepSummary(id){
   const pax=Math.max(1,+$('#pax').value||1);
   const n=totalNights();
@@ -1448,8 +1449,9 @@ function stepSummary(id){
     }
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
-      /* 「필요 없음」 체크 → 제목엔 '호텔 없이'만, 빨간 「호텔 없이 · 미선택」은 체크 옆(#noHotelWarn)에(사장님 2026-09-14 저녁) */
-      if(!useHotelOn()) return '호텔 없이';
+      /* 「필요 없음」 체크 → 펼친 상태는 제목 '호텔 없이'(빨간 문구는 체크 옆 #noHotelWarn),
+         접히면 체크 줄이 안 보이므로 제목이 빨간 「호텔은 선택하지 않으셨습니다」로 바뀐다(사장님 2026-09-14 저녁) */
+      if(!useHotelOn()) return isFolded('s3')?'호텔은 선택하지 않으셨습니다':'호텔 없이';
       const out=[];
       ROUTE.forEach(r=>{
         const idx=hotelPick[r.sid];
@@ -1465,7 +1467,7 @@ function stepSummary(id){
       return done.length?`${done.length}회 · ${done.map(st=>st.course).join(', ')}`:'';
     }
     case 's5': {
-      if(!useVehOn()) return '차량 없이';
+      if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않으셨습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
       const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
       return g?vehName(g)+(busGuideName()?` · 동승 ${busGuideName()}`:''):'';
     }
@@ -1487,7 +1489,7 @@ function renderStepSummaries(){
   const tip=$('#s3 .sublab.tip'); if(tip) tip.style.display=(ROUTE.length||!useHotelOn())?'none':'';
   const nw=$('#noHotelWarn'); if(nw){ const on=ROUTE.length>0&&!useHotelOn(); nw.textContent=on?'호텔은 선택하지 않으셨습니다':''; nw.style.display=on?'':'none'; }
   /* 5번 차량: 「필요 없음」 체크 상태면 체크 옆에 빨간 「차량 없이 · 미선택」(사장님 2026-09-14 저녁, 호텔과 동일) */
-  const vw=$('#noVehWarn'); if(vw){ const on=ROUTE.length>0&&!useVehOn(); vw.textContent=on?'차량은 선택하지 않으셨습니다':''; vw.style.display=on?'':'none'; }
+  const vw=$('#noVehWarn'); if(vw){ const on=ROUTE.length>0&&!useVehOn(); vw.textContent=on?'차량을 선택하지 않으셨습니다':''; vw.style.display=on?'':'none'; }
   /* 6번 가이드: 요약(체크됨/미선택)이 보이면 「원하시면 체크」는 숨긴다 */
   const gs=$('#s6 .sublab'); if(gs) gs.style.display=stepSummary('s6')?'none':'';
   /* 문구는 「…은 선택하지 않으셨습니다」(사장님 2026-09-14 저녁), 색은 빨강 */
@@ -1503,6 +1505,7 @@ function autoFold(activeId){
     const el=document.getElementById(id); if(!el) return;
     el.classList.toggle('folded', id!==activeId && touched.has(id) && stepDone(id));
   });
+  renderStepSummaries();   // 접힘 여부에 따라 문구가 달라지는 칸(호텔·차량 「선택하지 않으셨습니다」)을 다시 적는다
 }
 document.addEventListener('focusin',e=>{
   const st=e.target.closest('.step');
