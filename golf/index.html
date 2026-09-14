@@ -507,6 +507,8 @@ function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
 /* 가이드 지방 숙박비 저장 키(관리 화면 GUIDE_LODGING과 같은 글자) · 방콕 판정은 지역 이름으로 */
 const GUIDE_LODGING_KEY='지방숙박(1박당)';
 function isBkkRegion(n){ return /방콕|bangkok|bkk/i.test(String(n||'')); }
+/* 가이드 종류 이름에 코드 꼬리「(GDL)」가 남아 있으면 화면에서는 뗀다(사장님 2026-09-14). 관리에서 저장하면 이름 자체가 정리된다 */
+function guideLabel(t){ return String(t||'').replace(/\s*\([A-Z0-9]{2,5}\)\s*$/,''); }
 function tierValue(obj, N, key, full){
   const NORMAL=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];
   const FULL  =[['풀1박2일',1],['풀2박3일',2],['풀3박4일',3]];
@@ -729,7 +731,7 @@ function syncBusGuide(){
   const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const cur=sel.value;
-  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('');
   sel.value=(cur&&types.includes(cur))?cur
     :(g.busGuideType&&types.includes(g.busGuideType))?g.busGuideType
     :(types.find(t=>/로컬|local/i.test(t))||types[0]||'');
@@ -1657,9 +1659,9 @@ function buildGuideOptions(){
   const cur=sel.value;
   const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-  // '가이드 없이'는 6번 체크박스가 대신하므로 종류만 담는다
+  // '가이드 없이'는 6번 체크박스가 대신하므로 종류만 담는다. 보이는 글자는 코드 꼬리「(GDL)」를 뗀다(값은 그대로)
   sel.innerHTML=types.length
-    ? types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')
+    ? types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('')
     : '<option value="">등록된 가이드 요금 없음</option>';
   if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
 }

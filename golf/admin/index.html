@@ -483,6 +483,16 @@ function normalize(d){
   /* 로컬가이드는 「한국어 가능」과 「영어만」으로 나눈다(사장님 2026-09-14, 버스 동승 가이드 선택용).
      옛 이름 '로컬가이드'는 요금을 그대로 들고 '로컬가이드(한국어 가능)'으로 바뀌고, '로컬가이드(영어만)'은 빈 열로 추가된다.
      (이름은 가이드 요금 표에서 언제든 고칠 수 있다) */
+  /* 가이드 종류 이름 꼬리에 붙은 코드 「로컬가이드(GDL)」「한국인가이드(GDK)」는 뗀다(사장님 2026-09-14 "코드노출 삭제").
+     요금(guidePeriods)과 차량 열의 기본 동승 가이드도 새 이름으로 같이 옮긴다. 같은 이름이 이미 있으면 그대로 둔다. */
+  const stripCode=s=>String(s||'').replace(/\s*\([A-Z0-9]{2,5}\)\s*$/,'').trim();
+  g.guideTypes.forEach((t,i)=>{
+    const nn=stripCode(t);
+    if(!nn||nn===t||g.guideTypes.includes(nn)) return;
+    g.guideTypes[i]=nn;
+    if(g.guidePeriods[t]){ g.guidePeriods[nn]=g.guidePeriods[t]; delete g.guidePeriods[t]; }
+    (g.vehicleGroups||[]).forEach(v=>{ if(v&&v.busGuideType===t) v.busGuideType=nn; });
+  });
   const LG_KO='로컬가이드(한국어 가능)', LG_EN='로컬가이드(영어만)';
   if(g.guideTypes.includes('로컬가이드') && !g.guideTypes.includes(LG_KO)){
     g.guideTypes[g.guideTypes.indexOf('로컬가이드')]=LG_KO;
