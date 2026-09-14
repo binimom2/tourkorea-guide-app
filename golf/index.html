@@ -1132,8 +1132,8 @@ function quoteIncludes(mode){
   /* 「골프 3회」 → 「18홀×3회」 — 홀수가 섞이면 「18홀×2회 · 9홀×1회」(사장님 2026-09-14) */
   const byHoles={};
   dayState.filter(s=>s.round&&s.course).forEach(s=>{ const h=String(s.holes||'18'); byHoles[h]=(byHoles[h]||0)+1; });
-  const golfTxt=Object.keys(byHoles).sort((a,b)=>+b-+a).map(h=>`${h}홀×${byHoles[h]}회`).join(' · ');
-  if(golfTxt) out.push(`골프 ${golfTxt} — 그린피 · 캐디피 · 전동카트 포함`);
+  const golfTxt=Object.keys(byHoles).sort((a,b)=>+b-+a).map(h=>`${h}홀*${byHoles[h]}회`).join(' · ');
+  if(golfTxt) out.push(`골프 ${golfTxt} (그린피 · 캐디피 · 전동카트 포함)`);   // 「*」와 괄호(사장님 2026-09-14)
   if(useVehOn()){
     const vg=(P.vehicleGroups||[])[+($('#vehGroup').value||0)];
     const pax=Math.max(1,+$('#pax').value||1);
@@ -1143,7 +1143,8 @@ function quoteIncludes(mode){
     /* 「(수화물·골프백 적재로 1대 N명 기준)」 문구는 뺐다 — 차량 열의 「설명」 칸으로 대신 적는다(사장님 2026-09-14).
        공항 미팅 아따비는 금액엔 들어가지만 포함 사항에는 적지 않는다(사장님). */
     // 손님용에는 표시명만. 요금기준 라벨(내부 메모 포함)은 내부용에만 붙인다.
-    out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} — 전 일정 이용${(vg&&vg.desc)?` · ${String(vg.desc).trim()}`:''}${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
+    /* 「차량 신형밴 (9인승) (전 일정 이용)」까지만 — 설명은 견적 화면에서만 보이고 견적서엔 안 적는다(사장님 2026-09-14) */
+    out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} (전 일정 이용)${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
     if(vg&&vg.bus&&busGuideName()) out.push(`버스 동승 로컬가이드 · ${busGuideName()}`);
   }
   if(mode==='internal') out.push('핸들링 차지');
