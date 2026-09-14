@@ -1450,8 +1450,8 @@ function stepSummary(id){
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
       /* 「필요 없음」 체크 → 펼친 상태는 제목 '호텔 없이'(빨간 문구는 체크 옆 #noHotelWarn),
-         접히면 체크 줄이 안 보이므로 제목이 빨간 「호텔은 선택하지 않으셨습니다」로 바뀐다(사장님 2026-09-14 저녁) */
-      if(!useHotelOn()) return isFolded('s3')?'호텔은 선택하지 않으셨습니다':'호텔 없이';
+         접히면 체크 줄이 안 보이므로 제목이 빨간 「호텔을 선택하지 않으셨습니다」로 바뀐다(사장님 2026-09-14 저녁) */
+      if(!useHotelOn()) return isFolded('s3')?'호텔을 선택하지 않으셨습니다':'호텔 없이';
       const out=[];
       ROUTE.forEach(r=>{
         const idx=hotelPick[r.sid];
@@ -1466,7 +1466,7 @@ function stepSummary(id){
     }
     case 's4': {
       const done=dayState.filter(st=>st.round&&st.course);
-      return done.length?`${done.length}회 · ${done.map(st=>st.course).join(', ')}`:'';
+      return done.length?`${done.length}회 · ${done.map(st=>`${st.course} ${st.holes||'18'}홀`).join(', ')}`:'';   // 골프장마다 홀수 표시(사장님 2026-09-14)
     }
     case 's5': {
       if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않으셨습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
@@ -1475,7 +1475,7 @@ function stepSummary(id){
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
-    case 's6': return useGuideOn()?($('#guide').value||'가이드 종류를 선택하지 않으셨습니다'):(ROUTE.length?'가이드는 선택하지 않으셨습니다':'');
+    case 's6': return useGuideOn()?($('#guide').value||'가이드 종류를 선택하지 않으셨습니다'):(ROUTE.length?'가이드를 선택하지 않으셨습니다':'');
   }
   return '';
 }
@@ -1489,7 +1489,7 @@ function renderStepSummaries(){
   /* 3번 호텔: 지역을 고른 뒤엔 「지역을 선택하면 나옵니다」를 숨기고,
      「필요 없음」 체크 상태면 체크 옆에 빨간 「호텔 없이 · 미선택」을 띄운다 */
   const tip=$('#s3 .sublab.tip'); if(tip) tip.style.display=(ROUTE.length||!useHotelOn())?'none':'';
-  const nw=$('#noHotelWarn'); if(nw){ const on=ROUTE.length>0&&!useHotelOn(); nw.textContent=on?'호텔은 선택하지 않으셨습니다':''; nw.style.display=on?'':'none'; }
+  const nw=$('#noHotelWarn'); if(nw){ const on=ROUTE.length>0&&!useHotelOn(); nw.textContent=on?'호텔을 선택하지 않으셨습니다':''; nw.style.display=on?'':'none'; }
   /* 5번 차량: 「필요 없음」 체크 상태면 체크 옆에 빨간 「차량 없이 · 미선택」(사장님 2026-09-14 저녁, 호텔과 동일) */
   const vw=$('#noVehWarn'); if(vw){ const on=ROUTE.length>0&&!useVehOn(); vw.textContent=on?'차량을 선택하지 않으셨습니다':''; vw.style.display=on?'':'none'; }
   /* 6번 가이드: 요약(체크됨/미선택)이 보이면 「원하시면 체크」는 숨긴다 */
