@@ -79,7 +79,7 @@ html.embed .wrap{padding-top:6px}
 .sublab.tip{color:#c0392b;font-weight:700}
 .step.folded .sublab.tip{display:none}
 .csum{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .18s ease}
-.step.folded .steph .sublab{display:none}   /* 접힌 뒤엔 「그린피+캐디+전동카 포함」 같은 보조 설명은 숨긴다(사장님 2026-09-14) */
+.step.folded .steph .sublab,.step.folded .steph .tlong{display:none}   /* 접힌 뒤엔 보조 설명·긴 안내문은 숨기고 선택한 내용만(사장님 2026-09-14) */
 .step.folded .csum{opacity:1;font-size:18px;color:#0b3d91;font-weight:700}   /* 접힌 뒤 요약(선택한 날짜·인원·박수·코스…)은 크게·진파랑(사장님 2026-09-14) */
 /* 아직 안 고른 칸(숙소·가이드 미선택)은 접지 않아도 빨간 글씨로 늘 보인다 — 물어볼 항목을 빠뜨리지 않게(사장님 2026-09-14) */
 .csum.warn{opacity:1;color:#c62828;font-weight:800}
@@ -291,7 +291,8 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   </div>
 
   <div class="card step" id="s4">
-    <h2 class="steph">4. 라운딩하실 날만 선택 후 골프장을 선택하세요 <span class="sublab">그린피+캐디+전동카 포함</span><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
+    <!-- 접힌 뒤엔 「4. 라운딩」만 남기고 안내문(.tlong)은 숨긴다 — 선택한 내용만 보이게(사장님 2026-09-14) -->
+    <h2 class="steph">4. 라운딩<span class="tlong">하실 날만 선택 후 골프장을 선택하세요</span> <span class="sublab">그린피+캐디+전동카 포함</span><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
     <div class="cbody"><div id="days"></div></div>
   </div>
 
@@ -303,8 +304,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         <!-- 요금 기준(지역 조합)은 내부 정보라 손님 앞에서 펼쳐 두지 않는다.
              평소에는 차량명만 보이고, 직접 골라야 할 때만 편다. -->
         <div class="f">
-          <label>차량</label>
-          <!-- 차량 사진(관리 → 차량 열 수정창에서 올림)은 이름 왼쪽에 작게. 없으면 안 보인다(사장님 2026-09-14) -->
+          <!-- 작은 「차량」 라벨은 제목(5. 차량 선택)과 겹쳐 뺐다(사장님 2026-09-14). 차량 사진(관리 → 차량 열 수정창에서 올림)은 이름 왼쪽에 작게, 없으면 안 보인다 -->
           <div style="display:flex;align-items:center;gap:10px;">
             <img id="vehImg" alt="" style="display:none;height:54px;max-width:112px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid #e3ded2;" onerror="this.style.display='none'">
             <div id="vehShown" style="font-weight:700;font-size:15px;padding:2px 0;">12인승 밴</div>
