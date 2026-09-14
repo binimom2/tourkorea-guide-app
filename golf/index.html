@@ -79,6 +79,8 @@ html.embed .wrap{padding-top:6px}
 .step.folded .sublab.tip{display:none}
 .csum{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .18s ease}
 .step.folded .csum{opacity:1}
+/* 아직 안 고른 칸(숙소·가이드 미선택)은 접지 않아도 빨간 글씨로 늘 보인다 — 물어볼 항목을 빠뜨리지 않게(사장님 2026-09-14) */
+.csum.warn{opacity:1;color:#c62828;font-weight:800}
 .cedit{display:none;font-size:11.5px;font-weight:700;color:var(--fairway);border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer;white-space:nowrap}
 .step.folded .cedit{display:inline-block}
 .step .cbody{overflow:hidden;max-height:1400px;opacity:1;transition:max-height .26s ease,opacity .18s ease}
@@ -1450,7 +1452,7 @@ function stepSummary(id){
         const rt=hotelRoom[r.sid]||'twin';
         out.push(`${r.region} ${h.name} ${hotelNightsOf(r)}박 ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);
       });
-      return out.join(' · ')||'숙소 미선택';
+      return out.join(' · ')||'⚠ 숙소 미선택';
     }
     case 's4': {
       const done=dayState.filter(st=>st.round&&st.course);
@@ -1461,12 +1463,18 @@ function stepSummary(id){
       const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
       return g?vehName(g)+(busGuideName()?` · 동승 ${busGuideName()}`:''):'';
     }
-    case 's6': return useGuideOn()?($('#guide').value||''):'가이드 없이';
+    /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
+    case 's6': return useGuideOn()?($('#guide').value||'⚠ 가이드 종류 미선택'):'⚠ 가이드 미선택';
   }
   return '';
 }
 function renderStepSummaries(){
-  STEPS.forEach(id=>{ const el=$('#sum'+id.slice(1)); if(el) el.textContent=stepSummary(id); });
+  STEPS.forEach(id=>{
+    const el=$('#sum'+id.slice(1)); if(!el) return;
+    const t=stepSummary(id);
+    el.textContent=t;
+    el.classList.toggle('warn', /미선택/.test(t));   // 미선택은 접지 않아도 빨갛게 보인다(.csum.warn)
+  });
 }
 /* 지금 만지고 있는 칸만 펴 두고, 다 채운 나머지는 접는다.
    아직 덜 채운 칸은 접지 않는다 — 뭘 더 해야 하는지 보여야 하니까. */
