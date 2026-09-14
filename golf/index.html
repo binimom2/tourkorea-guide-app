@@ -1529,15 +1529,17 @@ function stepDone(id){
   return false;
 }
 function isFolded(id){ const e=document.getElementById(id); return !!(e&&e.classList.contains('folded')); }
+/* 요약 줄의 가운뎃점 — 앞뒤를 조금 띄운다(사장님 2026-09-14). 일반 공백은 화면에서 합쳐지므로 줄바꿈 없는 공백을 섞는다 */
+const DOT='  ·  ';
 function stepSummary(id){
   const pax=Math.max(1,+$('#pax').value||1);
   const n=totalNights();
   switch(id){
     case 's1': {
       const team=($('#teamName').value||'').trim();
-      const mark=[amDepOn()?'오전출발':'', amRetOn()?'오전출국':''].filter(Boolean).join(' · ');
+      const mark=[amDepOn()?'오전출발':'', amRetOn()?'오전출국':''].filter(Boolean).join(DOT);
       const s=$('#startDate').value, e=$('#endDate').value;
-      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join(' · ');   // 날짜 · 여행사 · 인원 · 박수(사장님 2026-09-14: 가운뎃점으로)
+      return [s?(s+(e?' ~ '+e:'')):'', team, `${pax}명`, `${n}박 ${tripDays(n)}일`, mark].filter(Boolean).join(DOT);   // 날짜 · 여행사 · 인원 · 박수(사장님 2026-09-14: 가운뎃점으로)
     }
     case 's2': return ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ');
     case 's3': {
@@ -1552,18 +1554,18 @@ function stepSummary(id){
         const rt=hotelRoom[r.sid]||'twin';
         /* 호텔 이름 끝에 지역명이 또 있으면(「브라이튼 그랜드 호텔 파타야」) 요약에서는 뒤의 것을 뗀다 — 지역 이중 노출(사장님 2026-09-14) */
         const hn=String(h.name||'').replace(new RegExp('\\s*'+String(r.region||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim()||h.name;
-        out.push(`${r.region} ${hn} · ${hotelNightsOf(r)}박 · ${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);   // 호텔명 · 3박 · 3트윈(사장님 2026-09-14)
+        out.push(`${r.region} ${hn}${DOT}${hotelNightsOf(r)}박${DOT}${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);   // 호텔명 · 3박 · 3트윈(사장님 2026-09-14)
       });
-      return out.join(' · ');   // 아직 안 고른 상태는 제목에 아무것도 안 적는다(초기 화면에 「미선택」이 뜨지 않게)
+      return out.join(DOT);   // 아직 안 고른 상태는 제목에 아무것도 안 적는다(초기 화면에 「미선택」이 뜨지 않게)
     }
     case 's4': {
       const done=dayState.filter(st=>st.round&&st.course);
-      return done.length?`${done.length}회 · ${done.map(st=>`${st.course}(${st.holes||'18'}홀)`).join(' · ')}`:'';   // 골프장(18홀) · 골프장(18홀)(사장님 2026-09-14)
+      return done.length?`${done.length}회${DOT}${done.map(st=>`${st.course}(${st.holes||'18'}홀)`).join(DOT)}`:'';   // 골프장(18홀) · 골프장(18홀)(사장님 2026-09-14)
     }
     case 's5': {
       if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않으셨습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
       const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
-      return g?vehName(g)+(busGuideName()?` · 동승 ${busGuideName()}`:''):'';
+      return g?vehName(g)+(busGuideName()?`${DOT}동승 ${busGuideName()}`:''):'';
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
