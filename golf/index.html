@@ -1750,8 +1750,8 @@ function stepSummary(id){
     case 's2': return ROUTE.filter(r=>(+r.nights||0)>0).map(r=>`${r.region} ${+r.nights}박`).join(' → ');   // 0박 지역은 요약에 안 적는다(사장님 2026-09-15)
     case 's3': {
       /* 「필요 없음」 체크 → 펼친 상태는 제목 '호텔 없이'(빨간 문구는 체크 옆 #noHotelWarn),
-         접히면 체크 줄이 안 보이므로 제목이 빨간 「호텔을 선택하지 않으셨습니다」로 바뀐다(사장님 2026-09-14 저녁) */
-      if(!useHotelOn()) return isFolded('s3')?'호텔을 선택하지 않으셨습니다':'호텔 없이';
+         접히면 체크 줄이 안 보이므로 제목이 빨간 「호텔을 선택하지 않았습니다」로 바뀐다(사장님 2026-09-14 저녁) */
+      if(!useHotelOn()) return isFolded('s3')?'호텔을 선택하지 않았습니다':'호텔 없이';
       const out=[];
       ROUTE.forEach(r=>{
         const idx=hotelPick[r.sid];
@@ -1769,7 +1769,7 @@ function stepSummary(id){
       return done.length?`${done.length}회${DOT}${done.map(st=>`${st.course}(${st.holes||'18'}홀)`).join(DOT)}`:'';   // 골프장(18홀) · 골프장(18홀)(사장님 2026-09-14)
     }
     case 's5': {
-      if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않으셨습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
+      if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않았습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
       /* 최종 구성만 적는다 — 「밴 2대 · 짐밴 3회」「버스 (33인승) · 동승 …」(사장님 2026-09-15) */
       const plan=vehPlan(), parts=[];
       if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) parts.push(vehName(b)); if(busGuideName()) parts.push(`동승 ${busGuideName()}`); }
@@ -1779,8 +1779,8 @@ function stepSummary(id){
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
-    /* 기본(아직 안 고름)은 빈칸, 「가이드 필요 없습니다」를 골랐을 때만 빨간 「가이드를 선택하지 않으셨습니다」(사장님 2026-09-15) */
-    case 's6': return useGuideOn()?((guideLabel($('#guide').value)?guideLabel($('#guide').value)+(guideCount()>1?` ${guideCount()}명`:''):'')||'가이드 종류를 선택하지 않으셨습니다'):(guideNone?'가이드를 선택하지 않으셨습니다':'');
+    /* 기본(아직 안 고름)은 빈칸, 「가이드 필요 없습니다」를 골랐을 때만 빨간 「가이드를 선택하지 않았습니다」(사장님 2026-09-15) */
+    case 's6': return useGuideOn()?((guideLabel($('#guide').value)?guideLabel($('#guide').value)+(guideCount()>1?` ${guideCount()}명`:''):'')||'가이드 종류를 선택하지 않았습니다'):(guideNone?'가이드를 선택하지 않았습니다':'');
   }
   return '';
 }
@@ -1789,18 +1789,18 @@ function renderStepSummaries(){
     const el=$('#sum'+id.slice(1)); if(!el) return;
     const t=stepSummary(id);
     el.textContent=t;
-    el.classList.toggle('warn', /선택하지 않으셨습니다|미선택/.test(t));   // 안 고른 항목은 접지 않아도 빨갛게 보인다(.csum.warn)
+    el.classList.toggle('warn', /선택하지 않았습니다|미선택/.test(t));   // 안 고른 항목은 접지 않아도 빨갛게 보인다(.csum.warn)
   });
   /* 3번 호텔: 지역을 고른 뒤엔 「지역을 선택하면 나옵니다」를 숨기고,
      「필요 없음」 체크 상태면 체크 옆에 빨간 「호텔 없이 · 미선택」을 띄운다 */
   const tip=$('#s3 .sublab.tip'); if(tip) tip.style.display=(ROUTE.length||!useHotelOn())?'none':'';
   const tip4=$('#s4 .sublab.tip'); if(tip4) tip4.style.display=ROUTE.length?'none':'';   // 4번 라운딩도 2번 고르면 「2번을 선택하면 나옵니다」 숨김(사장님 2026-09-15)
-  const nw=$('#noHotelWarn'); if(nw){ const on=ROUTE.length>0&&!useHotelOn(); nw.textContent=on?'호텔을 선택하지 않으셨습니다':''; nw.style.display=on?'':'none'; }
+  const nw=$('#noHotelWarn'); if(nw){ const on=ROUTE.length>0&&!useHotelOn(); nw.textContent=on?'호텔을 선택하지 않았습니다':''; nw.style.display=on?'':'none'; }
   /* 5번 차량: 「필요 없음」 체크 상태면 체크 옆에 빨간 「차량 없이 · 미선택」(사장님 2026-09-14 저녁, 호텔과 동일) */
-  const vw=$('#noVehWarn'); if(vw){ const on=ROUTE.length>0&&!useVehOn(); vw.textContent=on?'차량을 선택하지 않으셨습니다':''; vw.style.display=on?'':'none'; }
+  const vw=$('#noVehWarn'); if(vw){ const on=ROUTE.length>0&&!useVehOn(); vw.textContent=on?'차량을 선택하지 않았습니다':''; vw.style.display=on?'':'none'; }
   /* 6번 가이드: 요약(체크됨/미선택)이 보이면 「원하시면 체크」는 숨긴다 */
   const gs=$('#s6 .sublab'); if(gs) gs.style.display=stepSummary('s6')?'none':'';
-  /* 문구는 「…은 선택하지 않으셨습니다」(사장님 2026-09-14 저녁), 색은 빨강 */
+  /* 문구는 「…은 선택하지 않았습니다」(사장님 2026-09-14 저녁), 색은 빨강 */
 }
 /* 지금 만지고 있는 칸만 펴 두고, 다 채운 나머지는 접는다.
    아직 덜 채운 칸은 접지 않는다 — 뭘 더 해야 하는지 보여야 하니까. */
@@ -1813,7 +1813,7 @@ function autoFold(activeId){
     const el=document.getElementById(id); if(!el) return;
     el.classList.toggle('folded', id!==activeId && touched.has(id) && stepDone(id));
   });
-  renderStepSummaries();   // 접힘 여부에 따라 문구가 달라지는 칸(호텔·차량 「선택하지 않으셨습니다」)을 다시 적는다
+  renderStepSummaries();   // 접힘 여부에 따라 문구가 달라지는 칸(호텔·차량 「선택하지 않았습니다」)을 다시 적는다
 }
 document.addEventListener('focusin',e=>{
   const st=e.target.closest('.step');
