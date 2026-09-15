@@ -1331,12 +1331,18 @@ function quoteIncludes(mode){
     /* 「차량 신형밴 (9인승) (전 일정 이용)」까지만 — 설명은 견적 화면에서만 보이고 견적서엔 안 적는다(사장님 2026-09-14) */
     const plan=vehPlan();
     const lab=g=>(mode==='internal'&&g&&g.label)?` · [${g.label}]`:'';
-    if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) out.push(`차량 - ${vehName(b)} (전 일정 이용)${lab(b)}`); if(busGuideName()) out.push(`버스 동승 로컬가이드 - ${busGuideName()} 1명`); }
+    if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) out.push(`차량 - ${vehName(b)} (전 일정 이용)${lab(b)}`); }
     if(plan.vans>0){ const v=vehColOf('van'); if(v) out.push(`차량 - ${vehName(v)}${plan.vans>1?` ${plan.vans}대`:''} (전 일정 이용)${lab(v)}`); }
     if(plan.lug&&lugLegsOfRoute().length) out.push(`미팅샌딩 짐밴 - ${lugLegsOfRoute().length}회`);   // 사장님 2026-09-15
   }
   if(mode==='internal') out.push('핸들링 차지');
-  if(useGuideOn()&&$('#guide').value) out.push(`가이드 - ${$('#guide').value} ${guideCount()}명`);   // 명수는 1명이어도 적는다(사장님 2026-09-15)
+  /* 가이드는 한 줄로 — 「가이드 - 로컬가이드(영어사용) 1명, 한국인가이드 1명」(버스 동승 로컬 + 6번 가이드, 사장님 2026-09-15).
+     견적서 글자에서는 「(영어만)」을 「(영어사용)」으로 바꿔 적는다(요금표 종류 이름은 그대로) */
+  const gdoc=t=>guideLabel(t).replace(/영어만/g,'영어사용');
+  const gparts=[];
+  if(busGuideName()) gparts.push(`${gdoc(busGuideName())} 1명`);
+  if(useGuideOn()&&$('#guide').value) gparts.push(`${gdoc($('#guide').value)} ${guideCount()}명`);   // 명수는 1명이어도 적는다(사장님 2026-09-15)
+  if(gparts.length) out.push(`가이드 - ${gparts.join(', ')}`);
   /* 숙소 줄은 포함 사항에 적지 않는다 — 일정표 「지역/호텔」 칸에 호텔명·룸타입이 날짜별로 나온다(사장님 2026-09-14) */
   return out;
 }
