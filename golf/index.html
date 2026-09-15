@@ -1299,7 +1299,8 @@ function quoteIncludes(mode){
   const byHoles={};
   dayState.filter(s=>s.round&&s.course).forEach(s=>{ const h=String(s.holes||'18'); byHoles[h]=(byHoles[h]||0)+1; });
   const golfTxt=Object.keys(byHoles).sort((a,b)=>+b-+a).map(h=>`${h}홀*${byHoles[h]}회`).join(' · ');
-  if(golfTxt) out.push(`골프 ${golfTxt} (그린피 · 캐디피 · 전동카트 포함)`);   // 「*」와 괄호(사장님 2026-09-14)
+  /* 항목 뒤에 「 - 」를 넣고 설명 — 「골프 - 18홀*3회 (…)」「차량 - …」「가이드 - …」(사장님 2026-09-15) */
+  if(golfTxt) out.push(`골프 - ${golfTxt} (그린피 · 캐디피 · 전동카트 포함)`);   // 「*」와 괄호(사장님 2026-09-14)
   if(useVehOn()){
     /* 인원별 구성(사장님 2026-09-15): 대수는 규칙·추가 선택으로 정해진다(옛 인원÷탑승기준 계산 삭제).
        「(수화물·골프백 적재로 1대 N명 기준)」 문구는 뺐다 — 차량 열의 「설명」 칸으로 대신 적는다(사장님 2026-09-14).
@@ -1308,12 +1309,12 @@ function quoteIncludes(mode){
     /* 「차량 신형밴 (9인승) (전 일정 이용)」까지만 — 설명은 견적 화면에서만 보이고 견적서엔 안 적는다(사장님 2026-09-14) */
     const plan=vehPlan();
     const lab=g=>(mode==='internal'&&g&&g.label)?` · [${g.label}]`:'';
-    if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) out.push(`차량 ${vehName(b)} (전 일정 이용)${lab(b)}`); if(busGuideName()) out.push(`버스 동승 로컬가이드 · ${busGuideName()}`); }
-    if(plan.vans>0){ const v=vehColOf('van'); if(v) out.push(`차량 ${vehName(v)}${plan.vans>1?` ${plan.vans}대`:''} (전 일정 이용)${lab(v)}`); }
-    if(plan.lug&&lugLegsOfRoute().length) out.push(`미팅샌딩 짐밴 ${lugLegsOfRoute().length}회`);   // 사장님 2026-09-15
+    if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) out.push(`차량 - ${vehName(b)} (전 일정 이용)${lab(b)}`); if(busGuideName()) out.push(`버스 동승 로컬가이드 - ${busGuideName()}`); }
+    if(plan.vans>0){ const v=vehColOf('van'); if(v) out.push(`차량 - ${vehName(v)}${plan.vans>1?` ${plan.vans}대`:''} (전 일정 이용)${lab(v)}`); }
+    if(plan.lug&&lugLegsOfRoute().length) out.push(`미팅샌딩 짐밴 - ${lugLegsOfRoute().length}회`);   // 사장님 2026-09-15
   }
   if(mode==='internal') out.push('핸들링 차지');
-  if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}${guideCount()>1?` ${guideCount()}명`:''}`);
+  if(useGuideOn()&&$('#guide').value) out.push(`가이드 - ${$('#guide').value}${guideCount()>1?` ${guideCount()}명`:''}`);
   /* 숙소 줄은 포함 사항에 적지 않는다 — 일정표 「지역/호텔」 칸에 호텔명·룸타입이 날짜별로 나온다(사장님 2026-09-14) */
   return out;
 }
@@ -1411,7 +1412,8 @@ function buildQuoteHtml(mode, Q){
     const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'<span style="color:#9aa4a0">라운딩 없음</span>';
     return `<tr>
       <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;font-weight:700">${fmtDay(st.date)}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${esc(st.region)}${st.hotel?` / ${esc(st.hotel)}`:''}</td><!-- 구분(주중/주말) 칸은 뺐다(사장님 2026-09-14) -->
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${esc(st.region)}</td><!-- 구분(주중/주말) 칸은 뺐다(사장님 2026-09-14) -->
+      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;color:#5E6F66">${st.hotel?esc(st.hotel):''}</td><!-- 호텔은 지역과 다른 칸에(사장님 2026-09-15) -->
       <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8">${play}</td>
     </tr>`;
   }).join('');
@@ -1486,7 +1488,8 @@ function buildQuoteHtml(mode, Q){
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead><tr style="background:#F7F3E9">
           <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">날짜</th>
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">지역/호텔</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">지역</th><!-- 지역·호텔 칸 분리(사장님 2026-09-15) -->
+          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">호텔</th>
           <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>
         </tr></thead>
         <tbody>${days}</tbody>
