@@ -477,7 +477,7 @@ function normalize(d){
      예전 데이터는 저장돼 있던 종류를 그대로 쓰되, 화면 순서는 로컬 → 한국인으로 맞춘다. */
   if(!Array.isArray(g.guideTypes) || !g.guideTypes.length){
     const found=Object.keys(g.guidePeriods||{});
-    const pref=['로컬가이드','한국인가이드'];
+    const pref=['한국인가이드','로컬가이드'];   // 순서: 한국인 → 로컬(사장님 2026-09-15)
     g.guideTypes = found.length
       ? [...pref.filter(t=>found.includes(t)), ...found.filter(t=>!pref.includes(t))]
       : pref.slice();
@@ -502,6 +502,11 @@ function normalize(d){
     (g.vehicleGroups||[]).forEach(v=>{ if(v&&v.busGuideType==='로컬가이드') v.busGuideType=LG_KO; });
   }
   if(!g.guideTypes.includes(LG_EN)) g.guideTypes.push(LG_EN);
+  /* 배열 순서(사장님 2026-09-15): 한국인가이드 → 로컬(한국어) → 로컬(영어) → 그 외. 견적기 guideTypesOrdered와 같은 규칙 */
+  {
+    const rank=t=>{ const s=String(t||''); if(/한국인|korean/i.test(s)) return 0; if(/로컬|local/i.test(s)) return /영어|english|eng/i.test(s)?2:1; return 3; };
+    g.guideTypes=g.guideTypes.map((t,i)=>({t,i})).sort((a,b)=>(rank(a.t)-rank(b.t))||(a.i-b.i)).map(x=>x.t);
+  }
   g.guideTypes.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_ROWS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });
 
   /* 차량: 지역 조합별 요금 열(그룹). 예전의 단일 vehiclePeriods는 첫 그룹으로 이관한다. */
@@ -677,6 +682,8 @@ function vgDisplayName(g){
   let s=String(g.label||'').replace(/\s*\([^()]*노출\s*금지[^()]*\)\s*/g,' ').split('--')[0].replace(/\s{2,}/g,' ').trim();
   return s||'(이름없음)';
 }
+/* 차량 열의 사진 목록(최대 3장) — 옛 한 장(img)과 새 목록(imgs)을 합쳐 중복 없이 */
+function vgImgList(g){ const a=Array.isArray(g&&g.imgs)?g.imgs:[]; const first=String((g&&g.img)||'').trim(); return [...new Set((first?[first]:[]).concat(a.map(u=>String(u||'').trim())))].filter(Boolean).slice(0,3); }
 /* 차량 열 하나를 편집한다. 적용 지역 조합은 한 줄에 하나씩,
    지역은 + 로 잇는다(방콕+후아힌). 한 요금이 두 조합에 걸리면 두 줄로 적는다. */
 function openVgEditor(gs, gi, onDone){
@@ -707,18 +714,16 @@ function openVgEditor(gs, gi, onDone){
         `한 줄에 조합 하나, 지역은 + 로 잇습니다. 견적에서 고른 지역이 이 조합과 같으면 이 요금이 자동으로 걸립니다.<br>등록된 지역: ${regions.length?escapeHtml(regions.join(' · ')):'(코드관리에서 지역을 먼저 등록하세요)'}`)}
     ${F('요금기준 라벨 <span style="color:#8b948e">· 관리 화면에서만 보임</span>',
         `<input id="vgLabel" style="${IN}" value="${escapeAttr(g.label||'')}">`)}
-    ${F('차량 사진 <span style="color:#2e7d32">· 실시간 견적 화면 차량 이름 옆에 작게 나옵니다</span>',
-        `<div style="display:flex;gap:8px;align-items:center;">
-           <img id="vgImgPrev" src="${escapeAttr(g.img||'')}" alt="" style="height:44px;max-width:90px;object-fit:contain;border:1px solid #d8d2c4;border-radius:7px;background:#fff;${g.img?'':'display:none;'}">
-           <input id="vgImg" style="${IN}flex:1;" value="${escapeAttr(g.img||'')}" placeholder="사진 주소 — 아래 [사진 올리기]로 넣으면 자동으로 채워집니다">
-         </div>
-         <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-           <input id="vgImgFile" type="file" accept="image/*" style="display:none;">
-           <button type="button" id="vgImgBtn" class="btn ghost sm">📷 사진 올리기</button>
-           <button type="button" id="vgImgClear" class="btn ghost sm" ${g.img?'':'style="display:none;"'}>사진 지우기</button>
-           <span id="vgImgMsg" style="font-size:11px;color:#8b948e;"></span>
-         </div>`,
-        '예: 도요타 커뮤터 신형 밴 사진. 올리면 사진 저장소(R2)에 들어가고, 아래 [저장] 후 요금표 저장까지 눌러야 견적 화면에 반영됩니다.')}
+    ${F('차량 사진 (최대 3장) <span style="color:#2e7d32">· 실시간 견적에서 「📷 사진 보기」를 누르면 차종 이름과 함께 창에 나옵니다</span>',
+        [0,1,2].map(i=>{ const u=vgImgList(g)[i]||''; return `
+         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+           <img id="vgImgPrev${i}" src="${escapeAttr(u)}" alt="" style="height:44px;max-width:90px;object-fit:contain;border:1px solid #d8d2c4;border-radius:7px;background:#fff;${u?'':'display:none;'}">
+           <input id="vgImg${i}" style="${IN}flex:1;" value="${escapeAttr(u)}" placeholder="${i+1}번 사진 주소 — [올리기]로 넣으면 자동으로 채워집니다">
+           <input id="vgImgFile${i}" type="file" accept="image/*" style="display:none;">
+           <button type="button" class="btn ghost sm" data-imgbtn="${i}">📷 올리기</button>
+           <button type="button" class="btn ghost sm" data-imgclr="${i}" ${u?'':'style="display:none;"'}>지우기</button>
+         </div>`; }).join('')+`<span id="vgImgMsg" style="font-size:11px;color:#8b948e;"></span>`,
+        '예: 도요타 커뮤터 신형 밴 사진. 올리면 사진 저장소(R2)에 들어가고, 아래 [저장] 후 요금표 저장까지 눌러야 견적 화면에 반영됩니다. 기본 화면에는 사진이 안 뜨고 「사진 보기」를 눌렀을 때만 나옵니다(사장님 2026-09-15).')}
     <div style="margin:4px 0 10px;padding:10px 11px;border:1px dashed #d8d2c4;border-radius:9px;background:#fffaf0;">
       <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;cursor:pointer;">
         <input id="vgBus" type="checkbox" ${g.bus?'checked':''}> 🚌 버스 — 로컬가이드 동승 필수
@@ -737,34 +742,38 @@ function openVgEditor(gs, gi, onDone){
   const close=()=>ov.remove();
   ov.querySelector('#vgCancel').onclick=close;
   ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
-  /* 차량 사진 올리기 — 사이트 관리와 같은 사진 저장소(/api/golf-img, R2)에 넣고 주소를 칸에 채운다(사장님 2026-09-14) */
-  const imgIn=ov.querySelector('#vgImg'), imgPrev=ov.querySelector('#vgImgPrev'), imgClr=ov.querySelector('#vgImgClear'), imgMsg=ov.querySelector('#vgImgMsg');
-  const showImg=()=>{ const u=imgIn.value.trim(); imgPrev.src=u; imgPrev.style.display=u?'':'none'; imgClr.style.display=u?'':'none'; };
-  imgIn.oninput=showImg;
-  imgClr.onclick=()=>{ imgIn.value=''; showImg(); };
-  ov.querySelector('#vgImgBtn').onclick=()=>ov.querySelector('#vgImgFile').click();
-  ov.querySelector('#vgImgFile').onchange=async(ev)=>{
-    const f=ev.target.files&&ev.target.files[0]; if(!f) return;
-    if(!/^image\//.test(f.type)){ imgMsg.textContent='이미지 파일만 올릴 수 있습니다'; return; }
-    try{
-      const {data:{session}}=await sb.auth.getSession();
-      const token=session&&session.access_token;
-      if(!token){ imgMsg.textContent='로그인이 풀렸습니다. 새로고침 후 다시 해 주세요.'; return; }
-      imgMsg.textContent='올리는 중…';
-      const ext=(f.type==='image/png')?'png':(f.type==='image/webp')?'webp':(f.type==='image/gif')?'gif':'jpg';
-      const name=`vehicle-${gi+1}-${Date.now()}.${ext}`;
-      const r=await fetch('/api/golf-img/put?name='+encodeURIComponent(name),{method:'PUT',headers:{Authorization:'Bearer '+token,'x-file-type':f.type||'image/jpeg'},body:f});
-      const j=await r.json();
-      if(!j.ok) throw new Error(j.error||'실패');
-      imgIn.value=j.url; showImg();
-      imgMsg.textContent='올렸습니다 — [저장] 후 요금표 저장까지 눌러 주세요';
-    }catch(e){ imgMsg.textContent='올리지 못했습니다: '+(e.message||e); }
-    ev.target.value='';
-  };
+  /* 차량 사진 올리기(최대 3장, 사장님 2026-09-15) — 사이트 관리와 같은 사진 저장소(/api/golf-img, R2)에 넣고 주소를 칸에 채운다 */
+  const imgMsg=ov.querySelector('#vgImgMsg');
+  [0,1,2].forEach(i=>{
+    const imgIn=ov.querySelector('#vgImg'+i), imgPrev=ov.querySelector('#vgImgPrev'+i), imgClr=ov.querySelector(`[data-imgclr="${i}"]`);
+    const showImg=()=>{ const u=imgIn.value.trim(); imgPrev.src=u; imgPrev.style.display=u?'':'none'; imgClr.style.display=u?'':'none'; };
+    imgIn.oninput=showImg;
+    imgClr.onclick=()=>{ imgIn.value=''; showImg(); };
+    ov.querySelector(`[data-imgbtn="${i}"]`).onclick=()=>ov.querySelector('#vgImgFile'+i).click();
+    ov.querySelector('#vgImgFile'+i).onchange=async(ev)=>{
+      const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+      if(!/^image\//.test(f.type)){ imgMsg.textContent='이미지 파일만 올릴 수 있습니다'; return; }
+      try{
+        const {data:{session}}=await sb.auth.getSession();
+        const token=session&&session.access_token;
+        if(!token){ imgMsg.textContent='로그인이 풀렸습니다. 새로고침 후 다시 해 주세요.'; return; }
+        imgMsg.textContent='올리는 중…';
+        const ext=(f.type==='image/png')?'png':(f.type==='image/webp')?'webp':(f.type==='image/gif')?'gif':'jpg';
+        const name=`vehicle-${gi+1}-${i+1}-${Date.now()}.${ext}`;
+        const r=await fetch('/api/golf-img/put?name='+encodeURIComponent(name),{method:'PUT',headers:{Authorization:'Bearer '+token,'x-file-type':f.type||'image/jpeg'},body:f});
+        const j=await r.json();
+        if(!j.ok) throw new Error(j.error||'실패');
+        imgIn.value=j.url; showImg();
+        imgMsg.textContent='올렸습니다 — [저장] 후 요금표 저장까지 눌러 주세요';
+      }catch(e){ imgMsg.textContent='올리지 못했습니다: '+(e.message||e); }
+      ev.target.value='';
+    };
+  });
   ov.querySelector('#vgOk').onclick=()=>{
     const v=id=>ov.querySelector('#'+id).value.trim();
     g.name=v('vgName'); g.memo=v('vgMemo'); g.label=v('vgLabel');
-    g.img=v('vgImg');                                                   // 차량 사진 주소(없으면 빈 값)
+    g.imgs=[0,1,2].map(i=>v('vgImg'+i)).filter(Boolean);                // 차량 사진 최대 3장(사장님 2026-09-15)
+    g.img=g.imgs[0]||'';                                                // 첫 장은 옛 칸(img)에도 — 옛 화면 호환
     g.desc=v('vgDesc');                                                 // 손님에게 보이는 설명글(사장님 2026-09-14)
     const s=v('vgSeats'), m=v('vgMax');
     g.seats = s===''?null:Number(s);

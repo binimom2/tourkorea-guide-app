@@ -317,9 +317,8 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
             <label style="display:inline-flex;align-items:center;gap:5px;margin-left:10px;cursor:pointer;"><input type="checkbox" id="extraVan"> 밴 1대 더</label>
             <label style="display:inline-flex;align-items:center;gap:5px;margin-left:10px;cursor:pointer;"><input type="checkbox" id="extraLug"> 짐밴 추가 <span id="extraLugCnt" style="color:#0b3d91;"></span></label>
           </div>
-          <!-- 차량 사진(관리 → 차량 열 수정창에서 올림)은 이름 왼쪽에 작게, 없으면 안 보인다 -->
+          <!-- 차량 사진은 기본 화면에 띄우지 않는다(사장님 2026-09-15) — 선택지 옆 「📷 사진 보기」를 누르면 창에 차종 이름과 사진(최대 3장) -->
           <div style="display:flex;align-items:center;gap:10px;">
-            <img id="vehImg" alt="" style="display:none;height:54px;max-width:112px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid #e3ded2;" onerror="this.style.display='none'">
             <div id="vehShown" style="font-weight:700;font-size:15px;padding:2px 0;">12인승 밴</div>
           </div>
           <!-- 차량 설명(관리 → 차량 열 수정창 「설명」) — 손님에게 보이는 글. 없으면 안 보인다(사장님 2026-09-14) -->
@@ -347,6 +346,16 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         <div><label for="noVeh" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="noVeh"> 차량이 필요 없습니다
         </label><span id="noVehWarn" style="display:none;font-size:13px;font-weight:800;color:#c62828;"></span></div>
+        <!-- 차량 사진 창(사장님 2026-09-15): 차종 이름 + 사진 최대 3장. 배경 클릭·닫기로 닫힘(ovguard가 창 안 드래그는 막아 줌) -->
+        <div id="vehPhotoOv" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:center;justify-content:center;padding:16px;">
+          <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+              <b id="vehPhotoTitle" style="font-size:17px;"></b>
+              <button type="button" id="vehPhotoClose" style="border:1px solid #d8d2c4;background:#fff;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;">닫기</button>
+            </div>
+            <div id="vehPhotoList" style="display:flex;flex-direction:column;gap:10px;"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -540,6 +549,12 @@ const GUIDE_LODGING_KEY='지방숙박(1박당)';
 function isBkkRegion(n){ return /방콕|bangkok|bkk/i.test(String(n||'')); }
 /* 가이드 종류 이름에 코드 꼬리「(GDL)」가 남아 있으면 화면에서는 뗀다(사장님 2026-09-14). 관리에서 저장하면 이름 자체가 정리된다 */
 function guideLabel(t){ return String(t||'').replace(/\s*\([A-Z0-9]{2,5}\)\s*$/,''); }
+/* 가이드 종류 배열 순서(사장님 2026-09-15): 한국인가이드 → 로컬(한국어) → 로컬(영어) → 그 외(관리 순서) → 「가이드 필요 없습니다」는 드롭다운 맨 끝 */
+function guideRank(t){ const s=String(t||''); if(/한국인|korean/i.test(s)) return 0; if(/로컬|local/i.test(s)) return /영어|english|eng/i.test(s)?2:1; return 3; }
+function guideTypesOrdered(){
+  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  return types.map((t,i)=>({t,i})).sort((a,b)=>(guideRank(a.t)-guideRank(b.t))||(a.i-b.i)).map(x=>x.t);
+}
 function tierValue(obj, N, key, full){
   const NORMAL=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];
   const FULL  =[['풀1박2일',1],['풀2박3일',2],['풀3박4일',3]];
@@ -750,8 +765,6 @@ function syncVehShown(){
   renderVehChoices(); applyVehChoice();
   const g=curVehGroup(), plan=vehPlan();
   el.textContent=vehName(g)+(plan.kind==='van'&&plan.vans>1?` ${plan.vans}대`:'');
-  const im=$('#vehImg');
-  if(im){ const u=(g&&g.img)?String(g.img).trim():''; if(u){ im.src=u; im.style.display=''; } else { im.removeAttribute('src'); im.style.display='none'; } }
   const de=$('#vehDesc');
   if(de){ const d=(g&&g.desc)?String(g.desc).trim():''; de.textContent=d; de.style.display=d?'':'none'; }
   setVehInfoVisible(useVehOn());
@@ -766,7 +779,7 @@ function syncBusGuide(){
   const g=curVehGroup(); const on=!!(g&&g.bus)&&useVehOn();
   w.style.display=on?'':'none';
   if(!on) return;
-  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  const types=guideTypesOrdered();
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const cur=sel.value;
   sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('');
@@ -841,15 +854,32 @@ function renderVehChoices(){
   }
   if(!useVehOn()) vehChoice='none';
   if(!opts.some(o=>o.v===vehChoice)) vehChoice=(opts.find(o=>o.rec)||opts[0]).v;
-  box.innerHTML=opts.map(o=>`<label style="display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:${o.v===vehChoice?800:600};cursor:pointer;">`
+  /* 선택지마다 사진이 있으면 라벨 밖에 「📷 사진 보기」(사장님 2026-09-15) — 라벨 안에 두면 누를 때 라디오까지 바뀐다 */
+  const photoLink=v=>{ const k=v==='bus'?'bus':(v==='none'?'':'van'); return (k&&vehImgs(vehColOf(k)).length)?` <a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; };
+  box.innerHTML=opts.map(o=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><label style="display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:${o.v===vehChoice?800:600};cursor:pointer;">`
     +`<input type="radio" name="vehChoice" value="${o.v}"${o.v===vehChoice?' checked':''}> ${esc(o.t)}`
-    +`${o.rec?' <span style="font-size:11.5px;color:#2e7d32;font-weight:700;">추천</span>':''}</label>`).join('');
+    +`${o.rec?' <span style="font-size:11.5px;color:#2e7d32;font-weight:700;">추천</span>':''}</label>${photoLink(o.v)}</div>`).join('');
   const ex=$('#vehExtra'); if(ex) ex.style.display=vehChoice==='none'?'none':'';
   // 이미 짐밴이 든 구성이거나 짐밴 표가 없으면 「짐밴 추가」는 감춘다
   const el=$('#extraLug'), elw=el&&el.parentElement;
   if(elw) elw.style.display=(!hasLugTable||(vehChoice==='van'&&r&&r.lug))?'none':'';
   const c=$('#extraLugCnt'); if(c){ const n=lugLegsOfRoute().length; c.textContent=n?`(${n}회)`:''; }
 }
+/* ── 차량 사진 창(사장님 2026-09-15) — 관리 차량 열의 사진(imgs 최대 3장, 옛 img 한 장도 포함) ── */
+function vehImgs(g){ if(!g) return []; const a=Array.isArray(g.imgs)?g.imgs:[]; const first=String(g.img||'').trim(); return [...new Set((first?[first]:[]).concat(a.map(u=>String(u||'').trim())))].filter(Boolean).slice(0,3); }
+function openVehPhotos(kind){
+  const g=vehColOf(kind); const pics=vehImgs(g); if(!pics.length) return;
+  const ov=$('#vehPhotoOv'); if(!ov) return;
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  $('#vehPhotoTitle').textContent=vehName(g);
+  $('#vehPhotoList').innerHTML=pics.map(u=>`<img src="${esc(u)}" alt="" style="width:100%;max-height:60vh;object-fit:contain;border-radius:10px;background:#f4f1ea;" onerror="this.style.display='none'">`).join('');
+  ov.style.display='flex';
+}
+function closeVehPhotos(){ const ov=$('#vehPhotoOv'); if(ov) ov.style.display='none'; }
+document.addEventListener('click',e=>{
+  const a=e.target.closest&&e.target.closest('a.vphoto'); if(a){ e.preventDefault(); openVehPhotos(a.dataset.kind); return; }
+  if(e.target.id==='vehPhotoClose'||e.target.id==='vehPhotoOv') closeVehPhotos();
+});
 /* 고른 구성 → 「차량 없음」 체크(계산용)와 주 차량 열(#vehGroup: 버스면 버스 열, 아니면 밴 열) */
 function applyVehChoice(){
   const no=$('#noVeh'); if(no) no.checked=(vehChoice==='none');
@@ -894,7 +924,7 @@ function syncLugUI(){
 }
 /* 차량 없음이면 사진·이름·설명·요금기준 줄은 감춘다(드롭다운만 남김) */
 function setVehInfoVisible(on){
-  const im=$('#vehImg'); const row=im&&im.parentElement; if(row) row.style.display=on?'':'none';
+  const sh=$('#vehShown'); const row=sh&&sh.parentElement; if(row) row.style.display=on?'':'none';
   ['vehDesc','vehAuto','vehPickToggle','vehPickWrap'].forEach(id=>{ const e=$('#'+id); if(!e) return; if(!on) e.dataset.prevDisp=e.style.display, e.style.display='none'; else if(e.dataset.prevDisp!==undefined){ e.style.display=e.dataset.prevDisp; delete e.dataset.prevDisp; } });
 }
 
@@ -903,7 +933,7 @@ let guideNone=false;   // 「가이드 필요 없습니다」를 골랐는지(�
 function buildGuideSelOptions(){
   const sel=$('#guideSel'); if(!sel) return;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  const types=guideTypesOrdered();
   const cur=sel.value;
   sel.innerHTML=`<option value="">가이드 선택</option>`
     +types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('')
@@ -1908,7 +1938,7 @@ async function loadRegionCodes(){
 function buildGuideOptions(){
   const sel=$('#guide'); if(!sel) return;
   const cur=sel.value;
-  const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
+  const types=guideTypesOrdered();
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   // '가이드 없이'는 6번 체크박스가 대신하므로 종류만 담는다. 보이는 글자는 코드 꼬리「(GDL)」를 뗀다(값은 그대로)
   sel.innerHTML=types.length
