@@ -1412,6 +1412,8 @@ function quoteSnapshot(){
     includes: { customer: quoteIncludes('customer'), internal: quoteIncludes('internal') },
     /* 밴(차량 없음 포함)인데 가이드를 안 골랐을 때만 불포함 사항에 빨간 「가이드」 — 버스는 로컬가이드가 늘 있으므로 제외(사장님 2026-09-15) */
     noGuide: vehPlan().kind!=='bus' && !busGuideName() && !(useGuideOn()&&$('#guide').value),
+    noHotel: !useHotelOn(),   // 호텔·차량도 안 골랐으면 불포함 사항 맨 앞에 빨갛게(사장님 2026-09-15)
+    noVeh: !useVehOn(),
     fx: FX_RATE||0,
     lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
     total: LAST.total, per: LAST.per
@@ -1541,7 +1543,7 @@ function buildQuoteHtml(mode, Q){
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
-        <div style="padding:3px 0">${(Q.noGuide?['<span style="color:#c62828;font-weight:800">가이드</span>']:[]).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(' &nbsp;·&nbsp; ')}</div>   <!-- 한 줄 가로 표기(사장님 2026-09-14) · 가이드 없으면 맨 앞에 빨간 「가이드」(사장님 2026-09-15) -->
+        <div style="padding:3px 0">${[Q.noHotel?'호텔':'',Q.noVeh?'차량':'',Q.noGuide?'가이드':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(' &nbsp;·&nbsp; ')}</div>   <!-- 한 줄 가로 표기(사장님 2026-09-14) · 안 고른 호텔·차량·가이드는 맨 앞에 빨갛게(사장님 2026-09-15) -->
       </div>
     </div>
     ${detail}
