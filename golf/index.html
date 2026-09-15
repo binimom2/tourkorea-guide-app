@@ -923,6 +923,8 @@ function applyVehChoice(){
 }
 function onVehChoiceChange(v){
   vehChoice=v; applyVehChoice();
+  /* 차량을 다시 고르면 「＋ 차량 추가 선택」(밴 1대 추가·짐밴 추가)은 처음 상태로(사장님 2026-09-15 저녁: 밴+짐밴 → 버스로 바꾸면 제로베이스) */
+  ['extraVan','extraLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   syncVehShown(); touched.add('s5'); autoFold('s5'); calc();
 }
 
