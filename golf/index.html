@@ -288,7 +288,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
       <div id="hotelWrap"></div>
       <div class="hint" id="hotelHint" style="display:none"></div>
       <!-- 라벨이 가로로 꽉 차(display:flex) 오른쪽 빈 곳을 눌러도 체크되던 것 → 글자 폭만큼만(사장님 2026-09-14 "마우스 영역이 이상") -->
-      <div><label for="noHotel" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
+      <div><label for="noHotel" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;"><!-- 「오전 출발 시 체크」와 같은 크기·색(사장님 2026-09-15) -->
         <input type="checkbox" id="noHotel"> 호텔이 필요 없으면 체크
       </label><span id="noHotelWarn" style="display:none;margin-left:10px;font-size:13px;font-weight:800;color:#c62828;"></span></div>
     </div>
