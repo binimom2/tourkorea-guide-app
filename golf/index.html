@@ -356,6 +356,11 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
       <h2 class="steph">6. 가이드 선택<span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
       <div class="cbody">
         <div class="f"><select id="guideSel" style="font-size:14px;font-weight:700;"></select></div>
+        <!-- 가이드 인원(사장님 2026-09-15): 보통 1명, 밴 1대라도 1명이면 된다. 종류를 고르면 보이고 요금·지방 숙박비 × 인원 -->
+        <div class="f" id="guideCntWrap" style="display:none;margin-top:8px;">
+          <label>가이드 인원 <span class="sublab">보통 1명</span></label>
+          <div class="unit"><input type="number" id="guideCnt" min="1" inputmode="numeric" value="1" style="width:90px;"><span>명</span></div>
+        </div>
         <input type="checkbox" id="useGuide" style="display:none">
         <div class="f" id="guideWrap" style="display:none"><label>가이드 종류</label><select id="guide"></select></div>
       </div>
@@ -692,6 +697,7 @@ function newQuote(){
   vehChoice='van'; _vehRuleIdx=-2;   // 차량 구성은 추천으로(사장님 2026-09-15)
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
   const gsl=$('#guideSel'); if(gsl) gsl.value=''; guideNone=false;
+  const gc=$('#guideCnt'); if(gc) gc.value='1'; const gcw=$('#guideCntWrap'); if(gcw) gcw.style.display='none';   // 가이드 인원 1명으로
   const vg=$('#vehGroup'); if(vg) vg.value='0';
   const vf=vg&&vg.closest('.f'); if(vf) vf.style.display='';
   const vp=$('#vehPickWrap'); if(vp) vp.style.display='none';
@@ -884,7 +890,7 @@ function syncLugUI(){
     const d=$('#lugLegs'); if(d) d.textContent=legs.length?`짐밴 ${legs.length}회${DOT}`+legs.map(l=>`${l.a}-${l.b}${lugPriceOf(l.a,l.b)==null?' (요금 미입력)':''}`).join(DOT):'짐밴 구간은 지역을 선택하면 계산됩니다';
   }
   /* 안내 문구(관리 → 짐밴 표) — 짐밴이 추천된 인원(8명)인데 짐밴 없는 구성을 골랐을 때만 보인다(사장님 2026-09-15) */
-  const n=$('#lugNote'); if(n){ const t=String((P.luggageVan||{}).note||'').trim(); const need=!!(plan.rule&&plan.rule.lug)&&plan.kind==='van'&&!on;   // 버스를 골랐으면 짐밴 안내는 안 띄운다 n.textContent=t; n.style.display=(t&&need)?'':'none'; }
+  const n=$('#lugNote'); if(n){ const t=String((P.luggageVan||{}).note||'').trim(); const need=!!(plan.rule&&plan.rule.lug)&&plan.kind==='van'&&!on; /* 버스를 골랐으면 짐밴 안내는 안 띄운다 */ n.textContent=t; n.style.display=(t&&need)?'':'none'; }
 }
 /* 차량 없음이면 사진·이름·설명·요금기준 줄은 감춘다(드롭다운만 남김) */
 function setVehInfoVisible(on){
@@ -910,8 +916,11 @@ function onGuideSelChange(){
   if(v===VEH_NONE){ guideNone=true; if(ug) ug.checked=false; if(g) g.value=''; }
   else if(!v){ guideNone=false; if(ug) ug.checked=false; if(g) g.value=''; }
   else { guideNone=false; if(ug) ug.checked=true; if(g){ if(![...g.options].some(o=>o.value===v)) buildGuideOptions(); g.value=v; } }
+  const cw=$('#guideCntWrap'); if(cw) cw.style.display=(v&&v!==VEH_NONE)?'':'none';   // 가이드 인원 칸은 종류를 골랐을 때만
   touched.add('s6'); autoFold('s6'); calc();
 }
+/* 가이드 인원 — 비우거나 이상하면 1명(사장님 2026-09-15: 밴 1대라도 1명이면 되고 보통 1명) */
+function guideCount(){ return Math.max(1,Math.floor(+(($('#guideCnt')||{}).value)||1)); }
 // 한 대에 몇 명까지 태우는지. 관리에서 안 넣었으면 기존 동작(7명)을 유지한다.
 function vehMaxPax(g){ const n=+(g&&g.maxPax); return n>0?n:7; }
 /* 고른 지역과 요금 열의 «적용 지역 조합»이 같으면 그 열을 자동으로 고른다.
@@ -1167,16 +1176,17 @@ function calc(){
   const gt=useGuideOn()?$('#guide').value:'';
   if(gt){
     const G=(P.guidePeriods||{})[gt];
+    const gn=guideCount();   // 가이드 인원(보통 1명, 사장님 2026-09-15) — 요금·지방 숙박비 모두 × 인원
     const gv=G?tierValue(G,nights,'bkk',amDep):null;   // 가이드도 오전 출발이면 풀 요금
     if(gv){
       // 이름은 관리자에 등록된 종류를 그대로 쓴다(종류를 추가해도 견적서에 그 이름으로 나온다)
-      lines.push({t:gt,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
+      lines.push({t:gt+(gn>1?` ${gn}명`:''),s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}${gn>1?` × ${gn}명`:''}`,v:gv.value*gn});
     } else lines.push({t:'가이드',s:'요금 미입력',v:0,warn:1});
     /* 지방 숙박비 — 방콕 외 지역에서 자는 밤마다 가이드 숙박비를 더한다
        (사장님 2026-09-14: 방콕 3박과 방콕1박+파타야2박은 가이드 요금이 달라야 한다). 관리 → 가이드 요금 맨 아래 줄. */
     const lodge=+(((G||{})[GUIDE_LODGING_KEY]||{}).bkk)||0;
     const regNights=ROUTE.reduce((a,r)=>a+(isBkkRegion(r.region)?0:(+r.nights||0)),0);
-    if(lodge>0&&regNights>0) lines.push({t:`${gt} · 지방 숙박비`,s:`방콕 외 ${regNights}박 × ${won(lodge)}`,v:lodge*regNights});
+    if(lodge>0&&regNights>0) lines.push({t:`${gt} · 지방 숙박비`,s:`방콕 외 ${regNights}박 × ${won(lodge)}${gn>1?` × ${gn}명`:''}`,v:lodge*regNights*gn});
   }
   // 5) 숙소 — '숙소도 원하시나요?'를 체크했을 때, 고른 지역별로. 실수는 룸타입에 따라 달라진다.
   const H=P.hotels||{};
@@ -1262,7 +1272,7 @@ function quoteIncludes(mode){
     if(plan.lug&&lugLegsOfRoute().length) out.push(`미팅샌딩 짐밴 ${lugLegsOfRoute().length}회`);   // 사장님 2026-09-15
   }
   if(mode==='internal') out.push('핸들링 차지');
-  if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
+  if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}${guideCount()>1?` ${guideCount()}명`:''}`);
   /* 숙소 줄은 포함 사항에 적지 않는다 — 일정표 「지역/호텔」 칸에 호텔명·룸타입이 날짜별로 나온다(사장님 2026-09-14) */
   return out;
 }
@@ -1688,7 +1698,7 @@ function stepSummary(id){
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
-    case 's6': return useGuideOn()?(guideLabel($('#guide').value)||'가이드 종류를 선택하지 않으셨습니다'):(guideNone?'가이드 없이':(ROUTE.length?'가이드를 선택하지 않으셨습니다':''));
+    case 's6': return useGuideOn()?((guideLabel($('#guide').value)?guideLabel($('#guide').value)+(guideCount()>1?` ${guideCount()}명`:''):'')||'가이드 종류를 선택하지 않으셨습니다'):(guideNone?'가이드 없이':(ROUTE.length?'가이드를 선택하지 않으셨습니다':''));
   }
   return '';
 }
@@ -1780,7 +1790,7 @@ document.addEventListener('input',e=>{
   if(t.dataset.hn!==undefined){ hotelNights[t.dataset.hn]=t.value; calc(); return; }
   /* 인원이 바뀌면 차량 드롭다운·짐밴 칸을 다시 거른다(사장님 2026-09-15 인원별 노출) */
   if(t.id==='pax'){ syncVehShown(); calc(); return; }
-  if(t.id==='teamName') calc();
+  if(t.id==='teamName'||t.id==='guideCnt') calc();   // 가이드 인원(사장님 2026-09-15)
 });
 document.addEventListener('change',e=>{
   const t=e.target;
