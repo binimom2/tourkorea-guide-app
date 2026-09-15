@@ -881,8 +881,10 @@ function renderVehChoices(){
   /* 가이드 칸처럼 드롭다운 하나로(사장님 2026-09-15 "차량 란이 매끄럽지 않다") — 추천은 「(추천)」, 코드관리 「차량」 라벨(비용 안내)이 있으면 뒤에 붙인다.
      사진은 고른 차량 이름 옆 「📷 사진 보기」 */
   const codeTxt=v=>{ const k=v==='bus'?'bus':(v==='none'?'':'van'); const l=k?vehCodeLabel(k):''; return l?` · ${l}`:''; };
-  box.innerHTML=`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;">`
-    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''}>${esc(o.t)}${o.rec?' (추천)':''}${esc(codeTxt(o.v))}</option>`).join('')
+  /* 「추천」은 맨 앞에 빨간색(사장님 2026-09-15) — 목록의 option 색 + 추천을 고른 상태면 select 글자도 빨갛게 */
+  const recSel=!!(opts.find(o=>o.v===vehChoice)||{}).rec;
+  box.innerHTML=`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;${recSel?'color:#c62828;':''}">`
+    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''}${o.rec?' style="color:#c62828;font-weight:800;"':''}>${o.rec?'추천 · ':''}${esc(o.t)}${esc(codeTxt(o.v))}</option>`).join('')
     +`</select>`;
   const pb=$('#vehPhotoBtn');
   if(pb){ const k=vehChoice==='bus'?'bus':(vehChoice==='none'?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
