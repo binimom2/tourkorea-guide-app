@@ -880,7 +880,8 @@ function renderVehChoices(){
   if(!opts.some(o=>o.v===vehChoice)) vehChoice=(opts.find(o=>o.rec)||opts[0]).v;
   /* 가이드 칸처럼 드롭다운 하나로(사장님 2026-09-15 "차량 란이 매끄럽지 않다") — 추천은 「(추천)」, 코드관리 「차량」 라벨(비용 안내)이 있으면 뒤에 붙인다.
      사진은 고른 차량 이름 옆 「📷 사진 보기」 */
-  const codeTxt=v=>{ const k=v==='bus'?'bus':(v==='none'?'':'van'); const l=k?vehCodeLabel(k):''; return l?` · ${l}`:''; };
+  /* 코드관리 「차량」 라벨은 붙이지 않는다 — 요금표 차량 이름만(사장님 2026-09-15 저녁 "코드 물고 들어가지 말 것") */
+  const codeTxt=v=>'';
   /* 「추천」 글자만 빨갛고 나머지는 검게(사장님 2026-09-15). 드롭다운(select)은 글자 일부만 색을 못 주므로
      select 글자는 투명하게 하고, 그 위에 같은 글자를 그린 겉면(#vehChoiceFace)을 얹는다(누르는 건 아래 select가 받음). 펼친 목록은 전부 검정 */
   const optText=o=>`${o.rec?'추천 · ':''}${o.t}${codeTxt(o.v)}`;
