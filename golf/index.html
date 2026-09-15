@@ -1357,7 +1357,7 @@ function quoteIncludes(mode){
     if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) vehLines.push(`차량 - ${vehName(b)} 1대 (전 일정 이용)${lab(b)}`); }
     if(plan.vans>0){ const v=vehColOf('van'); if(v) vehLines.push(`차량 - ${vehName(v)} ${plan.vans}대 (전 일정 이용)${lab(v)}`); }
     /* 짐밴은 줄을 따로 만들지 않고 차량 줄 뒤에 붙인다 — 「차량 - 신형밴 (9인승) (전 일정 이용) · 미팅샌딩 짐밴 2회」(사장님 2026-09-15) */
-    const lugTxt=(plan.lug&&lugLegsOfRoute().length)?`미팅샌딩 짐밴 ${lugLegsOfRoute().length}회`:'';
+    const lugTxt=(plan.lug&&lugLegsOfRoute().length)?`밴 1대 추가 (미·샌딩, 지역이동 날만) ${lugLegsOfRoute().length}회`:'';   // 견적서 문구도 화면과 동일(사장님 2026-09-15 저녁)
     if(lugTxt){ if(vehLines.length) vehLines[vehLines.length-1]+=` · ${lugTxt}`; else vehLines.push(`차량 - ${lugTxt}`); }
     out.push(...vehLines);
   }
