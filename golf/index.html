@@ -792,6 +792,9 @@ function syncBusGuide(){
   const w=$('#busGuideWrap'), sel=$('#busGuide'); if(!w||!sel) return;
   const g=curVehGroup(); const on=!!(g&&g.bus)&&useVehOn();
   w.style.display=on?'':'none';
+  /* 버스일 땐 동승 가이드 칸이 「＋ 차량 추가 선택」보다 위에(사장님 2026-09-15 저녁) — 추가 선택 칸을 동승 칸 뒤로 옮기고, 밴이면 사진 줄 뒤(원래 자리)로 되돌린다 */
+  const ex=$('#vehExtra'), pb=$('#vehPhotoBtn');
+  if(ex){ if(on){ if(w.nextElementSibling!==ex) w.after(ex); } else if(pb&&pb.parentElement&&pb.parentElement.nextElementSibling!==ex) pb.parentElement.after(ex); }
   if(!on) return;
   /* 동승 가이드는 로컬(한국어/영어)만 — 한국인가이드는 6번에서 추가(사장님 2026-09-15). 로컬 종류가 없으면 전부 */
   const all=guideTypesOrdered(), locals=all.filter(t=>guideRank(t)===1||guideRank(t)===2);
