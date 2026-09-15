@@ -1779,7 +1779,8 @@ function stepSummary(id){
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
-    case 's6': return useGuideOn()?((guideLabel($('#guide').value)?guideLabel($('#guide').value)+(guideCount()>1?` ${guideCount()}명`:''):'')||'가이드 종류를 선택하지 않으셨습니다'):(guideNone?'가이드 없이':(ROUTE.length?'가이드를 선택하지 않으셨습니다':''));
+    /* 기본(아직 안 고름)은 빈칸, 「가이드 필요 없습니다」를 골랐을 때만 빨간 「가이드를 선택하지 않으셨습니다」(사장님 2026-09-15) */
+    case 's6': return useGuideOn()?((guideLabel($('#guide').value)?guideLabel($('#guide').value)+(guideCount()>1?` ${guideCount()}명`:''):'')||'가이드 종류를 선택하지 않으셨습니다'):(guideNone?'가이드를 선택하지 않으셨습니다':'');
   }
   return '';
 }
