@@ -340,7 +340,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         <div class="f" id="busGuideWrap" style="display:none;margin-top:8px;">
           <label>🚌 버스 동승 로컬가이드 <span class="sublab">필수</span></label>
           <select id="busGuide"></select>
-          <div class="hint">버스에는 로컬가이드가 함께 탑니다. 한국어 가능 / 영어만 중 선택하세요. 요금은 견적에 자동으로 더해집니다.</div>
+          <div class="hint">버스에는 로컬가이드 1명이 의무로 함께 탑니다. 한국어 가능 / 영어만 중 선택하세요. 요금은 견적에 자동으로 더해집니다. 한국인가이드를 더 원하시면 6번에서 추가하세요.</div>
         </div>
         <!-- 「차량이 필요 없습니다」는 위 드롭다운의 선택지로 옮겼다 — 체크박스는 계산 로직용으로 숨겨 둔다 -->
         <div><label for="noVeh" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
@@ -770,6 +770,7 @@ function syncVehShown(){
   setVehInfoVisible(useVehOn());
   syncBusGuide();
   syncLugUI();
+  buildGuideSelOptions();   // 버스면 6번 가이드는 한국인·노가이드만(사장님 2026-09-15)
 }
 /* 버스 동승 로컬가이드 칸 — 고른 차량 열이 관리에서 「버스」로 표시돼 있을 때만 보인다.
    선택지는 가이드 요금 표의 종류(한국어 가능 / 영어만 …). 기본값은 관리에서 정한 기본 동승 가이드. */
@@ -779,7 +780,9 @@ function syncBusGuide(){
   const g=curVehGroup(); const on=!!(g&&g.bus)&&useVehOn();
   w.style.display=on?'':'none';
   if(!on) return;
-  const types=guideTypesOrdered();
+  /* 동승 가이드는 로컬(한국어/영어)만 — 한국인가이드는 6번에서 추가(사장님 2026-09-15). 로컬 종류가 없으면 전부 */
+  const all=guideTypesOrdered(), locals=all.filter(t=>guideRank(t)===1||guideRank(t)===2);
+  const types=locals.length?locals:all;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const cur=sel.value;
   sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('');
@@ -933,12 +936,20 @@ let guideNone=false;   // 「가이드 필요 없습니다」를 골랐는지(�
 function buildGuideSelOptions(){
   const sel=$('#guideSel'); if(!sel) return;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-  const types=guideTypesOrdered();
+  /* 버스면 로컬가이드 1명(한국어/영어)은 5번에서 의무 동승이므로, 6번에는 한국인가이드와 「가이드 필요 없습니다」만 띄운다(사장님 2026-09-15).
+     밴이면 종류 전부 + 노가이드 가능. */
+  const bus=(typeof vehPlan==='function')&&vehPlan().kind==='bus';
+  const types=guideTypesOrdered().filter(t=>!bus||guideRank(t)===0);
   const cur=sel.value;
   sel.innerHTML=`<option value="">가이드 선택</option>`
     +types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('')
     +`<option value="${VEH_NONE}">가이드 필요 없습니다</option>`;
   if(cur&&[...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  else if(cur){   // 차량이 바뀌어 고른 종류가 빠졌으면(버스로 바꿔 로컬이 사라짐) 미선택으로 되돌린다
+    sel.value=''; guideNone=false;
+    const ug=$('#useGuide'), g=$('#guide'); if(ug) ug.checked=false; if(g) g.value='';
+    const cw=$('#guideCntWrap'); if(cw) cw.style.display='none';
+  }
 }
 function onGuideSelChange(){
   const v=($('#guideSel')||{}).value||'';
