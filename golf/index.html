@@ -312,10 +312,10 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
                인원 구간에 맞는 선택지를 라디오로 보여주고 추천 구성이 기본 선택. 1~7명 밴1대 / 8명 밴1대+짐밴 / 9~14명 밴2대 / 15명~ 버스, 버스는 늘 선택 가능.
                아래 「＋ 차량 추가 선택」으로 6명이어도 밴을 1대 더 담거나 짐밴을 더할 수 있다. (옛 차종 드롭다운 #vehType은 삭제) -->
           <div id="vehChoices" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
-          <div id="vehExtra" style="display:none;margin:2px 0 10px;font-size:12.5px;font-weight:700;color:var(--muted);"><!-- 체크 라벨과 같은 글꼴·색(사장님 2026-09-15) -->
+          <div id="vehExtra" style="display:none;align-items:center;flex-wrap:wrap;gap:6px 14px;margin:2px 0 10px;font-size:12.5px;font-weight:700;color:var(--muted);"><!-- 체크 라벨과 같은 글꼴·색, 글자·체크 높이 맞춤(사장님 2026-09-15). 보일 땐 display:flex -->
             <span>＋ 차량 추가 선택</span>
-            <label style="display:inline-flex;align-items:center;gap:5px;margin-left:10px;cursor:pointer;"><input type="checkbox" id="extraVan"> 밴 1대 추가 (전일정)</label>
-            <label style="display:inline-flex;align-items:center;gap:5px;margin-left:10px;cursor:pointer;"><input type="checkbox" id="extraLug"> 미팅·샌딩 날에만 밴 1대 추가 <span id="extraLugCnt" style="color:#0b3d91;"></span></label>
+            <label class="amdep" style="padding:0;"><input type="checkbox" id="extraVan"> 밴 1대 추가 (전일정)</label>
+            <label class="amdep" style="padding:0;"><input type="checkbox" id="extraLug"> 미팅·샌딩 날에만 밴 1대 추가 <span id="extraLugCnt" style="color:#0b3d91;"></span></label>
           </div>
           <!-- 차량 사진은 기본 화면에 띄우지 않는다(사장님 2026-09-15) — 선택지 옆 「📷 사진 보기」를 누르면 창에 차종 이름과 사진(최대 3장) -->
           <div style="display:flex;align-items:center;gap:10px;">
@@ -894,7 +894,7 @@ function renderVehChoices(){
     +`</div>`;
   const pb=$('#vehPhotoBtn');
   if(pb){ const k=vehChoice==='bus'?'bus':(vehChoice==='none'?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
-  const ex=$('#vehExtra'); if(ex) ex.style.display=vehChoice==='none'?'none':'';
+  const ex=$('#vehExtra'); if(ex) ex.style.display=vehChoice==='none'?'none':'flex';   // 글자·체크 높이 맞춤용 flex(사장님 2026-09-15)
   // 이미 짐밴이 든 구성이거나 짐밴 표가 없으면 「짐밴 추가」는 감춘다
   const el=$('#extraLug'), elw=el&&el.parentElement;
   if(elw) elw.style.display=(!hasLugTable||(vehChoice==='van'&&r&&r.lug))?'none':'';
