@@ -555,7 +555,10 @@ function guideRank(t){ const s=String(t||''); if(/한국인|korean/i.test(s)) re
 let GUIDE_CODES=[];
 function guideCodeLabel(t){
   const r=guideRank(t); if(r===3) return '';
-  const hit=GUIDE_CODES.find(c=>guideRank(c.label)===r);
+  /* 코드는 고정(사장님 2026-09-15): GDL1=로컬 한국어, GDL2=로컬 영어, GDK…=한국인. 라벨의 안내 금액은 바뀌어도 코드로 짝을 맞춘다. 코드가 없으면 라벨 글자로 */
+  const FIXED={1:/^GDL1$/i, 2:/^GDL2$/i, 0:/^GDK/i};
+  const hit=GUIDE_CODES.find(c=>FIXED[r]&&FIXED[r].test(String(c.code||'').trim()))
+         ||GUIDE_CODES.find(c=>guideRank(c.label)===r);
   return hit?String(hit.label).trim():'';
 }
 function guideTypesOrdered(){
