@@ -1410,6 +1410,7 @@ function quoteSnapshot(){
       we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
     })); })(),
     includes: { customer: quoteIncludes('customer'), internal: quoteIncludes('internal') },
+    noGuide: !busGuideName() && !(useGuideOn()&&$('#guide').value),   // 가이드가 하나도 없으면 불포함 사항에 「가이드」 자동 표기(사장님 2026-09-15)
     fx: FX_RATE||0,
     lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
     total: LAST.total, per: LAST.per
@@ -1539,7 +1540,7 @@ function buildQuoteHtml(mode, Q){
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
-        <div style="padding:3px 0">${(Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t)).join(' &nbsp;·&nbsp; ')}</div>   <!-- 한 줄 가로 표기(사장님 2026-09-14) -->
+        <div style="padding:3px 0">${(Q.noGuide?['<span style="color:#c62828;font-weight:800">가이드</span>']:[]).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(' &nbsp;·&nbsp; ')}</div>   <!-- 한 줄 가로 표기(사장님 2026-09-14) · 가이드 없으면 맨 앞에 빨간 「가이드」(사장님 2026-09-15) -->
       </div>
     </div>
     ${detail}
