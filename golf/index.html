@@ -551,6 +551,13 @@ function isBkkRegion(n){ return /방콕|bangkok|bkk/i.test(String(n||'')); }
 function guideLabel(t){ return String(t||'').replace(/\s*\([A-Z0-9]{2,5}\)\s*$/,''); }
 /* 가이드 종류 배열 순서(사장님 2026-09-15): 한국인가이드 → 로컬(한국어) → 로컬(영어) → 그 외(관리 순서) → 「가이드 필요 없습니다」는 드롭다운 맨 끝 */
 function guideRank(t){ const s=String(t||''); if(/한국인|korean/i.test(s)) return 0; if(/로컬|local/i.test(s)) return /영어|english|eng/i.test(s)?2:1; return 3; }
+/* 코드관리 「가이드」 코드 목록(loadRegionCodes에서 채움). 종류와 코드는 같은 구분(한국인/로컬 한국어/로컬 영어)끼리 짝지어 라벨을 보여준다 */
+let GUIDE_CODES=[];
+function guideCodeLabel(t){
+  const r=guideRank(t); if(r===3) return '';
+  const hit=GUIDE_CODES.find(c=>guideRank(c.label)===r);
+  return hit?String(hit.label).trim():'';
+}
 function guideTypesOrdered(){
   const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
   return types.map((t,i)=>({t,i})).sort((a,b)=>(guideRank(a.t)-guideRank(b.t))||(a.i-b.i)).map(x=>x.t);
@@ -785,7 +792,8 @@ function syncBusGuide(){
   const types=locals.length?locals:all;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const cur=sel.value;
-  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('');
+  /* 선택지 글자는 코드관리 가이드 라벨(「로컬가이드(한국어가능) 1일당 약 15만원」)이 있으면 그것, 없으면 종류 이름(사장님 2026-09-15). 값은 종류 이름 그대로 */
+  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideCodeLabel(t)||guideLabel(t))}</option>`).join('');
   sel.value=(cur&&types.includes(cur))?cur
     :(g.busGuideType&&types.includes(g.busGuideType))?g.busGuideType
     :(types.find(t=>/로컬|local/i.test(t))||types[0]||'');
@@ -941,8 +949,9 @@ function buildGuideSelOptions(){
   const bus=(typeof vehPlan==='function')&&vehPlan().kind==='bus';
   const types=guideTypesOrdered().filter(t=>!bus||guideRank(t)===0);
   const cur=sel.value;
+  /* 6번도 코드관리 가이드 라벨(비용 안내 포함)이 있으면 그 글자 — 손님이 비용을 대략 알고 고르게(사장님 2026-09-15) */
   sel.innerHTML=`<option value="">가이드 선택</option>`
-    +types.map(t=>`<option value="${esc(t)}">${esc(guideLabel(t))}</option>`).join('')
+    +types.map(t=>`<option value="${esc(t)}">${esc(guideCodeLabel(t)||guideLabel(t))}</option>`).join('')
     +`<option value="${VEH_NONE}">가이드 필요 없습니다</option>`;
   if(cur&&[...sel.options].some(o=>o.value===cur)) sel.value=cur;
   else if(cur){   // 차량이 바뀌어 고른 종류가 빠졌으면(버스로 바꿔 로컬이 사라짐) 미선택으로 되돌린다
@@ -1946,6 +1955,8 @@ async function loadRegionCodes(){
          값이 없으면 한화 표기를 생략한다(잘못된 환율로 안내하지 않도록). */
       const fx=(row.data.fx||[]).find(x=>x&&x.active!==false&&parseFloat(x.label)>0);
       FX_RATE=fx?parseFloat(fx.label):0;
+      /* 코드관리 「가이드」 라벨(예: 로컬가이드(한국어가능) 1일당 약 15만원) — 버스 동승 로컬 선택지 글자로 쓴다(사장님 2026-09-15) */
+      GUIDE_CODES=Array.isArray(row.data.guide)?row.data.guide.filter(x=>x&&x.active!==false&&x.label):[];
       if(Array.isArray(row.data.region)){
         const l=row.data.region.filter(r=>r.active!==false).map(r=>r.label).filter(Boolean);
         if(l.length){ REGIONS=l; return; }
