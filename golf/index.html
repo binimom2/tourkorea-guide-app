@@ -881,11 +881,17 @@ function renderVehChoices(){
   /* 가이드 칸처럼 드롭다운 하나로(사장님 2026-09-15 "차량 란이 매끄럽지 않다") — 추천은 「(추천)」, 코드관리 「차량」 라벨(비용 안내)이 있으면 뒤에 붙인다.
      사진은 고른 차량 이름 옆 「📷 사진 보기」 */
   const codeTxt=v=>{ const k=v==='bus'?'bus':(v==='none'?'':'van'); const l=k?vehCodeLabel(k):''; return l?` · ${l}`:''; };
-  /* 「추천」은 맨 앞에 빨간색(사장님 2026-09-15) — 목록의 option 색 + 추천을 고른 상태면 select 글자도 빨갛게 */
-  const recSel=!!(opts.find(o=>o.v===vehChoice)||{}).rec;
-  box.innerHTML=`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;${recSel?'color:#c62828;':''}">`
-    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''}${o.rec?' style="color:#c62828;font-weight:800;"':''}>${o.rec?'추천 · ':''}${esc(o.t)}${esc(codeTxt(o.v))}</option>`).join('')
-    +`</select>`;
+  /* 「추천」 글자만 빨갛고 나머지는 검게(사장님 2026-09-15). 드롭다운(select)은 글자 일부만 색을 못 주므로
+     select 글자는 투명하게 하고, 그 위에 같은 글자를 그린 겉면(#vehChoiceFace)을 얹는다(누르는 건 아래 select가 받음). 펼친 목록은 전부 검정 */
+  const optText=o=>`${o.rec?'추천 · ':''}${o.t}${codeTxt(o.v)}`;
+  const cur=opts.find(o=>o.v===vehChoice)||opts[0];
+  const face=cur?((cur.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(cur.t+codeTxt(cur.v))):'';
+  box.innerHTML=`<div style="position:relative;">`
+    +`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;width:100%;color:transparent;">`
+    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''} style="color:var(--ink);">${esc(optText(o))}</option>`).join('')
+    +`</select>`
+    +`<div id="vehChoiceFace" style="position:absolute;left:0;top:0;right:30px;bottom:0;display:flex;align-items:center;padding:0 9px;font-size:14px;font-weight:700;color:var(--ink);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${face}</div>`
+    +`</div>`;
   const pb=$('#vehPhotoBtn');
   if(pb){ const k=vehChoice==='bus'?'bus':(vehChoice==='none'?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
   const ex=$('#vehExtra'); if(ex) ex.style.display=vehChoice==='none'?'none':'';
