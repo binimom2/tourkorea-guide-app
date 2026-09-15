@@ -534,8 +534,16 @@ function normalize(d){
   if(!Array.isArray(g.luggageVan.legs)) g.luggageVan.legs=[{label:'공항-방콕',amount:null},{label:'방콕-파타야',amount:null}];
   if(g.luggageVan.paxMin===undefined) g.luggageVan.paxMin=null;
   if(g.luggageVan.paxMax===undefined) g.luggageVan.paxMax=null;
-  // 안내 문구 — 노출 인원일 때 견적기 체크 옆에 띄운다(8명은 80% 이상 짐밴이 필요해서, 사장님 2026-09-15). 손님이 원할 때 체크.
-  if(typeof g.luggageVan.note!=='string') g.luggageVan.note='골프백 적재 때문에 이 인원은 짐밴이 필요한 경우가 대부분입니다. 원하시면 체크해 주세요.';
+  // 안내 문구 — 짐밴이 추천된 인원(8명)이 짐밴 없는 구성을 골랐을 때 견적기에 띄운다(8명은 80% 이상 짐밴이 필요, 사장님 2026-09-15)
+  if(typeof g.luggageVan.note!=='string') g.luggageVan.note='골프백 적재 때문에 이 인원은 짐밴이 필요한 경우가 대부분입니다. 원하시면 짐밴을 추가해 주세요.';
+  /* 인원별 노출 규칙(사장님 2026-09-15) — 견적기 5번 차량 선택지. 줄마다 인원 최소~최대 / 밴 대수 / 짐밴 포함 / 버스 선택 가능 / 기본 추천(밴·버스).
+     기본: 1~7명 밴1대 / 8명 밴1대+짐밴 / 9~14명 밴2대 / 15명~ 버스(밴2대+짐밴 선택 가능). 견적기 VEH_RULES_DEFAULT와 같은 값 */
+  if(!Array.isArray(g.vehicleRules)||!g.vehicleRules.length) g.vehicleRules=[
+    {paxMin:1, paxMax:7,   vans:1,lug:false,bus:true,rec:'van'},
+    {paxMin:8, paxMax:8,   vans:1,lug:true, bus:true,rec:'van'},
+    {paxMin:9, paxMax:14,  vans:2,lug:false,bus:true,rec:'van'},
+    {paxMin:15,paxMax:null,vans:2,lug:true, bus:true,rec:'bus'}
+  ];
   /* regions(골프장·호텔 요금줄)는 이 화면 몫이 아니다 — 사이트 관리가 넣고, 저장 때 서버 것을 그대로 살린다(NOT_MINE) */
   return g;
 }
@@ -691,11 +699,7 @@ function openVgEditor(gs, gi, onDone){
       <div style="flex:1;">${F('인승',`<input id="vgSeats" type="number" min="1" style="${IN}" value="${g.seats==null?'':g.seats}" placeholder="12">`)}</div>
       <div style="flex:1;">${F('최대 탑승',`<input id="vgMax" type="number" min="1" style="${IN}" value="${g.maxPax==null?'':g.maxPax}" placeholder="7">`,'이 인원을 넘으면 다음 대')}</div>
     </div>
-    <!-- 차량 선택 노출 인원(사장님 2026-09-15): 견적 인원이 이 범위일 때만 견적기 5번 드롭다운에 나온다. 둘 다 비우면 항상 -->
-    <div style="display:flex;gap:8px;">
-      <div style="flex:1;">${F('차량 선택 노출 · 최소 인원',`<input id="vgPaxMin" type="number" min="1" style="${IN}" value="${g.paxMin==null?'':g.paxMin}" placeholder="비우면 제한 없음">`)}</div>
-      <div style="flex:1;">${F('차량 선택 노출 · 최대 인원',`<input id="vgPaxMax" type="number" min="1" style="${IN}" value="${g.paxMax==null?'':g.paxMax}" placeholder="비우면 제한 없음">`,'견적 인원이 이 범위일 때만 차량 선택에 나옵니다 (예: 밴 1~8, 버스 6 이상)')}</div>
-    </div>
+    <!-- 열별 「노출 인원」 칸은 「인원별 노출 규칙」 표가 대신한다(사장님 2026-09-15 저녁) — 저장돼 있던 paxMin/paxMax는 그대로 두되 화면에서 뺌 -->
     ${F('내부 메모 <span style="color:#c0492f">· 절대 노출 안 됨</span>',
         `<input id="vgMemo" style="${IN}" value="${escapeAttr(g.memo||'')}" placeholder="예: 노출금지">`)}
     ${F('적용 지역 조합',
@@ -765,9 +769,6 @@ function openVgEditor(gs, gi, onDone){
     const s=v('vgSeats'), m=v('vgMax');
     g.seats = s===''?null:Number(s);
     g.maxPax= m===''?null:Number(m);
-    const pn=v('vgPaxMin'), px=v('vgPaxMax');                           // 차량 선택 노출 인원 범위(사장님 2026-09-15)
-    g.paxMin= pn===''?null:Number(pn);
-    g.paxMax= px===''?null:Number(px);
     g.bus = !!ov.querySelector('#vgBus').checked;                       // 버스: 로컬가이드 동승 필수(사장님 2026-09-14)
     g.busGuideType = g.bus ? v('vgBusGuide') : '';
     g.combos = v('vgCombos').split('\n')
@@ -804,7 +805,40 @@ function notesEditor(key,title){   // key: G의 문구 배열 이름(vehicleNote
 }
 
 function vehicleCard(){
-  const c=card('🚐 차량 요금 (12인승 밴 1대 기준)','지역 조합마다 열을 하나씩 둡니다. 요금이 없는 칸은 비워두거나 X를 입력하세요. 안내 문구는 ⚙️ 기타 탭에 있습니다.');
+  const c=card('🚐 차량 요금 (밴 1대 기준)','지역 조합마다 열을 하나씩 둡니다. 버스 체크가 된 열은 버스, 나머지는 밴으로 봅니다. 요금이 없는 칸은 비워두거나 X를 입력하세요. 안내 문구는 ⚙️ 기타 탭에 있습니다.');
+
+  /* 인원별 노출 규칙(사장님 2026-09-15) — 견적기 5번에 인원 구간마다 어떤 구성을 보여주고 무엇을 추천할지.
+     밴 요금 = 경로에 맞는 밴 열 기간요금 × 대수, 버스 = 버스 열 기간요금, 짐밴 = 아래 구간별 1회 요금. */
+  c.appendChild(el('div','mini','· 인원별 노출 규칙 (실시간 견적 차량 선택)'));
+  const rhint=el('div'); rhint.style.cssText='font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.5;';
+  rhint.textContent='견적 인원이 어느 줄에 들면 그 줄의 구성(밴 N대, 짐밴 포함)이 추천으로 기본 선택되고, 버스는 「버스 선택 가능」이면 함께 나옵니다. 손님은 「＋ 차량 추가 선택」으로 밴 1대·짐밴을 더 담을 수 있습니다. 최대 인원을 비우면 그 이상 전부.';
+  c.appendChild(rhint);
+  const rwrap=el('div','gtwrap'); c.appendChild(rwrap);
+  const drawRules=()=>{
+    const RS=(G.vehicleRules=G.vehicleRules||[]);
+    rwrap.innerHTML='';
+    const t=document.createElement('table'); t.className='gt'; t.style.minWidth='auto';
+    t.innerHTML='<thead><tr><th>인원 최소</th><th>인원 최대</th><th>밴 대수</th><th>짐밴 포함</th><th>버스 선택 가능</th><th>기본 추천</th><th></th></tr></thead>';
+    const tb=document.createElement('tbody');
+    const num=(o,k,ph)=>{ const i=document.createElement('input'); i.type='number'; i.min='0'; i.className='n'; i.placeholder=ph||''; i.value=o[k]==null?'':o[k];
+      i.oninput=()=>{ const v=i.value.trim(); o[k]=v===''?null:Number(v); _touch(); }; return i; };
+    const chk=(o,k)=>{ const i=document.createElement('input'); i.type='checkbox'; i.checked=!!o[k]; i.onchange=()=>{ o[k]=i.checked; _touch(); }; return i; };
+    RS.forEach((r,i)=>{
+      const tr=document.createElement('tr');
+      const td=(n)=>{ const d=document.createElement('td'); d.style.textAlign='center'; d.appendChild(n); tr.appendChild(d); };
+      td(num(r,'paxMin','1')); td(num(r,'paxMax','비우면 이상 전부')); td(num(r,'vans','1')); td(chk(r,'lug')); td(chk(r,'bus'));
+      const sel=document.createElement('select'); sel.innerHTML='<option value="van">밴 구성</option><option value="bus">버스</option>'; sel.value=r.rec==='bus'?'bus':'van';
+      sel.onchange=()=>{ r.rec=sel.value; _touch(); }; td(sel);
+      const x=el('a',null,'✕'); x.style.cssText='color:var(--danger);cursor:pointer;font-weight:800;'; x.onclick=()=>{ RS.splice(i,1); _touch(); drawRules(); }; td(x);
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb); rwrap.appendChild(t);
+  };
+  drawRules();
+  const addRule=el('button','btn ghost sm','＋ 인원 구간 추가');
+  addRule.style.cssText='margin:6px 0 14px;';
+  addRule.onclick=()=>{ (G.vehicleRules=G.vehicleRules||[]).push({paxMin:null,paxMax:null,vans:1,lug:false,bus:true,rec:'van'}); _touch(); drawRules(); };
+  c.appendChild(addRule);
 
   // 지역 조합별 기간 요금표
   c.appendChild(el('div','mini','· 기간별 요금'));
@@ -823,7 +857,7 @@ function vehicleCard(){
       </div>
       <div style="font-weight:600;font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.35;">
         ${combos?escapeHtml(combos):'<span style="color:var(--danger)">적용 지역 미지정</span>'}
-        ${(grp.paxMin||grp.paxMax)?`<div style="color:#1f5e9b;">👥 ${grp.paxMin||1}~${grp.paxMax||''}명일 때 노출</div>`:''}
+        ${grp.bus?`<div style="color:#1f5e9b;">🚌 버스 열</div>`:''}
         ${grp.memo?`<div style="color:#9b7b1f;">🔒 ${escapeHtml(grp.memo)}</div>`:''}
       </div></th>`;
     });
@@ -883,20 +917,14 @@ function vehicleCard(){
   const lbox=el('div');
   const lhint=el('div'); lhint.style.cssText='font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.5;';
   lhint.textContent='구간은 「공항-방콕」처럼 적고, 지역 이름은 코드관리의 지역과 같게 씁니다. 방향은 구분하지 않습니다(파타야-공항도 공항-파타야 요금). '
-    +'견적기는 경로대로 공항 → 지역 → … → 공항 구간을 자동으로 세어 구간마다 1회 요금을 더합니다. 예) 방콕1박+파타야2박 = 공항-방콕 · 방콕-파타야 · 공항-파타야 3회.';
+    +'견적기는 경로대로 공항 → 지역 → … → 공항 구간을 자동으로 세어 구간마다 1회 요금을 더합니다. 예) 방콕1박+파타야2박 = 공항-방콕 · 방콕-파타야 · 공항-파타야 3회. '
+    +'짐밴이 어느 인원에 들어가는지는 위 「인원별 노출 규칙」의 「짐밴 포함」으로 정합니다.';
   lbox.appendChild(lhint);
   const IN2='font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
-  const prow=el('div'); prow.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12.5px;font-weight:700;';
-  const mkPax=(k,ph)=>{ const i=document.createElement('input'); i.type='number'; i.min='1'; i.placeholder=ph; i.value=LV[k]==null?'':LV[k];
-    i.style.cssText='width:84px;text-align:right;'+IN2;
-    i.oninput=()=>{ const v=i.value.trim(); LV[k]=v===''?null:Number(v); _touch(); }; return i; };
-  prow.appendChild(el('span',null,'노출 인원')); prow.appendChild(mkPax('paxMin','최소')); prow.appendChild(el('span',null,'~')); prow.appendChild(mkPax('paxMax','최대'));
-  const pn=el('span',null,'명 · 비우면 제한 없음 (예: 8명 이상이면 최소 8)'); pn.style.cssText='font-weight:600;color:var(--muted);'; prow.appendChild(pn);
-  lbox.appendChild(prow);
-  /* 안내 문구 — 노출 인원일 때 견적기 「＋ 미팅샌딩 짐밴」 체크 옆에 보인다. 손님이 원할 때 체크하는 방식(사장님 2026-09-15) */
+  /* 안내 문구 — 짐밴이 추천된 인원(8명)이 짐밴 없는 구성을 골랐을 때 견적기에 보인다(사장님 2026-09-15). 노출 인원 칸은 규칙 표로 옮겨 삭제 */
   const nrow=el('div'); nrow.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:12.5px;font-weight:700;';
   const nlab=el('span',null,'안내 문구'); nlab.style.cssText='padding-top:7px;white-space:nowrap;'; nrow.appendChild(nlab);
-  const nta=document.createElement('textarea'); nta.rows=2; nta.value=LV.note||''; nta.placeholder='노출 인원일 때 체크 옆에 보이는 문구. 비우면 안 보임';
+  const nta=document.createElement('textarea'); nta.rows=2; nta.value=LV.note||''; nta.placeholder='짐밴이 추천된 인원이 짐밴을 뺐을 때 보이는 문구. 비우면 안 보임';
   nta.style.cssText='flex:1;resize:vertical;font-weight:600;'+IN2;
   nta.oninput=()=>{ LV.note=nta.value; _touch(); };
   nrow.appendChild(nta); lbox.appendChild(nrow);
@@ -1183,9 +1211,10 @@ async function downloadGolfXlsx(){
         return cell.na ? 'X' : _gxNum(cell.amount);
       }))));
     /* 미팅샌딩 짐밴(구간별 1회 요금) — 옛 「수송밴」 시트를 대신한다(사장님 2026-09-15) */
+    _gxSheet(wb,'인원별 노출 규칙',['인원 최소','인원 최대','밴 대수','짐밴 포함','버스 선택 가능','기본 추천'],
+      (G.vehicleRules||[]).map(r=>[_gxNum(r.paxMin),_gxNum(r.paxMax),_gxNum(r.vans),r.lug?'O':'',r.bus?'O':'',r.rec==='bus'?'버스':'밴 구성']));
     _gxSheet(wb,'미팅샌딩 짐밴',['구간','1회 요금(THB)'],
-      [['노출 인원',`${(G.luggageVan||{}).paxMin||''}~${(G.luggageVan||{}).paxMax||''}명`]]
-        .concat(((G.luggageVan||{}).legs||[]).map(t=>[t.label||'',_gxNum(t.amount)])));
+      ((G.luggageVan||{}).legs||[]).map(t=>[t.label||'',_gxNum(t.amount)]));
     _gxSheet(wb,'차량 안내문구',['문구'],(G.vehicleNotes||[]).filter(Boolean).map(t=>[t]));
     _gxSheet(wb,'불포함 사항',['문구'],(G.excludeNotes||[]).filter(Boolean).map(t=>[t]));
 
