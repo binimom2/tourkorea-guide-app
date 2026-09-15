@@ -1738,7 +1738,7 @@ function stepDone(id){
     case 's3': {
       if(!useHotelOn()) return true;
       const stay=ROUTE.filter(r=>(+r.nights||0)>0);
-      return stay.length>0 && stay.every(r=>hotelPick[r.sid]!==undefined);
+      return stay.length>0 && stay.every(r=>hotelPick[r.sid]!==undefined&&hotelPick[r.sid]!=='');   // 빈 값('')은 안 고른 것(사장님 2026-09-15)
     }
     case 's4': return dayState.some(st=>st.round&&st.course);
     case 's5': return true;
@@ -1820,6 +1820,14 @@ function renderStepSummaries(){
    손님에게 묻기도 전에 접혀 버리면 물어볼 항목이 있는 줄도 모르게 된다. */
 const touched=new Set();
 function autoFold(activeId){
+  /* 3번 호텔: 만졌는데 호텔을 안 고른 채 뒤 칸(4~6번·결과)으로 넘어가면 「필요 없음」이 자동으로 체크돼
+     접힌 제목에 빨간 「호텔을 선택하지 않았습니다」가 뜬다(사장님 2026-09-15). 다시 호텔을 고르면 체크는 풀린다 */
+  if(activeId!=='s3' && touched.has('s3') && useHotelOn() && ROUTE.length){
+    const later=!activeId || STEPS.indexOf(activeId)>STEPS.indexOf('s3');
+    const stay=ROUTE.filter(r=>(+r.nights||0)>0);
+    const picked=stay.length>0 && stay.every(r=>hotelPick[r.sid]!==undefined&&hotelPick[r.sid]!=='');
+    if(later && !picked){ const c=$('#noHotel'); if(c){ c.checked=true; renderHotels(); if(window._ready) calc(); } }
+  }
   renderStepSummaries();
   STEPS.forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
@@ -1906,7 +1914,7 @@ document.addEventListener('change',e=>{
   if(t.id==='extraVan'||t.id==='extraLug'){ syncVehShown(); touched.add('s5'); calc(); return; }   // ＋ 차량 추가 선택
   if(t.id==='guideSel'){ onGuideSelChange(); return; }
   if(t.id==='noVeh'){ vehChoice=t.checked?'none':'van'; syncVehShown(); autoFold('s5'); calc(); return; }   // 숨긴 체크(계산용) — 라디오와 동기
-  if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; delete hotelRoomT[t.dataset.hotel]; renderHotels(); calc(); return; }   // 호텔이 바뀌면 객실 타입 칸을 다시 그린다
+  if(t.dataset.hotel!==undefined){ hotelPick[t.dataset.hotel]=t.value; delete hotelRoomT[t.dataset.hotel]; if(t.value){ const c=$('#noHotel'); if(c) c.checked=false; } renderHotels(); calc(); return; }   // 호텔이 바뀌면 객실 타입 칸을 다시 그린다 · 고르면 「필요 없음」 해제(사장님 2026-09-15)
   if(t.dataset.hrt!==undefined){ hotelRoomT[t.dataset.hrt]=t.value; calc(); return; }
   if(t.dataset.hroom!==undefined){ hotelRoom[t.dataset.hroom]=t.value; calc(); return; }
   if(t.dataset.r!==undefined){ const i=+t.dataset.r; dayState[i].round=t.checked; const row=t.closest('.day'); row.classList.toggle('off',!t.checked); document.querySelector(`[data-c="${i}"]`).disabled=!t.checked; document.querySelector(`[data-h="${i}"]`).disabled=!t.checked; }
