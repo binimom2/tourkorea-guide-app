@@ -235,7 +235,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
       <div class="basic">
         <!-- 출발일자: 눌러서 달력판을 열고 출발일 → 귀국일을 이어 고른다(사장님 2026-09-11).
              #startDate·#endDate 는 감춘 칸 — 요금 셈·견적서는 예전처럼 #startDate 를 읽는다. -->
-        <div class="f fx-date"><label>출발일자 <span style="font-weight:600">(출발 ~ 도착)</span></label>
+        <div class="f fx-date"><label>출발일자</label><!-- 「(출발 ~ 도착)」 삭제(사장님 2026-09-15) -->
           <button type="button" id="dateBtn"></button>
           <input type="hidden" id="startDate"><input type="hidden" id="endDate">
         </div>
@@ -246,7 +246,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         <!-- 몇박몇일은 달력에서 저절로 나온다. 밤 비행기로 돌아오면 박수+2일(3박5일),
              태국에서 오전 출국이면 박수+1일(3박4일). 박수는 직접 고쳐도 된다(귀국일이 따라 움직인다).
              빈 칸은 0을 미리 넣지 않는다 — 숫자를 찍을 때 밀린다 -->
-        <div class="f fx-stay"><label>몇박몇일 <span style="font-weight:600">(자동)</span></label>
+        <div class="f fx-stay"><label>몇박몇일</label><!-- 「(자동)」 삭제(사장님 2026-09-15) -->
           <div class="unit">
             <input type="number" id="nights" min="0" max="14" inputmode="numeric"><span>박</span>
             <input type="text" id="daysOut" readonly tabindex="-1"><span>일</span>
@@ -272,7 +272,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   </div>
 
   <div class="card step" id="s2">
-    <h2 class="steph"><span class="mustTag" style="color:#c62828;font-weight:800;margin-right:6px;">필수</span>2. 지역선택 <span class="sublab tip">머무르실 곳을 순서로 클릭해주세요 <span style="font-weight:600">(다시 가는 곳은 한 번 더 클릭)</span></span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph"><span class="mustTag" style="color:#c62828;font-weight:800;margin-right:6px;">필수</span>2. 지역선택 <span class="sublab tip">머무르실 곳을 순서대로 클릭해주세요 <span style="font-weight:600">(다시 가는 곳은 한 번 더 클릭)</span></span><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div class="chips" id="regChips"></div>
       <div class="picked" id="regPicked"></div>
@@ -283,7 +283,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   <div class="card step" id="s3">
     <!-- 호텔은 지역을 고르면 기본으로 펼쳐진다. 필요 없을 때만 아래 체크로 접는다 —
          제목줄은 남겨 두어 다시 고를 수 있다(사장님 2026-09-11). -->
-    <h2 class="steph">3. 호텔 <span class="sublab tip">지역을 선택하면 나옵니다</span><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">3. 호텔 <span class="sublab tip">2번을 선택하면 나옵니다</span><span class="csum" id="sum3"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div id="hotelWrap"></div>
       <div class="hint" id="hotelHint" style="display:none"></div>
@@ -296,7 +296,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
 
   <div class="card step" id="s4">
     <!-- 접힌 뒤엔 「4. 라운딩」만 남기고 안내문(.tlong)은 숨긴다 — 선택한 내용만 보이게(사장님 2026-09-14) -->
-    <h2 class="steph">4. 라운딩<span class="tlong">하실 날만 선택 후 골프장을 선택하세요</span> <span class="sublab">그린피+캐디+전동카 포함</span><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">4. 라운딩 <span class="sublab tip">2번을 선택하면 나옵니다</span><span class="sublab">그린피+캐디피+전동카트 포함</span><!-- 안내문·문구(사장님 2026-09-15): 2번 고르면 tip은 숨김 --><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
     <div class="cbody"><div id="days"></div></div>
   </div>
 
@@ -1114,7 +1114,7 @@ function renderHotels(){
   wrap.style.display=on?'':'none';
   const stay=ROUTE.filter(r=>(+r.nights||0)>0);
   if(hint){
-    const msg=(on&&!stay.length)?'2번에서 머무르실 곳과 박수를 먼저 적어주세요.':'';
+    const msg='';   // 「2번에서 머무르실 곳과 박수를 먼저 적어주세요.」 노출 삭제(사장님 2026-09-15) — 제목의 「2번을 선택하면 나옵니다」가 대신함
     hint.textContent=msg; hint.style.display=msg?'':'none';
   }
   if(!on) return;
@@ -1793,6 +1793,7 @@ function renderStepSummaries(){
   /* 3번 호텔: 지역을 고른 뒤엔 「지역을 선택하면 나옵니다」를 숨기고,
      「필요 없음」 체크 상태면 체크 옆에 빨간 「호텔 없이 · 미선택」을 띄운다 */
   const tip=$('#s3 .sublab.tip'); if(tip) tip.style.display=(ROUTE.length||!useHotelOn())?'none':'';
+  const tip4=$('#s4 .sublab.tip'); if(tip4) tip4.style.display=ROUTE.length?'none':'';   // 4번 라운딩도 2번 고르면 「2번을 선택하면 나옵니다」 숨김(사장님 2026-09-15)
   const nw=$('#noHotelWarn'); if(nw){ const on=ROUTE.length>0&&!useHotelOn(); nw.textContent=on?'호텔을 선택하지 않으셨습니다':''; nw.style.display=on?'':'none'; }
   /* 5번 차량: 「필요 없음」 체크 상태면 체크 옆에 빨간 「차량 없이 · 미선택」(사장님 2026-09-14 저녁, 호텔과 동일) */
   const vw=$('#noVehWarn'); if(vw){ const on=ROUTE.length>0&&!useVehOn(); vw.textContent=on?'차량을 선택하지 않으셨습니다':''; vw.style.display=on?'':'none'; }
