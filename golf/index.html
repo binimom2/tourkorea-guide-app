@@ -319,6 +319,14 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
           <!-- 차량 설명(관리 → 차량 열 수정창 「설명」) — 손님에게 보이는 글. 없으면 안 보인다(사장님 2026-09-14) -->
           <div class="hint" id="vehDesc" style="display:none;margin-top:3px;white-space:pre-wrap;"></div>
           <div class="hint" id="vehAuto" style="color:#2e7d32;margin-top:2px;"></div>
+          <!-- 미팅샌딩 짐밴(사장님 2026-09-15): 관리 → 차량 요금 → 「미팅샌딩 짐밴」 표. 견적 인원이 노출 범위일 때만 보이고,
+               체크하면 경로의 구간(공항→지역→…→공항)마다 1회 요금이 붙는다. 체크 라벨은 글자 폭만(행 전체 금지) -->
+          <div id="lugWrap" style="display:none;margin-top:8px;">
+            <label style="display:inline-flex;align-items:center;gap:6px;font-weight:700;cursor:pointer;"><input type="checkbox" id="useLug"> ＋ 미팅샌딩 짐밴 <span id="lugCnt" style="color:#0b3d91;"></span></label>
+            <div class="hint" id="lugLegs" style="margin-top:2px;"></div>
+            <!-- 안내 문구(관리 → 짐밴 표 「안내 문구」): 손님이 원할 때 체크하는 방식이라 체크 전에만 보인다(사장님 2026-09-15) -->
+            <div class="hint" id="lugNote" style="display:none;margin-top:3px;color:#c0492f;font-weight:700;white-space:pre-wrap;"></div>
+          </div>
           <!-- 「요금 기준 직접 선택」은 차종 드롭다운이 열을 자동으로 고르므로 숨김(사장님 2026-09-14). 필요하면 display만 되살린다 -->
           <a id="vehPickToggle" style="display:none;margin-top:4px;font-size:12px;color:#5E6F66;text-decoration:underline dotted;cursor:pointer;">요금 기준 직접 선택</a>
           <div id="vehPickWrap" style="display:none;margin-top:5px;">
@@ -413,7 +421,7 @@ const COURSES = {
 const DEFAULT_PRICING = {
   holidays:["2026-05-01","2026-05-04","2026-06-01","2026-06-03","2026-07-28","2026-07-29","2026-07-30","2026-08-12","2026-10-13","2026-10-23","2026-12-07","2026-12-10","2026-12-31"],
   hotels:{"방콕":[{name:"방콕 시내 4성",perNight:2200},{name:"방콕 시내 5성",perNight:3800}],"파타야":[{name:"파타야 비치 4성",perNight:1800},{name:"파타야 비치 5성",perNight:3200}]},
-  handlingPeriods:{}, guidePeriods:{}, vehiclePeriods:{}
+  handlingPeriods:{}, guidePeriods:{}, vehiclePeriods:{}, luggageVan:{legs:[],paxMin:null,paxMax:null}
 };
 const GUIDE_PERIODS=['1일','1박2일','풀1박2일','2박3일','풀2박3일','3박4일','풀3박4일','1박추가시'];
 let P = DEFAULT_PRICING;   // 요금 데이터(공휴일·가이드·핸들링·차량·호텔)
@@ -676,7 +684,7 @@ function newQuote(){
   closeTripCal();
   const px=$('#pax'); if(px) px.value='';
   const ng=$('#nights'); if(ng) ng.value='';
-  ['amDep','amRet','noHotel','useGuide','noVeh'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
+  ['amDep','amRet','noHotel','useGuide','noVeh','useLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
   const gsl=$('#guideSel'); if(gsl) gsl.value=''; guideNone=false;
   const vg=$('#vehGroup'); if(vg) vg.value='0';
@@ -727,17 +735,26 @@ function vehName(g){
 // 접힌 상태에서 보이는 차량명. 지역 조합은 여기에 절대 적지 않는다.
 function syncVehShown(){
   const el=$('#vehShown'); if(!el) return;
-  const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
+  /* 차종 드롭다운을 지금 열에 맞춘다. 인원이 바뀌어 지금 열의 차종이 드롭다운에서 빠졌으면
+     첫 차종으로 옮기고 요금 열도 따라 바꾼다(사장님 2026-09-15 인원별 노출) */
+  const vt=$('#vehType');
+  if(vt&&vt.options.length){
+    if(!useVehOn()) vt.value=VEH_NONE;
+    else{
+      const want=vehTypeKey(curVehGroup());
+      if([...vt.options].some(o=>o.value===want)) vt.value=want;
+      else if(vt.options[0]&&vt.options[0].value!==VEH_NONE){ vt.selectedIndex=0; applyVehType(vt.value); }
+    }
+  }
+  const g=curVehGroup();
   el.textContent=vehName(g);
   const im=$('#vehImg');
   if(im){ const u=(g&&g.img)?String(g.img).trim():''; if(u){ im.src=u; im.style.display=''; } else { im.removeAttribute('src'); im.style.display='none'; } }
   const de=$('#vehDesc');
   if(de){ const d=(g&&g.desc)?String(g.desc).trim():''; de.textContent=d; de.style.display=d?'':'none'; }
-  /* 차종 드롭다운도 지금 열에 맞춘다 */
-  const vt=$('#vehType');
-  if(vt&&vt.options.length){ const want=useVehOn()?vehTypeKey(g):VEH_NONE; if([...vt.options].some(o=>o.value===want)) vt.value=want; }
   setVehInfoVisible(useVehOn());
   syncBusGuide();
+  syncLugUI();
 }
 /* 버스 동승 로컬가이드 칸 — 고른 차량 열이 관리에서 「버스」로 표시돼 있을 때만 보인다.
    선택지는 가이드 요금 표의 종류(한국어 가능 / 영어만 …). 기본값은 관리에서 정한 기본 동승 가이드. */
@@ -760,32 +777,78 @@ function busGuideName(){ const g=curVehGroup(); return (useVehOn()&&g&&g.bus)?((
 /* ── 차종 드롭다운(#vehType) — 관리 차량 열의 표시명을 모아 「밴 / 버스 / 짐밴 … / 차량이 필요 없습니다」로(사장님 2026-09-14) ── */
 const VEH_NONE='__none';
 function vehTypeKey(g){ return String((g&&g.name)||'').trim()||VEH_DEFAULT_NAME; }
+/* ── 인원별 노출(사장님 2026-09-15) — 관리 차량 열의 「노출 인원 최소~최대」 안에 견적 인원이 들 때만 차량 선택에 나온다.
+   둘 다 비우면 항상. 인원을 아직 안 넣었으면 거르지 않는다. 예) 밴 1~8명, 버스 6명 이상 → 6명이면 밴·버스, 8명이면 밴·짐밴·버스 ── */
+function paxFilterOn(){ return (+(($('#pax')||{}).value)||0)>0; }
+function curPax(){ return Math.max(1,+(($('#pax')||{}).value)||1); }
+function paxInRange(o,pax){ if(!o) return true; const mn=+o.paxMin||0, mx=+o.paxMax||0; return (!mn||pax>=mn)&&(!mx||pax<=mx); }
+function vehVisible(g){ return !paxFilterOn()||paxInRange(g,curPax()); }
 function buildVehTypeOptions(){
   const sel=$('#vehType'); if(!sel) return;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const seen=new Set(), opts=[];
-  (P.vehicleGroups||[]).forEach(g=>{ const k=vehTypeKey(g); if(seen.has(k)) return; seen.add(k); opts.push(`<option value="${esc(k)}">${esc(vehName(g))}</option>`); });
+  let gs=(P.vehicleGroups||[]).filter(vehVisible);
+  if(!gs.length) gs=P.vehicleGroups||[];   // 이 인원에 맞는 열이 하나도 없으면 거르지 않고 다 보여준다(빈 드롭다운 방지)
+  gs.forEach(g=>{ const k=vehTypeKey(g); if(seen.has(k)) return; seen.add(k); opts.push(`<option value="${esc(k)}">${esc(vehName(g))}</option>`); });
   opts.push(`<option value="${VEH_NONE}">차량이 필요 없습니다</option>`);
   const cur=sel.value;
   sel.innerHTML=opts.join('');
   if(cur&&[...sel.options].some(o=>o.value===cur)) sel.value=cur;
 }
+/* 차종 값 → 「차량 없음」 체크와 요금 열(#vehGroup)을 맞춘다. 접기·계산은 부르는 쪽에서.
+   같은 이름의 열 중 (인원에 맞고) 경로에 맞는 열 → 경로에 맞는 열 → 인원에 맞는 첫 열 → 그 이름의 첫 열 */
+function applyVehType(v){
+  const gsel=$('#vehGroup'), no=$('#noVeh'); if(!gsel) return;
+  if(v===VEH_NONE){ if(no) no.checked=true; return; }
+  if(no) no.checked=false;
+  const gs=P.vehicleGroups||[];
+  const key=a=>[...new Set(a.map(x=>String(x).trim()))].sort().join('|');
+  const want=key(ROUTE.map(r=>r.region).filter(Boolean));
+  let hit=gs.findIndex(g=>vehTypeKey(g)===v&&vehVisible(g)&&want&&(g.combos||[]).some(c=>key(c)===want));
+  if(hit<0) hit=gs.findIndex(g=>vehTypeKey(g)===v&&want&&(g.combos||[]).some(c=>key(c)===want));
+  if(hit<0) hit=gs.findIndex(g=>vehTypeKey(g)===v&&vehVisible(g));
+  if(hit<0) hit=gs.findIndex(g=>vehTypeKey(g)===v);
+  if(hit>=0) gsel.value=String(hit);
+  const tag=$('#vehAuto'); if(tag) tag.textContent='';
+}
 /* 차종을 고르면: 같은 이름의 요금 열 중 경로에 맞는 열 → 없으면 그 이름의 첫 열 */
 function onVehTypeChange(){
-  const sel=$('#vehType'), gsel=$('#vehGroup'); if(!sel||!gsel) return;
-  const v=sel.value, no=$('#noVeh');
-  if(v===VEH_NONE){ if(no) no.checked=true; }
-  else{
-    if(no) no.checked=false;
-    const gs=P.vehicleGroups||[];
-    const key=a=>[...new Set(a.map(x=>String(x).trim()))].sort().join('|');
-    const want=key(ROUTE.map(r=>r.region).filter(Boolean));
-    let hit=gs.findIndex(g=>vehTypeKey(g)===v&&want&&(g.combos||[]).some(c=>key(c)===want));
-    if(hit<0) hit=gs.findIndex(g=>vehTypeKey(g)===v);
-    if(hit>=0) gsel.value=String(hit);
-    const tag=$('#vehAuto'); if(tag) tag.textContent='';
-  }
+  const sel=$('#vehType'); if(!sel) return;
+  applyVehType(sel.value);
   syncVehShown(); touched.add('s5'); autoFold('s5'); calc();
+}
+
+/* ── 미팅샌딩 짐밴(사장님 2026-09-15) — 관리 → 차량 요금 → 「미팅샌딩 짐밴」 표(P.luggageVan.legs[{label:'공항-방콕',amount}], paxMin/paxMax).
+   구간은 경로에서 자동: 공항 → 첫 지역 → … → 마지막 지역 → 공항. 방향은 무시(파타야-공항 = 공항-파타야).
+   예) 파타야 3박 = 공항-파타야 2회 / 방콕1박+파타야2박 = 공항-방콕 · 방콕-파타야 · 공항-파타야 3회 ── */
+const LUG_AIRPORT='공항';
+function lugNorm(s){ s=String(s||'').trim(); return /공항|airport/i.test(s)?LUG_AIRPORT:s.toLowerCase(); }
+function lugKey(a,b){ return [lugNorm(a),lugNorm(b)].sort().join('|'); }
+function lugLegsOfRoute(){
+  const seq=[LUG_AIRPORT];
+  ROUTE.map(r=>String(r.region||'').trim()).filter(Boolean).forEach(r=>{ if(lugNorm(seq[seq.length-1])!==lugNorm(r)) seq.push(r); });
+  if(seq.length<2) return [];
+  seq.push(LUG_AIRPORT);
+  const out=[]; for(let i=0;i<seq.length-1;i++) out.push({a:seq[i],b:seq[i+1]});
+  return out;
+}
+function lugPriceOf(a,b){
+  const k=lugKey(a,b);
+  const row=((P.luggageVan||{}).legs||[]).find(t=>{ const p=String(t.label||'').split(/\s*[-–~→↔]\s*/).filter(Boolean); return p.length>=2&&lugKey(p[0],p[p.length-1])===k; });
+  return (row&&row.amount!=null&&row.amount!=='')?(+row.amount||0):null;
+}
+/* 차량이 들어가고, 짐밴 표에 구간이 있고, 인원이 노출 범위일 때만 체크 칸이 보인다 */
+function lugAvailable(){ const L=P.luggageVan||{}; return useVehOn()&&(L.legs||[]).length>0&&(!paxFilterOn()||paxInRange(L,curPax())); }
+function useLugOn(){ return lugAvailable()&&!!(($('#useLug')||{}).checked); }
+function syncLugUI(){
+  const w=$('#lugWrap'); if(!w) return;
+  const on=lugAvailable(); w.style.display=on?'':'none';
+  if(!on) return;
+  const legs=lugLegsOfRoute();
+  const c=$('#lugCnt'); if(c) c.textContent=legs.length?`(${legs.length}회)`:'';
+  const d=$('#lugLegs'); if(d) d.textContent=legs.length?legs.map(l=>`${l.a}-${l.b}${lugPriceOf(l.a,l.b)==null?' (요금 미입력)':''}`).join(DOT):'지역을 선택하면 구간이 계산됩니다';
+  /* 안내 문구 — 손님이 원할 때 체크하는 항목이라 체크 전에만 보인다(8명은 대부분 짐밴이 필요, 사장님 2026-09-15) */
+  const n=$('#lugNote'); if(n){ const t=String((P.luggageVan||{}).note||'').trim(); const checked=!!(($('#useLug')||{}).checked); n.textContent=t; n.style.display=(t&&!checked)?'':'none'; }
 }
 /* 차량 없음이면 사진·이름·설명·요금기준 줄은 감춘다(드롭다운만 남김) */
 function setVehInfoVisible(on){
@@ -936,9 +999,9 @@ function renderVehicleUI(){
     const combos=(g.combos||[]).map(c=>c.join('+')).join(' / ');
     return `<option value="${i}">${vehName(g)}${combos?' — '+combos:(g.label?' — '+g.label:'')}</option>`;
   }).join('') || '<option value="">등록된 차량요금 없음</option>';
+  if(cur && groups[+cur]) sel.value=cur;
   buildVehTypeOptions();
   syncVehShown();
-  if(cur && groups[+cur]) sel.value=cur;
   const nt=$('#vehNotes');
   const notes=(P.vehicleNotes||[]).filter(Boolean);
   nt.innerHTML=notes.length?notes.map(t=>'※ '+t).join('<br>'):'';
@@ -1002,6 +1065,7 @@ function calc(){
   const pax=Math.max(1,+$('#pax').value||1);
   const nights=totalNights();
   updateRoomTags(pax);
+  syncLugUI();             // 짐밴 칸(노출·구간 수)은 인원·경로·차량에 따라 바뀐다(사장님 2026-09-15)
   renderStepSummaries();   // 접힌 칸에 보이는 한 줄 요약을 늘 최신으로
   /* 지역을 고르기 전에는 아무 말도 안 띄운다(사장님 2026-09-11 — 「4명 · 지역을 선택하세요」 삭제) */
   const pi=$('#paxInfo');
@@ -1048,6 +1112,17 @@ function calc(){
     /* 공항 미팅 아따비 — 차량이 들어가면 공항 미팅이 있으므로 1인당 금액 × 인원을 자동으로 붙인다(사장님 2026-09-14) */
     const tip=+P.airportTip||0;
     if(tip>0) lines.push({t:'공항 미팅 아따비',s:`${won(tip)} × ${pax}명`,v:tip*pax});
+    /* 미팅샌딩 짐밴 — 체크했을 때만, 경로 구간마다 1회 요금(사장님 2026-09-15). 요금 없는 구간은 빨간 줄로 알린다 */
+    if(useLugOn()){
+      const legs=lugLegsOfRoute();
+      if(!legs.length) lines.push({t:'미팅샌딩 짐밴',s:'지역 선택 필요',v:0,warn:1});
+      else{
+        let sum=0; const parts=[], miss=[];
+        legs.forEach(l=>{ const p=lugPriceOf(l.a,l.b); if(p==null) miss.push(`${l.a}-${l.b}`); else { sum+=p; parts.push(`${l.a}-${l.b} ${won(p)}`); } });
+        if(parts.length) lines.push({t:`미팅샌딩 짐밴 (${legs.length}회)`,s:parts.join(' · '),v:sum});
+        miss.forEach(m=>lines.push({t:`미팅샌딩 짐밴 ${m}`,s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1}));
+      }
+    }
   }
   // 3) 핸들링
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
@@ -1151,6 +1226,7 @@ function quoteIncludes(mode){
     /* 「차량 신형밴 (9인승) (전 일정 이용)」까지만 — 설명은 견적 화면에서만 보이고 견적서엔 안 적는다(사장님 2026-09-14) */
     out.push(`차량 ${vehName(vg)}${vans>1?` ${vans}대`:''} (전 일정 이용)${(mode==='internal'&&vg&&vg.label)?` · [${vg.label}]`:''}`);
     if(vg&&vg.bus&&busGuideName()) out.push(`버스 동승 로컬가이드 · ${busGuideName()}`);
+    if(useLugOn()&&lugLegsOfRoute().length) out.push(`미팅샌딩 짐밴 ${lugLegsOfRoute().length}회`);   // 사장님 2026-09-15
   }
   if(mode==='internal') out.push('핸들링 차지');
   if(useGuideOn()&&$('#guide').value) out.push(`가이드 · ${$('#guide').value}`);
@@ -1571,7 +1647,8 @@ function stepSummary(id){
     case 's5': {
       if(!useVehOn()) return isFolded('s5')?'차량을 선택하지 않으셨습니다':'차량 없이';   // 접히면 빨간 문구로(호텔과 동일)
       const g=(P.vehicleGroups||[])[+(($('#vehGroup')||{}).value||0)];
-      return g?vehName(g)+(busGuideName()?`${DOT}동승 ${busGuideName()}`:''):'';
+      const lug=(useLugOn()&&lugLegsOfRoute().length)?`${DOT}짐밴 ${lugLegsOfRoute().length}회`:'';   // 사장님 2026-09-15
+      return g?vehName(g)+(busGuideName()?`${DOT}동승 ${busGuideName()}`:'')+lug:'';
     }
     /* 가이드는 체크를 안 했으면 「미선택」으로 빨갛게 — '없이'로 두면 물어보지 않고 넘어간 건지 알 수 없다(사장님 2026-09-14) */
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
@@ -1665,7 +1742,9 @@ document.addEventListener('input',e=>{
   }
   // 숙소 박수는 손으로 고친 값을 그대로 기억한다(지역 박수와 달라도 된다)
   if(t.dataset.hn!==undefined){ hotelNights[t.dataset.hn]=t.value; calc(); return; }
-  if(t.id==='pax'||t.id==='teamName') calc();
+  /* 인원이 바뀌면 차량 드롭다운·짐밴 칸을 다시 거른다(사장님 2026-09-15 인원별 노출) */
+  if(t.id==='pax'){ buildVehTypeOptions(); syncVehShown(); calc(); return; }
+  if(t.id==='teamName') calc();
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -1682,6 +1761,7 @@ document.addEventListener('change',e=>{
   // 직원이 직접 고르면 자동 적용 안내는 지운다(직접 고른 값이 우선)
   if(t.id==='vehGroup'){ const tag=$('#vehAuto'); if(tag) tag.textContent=''; syncVehShown(); calc(); return; }
   if(t.id==='busGuide'){ calc(); return; }
+  if(t.id==='useLug'){ calc(); return; }   // 미팅샌딩 짐밴 체크(사장님 2026-09-15)
   if(t.id==='vehType'){ onVehTypeChange(); return; }
   if(t.id==='guideSel'){ onGuideSelChange(); return; }
   if(t.id==='noVeh'){ const w=$('#vehGroup'); if(w) w.closest('.f').style.display=t.checked?'none':''; autoFold('s5'); calc(); return; }
@@ -1738,7 +1818,9 @@ async function loadPricing(){
         ? d.vehicleGroups
         : [{id:'vg1',label:'기본',periods:d.vehiclePeriods||{}}],
       vehicleNotes:Array.isArray(d.vehicleNotes)?d.vehicleNotes:[],
-      transfers:Array.isArray(d.transfers)?d.transfers:[]
+      transfers:Array.isArray(d.transfers)?d.transfers:[],
+      // 미팅샌딩 짐밴(구간별 1회 요금 + 노출 인원) — 관리 → 차량 요금(사장님 2026-09-15)
+      luggageVan:(d.luggageVan&&typeof d.luggageVan==='object')?d.luggageVan:{legs:[],paxMin:null,paxMax:null}
     };
       // 저장된 골프장(새 구조)이 있으면 반영.
       // (전에는 첫 골프장의 첫 시즌줄이 있어야만 읽었다 — 새 요금줄(rates[])만 있는 골프장은 통째로 빠졌다. 2026-09-10 고침)
