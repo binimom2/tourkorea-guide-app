@@ -888,8 +888,8 @@ function renderVehChoices(){
   const cur=opts.find(o=>o.v===vehChoice)||opts[0];
   const face=cur?((cur.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(cur.t+codeTxt(cur.v))):'';
   box.innerHTML=`<div style="position:relative;">`
-    +`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;width:100%;color:transparent;">`
-    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''} style="color:var(--ink);">${esc(optText(o))}</option>`).join('')
+    +`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;width:100%;color:var(--ink);-webkit-text-fill-color:transparent;">`   /* 글자만 투명(text-fill), color는 남겨야 끝의 ˅ 화살표가 보인다(사장님 2026-09-15 저녁) */
+    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''} style="color:var(--ink);-webkit-text-fill-color:var(--ink);">${esc(optText(o))}</option>`).join('')
     +`</select>`
     +`<div id="vehChoiceFace" style="position:absolute;left:0;top:0;right:30px;bottom:0;display:flex;align-items:center;padding:0 9px;font-size:14px;font-weight:700;color:var(--ink);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${face}</div>`
     +`</div>`;
