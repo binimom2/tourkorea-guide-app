@@ -296,7 +296,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
 
   <div class="card step" id="s4">
     <!-- 접힌 뒤엔 「4. 라운딩」만 남기고 안내문(.tlong)은 숨긴다 — 선택한 내용만 보이게(사장님 2026-09-14) -->
-    <h2 class="steph">4. 라운딩 <span class="sublab tip">2번을 선택하면 나옵니다</span><span class="sublab">그린피+캐디피+전동카트 포함</span><!-- 안내문·문구(사장님 2026-09-15): 2번 고르면 tip은 숨김 --><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">4. 라운딩 <span class="sublab tip">2번을 선택하면 나옵니다</span><!-- 「그린피+캐디피+전동카트 포함」은 본문으로 옮김(사장님 2026-09-15): 2번 고르면 tip은 숨김 --><span class="csum" id="sum4"></span><span class="cedit">수정</span></h2>
     <div class="cbody"><div id="days"></div></div>
   </div>
 
@@ -1026,7 +1026,7 @@ function regionOptionsHtml(sel){
 }
 function buildDays(){
   const wrap=$('#days'); wrap.innerHTML=''; dayState=[];
-  if(!ROUTE.length){ wrap.innerHTML='<div class="hint">위에서 지역을 먼저 선택하세요.</div>'; return; }
+  if(!ROUTE.length){ wrap.innerHTML='<div class="hint">그린피+캐디피+전동카트 포함</div>'; return; }   // 「위에서 지역을 먼저 선택하세요」 대신(사장님 2026-09-15)
   const start=$('#startDate').value;
   if(!start){ wrap.innerHTML='<div class="hint">출발 일자를 먼저 선택하세요.</div>'; return; }
   const days=totalNights()+1;
