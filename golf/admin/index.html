@@ -303,7 +303,7 @@ const DEFAULT = {
   airportTip: 50,   // 공항 미팅 아따비 — 1인당 ฿, 차량이 들어가는 견적에 자동으로 붙는다(사장님 2026-09-14)
   // 차량 요금 아래에 붙는 안내 문구 (견적서에도 그대로 노출)
   // 견적서 「불포함 사항」 — 기타 탭에서 고친다(사장님 2026-09-14)
-  excludeNotes: ['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','여행자보험'],
+  excludeNotes: ['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','항공','여행자보험'],   // 「항공」(사장님 2026-09-15)
   vehicleNotes: [
     '일정외지역으로 운행시 추가유류비가 발생될 수 있습니다',
     '19시 초과시 시간당 300밧씩 추가 요금이 발생됩니다',
@@ -532,6 +532,8 @@ function normalize(d){
   });
   if(!Array.isArray(g.vehicleNotes)) g.vehicleNotes=DEFAULT.vehicleNotes.slice();
   if(!Array.isArray(g.excludeNotes)) g.excludeNotes=DEFAULT.excludeNotes.slice();
+  /* 「항공」이 없으면 「기타 개인경비」 뒤에 한 번 끼워 넣는다(사장님 2026-09-15). 지우고 싶으면 기타 탭에서 지우면 되고 다시 살아나지 않게 표시를 남긴다 */
+  if(!g.excludeAirSeed){ if(!g.excludeNotes.some(t=>/항공/.test(String(t||'')))){ const i=g.excludeNotes.findIndex(t=>/개인경비/.test(String(t||''))); g.excludeNotes.splice(i>=0?i+1:g.excludeNotes.length,0,'항공'); } g.excludeAirSeed=true; }
   if(!Array.isArray(g.transfers))    g.transfers=JSON.parse(JSON.stringify(DEFAULT.transfers));
   /* 미팅샌딩 짐밴(사장님 2026-09-15) — 구간별 1회 요금 + 노출 인원 범위. 처음엔 「공항-방콕」「방콕-파타야」 두 줄.
      견적기는 경로에서 공항→지역→…→공항 구간을 뽑아 줄마다 요금을 더한다(방향 무시). */

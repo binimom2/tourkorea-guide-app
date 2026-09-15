@@ -1290,7 +1290,14 @@ const WDAY=['일','월','화','수','목','금','토'];
 function fmtDay(ds){ const d=new Date(ds+'T00:00:00'); return `${ds.slice(5).replace('-','/')} (${WDAY[d.getDay()]})`; }
 
 /* 견적서 '불포함 사항' — 고정 목록(사장님 2026-09-14). 바꿀 일이 있으면 여기만 고친다 */
-const QUOTE_EXCLUDES=['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','여행자보험'];
+const QUOTE_EXCLUDES=['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','항공','여행자보험'];   // 「항공」 추가(사장님 2026-09-15)
+/* 저장돼 있던 불포함 목록에 「항공」이 없으면 「기타 개인경비」 뒤에 끼워 넣는다(관리에서 저장하면 그때 서버에도 반영) */
+function withAirExclude(list){
+  if(!Array.isArray(list)) return list;
+  if(list.some(t=>/항공/.test(String(t||'')))) return list;
+  const out=list.slice(); const i=out.findIndex(t=>/개인경비/.test(String(t||'')));
+  out.splice(i>=0?i+1:out.length,0,'항공'); return out;
+}
 /* 견적서에 적을 '포함 사항' — 실제로 담긴 항목만 손님 말로 바꿔 적는다.
    핸들링 차지는 손님용에 적지 않는다(금액에는 그대로 들어간다). */
 function quoteIncludes(mode){
@@ -1309,12 +1316,12 @@ function quoteIncludes(mode){
     /* 「차량 신형밴 (9인승) (전 일정 이용)」까지만 — 설명은 견적 화면에서만 보이고 견적서엔 안 적는다(사장님 2026-09-14) */
     const plan=vehPlan();
     const lab=g=>(mode==='internal'&&g&&g.label)?` · [${g.label}]`:'';
-    if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) out.push(`차량 - ${vehName(b)} (전 일정 이용)${lab(b)}`); if(busGuideName()) out.push(`버스 동승 로컬가이드 - ${busGuideName()}`); }
+    if(plan.kind==='bus'){ const b=vehColOf('bus'); if(b) out.push(`차량 - ${vehName(b)} (전 일정 이용)${lab(b)}`); if(busGuideName()) out.push(`버스 동승 로컬가이드 - ${busGuideName()} 1명`); }
     if(plan.vans>0){ const v=vehColOf('van'); if(v) out.push(`차량 - ${vehName(v)}${plan.vans>1?` ${plan.vans}대`:''} (전 일정 이용)${lab(v)}`); }
     if(plan.lug&&lugLegsOfRoute().length) out.push(`미팅샌딩 짐밴 - ${lugLegsOfRoute().length}회`);   // 사장님 2026-09-15
   }
   if(mode==='internal') out.push('핸들링 차지');
-  if(useGuideOn()&&$('#guide').value) out.push(`가이드 - ${$('#guide').value}${guideCount()>1?` ${guideCount()}명`:''}`);
+  if(useGuideOn()&&$('#guide').value) out.push(`가이드 - ${$('#guide').value} ${guideCount()}명`);   // 명수는 1명이어도 적는다(사장님 2026-09-15)
   /* 숙소 줄은 포함 사항에 적지 않는다 — 일정표 「지역/호텔」 칸에 호텔명·룸타입이 날짜별로 나온다(사장님 2026-09-14) */
   return out;
 }
@@ -1900,7 +1907,7 @@ async function loadPricing(){
       hotels:DEFAULT_PRICING.hotels,
       handlingPeriods:d.handlingPeriods||{}, guidePeriods:d.guidePeriods||{}, vehiclePeriods:d.vehiclePeriods||{},
       airportTip:(d.airportTip==null)?50:(+d.airportTip||0),   // 공항 미팅 아따비(1인당 ฿) — 관리 → 기타. 안 정했으면 50
-      excludeNotes:Array.isArray(d.excludeNotes)?d.excludeNotes:null,   // 견적서 불포함 사항(관리 → 기타). 없으면 QUOTE_EXCLUDES 기본
+      excludeNotes:Array.isArray(d.excludeNotes)?withAirExclude(d.excludeNotes):null,   // 견적서 불포함 사항(관리 → 기타). 없으면 QUOTE_EXCLUDES 기본. 「항공」 없으면 끼움
       // 가이드 종류는 관리자에서 추가·삭제할 수 있다(없으면 저장된 요금의 종류를 그대로 씀)
       guideTypes:(Array.isArray(d.guideTypes)&&d.guideTypes.length)?d.guideTypes:Object.keys(d.guidePeriods||{}),
       // 차량: 지역 조합별 요금 열. 예전 데이터(단일 vehiclePeriods)만 있으면 한 열로 취급.
