@@ -1564,7 +1564,7 @@ function buildQuoteHtml(mode, Q){
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
       <div style="font-size:12.5px;color:#2b3a33">
-        <div style="padding:3px 0">${[Q.noHotel?'호텔':'',Q.noVeh?'차량':'',Q.noGuide?'가이드':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(' &nbsp;·&nbsp; ')}</div>   <!-- 한 줄 가로 표기(사장님 2026-09-14) · 안 고른 호텔·차량·가이드는 맨 앞에 빨갛게(사장님 2026-09-15) -->
+        <div style="padding:3px 0">${[Q.noHotel?'호텔':'',Q.noGuide?'가이드':'',Q.noVeh?'차량':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(', ')}</div>   <!-- 한 줄 가로 표기, 쉼표로(사장님 2026-09-15 저녁) · 안 고른 호텔·가이드·차량은 맨 앞에 빨갛게 -->
       </div>
     </div>
     ${detail}
