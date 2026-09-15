@@ -319,10 +319,12 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
           <div style="display:flex;align-items:center;gap:10px;margin-top:2px;">
             <div id="vehShown" style="display:none;">12인승 밴</div><span id="vehPhotoBtn"></span>
           </div>
-          <div id="vehExtra" style="display:none;align-items:center;flex-wrap:wrap;gap:6px 14px;margin:8px 0 10px;font-size:13.5px;font-weight:800;color:var(--ink);"><!-- 글자 진하게(ink·800), 12.5→13.5px(사장님 2026-09-15 저녁). 보일 땐 display:flex -->
+          <div id="vehExtra" style="display:none;flex-direction:column;gap:6px;margin:8px 0 10px;font-size:13.5px;font-weight:800;color:var(--ink);"><!-- 제목 한 줄, 그 아래 체크 두 개 나란히(사장님 2026-09-15 저녁). 보일 땐 display:flex -->
             <span>＋ 차량 추가 선택</span>
-            <label class="amdep" style="padding:0;font-size:13.5px;font-weight:800;color:var(--ink);"><input type="checkbox" id="extraVan"> 밴 1대 추가 (전일정)</label>
-            <label class="amdep" style="padding:0;font-size:13.5px;font-weight:800;color:var(--ink);"><input type="checkbox" id="extraLug"> 밴 1대 추가 (미·샌딩, 지역이동 날만) <span id="extraLugCnt" style="color:#0b3d91;"></span></label>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;">
+              <label class="amdep" style="padding:0;font-size:13.5px;font-weight:800;color:var(--ink);"><input type="checkbox" id="extraVan"> 밴 1대 추가 (전일정)</label>
+              <label class="amdep" style="padding:0;font-size:13.5px;font-weight:800;color:var(--ink);"><input type="checkbox" id="extraLug"> 밴 1대 추가 (미·샌딩, 지역이동 날만) <span id="extraLugCnt" style="color:#0b3d91;"></span></label>
+            </div>
           </div>
           <div class="hint" id="vehAuto" style="color:#2e7d32;margin-top:2px;"></div>
           <!-- 미팅샌딩 짐밴(사장님 2026-09-15): 관리 → 차량 요금 → 「미팅샌딩 짐밴」 표. 구성에 짐밴이 들어가면(추천 또는 추가 선택)
