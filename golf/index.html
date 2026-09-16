@@ -1775,7 +1775,7 @@ function showQuotePreview(url,name){
   m.querySelector('.qv-body').scrollTop=0;
 }
 async function downloadQuote(mode){
-  if(!LAST||!LAST.lines.length){ alert('먼저 라운딩할 날을 체크해 주세요. 견적이 있어야 견적서를 만들 수 있습니다.'); return; }
+  if(!LAST||!LAST.lines.length){ alert('먼저 견적내용을 입력해주세요.'); return; }   // 문구(사장님 2026-09-16)
   if(!$('#startDate').value){ alert('출발 일자를 먼저 선택해 주세요.'); return; }
   // 손님용은 금액이 전부 원화라, 환율이 없으면 만들 수 없다(0원짜리 견적서가 나가면 안 된다)
   if(mode!=='internal'&&!(FX_RATE>0)){
