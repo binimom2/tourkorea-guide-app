@@ -838,8 +838,14 @@ function vehicleCard(){
       const tr=document.createElement('tr');
       const td=(n)=>{ const d=document.createElement('td'); d.style.textAlign='center'; d.appendChild(n); tr.appendChild(d); };
       td(num(r,'paxMin','1')); td(num(r,'paxMax','비우면 이상 전부')); td(num(r,'vans','1')); td(chk(r,'lug')); td(chk(r,'bus'));
-      const sel=document.createElement('select'); sel.innerHTML='<option value="van">밴 구성</option><option value="bus">버스</option>'; sel.value=r.rec==='bus'?'bus':'van';
-      sel.onchange=()=>{ r.rec=sel.value; _touch(); }; td(sel);
+      /* 기본 추천: 밴 구성 / 버스(자동: 인원이 들어가는 가장 작은 버스) / 버스 열마다 따로(버스(33인승)·버스(40인승) — 사장님 2026-09-16 "버스40 부분 버스 구분").
+         저장은 rec:'bus' + recBus:열 표시명(빈칸이면 자동) */
+      const busNames=(G.vehicleGroups||[]).filter(x=>x&&x.bus).map(x=>{ const nm=String(x.name||'').trim()||'버스'; return (x.seats&&nm.indexOf(x.seats+'인승')<0)?`${nm} (${x.seats}인승)`:nm; });
+      const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+      const sel=document.createElement('select');
+      sel.innerHTML='<option value="van">밴 구성</option><option value="bus">버스 (인원에 맞게 자동)</option>'+busNames.map(n=>`<option value="bus:${esc(n)}">${esc(n)}</option>`).join('');
+      sel.value=r.rec==='bus'?(r.recBus&&busNames.includes(r.recBus)?'bus:'+r.recBus:'bus'):'van';
+      sel.onchange=()=>{ const v=sel.value; if(v.startsWith('bus:')){ r.rec='bus'; r.recBus=v.slice(4); } else { r.rec=v; r.recBus=''; } _touch(); }; td(sel);
       const x=el('a',null,'✕'); x.style.cssText='color:var(--danger);cursor:pointer;font-weight:800;'; x.onclick=()=>{ RS.splice(i,1); _touch(); drawRules(); }; td(x);
       tb.appendChild(tr);
     });
@@ -1223,7 +1229,7 @@ async function downloadGolfXlsx(){
       }))));
     /* 미팅샌딩 짐밴(구간별 1회 요금) — 옛 「수송밴」 시트를 대신한다(사장님 2026-09-15) */
     _gxSheet(wb,'인원별 노출 규칙',['인원 최소','인원 최대','밴 대수','짐밴 포함','버스 선택 가능','기본 추천'],
-      (G.vehicleRules||[]).map(r=>[_gxNum(r.paxMin),_gxNum(r.paxMax),_gxNum(r.vans),r.lug?'O':'',r.bus?'O':'',r.rec==='bus'?'버스':'밴 구성']));
+      (G.vehicleRules||[]).map(r=>[_gxNum(r.paxMin),_gxNum(r.paxMax),_gxNum(r.vans),r.lug?'O':'',r.bus?'O':'',r.rec==='bus'?('버스'+(r.recBus?' · '+r.recBus:'')):'밴 구성']));
     _gxSheet(wb,'미팅샌딩 짐밴',['구간','1회 요금(THB)'],
       ((G.luggageVan||{}).legs||[]).map(t=>[t.label||'',_gxNum(t.amount)]));
     _gxSheet(wb,'차량 안내문구',['문구'],(G.vehicleNotes||[]).filter(Boolean).map(t=>[t]));

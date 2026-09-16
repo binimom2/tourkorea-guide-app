@@ -847,10 +847,13 @@ function busColumns(){
 }
 /* 버스 좌석 수 — 차량 이름의 「33인승」에서 읽는다(없으면 0) */
 function busSeats(g){ const m=String(vehName(g)||'').match(/(\d+)\s*인승/); return m?+m[1]:0; }
-/* 인원에 맞는 추천 버스 열 — 인원이 들어가는 가장 작은 버스(15~33명 → 33인승, 34명~ → 40인승), 다 안 들어가면 가장 큰 버스, 좌석 수를 모르면 첫 열 */
-function recBusColumn(pax){
+/* 인원에 맞는 추천 버스 열 — 규칙 줄에 recBus(관리 「기본 추천」에서 버스 열을 찍은 표시명)가 있으면 그 열(사장님 2026-09-16 "버스40 부분 버스 구분"),
+   없으면 인원이 들어가는 가장 작은 버스(15~33명 → 33인승, 34명~ → 40인승), 다 안 들어가면 가장 큰 버스, 좌석 수를 모르면 첫 열 */
+function recBusColumn(pax,rule){
   const gs=P.vehicleGroups||[], cols=busColumns();
   if(!cols.length) return -1;
+  const want=String((rule&&rule.recBus)||'').trim();
+  if(want){ const hit=cols.find(i=>vehName(gs[i])===want||String(gs[i].name||'').trim()===want); if(hit!=null) return hit; }
   const known=cols.filter(i=>busSeats(gs[i])>0).sort((a,b)=>busSeats(gs[a])-busSeats(gs[b]));
   if(!known.length) return cols[0];
   return known.find(i=>busSeats(gs[i])>=pax)??known[known.length-1];
@@ -907,7 +910,7 @@ function renderVehChoices(){
   }
   /* 버스 열은 전부 따로(33인승·40인승…), 추천은 인원이 들어가는 가장 작은 버스(사장님 2026-09-16 차량 3종: 9인승·33인승·40인승) */
   if(busCols.length&&(!r||r.bus!==false)){
-    const gs=P.vehicleGroups||[], recI=(r&&r.rec==='bus')?recBusColumn(curPax()):-1;
+    const gs=P.vehicleGroups||[], recI=(r&&r.rec==='bus')?recBusColumn(curPax(),r):-1;
     busCols.forEach(i=>opts.push({v:'bus:'+i,t:vehName(gs[i]),rec:i===recI}));
   }
   opts.push({v:'none',t:'차량이 필요 없습니다',rec:false});
