@@ -1540,12 +1540,14 @@ function buildQuoteHtml(mode, Q){
 
   const days=(Q.days||[]).map(st=>{
     const we=st.we;
-    const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'<span style="color:#9aa4a0">라운딩 없음</span>';
+    /* 인쇄해 보니 지역·호텔·「라운딩 없음」이 연해서 안 보임 → 골프장 이름과 같은 크기·진하기·색(사장님 2026-09-16) */
+    const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'라운딩 없음';
+    const TD='padding:7px 8px;border-bottom:1px solid #e7e3d8;font-weight:700;color:#15211C;';
     return `<tr>
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;font-weight:700">${fmtDay(st.date)}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;white-space:nowrap;color:#5E6F66">${esc(st.region)}</td><!-- 구분(주중/주말) 칸은 뺐다(사장님 2026-09-14) -->
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8;color:#5E6F66">${st.hotel?esc(st.hotel):''}</td><!-- 호텔은 지역과 다른 칸에(사장님 2026-09-15) -->
-      <td style="padding:7px 8px;border-bottom:1px solid #e7e3d8">${play}</td>
+      <td style="${TD}white-space:nowrap">${fmtDay(st.date)}</td>
+      <td style="${TD}white-space:nowrap">${esc(st.region)}</td><!-- 구분(주중/주말) 칸은 뺐다(사장님 2026-09-14) -->
+      <td style="${TD}">${st.hotel?esc(st.hotel):''}</td><!-- 호텔은 지역과 다른 칸에(사장님 2026-09-15) -->
+      <td style="${TD}">${play}</td>
     </tr>`;
   }).join('');
 
@@ -1616,12 +1618,12 @@ function buildQuoteHtml(mode, Q){
 
     <div style="margin-top:16px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">일정표</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px"><!-- 일정표 글자 +1, 제목 줄 +2(사장님 2026-09-16 인쇄해 보니 작음) -->
         <thead><tr style="background:#F7F3E9">
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">날짜</th>
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">지역</th><!-- 지역·호텔 칸 분리(사장님 2026-09-15) -->
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">호텔</th>
-          <th style="padding:6px 8px;text-align:left;font-size:10.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>
+          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">날짜</th>
+          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">지역</th><!-- 지역·호텔 칸 분리(사장님 2026-09-15) -->
+          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">호텔</th>
+          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>
         </tr></thead>
         <tbody>${days}</tbody>
       </table>
@@ -1629,14 +1631,14 @@ function buildQuoteHtml(mode, Q){
 
     <div style="margin-top:16px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">포함 사항</div>
-      <div style="font-size:12.5px;color:#2b3a33">
+      <div style="font-size:13.5px;font-weight:700;color:#15211C"><!-- +1·진하게(사장님 2026-09-16) -->
         ${(((Q.includes||{})[mode==='internal'?'internal':'customer'])||[]).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
       </div>
     </div>
     <!-- 불포함 사항(사장님 2026-09-14) — QUOTE_EXCLUDES 상수 -->
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
-      <div style="font-size:12.5px;color:#2b3a33">
+      <div style="font-size:13.5px;font-weight:700;color:#15211C"><!-- +1·진하게(사장님 2026-09-16) -->
         <div style="padding:3px 0">${[Q.noHotel?'호텔':'',Q.noGuide?'가이드':'',Q.noVeh?'차량':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(', ')}</div>   <!-- 한 줄 가로 표기, 쉼표로(사장님 2026-09-15 저녁) · 안 고른 호텔·가이드·차량은 맨 앞에 빨갛게 -->
       </div>
     </div>
