@@ -630,6 +630,8 @@ const TABS=[
      guide_data 에 **한 건이 한 줄**로 담긴다(data_key = golf_book_<접수번호>).
      읽고 고치는 것은 서버 함수 /api/golf-book 이 한다 — 브라우저에서 바로 못 읽는다. */
   {k:'books',  label:'📋 예약요청'},
+  /* 실시간 견적(/golf/)에서 견적서를 뽑을 때 guide_data/golf_quotes 에 남는 그때 금액(원가 항목별) — 표로 확인(사장님 2026-09-16) */
+  {k:'quotes', label:'📑 견적 기록'},
   /* 요금표(차량·핸들링·가이드)·코드관리는 2026-09-11부터 「사이트 내용」의 하위 탭이다(사장님) — subs() 참고 */
   {k:'accounts',label:'계정관리', adminOnly:true}
 ];
@@ -648,9 +650,104 @@ function draw(){
   clearInterval(ratesTimer);          // 요금표 탭을 떠나면 높이 맞추기를 멈춘다
   if(tab==='site') drawSite();
   else if(tab==='books') drawBooks();
+  else if(tab==='quotes') drawQuotes();
   else if(tab==='rates') drawRates();
   else if(tab==='codes') drawCodes();
   else drawAccounts();
+}
+
+/* ══════ 📑 견적 기록 (사장님 2026-09-16) ══════
+   실시간 견적(/golf/)에서 「견적서 보기」를 눌러 견적서가 만들어지면 guide_data/golf_quotes 에 그때 금액이 통째로 남는다
+   (요금표를 나중에 고쳐도 지난 견적은 안 바뀐다). 여기서는 그 기록을 표로 보여 원가(항목별 금액)가 제대로 잡혔는지 확인한다.
+   읽기만 한다 — 고치거나 지우지 않는다. */
+let QUOTES=null, quoteQ='', quoteOpen='';
+const qKrwUp=n=>Math.ceil(n/1000)*1000;   // /golf/ 의 krwUp 과 같은 규칙(1인 요금 천원 단위 올림)
+const qNum=n=>Number(n||0).toLocaleString('ko-KR');
+async function loadQuotes(){
+  try{ const list=await loadRaw('golf_quotes'); QUOTES={list:Array.isArray(list)?list:[]}; }
+  catch(e){ QUOTES={error:'견적 기록을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'}; }
+  drawQuotes();
+}
+function drawQuotes(){
+  const p=document.getElementById('pane');
+  if(QUOTES===null){
+    p.innerHTML='<div class="card"><h2>📑 견적 기록</h2><p class="desc">불러오는 중…</p></div>';
+    loadQuotes(); return;
+  }
+  if(QUOTES.error){
+    p.innerHTML='<div class="card"><h2>📑 견적 기록</h2><p class="desc" style="color:#B23B3B">'+esc(QUOTES.error)+'</p>'
+      +'<button class="add" id="qtReload">다시 불러오기</button></div>';
+    document.getElementById('qtReload').onclick=()=>{ QUOTES=null; drawQuotes(); };
+    return;
+  }
+  const all=QUOTES.list||[];
+  const q=quoteQ.trim().toLowerCase();
+  const list=all.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route,r.issued].join(' ').toLowerCase().includes(q));
+  const th=(t,st)=>'<th style="text-align:left;white-space:nowrap;padding:8px 8px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);'+(st||'')+'">'+t+'</th>';
+  const td=(t,st)=>'<td style="padding:8px 8px;font-size:12.5px;border-bottom:1px solid var(--line);vertical-align:top;'+(st||'')+'">'+t+'</td>';
+  const R='text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;';
+  const rows=list.map(r=>{
+    const fx=Number(r.fx||0), pax=Number(r.pax||0);
+    const perK=fx>0?qKrwUp(Number(r.per||0)*fx):0, totK=perK*pax;
+    const open=quoteOpen===r.quoteNo;
+    const warn=(r.lines||[]).some(l=>l.warn);
+    const via=r.via==='site'?'<span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:var(--marigold);border-radius:999px;padding:1px 7px">사이트</span>':'<span style="font-size:10.5px;font-weight:800;color:#fff;background:var(--fairway);border-radius:999px;padding:1px 7px">직원</span>';
+    const main='<tr data-q="'+esc(r.quoteNo)+'" style="cursor:pointer;'+(open?'background:#FBF7EC;':'')+'">'
+      +td('<b>'+esc(r.quoteNo)+'</b>'+(warn?' <span title="요금 미입력 항목 있음" style="color:#B23B3B;font-weight:900">!</span>':''),'white-space:nowrap')
+      +td(esc(r.issued||''),'white-space:nowrap;color:var(--muted)')
+      +td(via)
+      +td(esc(r.team||'-'))
+      +td(esc(r.start||'')+(r.end?' ~ '+esc(r.end):'')+'<div style="color:var(--muted);font-size:11.5px">'+esc(r.route||'')+'</div>')
+      +td(pax+'명 · '+Number(r.nights||0)+'박',R)
+      +td('<b>'+qNum(r.total)+'</b>',R)
+      +td(qNum(r.per),R)
+      +td(fx>0?fx:'-',R)
+      +td(perK?qNum(perK):'-',R)
+      +td(totK?'<b>'+qNum(totK)+'</b>':'-',R)
+      +td(open?'▲':'▼','text-align:center;color:var(--muted)')
+      +'</tr>';
+    if(!open) return main;
+    /* 펼친 줄 — 항목별 금액(원가 항목) + 일정표 + 포함/불포함 */
+    const lines=(r.lines||[]).map(l=>'<tr><td style="padding:5px 8px;font-weight:700;'+(l.warn?'color:#B23B3B':'')+'">'+esc(l.t)+'</td>'
+      +'<td style="padding:5px 8px;color:var(--muted)">'+esc(l.s||'')+'</td>'
+      +'<td style="padding:5px 8px;'+R+(l.warn?'color:#B23B3B':'')+'">'+qNum(l.v)+'</td></tr>').join('');
+    const days=(r.days||[]).map(d=>'<tr><td style="padding:4px 8px;white-space:nowrap">'+esc(d.date)+(d.we?' <i style="font-style:normal;color:#B23B3B;font-size:11px">주말/휴일</i>':'')+'</td>'
+      +'<td style="padding:4px 8px">'+esc(d.region||'')+'</td><td style="padding:4px 8px">'+esc(d.hotel||'')+'</td>'
+      +'<td style="padding:4px 8px">'+(d.round&&d.course?esc(d.course)+' '+esc(d.holes||'')+'홀':'<span style="color:var(--muted)">라운딩 없음</span>')+'</td></tr>').join('');
+    const inc=((r.includes||{}).internal||(r.includes||{}).customer||[]).map(t=>'· '+esc(t)).join('<br>');
+    const miss=[r.noHotel?'호텔':'',r.noGuide?'가이드':'',r.noVeh?'차량':''].filter(Boolean).join(', ');
+    const sub='<tr><td colspan="12" style="padding:10px 14px 14px;background:#FBF7EC;border-bottom:1px solid var(--line)">'
+      +'<div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start">'
+        +'<div><div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:4px">항목별 금액 (THB · 원가+마진 그때 값)</div>'
+          +'<table style="min-width:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:12.5px">'+lines
+          +'<tr><td style="padding:6px 8px;font-weight:900;border-top:2px solid var(--fairway)">합계</td><td style="border-top:2px solid var(--fairway)"></td>'
+          +'<td style="padding:6px 8px;font-weight:900;border-top:2px solid var(--fairway);'+R+'">'+qNum(r.total)+'</td></tr></table>'
+          +'<div class="hint">1인 '+qNum(r.per)+' THB'+(fx>0?' × 환율 '+fx+' → 1인 '+qNum(perK)+'원(천원 올림) × '+pax+'명 = '+qNum(totK)+'원':' · 환율 없음(손님용 원화 불가)')+'</div>'
+        +'</div>'
+        +'<div><div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:4px">일정표</div>'
+          +'<table style="min-width:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:12px">'
+          +'<tr style="color:var(--muted)"><td style="padding:4px 8px">날짜</td><td style="padding:4px 8px">지역</td><td style="padding:4px 8px">호텔</td><td style="padding:4px 8px">골프장</td></tr>'+days+'</table>'
+          +'<div style="font-size:12px;font-weight:800;color:var(--fairway);margin:10px 0 4px">포함 사항</div><div style="font-size:12px">'+(inc||'-')+'</div>'
+          +(miss?'<div style="font-size:12px;margin-top:6px"><b style="color:#B23B3B">미선택:</b> '+miss+'</div>':'')
+          +'<div class="hint">항공: '+esc(r.flight||'')+' · 저장 '+esc((r.savedAt||'').replace('T',' ').slice(0,16))+'</div>'
+        +'</div>'
+      +'</div></td></tr>';
+    return main+sub;
+  }).join('');
+  p.innerHTML='<div class="card">'
+    +'<h2>📑 견적 기록 <span class="bkcnt">'+all.length+'건</span></h2>'
+    +'<p class="desc">실시간 견적에서 「견적서 보기」로 만들어진 견적입니다. <b>금액은 그때 요금표로 계산된 값 그대로</b>라 요금표를 고쳐도 바뀌지 않습니다. 줄을 누르면 항목별 금액(원가)이 펼쳐집니다. 빨간 <b>!</b>는 요금 미입력 항목이 있던 견적입니다.</p>'
+    +'<div class="subtabs"><input id="qtSearch" placeholder="견적번호 · 팀명 · 날짜 · 지역으로 찾기" value="'+esc(quoteQ)+'" style="flex:1;min-width:220px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px">'
+      +'<button data-f="reload">↻ 새로고침</button></div>'
+    +(list.length?'<div style="overflow:auto"><table style="min-width:980px"><thead><tr>'
+      +th('견적번호')+th('발행일')+th('출처')+th('팀명')+th('일정 · 동선')+th('인원',R)+th('총액 THB',R)+th('1인 THB',R)+th('환율',R)+th('1인 원화',R)+th('총 원화',R)+th('')
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      :'<p class="desc" style="padding:18px 0">'+(all.length?'찾는 견적이 없습니다.':'아직 보관된 견적이 없습니다.')+'</p>')
+    +'</div>';
+  const s=document.getElementById('qtSearch');
+  s.oninput=()=>{ quoteQ=s.value; const pos=s.selectionStart; drawQuotes(); const s2=document.getElementById('qtSearch'); s2.focus(); s2.setSelectionRange(pos,pos); };
+  p.querySelector('.subtabs button[data-f="reload"]').onclick=()=>{ QUOTES=null; drawQuotes(); };
+  p.querySelectorAll('tr[data-q]').forEach(tr=>tr.onclick=()=>{ quoteOpen=(quoteOpen===tr.dataset.q)?'':tr.dataset.q; drawQuotes(); });
 }
 
 /* ══════ 📋 예약요청 ══════
