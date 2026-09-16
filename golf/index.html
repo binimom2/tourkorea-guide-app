@@ -1223,7 +1223,7 @@ function renderHotels(){
     const rws=hsel?roomsWithRates(hsel):[];
     const rtSel=rws.length?`<select data-hrt="${r.sid}">${rws.map(x=>`<option value="${x.t}"${x.t===(hotelRoomT[r.sid]||rws[0].t)?' selected':''}>${x.t}</option>`).join('')}</select>`:'';
     row.innerHTML=`<span class="hreg"><span class="seq">${ROUTE.indexOf(r)+1}</span>${r.region}</span>`+
-      `<select class="hsel" data-hotel="${r.sid}"><option value="">${list.length?'숙소 없이':'등록된 숙소 없음'}</option>${opts}</select>`+
+      `<select class="hsel" data-hotel="${r.sid}"><option value="">${list.length?'호텔 선택':'등록된 숙소 없음'}</option>${opts}</select>`+
       rtSel+
       `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.sid}"><small>박</small>`+
       `<select data-hroom="${r.sid}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
