@@ -184,6 +184,17 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 #qvDl{background:var(--fairway);color:#fff;border-color:var(--fairway)}
 .qv-body{overflow:auto;padding:12px;background:#e9e9e6}
 .qv-body img{display:block;width:100%;max-width:760px;height:auto;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.18);background:#fff}
+/* 견적서 인쇄(사장님 2026-09-16: A4를 벗어남 → 조금 축소) — 미리보기 창이 열린 채 인쇄하면 견적서 그림만 A4 한 장에 맞춰 찍는다 */
+@page{size:A4;margin:10mm}
+@media print{
+  body.qv-open>*:not(#qvModal){display:none!important}
+  body.qv-open{background:#fff!important;margin:0!important;padding:0!important}
+  body.qv-open #qvModal{position:static!important;display:block!important;background:none!important;padding:0!important;inset:auto!important}
+  body.qv-open .qv-box{max-width:none!important;max-height:none!important;box-shadow:none!important;border-radius:0!important;display:block!important;overflow:visible!important}
+  body.qv-open .qv-hd{display:none!important}
+  body.qv-open .qv-body{padding:0!important;background:#fff!important;overflow:visible!important}
+  body.qv-open .qv-body img{width:auto!important;max-width:100%!important;max-height:272mm!important;height:auto!important;margin:0 auto!important;box-shadow:none!important}
+}
 .dlbtn.ghost{background:transparent;color:var(--fairway);border-color:rgba(18,58,43,.3)}
 /* 견적 결과 상자 폭은 위 줄(5·6번)과 같은 전체 폭 — 2/3로 줄였다가 보기 싫어 되돌림(사장님 2026-09-14) */
 /* 「견적서 보기」는 분홍색(사장님 2026-09-14) */
@@ -1742,15 +1753,19 @@ function showQuotePreview(url,name){
     m=document.createElement('div'); m.id='qvModal'; m.hidden=true;
     m.innerHTML=`<div class="qv-box">
       <div class="qv-hd"><b>견적서</b>
-        <span class="qv-btns"><button type="button" id="qvDl">⬇ 다운로드</button><button type="button" id="qvClose">✕ 닫기</button></span>
+        <span class="qv-btns"><button type="button" id="qvPrint">🖨 인쇄</button><button type="button" id="qvDl">⬇ 다운로드</button><button type="button" id="qvClose">✕ 닫기</button></span>
       </div>
       <div class="qv-body"><img id="qvImg" alt="견적서"></div>
     </div>`;
     document.body.appendChild(m);
-    m.addEventListener('click',e=>{ if(e.target===m) m.hidden=true; });
-    m.querySelector('#qvClose').onclick=()=>{ m.hidden=true; };
-    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!m.hidden) m.hidden=true; });
+    /* 창이 열려 있는 동안 body.qv-open — 인쇄 CSS가 견적서 그림만 A4에 맞춰 찍는다(사장님 2026-09-16) */
+    const close=()=>{ m.hidden=true; document.body.classList.remove('qv-open'); };
+    m.addEventListener('click',e=>{ if(e.target===m) close(); });
+    m.querySelector('#qvClose').onclick=close;
+    m.querySelector('#qvPrint').onclick=()=>{ window.print(); };
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!m.hidden) close(); });
   }
+  document.body.classList.add('qv-open');
   m.querySelector('#qvImg').src=url;
   m.querySelector('#qvDl').onclick=()=>{
     const a=document.createElement('a'); a.href=url; a.download=name;
