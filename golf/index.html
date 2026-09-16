@@ -176,6 +176,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 /* 견적서 미리보기 창 — 「견적서 보기」는 파일을 바로 받지 않고 여기에 띄운다(사장님 2026-09-11) */
 #qvModal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
 #qvModal[hidden]{display:none}
+#ntModal[hidden]{display:none!important}   /* 빨간 안내 창(showNotice) — 인라인 display:flex보다 우선 */
 .qv-box{background:#fff;border-radius:12px;max-width:820px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .qv-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .qv-hd b{font-size:15px}
@@ -1749,6 +1750,26 @@ async function reissueQuote(idx, mode){
   finally{ host.innerHTML=''; }
 }
 
+/* 안내 창(사장님 2026-09-16) — 「○○을 선택해주세요.」를 빨간 굵은 글씨로 눈에 띄게. 기본 alert는 색을 못 입혀 직접 그린다. 확인·배경 클릭·Esc로 닫힘 */
+function showNotice(msg){
+  let n=$('#ntModal');
+  if(!n){
+    n=document.createElement('div'); n.id='ntModal';
+    n.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+    n.innerHTML=`<div style="background:#fff;border-radius:14px;padding:26px 28px 20px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.35);text-align:center;">
+      <div id="ntMsg" style="font-size:20px;font-weight:900;color:#c62828;line-height:1.5;word-break:keep-all;"></div>
+      <button type="button" id="ntOk" style="margin-top:18px;font:inherit;font-size:14px;font-weight:800;border:none;border-radius:8px;padding:9px 26px;background:#c62828;color:#fff;cursor:pointer;">확인</button>
+    </div>`;
+    document.body.appendChild(n);
+    const close=()=>{ n.hidden=true; };
+    n.addEventListener('click',e=>{ if(e.target===n) close(); });
+    n.querySelector('#ntOk').onclick=close;
+    document.addEventListener('keydown',e=>{ if((e.key==='Escape'||e.key==='Enter')&&!n.hidden){ e.preventDefault(); close(); } });
+  }
+  n.querySelector('#ntMsg').textContent=msg;
+  n.hidden=false;
+  n.querySelector('#ntOk').focus();
+}
 /* 견적서 미리보기 창 — 그림을 화면에 보여 주고, 원하면 「다운로드」로 파일을 받는다 */
 function showQuotePreview(url,name){
   let m=$('#qvModal');
@@ -1778,12 +1799,14 @@ function showQuotePreview(url,name){
   m.querySelector('.qv-body').scrollTop=0;
 }
 async function downloadQuote(mode){
-  if(!LAST||!LAST.lines.length){ alert('먼저 견적내용을 입력해주세요.'); return; }   // 문구(사장님 2026-09-16)
-  if(!$('#startDate').value){ alert('출발 일자를 먼저 선택해 주세요.'); return; }
-  /* 안 고른 칸이 있으면 견적서를 만들지 않고 알린다(사장님 2026-09-16): 호텔(「필요 없음」 체크도 안 함) / 차량(「차량 선택」 그대로) / 가이드(「가이드 선택」 그대로) */
-  if(!stepDone('s3')){ alert('호텔을 선택해주세요.'); return; }
-  if(!vehPicked()){ alert('차량을 선택해주세요.'); return; }
-  if(!stepDone('s6')){ alert('가이드를 선택해주세요.'); return; }
+  if(!LAST||!LAST.lines.length){ showNotice('먼저 견적내용을 입력해주세요.'); return; }   // 문구(사장님 2026-09-16)
+  if(!$('#startDate').value){ showNotice('출발 일자를 먼저 선택해 주세요.'); return; }
+  /* 안 고른 칸이 있으면 견적서를 만들지 않고 알린다(사장님 2026-09-16): 호텔(「필요 없음」 체크도 안 함) / 골프장(라운딩 체크했는데 골프장 안 고름) / 차량(「차량 선택」 그대로) / 가이드(「가이드 선택」 그대로).
+     빨간 굵은 글씨 창(showNotice) — 기본 alert는 색을 못 입힌다 */
+  if(!stepDone('s3')){ showNotice('호텔을 선택해주세요.'); return; }
+  if(dayState.some(st=>st.round&&!st.course)){ showNotice('골프장을 선택해주세요.'); return; }
+  if(!vehPicked()){ showNotice('차량을 선택해주세요.'); return; }
+  if(!stepDone('s6')){ showNotice('가이드를 선택해주세요.'); return; }
   // 손님용은 금액이 전부 원화라, 환율이 없으면 만들 수 없다(0원짜리 견적서가 나가면 안 된다)
   if(mode!=='internal'&&!(FX_RATE>0)){
     alert('환율이 등록되어 있지 않아 손님용 견적서를 만들 수 없습니다.\n\n코드·요금 관리 > 코드관리 > 환율에 1밧당 원화(예: 46)를 등록해 주세요.');
