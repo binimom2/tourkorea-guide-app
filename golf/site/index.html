@@ -409,7 +409,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .catpick button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
 .catpick button.on small{opacity:.75}
 .card .en{margin:0;font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:-.01em}
-.cardnote{grid-column:1/-1;margin:6px 0 0;font-size:13px;color:var(--muted)}
+/* 카드 목록 아래 「※ 객실 타입…」 같은 안내 문구는 감춘다(사장님 2026-09-16) — 글은 관리 화면(hotelNote)에 남는다 */
+.cardnote{display:none;grid-column:1/-1;margin:6px 0 0;font-size:13px;color:var(--muted)}
 
 /* ── 2차 화면: 상세(사진 여러 장) ── */
 .modal.wide{max-width:720px}
