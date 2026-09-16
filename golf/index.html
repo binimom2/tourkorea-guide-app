@@ -928,10 +928,12 @@ function renderVehChoices(){
   const face=cur?((cur.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(cur.t+codeTxt(cur.v))):'';
   box.innerHTML=`<div style="position:relative;">`
     +`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;width:100%;color:var(--ink);-webkit-text-fill-color:transparent;">`   /* 글자만 투명(text-fill), color는 남겨야 끝의 ˅ 화살표가 보인다(사장님 2026-09-15 저녁) */
-    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''} style="color:var(--ink);-webkit-text-fill-color:var(--ink);">${esc(optText(o))}</option>`).join('')
+    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''} style="color:${o.rec?'#c62828':'var(--ink)'};-webkit-text-fill-color:${o.rec?'#c62828':'var(--ink)'};${o.rec?'font-weight:800;':''}">${esc(optText(o))}</option>`).join('')   /* 펼친 목록에서 추천 줄은 빨갛게(사장님 2026-09-16) */
     +`</select>`
     +`<div id="vehChoiceFace" style="position:absolute;left:0;top:0;right:30px;bottom:0;display:flex;align-items:center;padding:0 9px;font-size:14px;font-weight:700;color:var(--ink);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${face}</div>`
-    +`</div>`;
+    +`</div>`
+    /* 아직 안 골랐으면 인원수에 맞는 추천을 드롭다운 아래 빨간 한 줄로(사장님 2026-09-16 "인원수에 따라 추천 띄워 주세요 빨간색으로") */
+    +((vehChoice===''&&opts.some(o=>o.rec))?`<div id="vehRecHint" style="margin-top:5px;font-size:12.5px;font-weight:700;color:#c62828;">${curPax()}명 추천 · ${esc(opts.find(o=>o.rec).t)}</div>`:'');
   const pb=$('#vehPhotoBtn');
   if(pb){ const k=isBusChoice()?'bus':((vehChoice==='none'||vehChoice==='')?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
   const ex=$('#vehExtra'); if(ex) ex.style.display=(vehChoice==='none'||vehChoice==='')?'none':'flex';   // 글자·체크 높이 맞춤용 flex(사장님 2026-09-15)
@@ -1331,12 +1333,14 @@ function calc(){
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
     lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
   });
+  /* 2번 지역을 고르기 전에는 견적 결과를 비워 둔다 — 핸들링 차지만 13,000원처럼 떠서 손님이 헷갈린다(사장님 2026-09-16) */
+  if(!ROUTE.length) lines.length=0;
   const total=lines.reduce((a,b)=>a+b.v,0);
   const per=Math.round(total/pax);
   LAST={lines,total,per,pax,nights};   // 견적서 내려받기가 이 값을 그대로 쓴다
   const box=$('#sumBox');
   if(!lines.length){
-    box.innerHTML='<div class="sum-empty">라운딩할 날을 체크하면 견적이 나옵니다.</div>';
+    box.innerHTML=`<div class="sum-empty">${ROUTE.length?'라운딩할 날을 체크하면 견적이 나옵니다.':'2번 지역을 선택하면 견적이 나옵니다.'}</div>`;
     $('#perp').textContent='';
     return;
   }
