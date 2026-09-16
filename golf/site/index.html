@@ -393,7 +393,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 종류마다 한 칸씩 — 골프장 아래 호텔, 그 아래 스파… */
 /* 종류는 «페이지»처럼 한 번에 하나만 보인다(사장님 2026-09-09) — 골프장·호텔·스파를 세로로 다 쌓으면
    자료가 많아져 끝없이 길어진다. 위 종류 단추(catpick)가 페이지 탭이다. */
-.catsec{display:none;padding:26px 0 8px;scroll-margin-top:70px}
+.catsec{display:none;padding:6px 0 8px;scroll-margin-top:70px}
+/* 종류 페이지(골프장·호텔·스파…) 머리 — 전 메뉴 공통(사장님 2026-09-16):
+   띠와 제목 사이가 너무 떠 보여 여백을 줄이고, 영문 소제목(HOTELS)과 설명 문구는 감춘다(한글 제목만).
+   글은 관리 화면 「각 섹션 제목」에 그대로 남아 있다 — 화면에서만 뺀다. */
+#catalog{padding-top:22px}
+.catsec .sechead{margin-bottom:16px}
+.catsec .sechead .kicker,.catsec .sechead p{display:none}
 .catsec.on{display:block}
 @media(max-width:860px){ .catpick{top:60px} .catsec{scroll-margin-top:70px} }
 .catpick button{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font:inherit;font-size:15px;font-weight:800;color:var(--fairway);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
