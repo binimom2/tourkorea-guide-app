@@ -187,6 +187,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 /* 견적서 인쇄(사장님 2026-09-16: A4를 벗어남 → 조금 축소) — 미리보기 창이 열린 채 인쇄하면 견적서 그림만 A4 한 장에 맞춰 찍는다 */
 @page{size:A4;margin:10mm}
 @media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}   /* 배경색·글자색을 인쇄에서 빼지 않게(사장님 2026-09-16 "컬러로 안 나온다") */
   body.qv-open>*:not(#qvModal){display:none!important}
   body.qv-open{background:#fff!important;margin:0!important;padding:0!important}
   body.qv-open #qvModal{position:static!important;display:block!important;background:none!important;padding:0!important;inset:auto!important}
