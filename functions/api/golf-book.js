@@ -93,7 +93,8 @@ async function canSee(env, user) {
     if (!r.ok) return false;
     const rows = await r.json();
     const roles = (Array.isArray(rows) && rows[0] && rows[0].data) || {};
-    return roles[id] === 'admin' || roles[id] === 'manager';
+    /* 어드민·매니저1·매니저2 모두 예약요청을 다룬다(옛 'agent'는 매니저2) — 사장님 2026-09-16 */
+    return ['admin', 'manager', 'manager2', 'agent'].includes(roles[id]);
   } catch (e) { return false; }
 }
 

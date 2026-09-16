@@ -209,7 +209,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
       <button class="btn sm" onclick="closeAccModal()">닫기</button>
     </div>
     <div style="padding:14px 18px 0;font-size:12px;color:var(--muted);line-height:1.7">
-      <b style="color:var(--fairway)">어드민</b> 모두 · <b style="color:var(--fairway)">매니저</b> 견적 + 코드·요금 관리 · <b style="color:var(--fairway)">에이전트</b> 견적 화면만<br>
+      <b style="color:var(--fairway)">어드민</b> 모두 · <b style="color:var(--fairway)">매니저1</b> 사이트 내용·코드·요금까지 · <b style="color:var(--fairway)">매니저2</b> 실시간 견적·예약요청·견적 기록<br>
       <b>여기 올린 사람만 골프를 쓸 수 있습니다.</b> 명단에 없으면 로그인해도 화면이 열리지 않습니다.<br>
       아이디는 <b>그 사람이 로그인할 때 쓰는 아이디</b>와 같아야 합니다.
       (아이디·비밀번호 자체를 새로 만드는 건 Supabase 대시보드에서 합니다)
@@ -372,8 +372,8 @@ async function gSaveSafe(key,data){
    agent   : 견적 화면만 — 이 페이지엔 못 들어온다
    권한표는 guide_data/golf_roles에 {아이디:권한}으로 둔다. 목록에 없으면 agent다.
    예약관리 쪽 전체 관리자(user_metadata.role==='admin')는 골프에서도 무조건 admin. */
-const GROLE_LABEL={admin:'어드민',manager:'매니저',agent:'에이전트'};
-let GROLE='agent', GROLE_MAP={};
+const GROLE_LABEL={admin:'어드민',manager:'매니저1',manager2:'매니저2'};   // 에이전트 없음(사장님 2026-09-16), 옛 'agent'는 매니저2
+let GROLE='manager2', GROLE_MAP={};
 function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.login_name||((u&&u.email)||'').split('@')[0]||'').toLowerCase(); }
 async function loadGolfRoles(){
   try{
@@ -387,8 +387,8 @@ async function loadGolfRoles(){
 function golfRoleOf(u){
   const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
   if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
-  const r=GROLE_MAP[id];
-  return (r==='admin'||r==='manager'||r==='agent')?r:'';
+  const r=GROLE_MAP[id]==='agent'?'manager2':GROLE_MAP[id];
+  return (r==='admin'||r==='manager'||r==='manager2')?r:'';
 }
 
 /* ══════════ 인증 ══════════ */
@@ -435,15 +435,15 @@ async function afterAuth(user){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('who').textContent=(info.name||'')+(GROLE?' · '+GROLE_LABEL[GROLE]:'');
-  // 에이전트는 견적 화면만, 명단에 없는 사람은 골프 자체를 못 쓴다
+  // 매니저2는 사이트 내용(요금·코드) 제한 — 견적·예약요청·견적 기록만. 명단에 없는 사람은 골프 자체를 못 쓴다(사장님 2026-09-16)
   if(GROLE!=='admin'&&GROLE!=='manager'){
     document.getElementById('editor').innerHTML=
       '<div class="noauth"><h2>접근 권한 없음</h2><p style="color:var(--muted)">'
-      +(GROLE==='agent'
-        ? '코드·요금 관리는 <b>어드민·매니저</b>만 사용할 수 있습니다.<br>현재 권한: 에이전트 (견적 화면만)'
+      +(GROLE==='manager2'
+        ? '요금·코드 관리는 <b>어드민·매니저1</b>만 사용할 수 있습니다.<br>현재 권한: 매니저2 (실시간 견적·예약요청·견적 기록)'
         : '골프 이용 권한이 없습니다. 관리자에게 등록을 요청해 주세요.')+'</p>'
       +'<div style="margin-top:14px;display:flex;gap:8px;justify-content:center">'
-      +(GROLE==='agent'?'<a class="btn" href="/golf/">⛳ 견적 화면으로</a>':'')
+      +(GROLE==='manager2'?'<a class="btn" href="/golf/">⛳ 견적 화면으로</a><a class="btn" href="/golf/site/admin/">📋 예약요청·견적 기록</a>':'')
       +'<button class="btn ghost" onclick="doLogout()">다른 계정으로 로그인</button></div></div>';
     return;
   }

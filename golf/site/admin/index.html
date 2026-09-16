@@ -434,8 +434,8 @@ function loginIdOf(u){ const m=(u&&u.user_metadata)||{}; return (m.acc_id||m.log
 function golfRoleOf(u){
   const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
   if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
-  const r=R[id];
-  return (r==='admin'||r==='manager'||r==='agent')?r:'';
+  const r=R[id]==='agent'?'manager2':R[id];   // 옛 '에이전트'는 매니저2로(사장님 2026-09-16: 에이전트 없음)
+  return (r==='admin'||r==='manager'||r==='manager2')?r:'';
 }
 async function doLogin(){
   const id=(document.getElementById('lid').value||'').trim();
@@ -469,11 +469,10 @@ async function afterAuth(user){
   GROLE=golfRoleOf(user);
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('who').textContent=currentUser.name+(GROLE?' · '+GROLE:'');
+  document.getElementById('who').textContent=currentUser.name+(GROLE?' · '+(ROLE_LABEL[GROLE]||GROLE):'');
 
-  /* 데이터 관리는 어드민과 직원(매니저)이 함께 본다.
-     계정 만들기만 어드민 몫이다 — 로그인 비밀번호를 만드는 일이라서. */
-  if(GROLE!=='admin'&&GROLE!=='manager'){
+  /* 어드민·매니저1은 전부, 매니저2는 예약요청·견적 기록만(사이트 내용은 제한). 계정 만들기만 어드민 몫 — 로그인 비밀번호를 만드는 일이라서(사장님 2026-09-16). */
+  if(GROLE!=='admin'&&GROLE!=='manager'&&GROLE!=='manager2'){
     document.getElementById('tabs').innerHTML='';
     document.getElementById('pane').innerHTML=
       '<div class="card noauth"><h2>접근 권한 없음</h2>'
@@ -625,18 +624,19 @@ window.addEventListener('beforeunload',e=>{ if(anyDirty()){ e.preventDefault(); 
 
 /* ══════ 탭 ══════ */
 const TABS=[
-  {k:'site',   label:'사이트 내용'},
+  /* 사이트 내용(상품·코드·요금 올리기)은 어드민·매니저1만 — 매니저2는 제한(사장님 2026-09-16) */
+  {k:'site',   label:'사이트 내용', roles:['admin','manager']},
   /* 손님 사이트의 장바구니에서 들어온 예약 요청.
      guide_data 에 **한 건이 한 줄**로 담긴다(data_key = golf_book_<접수번호>).
      읽고 고치는 것은 서버 함수 /api/golf-book 이 한다 — 브라우저에서 바로 못 읽는다. */
-  {k:'books',  label:'📋 예약요청'},
+  {k:'books',  label:'📋 예약요청', roles:['admin','manager','manager2']},
   /* 실시간 견적(/golf/)에서 견적서를 뽑을 때 guide_data/golf_quotes 에 남는 그때 금액(원가 항목별) — 표로 확인(사장님 2026-09-16) */
-  {k:'quotes', label:'📑 견적 기록'},
+  {k:'quotes', label:'📑 견적 기록', roles:['admin','manager','manager2']},
   /* 요금표(차량·핸들링·가이드)·코드관리는 2026-09-11부터 「사이트 내용」의 하위 탭이다(사장님) — subs() 참고 */
-  {k:'accounts',label:'계정관리', adminOnly:true}
+  {k:'accounts',label:'계정관리', roles:['admin']}
 ];
 let tab='site';
-function myTabs(){ return TABS.filter(t=>!t.adminOnly||GROLE==='admin'); }
+function myTabs(){ return TABS.filter(t=>(t.roles||[]).includes(GROLE)); }
 function drawTabs(){
   const ts=myTabs();
   if(!ts.some(t=>t.k===tab)) tab=ts[0].k;
@@ -2419,7 +2419,7 @@ function drawCodes(){
    아이디·비밀번호는 브라우저에서 못 만든다 — 서버 함수 /api/account 가 대신 만든다.
    권한(admin/manager/agent)은 guide_data/golf_roles 에 아이디별로 둔다.
    ══════════════════════════════════════ */
-const ROLE_LABEL={admin:'어드민',manager:'매니저',agent:'에이전트'};
+const ROLE_LABEL={admin:'어드민',manager:'매니저1',manager2:'매니저2'};   // 에이전트 없음 — 전부 우리 직원(사장님 2026-09-16). 옛 'agent' 값은 매니저2로 읽는다
 async function api(action,payload){
   try{
     const {data:{session}}=await sb.auth.getSession();
@@ -2463,11 +2463,11 @@ function drawAccounts(){
       +'<div class="pwbox"><input id="naPw" class="mono" maxlength="32">'
       +'<button class="ghost" id="naGen" type="button">새로 만들기</button></div></div>'
     +'<div class="f" style="flex:0 0 130px"><label>권한</label><select id="naRole">'
-      +'<option value="agent">에이전트 (견적만)</option>'
-      +'<option value="manager">매니저 (견적·요금·코드)</option>'
+      +'<option value="manager2">매니저2 (실시간 견적·예약요청·견적 기록)</option>'
+      +'<option value="manager">매니저1 (사이트 내용·요금·코드까지)</option>'
       +'<option value="admin">어드민 (모두)</option></select></div>'
     +'<button class="add" id="naAdd" type="button">계정 만들기</button>'
-    +'</div><p class="hint">에이전트는 견적 화면만, 매니저는 요금·코드까지, 어드민은 이 화면까지 씁니다.</p></div>'
+    +'</div><p class="hint">매니저2는 부킹 관련(실시간 견적·예약요청·견적 기록) 전부, 매니저1은 사이트 내용(상품·코드·요금)까지, 어드민은 이 화면(계정관리)까지 씁니다.</p></div>'
     +'</div>'
 
     +'<div class="card"><h2>계정 목록 <span class="cnt">· '+ids.length+'명</span></h2>'
@@ -2477,7 +2477,7 @@ function drawAccounts(){
     +'</tr></thead><tbody>'
     +ids.map(id=>{
       const fixed=ELEVATED_ADMIN_IDS.includes(id);
-      const role=fixed?'admin':(R[id]||'agent');
+      const role=fixed?'admin':(R[id]==='agent'?'manager2':(R[id]||'manager2'));
       return '<tr><td><b>'+esc(id)+'</b>'+(fixed?' <span class="badge fix">고정</span>':'')+'</td>'
         +'<td>'+(fixed?'<span class="badge">어드민</span>'
           :'<select data-role="'+esc(id)+'">'+Object.keys(ROLE_LABEL).map(r=>
