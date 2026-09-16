@@ -1780,6 +1780,10 @@ function showQuotePreview(url,name){
 async function downloadQuote(mode){
   if(!LAST||!LAST.lines.length){ alert('먼저 견적내용을 입력해주세요.'); return; }   // 문구(사장님 2026-09-16)
   if(!$('#startDate').value){ alert('출발 일자를 먼저 선택해 주세요.'); return; }
+  /* 안 고른 칸이 있으면 견적서를 만들지 않고 알린다(사장님 2026-09-16): 호텔(「필요 없음」 체크도 안 함) / 차량(「차량 선택」 그대로) / 가이드(「가이드 선택」 그대로) */
+  if(!stepDone('s3')){ alert('호텔을 선택해주세요.'); return; }
+  if(!vehPicked()){ alert('차량을 선택해주세요.'); return; }
+  if(!stepDone('s6')){ alert('가이드를 선택해주세요.'); return; }
   // 손님용은 금액이 전부 원화라, 환율이 없으면 만들 수 없다(0원짜리 견적서가 나가면 안 된다)
   if(mode!=='internal'&&!(FX_RATE>0)){
     alert('환율이 등록되어 있지 않아 손님용 견적서를 만들 수 없습니다.\n\n코드·요금 관리 > 코드관리 > 환율에 1밧당 원화(예: 46)를 등록해 주세요.');
@@ -1911,12 +1915,7 @@ const touched=new Set();
 function autoFold(activeId){
   /* 3번 호텔: 만졌는데 호텔을 안 고른 채 뒤 칸(4~6번·결과)으로 넘어가면 「필요 없음」이 자동으로 체크돼
      접힌 제목에 빨간 「호텔을 선택하지 않았습니다」가 뜬다(사장님 2026-09-15). 다시 호텔을 고르면 체크는 풀린다 */
-  if(activeId!=='s3' && touched.has('s3') && useHotelOn() && ROUTE.length){
-    const later=!activeId || STEPS.indexOf(activeId)>STEPS.indexOf('s3');
-    const stay=ROUTE.filter(r=>(+r.nights||0)>0);
-    const picked=stay.length>0 && stay.every(r=>hotelPick[r.sid]!==undefined&&hotelPick[r.sid]!=='');
-    if(later && !picked){ const c=$('#noHotel'); if(c){ c.checked=true; renderHotels(); if(window._ready) calc(); } }
-  }
+  /* 자동 「필요 없음」 체크는 뺐다(사장님 2026-09-16) — 안 고른 채 「견적서 보기」를 누르면 「호텔을 선택해주세요.」 안내창이 대신 뜬다(downloadQuote). 차량·가이드도 같은 규칙 */
   renderStepSummaries();
   STEPS.forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
