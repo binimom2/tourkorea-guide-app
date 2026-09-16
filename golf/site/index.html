@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="ko">
+<!-- presite: 관리 화면에서 저장한 내용(Supabase golf_site)이 오기 전까지는 화면을 감춘다.
+     안 그러면 data.js 기본값(처음 만들 때 화면)이 잠깐 보였다가 저장본으로 바뀌는 게 눈에 띈다(사장님 2026-09-16).
+     서버가 늦거나 실패해도 3초 뒤엔 무조건 보인다. -->
+<html lang="ko" class="presite">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,6 +28,8 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth; scroll-padding-top:64px}
+/* 저장본이 오기 전(html.presite)에는 본문을 감춘다 — 기본값 화면이 잠깐 비치지 않게. 바탕색만 남긴다. */
+html.presite body{visibility:hidden}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.62;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
 a{color:inherit}
@@ -169,6 +174,10 @@ body.bar-light .trust button.on{background:rgba(0,0,0,.08)}
 .trust button.hot:active{background:#e0952c}
 @keyframes hotglow{0%,100%{box-shadow:0 0 0 2px rgba(255,255,255,.55),0 8px 22px rgba(0,0,0,.28)}
   50%{box-shadow:0 0 0 4px rgba(255,255,255,.85),0 8px 26px rgba(0,0,0,.3)}}
+/* 흰 띠 위에서는 흰 테두리 빛이 안 보이니 금색 빛으로(사장님 2026-09-16 띠 흰색) */
+body.bar-light .trust button.hot{animation-name:hotglow-light}
+@keyframes hotglow-light{0%,100%{box-shadow:0 0 0 2px rgba(232,163,61,.38),0 8px 22px rgba(0,0,0,.16)}
+  50%{box-shadow:0 0 0 4px rgba(232,163,61,.6),0 8px 26px rgba(0,0,0,.18)}}
 @media(prefers-reduced-motion:reduce){.trust button.hot{animation:none}}
 .trust em{display:block;font-style:normal;font-size:19px;line-height:1;margin-bottom:6px}
 .trust b{display:block;font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.02em;white-space:nowrap}
@@ -1528,8 +1537,10 @@ function applyTheme(){
     : (HERO_BG[hh.bg] || HERO_BG.fresh);
   r.setProperty("--hero-a", bg.a); r.setProperty("--hero-b", bg.b); r.setProperty("--hero-c", bg.c); r.setProperty("--hero-bar", bg.bar);
   /* 섹터 메뉴(첫 화면 아래 띠) 바탕색 — 관리 화면 「섹터 메뉴 → 띠 바탕색」에서 따로 고르면 그 색(살짝 밝아지는 그라데이션),
-     안 고르면 첫 화면 색감을 따라간다. 흰색처럼 밝은 색이면 글자를 짙게 바꾼다(사장님 2026-09-11) */
-  const sbg = (SITE.sector || {}).bg;
+     안 고르면 «흰색»(사장님 2026-09-16, 전에는 첫 화면 색감을 따라갔다). 「첫 화면 색감 따라감」은 관리 화면에서 'hero'로 고른다.
+     흰색처럼 밝은 색이면 글자를 짙게 바꾼다(사장님 2026-09-11) */
+  const sbgRaw = (SITE.sector || {}).bg;
+  const sbg = sbgRaw === "hero" ? "" : (sbgRaw || "#FFFFFF");
   const barOk = /^#[0-9a-fA-F]{6}$/.test(sbg || "");
   r.setProperty("--bar-a", barOk ? sbg : bg.bar);
   r.setProperty("--bar-b", barOk ? shade(sbg, 0.14) : bg.a);
@@ -1564,6 +1575,10 @@ loadFx();       // 오른쪽 위 태국환율도 마찬가지 — 늦게 와도 
 /* 관리 화면(admin/)에서 저장한 내용이 있으면 그걸로 다시 그린다.
    손님은 로그인이 없어 못 읽을 수 있다 — 그때는 data.js의 기본값 그대로 간다.
    화면은 이미 기본값으로 그려져 있으므로, 실패해도 빈 화면이 되지 않는다. */
+/* 저장본으로 다시 그리기 전까지는 화면을 감춰 둔다(html.presite) — 기본값 화면이 잠깐 비쳤다가 바뀌는 게
+   보이지 않게(사장님 2026-09-16). 서버가 늦거나 실패해도 3초 뒤에는 무조건 보인다. */
+const showSite = () => document.documentElement.classList.remove("presite");
+const showTimer = setTimeout(showSite, 3000);
 (async () => {
   try{
     const r = await fetch(SB_URL + "/rest/v1/guide_data?data_key=eq.golf_site&select=data",
@@ -1575,6 +1590,7 @@ loadFx();       // 오른쪽 위 태국환율도 마찬가지 — 늦게 와도 
     SITE = Object.assign({}, window.SITE_DEFAULT, d);
     renderAll();
   }catch(e){}
+  finally{ clearTimeout(showTimer); showSite(); }
 })();
 
 /* ── 골프장·호텔 상세 ── */
