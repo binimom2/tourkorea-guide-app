@@ -722,7 +722,7 @@ function newQuote(){
   const px=$('#pax'); if(px) px.value='';
   const ng=$('#nights'); if(ng) ng.value='';
   ['amDep','amRet','noHotel','useGuide','noVeh','extraVan','extraLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
-  vehChoice='van'; busIdx=-1; _vehRuleIdx=-2;   // 차량 구성은 추천으로(사장님 2026-09-15)
+  vehChoice='van'; busIdx=-1; _vehRuleIdx=-2; _vehRecV='';   // 차량 구성은 추천으로(사장님 2026-09-15)
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
   const gsl=$('#guideSel'); if(gsl) gsl.value=''; guideNone=false;
   const gc=$('#guideCnt'); if(gc) gc.value='1'; const gcw=$('#guideCntWrap'); if(gcw) gcw.style.display='none';   // 가이드 인원 1명으로
@@ -863,6 +863,7 @@ let vehChoice='van';   // 'van'(추천 구성) | 'vanplain'(짐밴 뺀 밴만) |
 function isBusChoice(v){ return /^bus/.test(String(v==null?vehChoice:v)); }
 function setVehChoice(v){ vehChoice=v; if(isBusChoice(v)){ const n=+String(v).split(':')[1]; if(Number.isFinite(n)) busIdx=n; } }
 let _vehRuleIdx=-2;    // 인원 구간이 바뀌면 추천 구성으로 되돌리기 위한 표시
+let _vehRecV='';       // 직전 추천 선택지 값(같은 구간 안에서 추천 버스가 바뀌었는지 보기 위해)
 /* 지금 고른 최종 구성 — {kind:'van'|'bus'|'none', vans:밴 대수, lug:짐밴 포함, rule} (추가 선택까지 합산) */
 function vehPlan(){
   if(!useVehOn()) return {kind:'none',vans:0,lug:false,rule:null};
@@ -907,6 +908,9 @@ function renderVehChoices(){
     if(useVehOn()) setVehChoice((opts.find(o=>o.rec)||opts[0]).v);
     ['extraVan','extraLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   }
+  /* 같은 인원 구간 안에서 추천 버스만 바뀔 때(33명→34명: 33인승→40인승) — 손님이 직접 바꾼 게 아니라 추천을 그대로 두고 있었으면 새 추천으로 따라간다(2026-09-16) */
+  const recV=(opts.find(o=>o.rec)||opts[0]).v;
+  if(recV!==_vehRecV){ if(useVehOn()&&vehChoice===_vehRecV) setVehChoice(recV); _vehRecV=recV; }
   if(!useVehOn()) vehChoice='none';
   if(!opts.some(o=>o.v===vehChoice)) setVehChoice((opts.find(o=>o.rec)||opts[0]).v);
   /* 가이드 칸처럼 드롭다운 하나로(사장님 2026-09-15 "차량 란이 매끄럽지 않다") — 추천은 「(추천)」, 코드관리 「차량」 라벨(비용 안내)이 있으면 뒤에 붙인다.
