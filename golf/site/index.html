@@ -30,7 +30,8 @@
 html{scroll-behavior:smooth; scroll-padding-top:64px}
 /* 저장본이 오기 전(html.presite)에는 본문을 감춘다 — 기본값 화면이 잠깐 비치지 않게. 바탕색만 남긴다. */
 html.presite body{visibility:hidden}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.62;-webkit-font-smoothing:antialiased}
+/* 바탕은 흰색 — 베이지(--paper)는 바탕에서 뺀다(사장님 2026-09-16). --paper는 작은 상자(요금 칸·달력 hover)에만 남는다 */
+body{margin:0;background:#fff;color:var(--ink);font-family:var(--font);line-height:1.62;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
 a{color:inherit}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 18px}
@@ -77,7 +78,7 @@ body.qopen{overflow:hidden}
 .navcat{position:relative;display:flex;align-items:center}
 .navcat > a i{font-style:normal;font-size:9px;margin-left:4px;opacity:.55;vertical-align:middle}
 .navdrop{position:absolute;left:0;top:100%;min-width:168px;display:none;z-index:70;
-  background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px;
+  background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;
   box-shadow:0 14px 34px rgba(18,58,43,.18)}
 .navcat:hover .navdrop{display:block}
 .navdrop button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;
@@ -155,7 +156,8 @@ body.fs-sm .qp-price .v{font-size:25px}
 body.bar-light .trust{color:rgba(0,0,0,.7);border-top-color:rgba(0,0,0,.1)}
 body.bar-light .trust b{color:#15211C}
 body.bar-light .trust button:hover{background:rgba(0,0,0,.06)}
-body.bar-light .trust button.on{background:rgba(0,0,0,.08)}
+/* 흰 띠에선 «보고 있는 종류» 칸에 회색을 깔지 않는다 — 칸마다 바탕이 달라 보인다고 하셔서(사장님 2026-09-16). 금색 밑줄만 남긴다 */
+body.bar-light .trust button.on{background:none}
 /* 섹터 메뉴 — 칸 수가 종류에 따라 달라지므로 고정 4칸이 아니라 늘고 주는 줄로 둔다 */
 .trust .wrap{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px}   /* 칸 사이 간격·위아래 여백(사장님 2026-09-11) */
 .trust button{flex:1 1 118px;background:none;border:0;color:inherit;font:inherit;cursor:pointer;
@@ -179,18 +181,19 @@ body.bar-light .trust button.hot{animation-name:hotglow-light}
 @keyframes hotglow-light{0%,100%{box-shadow:0 0 0 2px rgba(232,163,61,.38),0 8px 22px rgba(0,0,0,.16)}
   50%{box-shadow:0 0 0 4px rgba(232,163,61,.6),0 8px 26px rgba(0,0,0,.18)}}
 @media(prefers-reduced-motion:reduce){.trust button.hot{animation:none}}
-.trust em{display:block;font-style:normal;font-size:19px;line-height:1;margin-bottom:6px}
-.trust b{display:block;font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.02em;white-space:nowrap}
+/* 그림·글자 크기는 「실시간 견적」 칸과 같게(사장님 2026-09-16) */
+.trust em{display:block;font-style:normal;font-size:21px;line-height:1;margin-bottom:6px}
+.trust b{display:block;font-size:15.5px;font-weight:900;color:#fff;letter-spacing:-.02em;white-space:nowrap}
 @media(max-width:520px){
   .trust .wrap{padding:4px 10px}
   .trust button{flex:1 1 88px;padding:11px 4px}
-  .trust em{font-size:17px;margin-bottom:4px}
-  .trust b{font-size:12.5px}
+  .trust em{margin-bottom:4px}   /* 크기는 폰에서도 「실시간 견적」과 같게 둔다 */
 }
 
 /* ── 공통 섹션 ── */
 section{padding:64px 0}
-section:nth-of-type(even){background:#fff}
+/* 짝수 섹션을 흰색으로 번갈아 칠하던 규칙은 뺐다 — 종류(골프장·호텔…)가 한 번에 하나만 보여서
+   골프장은 베이지·호텔은 흰색처럼 페이지마다 바탕이 달라 보였다(사장님 2026-09-16). 지금은 전부 흰색. */
 .sechead{margin-bottom:28px}
 .sechead .kicker{font-size:11.5px;font-weight:800;letter-spacing:.2em;color:var(--marigold);margin-bottom:8px}
 .sechead h2{margin:0;font-size:clamp(23px,3.4vw,33px);font-weight:900;letter-spacing:-.04em}
@@ -201,14 +204,11 @@ section:nth-of-type(even){background:#fff}
 .tabs button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 18px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer}
 .tabs button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
 .tabs button b{font-weight:800;opacity:.5;font-size:12.5px;margin-left:2px}
-section:nth-of-type(even) .tabs button{background:var(--paper)}
-section:nth-of-type(even) .tabs button.on{background:var(--fairway);color:#fff}
 
 /* ── 카드 그리드 ── */
 .cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .16s ease,box-shadow .16s ease}
 .card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(18,58,43,.1)}
-section:nth-of-type(even) .card{background:var(--paper)}
 .thumb{aspect-ratio:16/10;background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep));display:flex;align-items:center;justify-content:center;position:relative}
 .thumb i{font-style:normal;font-size:30px;font-weight:900;color:rgba(255,255,255,.9);letter-spacing:-.04em;text-align:center;padding:0 12px;line-height:1.15}
 /* 사진이 있으면 이름 칸을 덮는다. 없으면 img가 스스로 사라져 이름 칸이 남는다. */
@@ -232,11 +232,9 @@ section:nth-of-type(even) .card{background:var(--paper)}
 .pill small.pm{color:var(--fairway-mid);font-size:11.5px}
 .pill b.pp{display:block;margin-top:6px;font-size:15px;font-weight:900;color:var(--fairway)}
 .pill b.pp i{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
-section:nth-of-type(even) .pill{background:var(--paper)}
 
 /* ── 게시판 ── */
 .board{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-section:nth-of-type(even) .board{background:var(--paper)}
 .board .brow{display:flex;align-items:center;gap:12px;padding:14px 17px;border:0;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;width:100%;background:none;font:inherit;color:inherit}
 .board .brow:hover{background:rgba(18,58,43,.04)}
 .tag{flex:0 0 auto;font-size:11px;font-weight:900;border-radius:999px;padding:3px 10px;background:rgba(18,58,43,.09);color:var(--fairway)}
@@ -292,7 +290,7 @@ section:nth-of-type(even) .board{background:var(--paper)}
 .totop:hover{background:var(--paper)}
 .mask{position:fixed;inset:0;z-index:200;background:rgba(8,23,15,.62);display:none;align-items:center;justify-content:center;padding:18px}
 .mask.on{display:flex}
-.modal{background:var(--paper);border-radius:18px;width:100%;max-width:392px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.36);max-height:90vh;overflow:auto}
+.modal{background:#fff;border-radius:18px;width:100%;max-width:392px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.36);max-height:90vh;overflow:auto}
 .modal h3{margin:0 0 4px;font-size:21px;font-weight:900;letter-spacing:-.04em}
 .modal .sub{margin:0 0 20px;font-size:13.5px;color:var(--muted);line-height:1.55}
 .kakao{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#FEE500;color:#191600;border:0;border-radius:11px;padding:14px;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer}
@@ -391,7 +389,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 종류 칩줄은 감춘다(사장님 2026-09-10) — 히어로 아래 «섹터 메뉴»(.trust)가 같은 일을 해서
    메뉴가 둘일 까닭이 없다. 자료·코드는 그대로 두고 화면에서만 뺀다. 고른 종류는 위 띠에 켜진다. */
 .catpick{display:none;flex-wrap:wrap;gap:10px;margin-bottom:6px;
-  position:sticky;top:60px;z-index:40;background:var(--paper);padding:12px 0 10px}
+  position:sticky;top:60px;z-index:40;background:#fff;padding:12px 0 10px}
 /* 종류마다 한 칸씩 — 골프장 아래 호텔, 그 아래 스파… */
 /* 종류는 «페이지»처럼 한 번에 하나만 보인다(사장님 2026-09-09) — 골프장·호텔·스파를 세로로 다 쌓으면
    자료가 많아져 끝없이 길어진다. 위 종류 단추(catpick)가 페이지 탭이다. */
