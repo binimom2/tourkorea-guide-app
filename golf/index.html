@@ -722,7 +722,7 @@ function newQuote(){
   const px=$('#pax'); if(px) px.value='';
   const ng=$('#nights'); if(ng) ng.value='';
   ['amDep','amRet','noHotel','useGuide','noVeh','extraVan','extraLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
-  vehChoice='van'; _vehRuleIdx=-2;   // 차량 구성은 추천으로(사장님 2026-09-15)
+  vehChoice='van'; busIdx=-1; _vehRuleIdx=-2;   // 차량 구성은 추천으로(사장님 2026-09-15)
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
   const gsl=$('#guideSel'); if(gsl) gsl.value=''; guideNone=false;
   const gc=$('#guideCnt'); if(gc) gc.value='1'; const gcw=$('#guideCntWrap'); if(gcw) gcw.style.display='none';   // 가이드 인원 1명으로
@@ -828,25 +828,47 @@ function paxInRange(o,pax){ if(!o) return true; const mn=+o.paxMin||0, mx=+o.pax
 function vehRules(){ const r=P.vehicleRules; return (Array.isArray(r)&&r.length)?r:VEH_RULES_DEFAULT; }
 function vehRuleFor(pax){ return vehRules().find(r=>paxInRange(r,pax))||null; }
 function isBusCol(g){ return !!(g&&g.bus); }
-/* 종류(van/bus)에 맞는 요금 열 번호 — 경로(지역 조합)에 맞는 열 → 없으면 그 종류의 첫 열 → 없으면 -1 */
+function routeKey(a){ return [...new Set(a.map(x=>String(x).trim()))].sort().join('|'); }
+/* 버스 열 번호 목록(사장님 2026-09-16: 33인승·40인승 등 버스가 여러 대면 전부 따로 띄운다) — 경로(지역 조합)에 맞는 버스 열들 → 없으면 버스 열 전부 */
+function busColumns(){
+  const gs=P.vehicleGroups||[];
+  const want=routeKey(ROUTE.map(r=>r.region).filter(Boolean));
+  const all=gs.map((g,i)=>isBusCol(g)?i:-1).filter(i=>i>=0);
+  const fit=all.filter(i=>want&&(gs[i].combos||[]).some(c=>routeKey(c)===want));
+  return fit.length?fit:all;
+}
+/* 버스 좌석 수 — 차량 이름의 「33인승」에서 읽는다(없으면 0) */
+function busSeats(g){ const m=String(vehName(g)||'').match(/(\d+)\s*인승/); return m?+m[1]:0; }
+/* 인원에 맞는 추천 버스 열 — 인원이 들어가는 가장 작은 버스(15~33명 → 33인승, 34명~ → 40인승), 다 안 들어가면 가장 큰 버스, 좌석 수를 모르면 첫 열 */
+function recBusColumn(pax){
+  const gs=P.vehicleGroups||[], cols=busColumns();
+  if(!cols.length) return -1;
+  const known=cols.filter(i=>busSeats(gs[i])>0).sort((a,b)=>busSeats(gs[a])-busSeats(gs[b]));
+  if(!known.length) return cols[0];
+  return known.find(i=>busSeats(gs[i])>=pax)??known[known.length-1];
+}
+let busIdx=-1;   // 드롭다운에서 고른 버스 열 번호(vehChoice 'bus:번호')
+/* 종류(van/bus)에 맞는 요금 열 번호 — 버스는 고른 버스 열, 아니면 경로(지역 조합)에 맞는 열 → 없으면 그 종류의 첫 열 → 없으면 -1 */
 function vehColumn(kind){
   const gs=P.vehicleGroups||[];
-  const key=a=>[...new Set(a.map(x=>String(x).trim()))].sort().join('|');
-  const want=key(ROUTE.map(r=>r.region).filter(Boolean));
-  const ok=g=>kind==='bus'?isBusCol(g):!isBusCol(g);
-  let i=gs.findIndex(g=>ok(g)&&want&&(g.combos||[]).some(c=>key(c)===want));
+  if(kind==='bus'){ const cols=busColumns(); return cols.includes(busIdx)?busIdx:(cols.length?cols[0]:-1); }
+  const want=routeKey(ROUTE.map(r=>r.region).filter(Boolean));
+  const ok=g=>!isBusCol(g);
+  let i=gs.findIndex(g=>ok(g)&&want&&(g.combos||[]).some(c=>routeKey(c)===want));
   if(i<0) i=gs.findIndex(ok);
   return i;
 }
 function vehColOf(kind){ const i=vehColumn(kind); return i>=0?(P.vehicleGroups||[])[i]:null; }
-let vehChoice='van';   // 'van'(추천 구성) | 'vanplain'(짐밴 뺀 밴만) | 'bus' | 'none'
+let vehChoice='van';   // 'van'(추천 구성) | 'vanplain'(짐밴 뺀 밴만) | 'bus:열번호' | 'none'
+function isBusChoice(v){ return /^bus/.test(String(v==null?vehChoice:v)); }
+function setVehChoice(v){ vehChoice=v; if(isBusChoice(v)){ const n=+String(v).split(':')[1]; if(Number.isFinite(n)) busIdx=n; } }
 let _vehRuleIdx=-2;    // 인원 구간이 바뀌면 추천 구성으로 되돌리기 위한 표시
 /* 지금 고른 최종 구성 — {kind:'van'|'bus'|'none', vans:밴 대수, lug:짐밴 포함, rule} (추가 선택까지 합산) */
 function vehPlan(){
   if(!useVehOn()) return {kind:'none',vans:0,lug:false,rule:null};
   const r=vehRuleFor(curPax());
   let vans=0,lug=false;
-  const kind=(vehChoice==='bus')?'bus':'van';
+  const kind=isBusChoice()?'bus':'van';
   if(vehChoice==='van'){ vans=r?(+r.vans||1):1; lug=!!(r&&r.lug); }
   else if(vehChoice==='vanplain'){ vans=r?(+r.vans||1):1; }
   if(($('#extraVan')||{}).checked) vans+=1;
@@ -867,22 +889,26 @@ function renderVehChoices(){
   const box=$('#vehChoices'); if(!box) return;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const r=vehRuleFor(curPax()), ri=vehRules().indexOf(r);
-  const hasVan=vehColumn('van')>=0, hasBus=vehColumn('bus')>=0, hasLugTable=((P.luggageVan||{}).legs||[]).length>0;
+  const hasVan=vehColumn('van')>=0, busCols=busColumns(), hasLugTable=((P.luggageVan||{}).legs||[]).length>0;
   const vans=r?(+r.vans||1):1;
   const opts=[];
   if(hasVan&&vans>0){
     opts.push({v:'van',t:vanLabel(vans)+((r&&r.lug&&hasLugTable)?' + 밴 1대 추가 (미·샌딩, 지역이동 날만)':''),rec:!(r&&r.rec==='bus')});   // 문구(사장님 2026-09-15 저녁)
     if(r&&r.lug&&hasLugTable) opts.push({v:'vanplain',t:vanLabel(vans),rec:false});   // 짐밴을 빼고 싶을 때
   }
-  if(hasBus&&(!r||r.bus!==false)) opts.push({v:'bus',t:busLabel(),rec:!!(r&&r.rec==='bus')});
+  /* 버스 열은 전부 따로(33인승·40인승…), 추천은 인원이 들어가는 가장 작은 버스(사장님 2026-09-16 차량 3종: 9인승·33인승·40인승) */
+  if(busCols.length&&(!r||r.bus!==false)){
+    const gs=P.vehicleGroups||[], recI=(r&&r.rec==='bus')?recBusColumn(curPax()):-1;
+    busCols.forEach(i=>opts.push({v:'bus:'+i,t:vehName(gs[i]),rec:i===recI}));
+  }
   opts.push({v:'none',t:'차량이 필요 없습니다',rec:false});
   if(ri!==_vehRuleIdx){   // 인원 구간이 바뀜 → 추천 구성으로, 추가 선택은 초기화
     _vehRuleIdx=ri;
-    if(useVehOn()) vehChoice=(opts.find(o=>o.rec)||opts[0]).v;
+    if(useVehOn()) setVehChoice((opts.find(o=>o.rec)||opts[0]).v);
     ['extraVan','extraLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   }
   if(!useVehOn()) vehChoice='none';
-  if(!opts.some(o=>o.v===vehChoice)) vehChoice=(opts.find(o=>o.rec)||opts[0]).v;
+  if(!opts.some(o=>o.v===vehChoice)) setVehChoice((opts.find(o=>o.rec)||opts[0]).v);
   /* 가이드 칸처럼 드롭다운 하나로(사장님 2026-09-15 "차량 란이 매끄럽지 않다") — 추천은 「(추천)」, 코드관리 「차량」 라벨(비용 안내)이 있으면 뒤에 붙인다.
      사진은 고른 차량 이름 옆 「📷 사진 보기」 */
   /* 코드관리 「차량」 라벨은 붙이지 않는다 — 요금표 차량 이름만(사장님 2026-09-15 저녁 "코드 물고 들어가지 말 것") */
@@ -899,7 +925,7 @@ function renderVehChoices(){
     +`<div id="vehChoiceFace" style="position:absolute;left:0;top:0;right:30px;bottom:0;display:flex;align-items:center;padding:0 9px;font-size:14px;font-weight:700;color:var(--ink);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${face}</div>`
     +`</div>`;
   const pb=$('#vehPhotoBtn');
-  if(pb){ const k=vehChoice==='bus'?'bus':(vehChoice==='none'?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
+  if(pb){ const k=isBusChoice()?'bus':(vehChoice==='none'?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
   const ex=$('#vehExtra'); if(ex) ex.style.display=vehChoice==='none'?'none':'flex';   // 글자·체크 높이 맞춤용 flex(사장님 2026-09-15)
   // 이미 짐밴이 든 구성이거나 짐밴 표가 없으면 「짐밴 추가」는 감춘다
   const el=$('#extraLug'), elw=el&&el.parentElement;
@@ -924,10 +950,10 @@ document.addEventListener('click',e=>{
 /* 고른 구성 → 「차량 없음」 체크(계산용)와 주 차량 열(#vehGroup: 버스면 버스 열, 아니면 밴 열) */
 function applyVehChoice(){
   const no=$('#noVeh'); if(no) no.checked=(vehChoice==='none');
-  const gsel=$('#vehGroup'); if(gsel){ const i=vehColumn(vehChoice==='bus'?'bus':'van'); if(i>=0) gsel.value=String(i); }
+  const gsel=$('#vehGroup'); if(gsel){ const i=vehColumn(isBusChoice()?'bus':'van'); if(i>=0) gsel.value=String(i); }
 }
 function onVehChoiceChange(v){
-  vehChoice=v; applyVehChoice();
+  setVehChoice(v); applyVehChoice();
   /* 차량을 다시 고르면 「＋ 차량 추가 선택」(밴 1대 추가·짐밴 추가)은 처음 상태로(사장님 2026-09-15 저녁: 밴+짐밴 → 버스로 바꾸면 제로베이스) */
   ['extraVan','extraLug'].forEach(id=>{ const c=$('#'+id); if(c) c.checked=false; });
   syncVehShown(); touched.add('s5'); autoFold('s5'); calc();
