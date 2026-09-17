@@ -1729,6 +1729,14 @@ function priceCell(k,x){
       +'<button type="button" class="radd">＋ 요금 줄 추가</button></div>';
   }
   const rates=ratesOf(k,x);
+  /* 요금 줄은 기간 차례로 세운다(사장님 2026-09-17) — 시작일 → 끝일 → 주중/주말 → 종일/오전/오후.
+     배열 자체를 정렬해 저장 순서도 같아진다(계산은 순서와 무관). 칸을 다시 그릴 때만 정렬하므로 입력 중에 줄이 튀지 않는다 */
+  if(Array.isArray(rates)&&rates.length>1){
+    const P_ORD={'주중':0,'주말·휴일':1,'주말':1,'태국휴일':1}, T_ORD={'종일':0,'오전':1,'오후':2};
+    const d=v=>String(v||'')||'9999-99-99';
+    rates.sort((a,b)=>d(a.from).localeCompare(d(b.from))||d(a.to).localeCompare(d(b.to))
+      ||((P_ORD[normPart(a.part)]||0)-(P_ORD[normPart(b.part)]||0))||((T_ORD[a.time]||0)-(T_ORD[b.time]||0)));
+  }
   let body;
   if(P===null) body='<div class="pbox"><span class="pmute">요금표를 못 읽었습니다</span></div>';
   else if(rates===null) body='<div class="pbox"><span class="pno">요금표에 「'+esc(x.n||'이름 없음')
