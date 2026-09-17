@@ -611,10 +611,35 @@ function clearDirty(k){
 }
 /* 이름을 다 치고 칸을 벗어나면 그 줄의 요금 칸만 새로 그린다.
    글자마다 다시 그리면 한글 조합이 끊기므로 change(=칸을 벗어날 때)에서만 한다. */
+/* 이름칸에 들어갈 때 예전 이름을 적어 둔다 — 이름을 바꾸면 요금표의 자리도 그 이름으로 따라가게(아래 change) */
+document.getElementById('pane').addEventListener('focusin',e=>{
+  const el=e.target; if(el&&el.dataset&&el.dataset.pname) el.dataset.prev=el.value;
+});
+/* 요금표(golf_pricing)는 이름으로 이어진다. 이름을 고치면 옛 이름 자리의 요금이 못 찾아져 「요금이 사라진」 것처럼 보였다
+   (복사 뒤 풀네임으로 고칠 때, 사장님 2026-09-17). 그래서 이름이 바뀌면 요금표 자리의 이름도 같이 바꾼다.
+   새 이름 자리에 이미 요금이 들어 있으면 그쪽을 살리고(합치지 않는다) 옛 자리는 그대로 둔다. */
+function renamePriceHome(k,oldName,newName){
+  if(!P||!P.regions) return false;
+  const nk=n=>String(n||'').replace(/\s+/g,'').toLowerCase();
+  if(!nk(oldName)||!nk(newName)||nk(oldName)===nk(newName)) return false;
+  const arrName=(k==='hotels')?'hotels':(k==='courses')?'courses':k;
+  let src=null, dst=null;
+  Object.values(P.regions).forEach(rv=>{ (rv&&rv[arrName]||[]).forEach(o=>{
+    if(!o) return;
+    if(nk(o.name)===nk(oldName)) src=src||o; else if(nk(o.name)===nk(newName)) dst=dst||o; }); });
+  if(!src) return false;
+  const has=o=>!!((Array.isArray(o.rates)&&o.rates.length)||(Array.isArray(o.menu)&&o.menu.length)||(Array.isArray(o.rooms)&&o.rooms.length)||oldSeasonCount(o));
+  if(dst&&has(dst)) return false;
+  if(dst) Object.values(P.regions).forEach(rv=>{ const a=rv&&rv[arrName]; if(Array.isArray(a)){ const i=a.indexOf(dst); if(i>=0) a.splice(i,1); } });
+  src.name=newName;
+  buildPriceIndex(); markDirty('rates');
+  return true;
+}
 document.getElementById('pane').addEventListener('change',e=>{
   const el=e.target; if(!el.dataset||!el.dataset.pname) return;
   const cnt=document.getElementById('iCnt'); if(!cnt) return;
   const k=cnt.dataset.k, tr=el.closest('tr'), sub=tr&&tr.nextElementSibling;
+  if(el.dataset.prev!==undefined&&el.dataset.prev!==el.value){ renamePriceHome(k,el.dataset.prev,el.value); el.dataset.prev=el.value; }
   if(!sub||!sub.classList.contains('subrow')) return;
   const item=getPath(S,el.dataset.p.replace(/\.n$/,''));
   /* 호텔은 아래 줄이 「객실 요금」 칸이다 — 이름이 바뀌면 그 칸이 들고 있던 이름도 같이 고쳐야 한다 */
