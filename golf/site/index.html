@@ -955,14 +955,15 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="agTitle">
     <button class="mclose" id="agClose" type="button" aria-label="닫기">×</button>
     <h3 id="agTitle">여행사 로그인</h3>
-    <p class="sub" id="agSub">투어코리아 여행사 회원 전용입니다. 가입 승인 후 실시간 견적·예약 요청을 이용하실 수 있습니다.</p>
+    <!-- 안내 문구는 진파랑·진하게, 「여행사 가입 신청」은 주황 진하게·크게(사장님 2026-09-17) -->
+    <p class="sub" id="agSub" style="color:#1B3F9E;font-weight:800;font-size:14.5px;line-height:1.6">투어코리아 여행사 회원 전용입니다. 가입 승인 후 실시간 견적·예약 요청을 이용하실 수 있습니다.</p>
 
     <!-- 로그인 -->
     <div id="agLogin">
       <div class="mfield"><label for="agId">아이디</label><input type="text" id="agId" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
       <div class="mfield"><label for="agPw">비밀번호</label><input type="password" id="agPw" autocomplete="current-password"></div>
       <button class="mbtn" id="agLoginBtn" type="button">로그인</button>
-      <p class="mnote">아직 회원이 아니시면 <a href="#" id="agToSignup"><b>여행사 가입 신청</b></a> · 비밀번호를 잊으셨으면 아래 연락처로 문의해 주세요.</p>
+      <p class="mnote" style="font-size:13.5px">아직 회원이 아니시면 <a href="#" id="agToSignup" style="color:#E2703A;font-weight:900;font-size:17px;text-decoration:underline;text-underline-offset:3px">여행사 가입 신청</a> · 비밀번호를 잊으셨으면 아래 연락처로 문의해 주세요.</p>
     </div>
 
     <!-- 가입 신청 -->
