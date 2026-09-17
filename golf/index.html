@@ -486,6 +486,12 @@ function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from
    · 마진: 18홀 m · 9홀 m/2 · 27홀 m+m/2 · 36홀 2m (API와 같다. 전에는 홀수와 상관없이 m 한 번이었다).
    · 호텔 객실 요금표(rooms[].rates[]: 기간·주중/주말 1실 1박 + 써차지)가 있으면 그걸로 밤마다 센다. */
 const EMBED=/[?&]embed=site\b/.test(location.search);   // 손님 사이트 팝업 안에서 열렸다
+/* 손님 모드(로그인 없음) — 팝업(embed=site)에서 로그인 세션이 없을 때, 요금표가 읽히면 켜진다.
+   요금표(golf_pricing)·코드(golf_codes)는 평소 로그인한 직원만 읽을 수 있다(RLS).
+   테스트 기간에만 Supabase에서 anon 읽기 정책을 열어 두고, 끝나면 정책을 지워 다시 잠근다(사장님 2026-09-17).
+   정책이 닫혀 있으면 요금표가 안 읽혀 예전처럼 로그인 화면이 뜬다 — 코드를 되돌릴 필요가 없다.
+   손님 모드에서는: 견적 이력 저장 없음 · 견적번호는 이 브라우저 기준 S번호 · 관리 링크 없음. */
+let GUEST=false;
 const posNum=v=>{ const n=+v; return Number.isFinite(n)&&n>0?n:null; };
 const blank=v=>v===''||v==null;
 const partOf=v=>(v==='주말'||v==='태국휴일'||v==='주말·휴일')?'we':'wd';
@@ -1472,6 +1478,14 @@ async function ensureQuoteNo(){
   const date=($('#startDate').value||'').replace(/-/g,'');
   if(!date) return '';
   if(QUOTE_NO&&QUOTE_NO_FOR===date) return QUOTE_NO;   // 같은 출발일자면 번호를 다시 뽑지 않는다
+  if(GUEST){
+    /* 손님 모드는 서버 순번(golf_quote_seq)에 쓰지 못한다 → 이 브라우저 기준 번호, 직원 G번호와 안 겹치게 S */
+    const k='golf_quote_seq_site'; let map={}; try{ map=JSON.parse(localStorage.getItem(k)||'{}'); }catch(_){}
+    const n=(+map[date]||0)+1; map[date]=n; try{ localStorage.setItem(k,JSON.stringify(map)); }catch(_){}
+    QUOTE_NO=`${date}-S${String(n).padStart(3,'0')}`; QUOTE_NO_FOR=date;
+    showQuoteNo();
+    return QUOTE_NO;
+  }
   const seq=await nextQuoteSeq(date);
   QUOTE_NO=`${date}-G${String(seq).padStart(3,'0')}`; QUOTE_NO_FOR=date;
   showQuoteNo();
@@ -1833,7 +1847,10 @@ async function downloadQuote(mode){
       document.body.appendChild(a); a.click(); a.remove();
     } else showQuotePreview(url,name);
     // 보관 실패해도 견적서는 이미 만들어졌으므로 알리기만 한다
-    if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 견적 보관에 실패했습니다.\n나중에 「견적 이력」에서 찾을 수 없으니 파일을 꼭 보관해 주세요.');
+    if(GUEST){
+      /* 손님 모드: 로그인 없이는 서버(golf_quotes)에 쓸 수 없어 견적 이력에 남기지 않는다.
+         직원 화면의 「견적 이력」에는 안 보이고, 손님은 받은 견적서 그림만 보관한다. */
+    } else if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 견적 보관에 실패했습니다.\n나중에 「견적 이력」에서 찾을 수 없으니 파일을 꼭 보관해 주세요.');
   }catch(e){
     alert('견적서를 만들지 못했습니다. 인터넷 연결을 확인하고 다시 눌러주세요.');
   }finally{
@@ -2097,8 +2114,10 @@ async function loadPricing(){
         Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
         if(Object.keys(hot).length) P.hotels=hot;
       }
+      return true;   // 요금표를 읽었다(손님 모드 판단에 쓴다)
     }
   }catch(e){}
+  return false;
 }
 // 지역 목록은 관리자 코드관리('지역')에서 가져온다 — 관리자가 추가/수정/삭제하면 여기 바로 반영
 async function loadRegionCodes(){
@@ -2134,7 +2153,7 @@ function buildGuideOptions(){
   if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
 }
 async function startApp(user){
-  GROLE=golfRoleOf(user);
+  GROLE=GUEST?'guest':golfRoleOf(user);   // 손님 모드는 권한 명단과 무관(계산기만 쓴다)
   const wb=document.getElementById('whoBadge');
   // 골프 명단에 없는 사람 — 로그인은 됐지만 이 사이트는 쓸 수 없다
   if(!GROLE){
@@ -2150,8 +2169,8 @@ async function startApp(user){
     return;
   }
   // 사이트 관리 링크는 세 등급 모두 — 매니저2는 그 안에서 예약요청·견적 기록만 보인다(사장님 2026-09-16)
-  { const sl=document.getElementById('siteLink'); sl.style.display=''; if(GROLE==='manager2') sl.textContent='🌐 사이트 관리 (예약·견적)'; }
-  if(wb) wb.textContent=`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
+  if(!GUEST){ const sl=document.getElementById('siteLink'); sl.style.display=''; if(GROLE==='manager2') sl.textContent='🌐 사이트 관리 (예약·견적)'; }
+  if(wb) wb.textContent=GUEST?'':`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
   // 출발일자는 빈 칸으로 시작한다(사장님 2026-09-11) — 예전엔 2주 뒤 날짜를 미리 넣었다
   if(EMBED) await applySiteExposure();   // 팝업에서는 사이트에 노출한 골프장·호텔만
   buildGuideOptions();
@@ -2164,7 +2183,16 @@ async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_d
 async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
   try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
 async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
-(async function boot(){ try{ const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(session.user); return; } }catch(e){} $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus(); })();
+(async function boot(){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(session.user); return; }
+    /* 손님 사이트 팝업 + 로그인 없음 → 요금표가 읽히면(테스트용 anon 읽기 정책이 열려 있으면) 손님 모드로 연다.
+       정책이 닫혀 있으면 요금표가 안 읽혀 아래 로그인 화면으로 간다(사장님 2026-09-17 「로그인 없이 완전 개방」, 테스트 뒤 다시 잠금). */
+    if(EMBED && await loadPricing()){ GUEST=true; await loadRegionCodes(); startApp(null); return; }
+  }catch(e){}
+  $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus();
+})();
 </script>
 </body>
 </html>
