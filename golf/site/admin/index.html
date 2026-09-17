@@ -74,6 +74,12 @@ td textarea.big{min-height:80px}
 /* 포함·불포함사항은 그 줄 「아래」에 한 줄을 더 깔아 넓게 적는다.
    위 줄과 한 덩어리로 보이도록 사이 선을 지우고 아래 줄만 선을 남긴다. */
 tr.mainrow td{border-bottom:0;padding-bottom:2px}
+/* 접힌 아래 줄(포함·불포함·요금·바우처 주소)은 감춘다 — 「▸ 펼치기」로 연다(사장님 2026-09-17) */
+tr.subrow.fold{display:none}
+tr.mainrow:has(+tr.subrow.fold) td{border-bottom:1px solid var(--line);padding-bottom:8px}   /* 접힌 줄은 밑줄로 구분 */
+.foldb{color:#2A1A00;background:#FFF3DA;border-color:#F0D39A}
+.regchips{margin:0 0 10px}
+.regchips button b{font-weight:800;opacity:.7;margin-left:2px}
 tr.subrow td{padding:0 6px 11px}
 /* 포함·불포함은 반씩 나눠 쓰고, 요금은 그 아래 한 줄을 통째로 쓴다(칸이 다섯 개라 넓어야 한다) */
 .ierow{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding-left:58px}
@@ -557,6 +563,11 @@ document.getElementById('pane').addEventListener('input',e=>{
   const el=e.target, p=el.dataset.p;
   if(!p) return;
   if(el.dataset.bool){                 // 체크칸(손님에게 보이기 등)
+    /* 항목 「보이기」를 끌 때는 한 번 묻는다 — 잘못 눌러 손님 화면에서 빠지는 일을 막는다(사장님 2026-09-17) */
+    if(el.dataset.itemon&&!el.checked){
+      const nm=(getPath(S,p.replace(/\.on$/,''))||{}).n||'이 항목';
+      if(!confirm('['+nm+'] 을(를) 손님 화면에서 노출 금지하겠습니까?\n(자료는 그대로 남고, 저장을 눌러야 반영됩니다)')){ el.checked=true; return; }
+    }
     setPath(S,p,el.checked);
     /* 항목 「보이기」는 표 전체를 다시 그리지 않고 그 줄과 숫자만 고친다
        — 62줄을 다시 그리면 보고 있던 자리가 위로 튄다 */
@@ -1143,6 +1154,10 @@ function subs(){
              {k:'rates',label:'💰 실시간 요금표&코드관리'}]);
 }
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
+/* 골프장·호텔 표가 길어져서(사장님 2026-09-17) — iRegion: 종류별 「지역 칩」으로 고른 지역(''=전체, '__none'=지역 없음),
+   iOpen: 종류별로 펼쳐 둔 줄 번호(Set). 기본은 전부 접힘(아래 줄 = 포함·불포함·요금·바우처 주소가 숨는다). 보기만 바뀌고 저장 내용은 그대로 */
+const iRegion={}, iOpen={};
+function openSet(k){ return iOpen[k]||(iOpen[k]=new Set()); }
 /* 지역순 보기는 처음부터 켜져 있다 — 62곳을 지역별로 나눠 봐야 찾기 쉽다. 끄면 넣은 차례대로. */
 function sortOn(k){ return iSort[k]!==false; }
 /* 저장 줄에 「저장 안 한 변경이 있습니다」를 띄운다 — 붙어 다니는 줄이라 늘 눈에 든다 */
@@ -1518,9 +1533,11 @@ function itemBadge(k){
            bp: k==='hotels'?'5성' : k==='courses'?'27홀' : '' };
 }
 function itemRows(k){
-  const arr=itemsArr(k), q=iSearch[k]||'';
+  const arr=itemsArr(k), q=iSearch[k]||'', rg=iRegion[k]||'';
   const rows=arr.map((x,i)=>({x,i})).filter(o=>!q
-    ||((o.x.n||'')+(o.x.r||'')+(o.x.e||'')+(o.x.d||'')).toLowerCase().includes(q.toLowerCase()));
+    ||((o.x.n||'')+(o.x.r||'')+(o.x.e||'')+(o.x.d||'')).toLowerCase().includes(q.toLowerCase()))
+    /* 지역 칩으로 고른 지역만(사장님 2026-09-17). '__none'은 지역 칸이 빈 줄 */
+    .filter(o=>!rg||(rg==='__none'?!(o.x.r||'').trim():(o.x.r||'').trim()===rg));
   /* 「지역」 머리글을 누르면 지역끼리 모아서 보여 준다 — 보기만 바뀌고 저장되는 순서는 그대로다.
      지역 안에서는 원래 넣은 순서를 지킨다(sort가 안정 정렬이라 그대로 남는다).
      regionOrder(파타야·방콕·후아힌…)에 적힌 차례를 따르고, 거기 없는 지역은 뒤에 붙인다. */
@@ -2167,13 +2184,15 @@ function itemBodyHTML(k){
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
       +'<td>'+ta(p+'.d',o.x.d||'','','big')+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
-      +'<td><button class="cpy" data-copy="'+esc(k)+'" data-i="'+o.i+'" '
+      +'<td><button class="cpy foldb" data-fold="'+o.i+'" type="button" title="아래 줄(포함·불포함·요금·바우처 주소) 펼치기/접기">'+(openSet(k).has(o.i)?'▾ 접기':'▸ 펼치기')+'</button>'
+        +'<button class="cpy" data-copy="'+esc(k)+'" data-i="'+o.i+'" '
         +'title="이 줄을 요금까지 그대로 베껴 바로 아래에 새로 만듭니다">복사</button>'
         +'<button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>'
       /* 아래 줄 — 포함·불포함사항(비워 두면 흐린 글씨=기본 문구가 손님에게 나간다)과
          요금표에 뭐가 들어와 있는지 곁눈질용 요약. 요금은 여기서 못 고친다.
-         ── 호텔만 다르다: 포함·불포함 대신 「객실 타입별 요금」이 통째로 들어간다. */
-      +'<tr class="subrow'+off+'"><td colspan="8"><div class="ierow">'
+         ── 호텔만 다르다: 포함·불포함 대신 「객실 타입별 요금」이 통째로 들어간다.
+         ── 기본은 접혀 있다(.fold) — 줄의 「▸ 펼치기」나 「전부 펼치기」로 연다(사장님 2026-09-17) */
+      +'<tr class="subrow'+off+(openSet(k).has(o.i)?'':' fold')+'"><td colspan="8"><div class="ierow">'
         +(k==='hotels' ? roomCell(o.x,o.i)
           : '<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
             +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
@@ -2190,7 +2209,37 @@ function redrawItems(k){
   const tb=document.getElementById('iBody'); if(!tb) return;
   tb.innerHTML=itemBodyHTML(k);
   const cnt=document.getElementById('iCnt'); if(cnt) cnt.innerHTML=itemCntHTML(k);
+  const rc=document.getElementById('iRegs'); if(rc) rc.innerHTML=regChipsHTML(k);
   bindRowBtns();
+  bindItemExtras(k);
+}
+/* ── 지역 칩·접기(사장님 2026-09-17) ── */
+/* 지역 칩: 전체 · 방콕 n · 파타야 n … (regionOrder 차례, 거기 없는 지역은 뒤에, 지역 칸이 빈 줄은 「지역 없음」) */
+function regChipsHTML(k){
+  const arr=itemsArr(k), cur=iRegion[k]||'';
+  const cnt={}; let none=0;
+  arr.forEach(x=>{ const r=(x&&x.r||'').trim(); if(r) cnt[r]=(cnt[r]||0)+1; else none++; });
+  const ord=(S.regionOrder||[]).filter(r=>cnt[r]);
+  Object.keys(cnt).forEach(r=>{ if(ord.indexOf(r)<0) ord.push(r); });
+  const chip=(v,t,n)=>'<button type="button" data-reg="'+esc(v)+'" class="'+(cur===v?'on':'')+'">'+esc(t)+' <b>'+n+'</b></button>';
+  return chip('','전체',arr.length)+ord.map(r=>chip(r,r,cnt[r])).join('')+(none?chip('__none','지역 없음',none):'');
+}
+/* 줄 하나 접기/펼치기 — 표를 다시 그리지 않고 그 줄만 바꾼다(한글 입력 중인 칸이 끊기지 않게) */
+function toggleFold(k,i,btn){
+  const set=openSet(k), open=!set.has(i);
+  if(open) set.add(i); else set.delete(i);
+  const tr=btn.closest('tr'), sub=tr&&tr.nextElementSibling;
+  if(sub&&sub.classList.contains('subrow')) sub.classList.toggle('fold',!open);
+  btn.textContent=open?'▾ 접기':'▸ 펼치기';
+}
+function bindItemExtras(k){
+  const tb=document.getElementById('iBody'); if(!tb) return;
+  tb.querySelectorAll('button[data-fold]').forEach(b=>b.onclick=()=>toggleFold(k,+b.dataset.fold,b));
+  const rc=document.getElementById('iRegs');
+  if(rc) rc.querySelectorAll('button[data-reg]').forEach(b=>b.onclick=()=>{ iRegion[k]=b.dataset.reg; redrawItems(k); });
+  const oa=document.getElementById('iOpenAll'), ca=document.getElementById('iCloseAll');
+  if(oa) oa.onclick=()=>{ const set=openSet(k); itemRows(k).rows.forEach(o=>set.add(o.i)); redrawItems(k); };   /* 지금 보이는 줄만 */
+  if(ca) ca.onclick=()=>{ openSet(k).clear(); redrawItems(k); };
 }
 function subItems(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'};
@@ -2212,7 +2261,12 @@ function subItems(k){
     +'<span class="cnt" id="iCnt" data-k="'+esc(k)+'" data-u="'+esc(u)+'">'+itemCntHTML(k)+'</span>'
     /* 하나씩 켜 가며 채울 때 쓴다 — 지금 표에 보이는 줄에만 걸린다(찾기 중이면 그 줄만) */
     +'<button class="ghost" id="iAllOff" type="button">전부 끄기</button>'
-    +'<button class="ghost" id="iAllOn" type="button">전부 켜기</button></div>'
+    +'<button class="ghost" id="iAllOn" type="button">전부 켜기</button>'
+    /* 줄 접기·펼치기 — 기본은 접힘(아래 줄: 포함·불포함·요금·바우처 주소). 표가 길어져서(사장님 2026-09-17) */
+    +'<button class="ghost" id="iOpenAll" type="button">▾ 전부 펼치기</button>'
+    +'<button class="ghost" id="iCloseAll" type="button">▸ 전부 접기</button></div>'
+    /* 지역 칩 — 방콕·파타야… 한 지역만 보기(보기만 바뀐다). 개수는 그 지역의 전체 줄 수 */
+    +'<div class="subtabs regchips" id="iRegs">'+regChipsHTML(k)+'</div>'
     +'<div class="tblwrap"><table><thead><tr>'
     +'<th style="width:58px">보이기</th>'
     +'<th style="width:92px"><button class="sortth'+(sortR?' on':'')+'" id="iSortR" type="button"'
@@ -2271,6 +2325,7 @@ function subItems(k){
     });
   });
   bindRowBtns();
+  bindItemExtras(k);
 }
 /* 종류 자체를 늘리는 화면 — 스파·차량·요트처럼 나중에 붙일 것들 */
 function subCats(){
