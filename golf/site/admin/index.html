@@ -1846,6 +1846,9 @@ function copyItem(k,i){
     alert('「'+name+'」은(는) 이미 있습니다. 다른 이름으로 해 주세요.'); return; }
   const row=deepCopy(src); row.n=name;
   arr.splice(i+1,0,row);
+  /* 새 줄은 펼쳐서 보여 준다 — 접힌 채로 생기면 요금·포함사항이 안 보여 「복사가 안 됐다」로 보인다(사장님 2026-09-17).
+     뒤 줄들의 번호가 하나씩 밀리므로 펼침 기록도 같이 민다 */
+  shiftOpen(k,i+1,1); openSet(k).add(i+1);
   markDirty('site');
   /* 요금은 golf_site가 아니라 요금표(golf_pricing) 쪽에 있다 — 거기에도 자리를 만들어 베낀다.
      이름만 새 이름으로 두고 나머지(요금줄·옛 시즌줄·마진…)는 전부 그대로 옮긴다. */
@@ -2562,6 +2565,8 @@ function bindRowBtns(){
   const p=document.getElementById('pane');
   p.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
     ADDERS[b.dataset.add](Number(b.dataset.i), b.dataset.k);
+    /* 새로 넣은 항목 줄은 펼쳐 둔다 — 바로 요금·포함사항을 채우게(사장님 2026-09-17) */
+    if(b.dataset.add==='item'&&b.dataset.k){ const n=itemsArr(b.dataset.k).length; if(n) openSet(b.dataset.k).add(n-1); }
     markDirty('site'); drawTabs();
   });
   p.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{
@@ -2571,8 +2576,22 @@ function bindRowBtns(){
     const arr=getPath(S,b.dataset.del), i=Number(b.dataset.i);
     const what=(arr[i]&&(arr[i].n||arr[i].t||arr[i].b))||'이 줄';
     if(!confirm('「'+what+'」을(를) 지웁니다.\n(저장을 눌러야 실제로 반영됩니다)\n\n계속할까요?')) return;
-    arr.splice(i,1); markDirty('site'); drawTabs();
+    arr.splice(i,1);
+    /* 항목 표(골프장·호텔·스파…)에서 지우면 뒤 줄 번호가 하나씩 당겨진다 — 펼침 기록도 같이 당긴다 */
+    const ik=itemKeyOfPath(b.dataset.del); if(ik){ openSet(ik).delete(i); shiftOpen(ik,i+1,-1); }
+    markDirty('site'); drawTabs();
   });
+}
+/* 펼침 기록(iOpen)의 줄 번호를 from 이상은 delta 만큼 민다 — 줄을 끼우거나 지울 때 */
+function shiftOpen(k,from,delta){
+  const set=openSet(k), next=new Set();
+  set.forEach(i=>{ if(i>=from){ const j=i+delta; if(j>=0) next.add(j); } else next.add(i); });
+  iOpen[k]=next;
+}
+/* data-del 경로 → 종류 키. 'courses'·'hotels'는 그대로, 'items.spa'는 'spa'. 그 밖(hero.keys 등)은 null */
+function itemKeyOfPath(p){
+  if(p==='courses'||p==='hotels') return p;
+  const m=/^items\.([^.]+)$/.exec(String(p||'')); return m?m[1]:null;
 }
 
 /* ══════════════ 코드관리 ══════════════ */
