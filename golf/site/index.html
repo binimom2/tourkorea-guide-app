@@ -1684,8 +1684,10 @@ function ro(w){
    앞말에는 「/」를 못 넣고, https·http는 앞말로 치지 않는다. */
 function noteLine(s){
   const m = String(s).match(/^([^:：]{1,14})\s*[:：]\s*(.+)$/);
-  /* 「https://…」의 쌍점, 「10:00 오픈」의 시각은 앞말이 아니다 */
-  if(!m || /^https?$/i.test(m[1].trim()) || /^\d+$/.test(m[1].trim()) || /^\/\//.test(m[2]))
+  /* 「https://…」의 쌍점, 「10:00 오픈」의 시각은 앞말이 아니다.
+     「주말&태국휴일 12:00 이후 티업가능」처럼 앞말이 숫자로 끝나고 뒷말이 숫자로 시작해도 시각이다(사장님 2026-09-17 알파인) */
+  if(!m || /^https?$/i.test(m[1].trim()) || /^\d+$/.test(m[1].trim()) || /^\/\//.test(m[2])
+     || (/\d$/.test(m[1].trim()) && /^\d/.test(m[2])))
     return linkify(s);
   /* 뒷말은 제 칸(.nv)에 담는다 — 주소처럼 길어서 줄이 넘어가도 앞말 옆 줄에 맞춰 선다 */
   return "<b>" + esc(m[1].trim()) + "</b><span class=\"nv\">" + linkify(m[2].trim()) + "</span>";
