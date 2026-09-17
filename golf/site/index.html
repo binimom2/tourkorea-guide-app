@@ -3193,7 +3193,8 @@ $("#agLoginBtn").onclick = async () => {
     const m = (data.user && data.user.user_metadata) || {};
     if(m.kind !== "agency"){ await c.auth.signOut(); throw new Error("not-agency"); }
     agSet(data.user);
-    if(agency.approved){ agClose(); goQuote(); }
+    /* 로그인 뒤에는 사이트 첫 화면 그대로 — 실시간 견적을 자동으로 띄우지 않는다(사장님 2026-09-17) */
+    if(agency.approved) agClose();
     else agView("status");
   }catch(e){
     agMsg(e && e.message === "not-agency" ? "여행사 회원 계정이 아닙니다." : "아이디 또는 비밀번호가 맞지 않습니다.", true);
