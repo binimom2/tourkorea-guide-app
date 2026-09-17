@@ -355,6 +355,9 @@ section{padding:64px 0}
 /* 「위치: 터미널21 부근」처럼 앞말을 적어 두면 앞말만 진하게 서고 뒷말이 옆에 붙는다 */
 .dlist li b{flex:0 0 88px;font-weight:800;color:var(--ink)}
 .dlist li .nv{flex:1 1 auto;min-width:0}   /* 뒷말 칸 — 넘치면 이 칸 안에서만 줄바꿈된다 */
+/* 강조 줄(「!…」)·강조 글자(「**…**」)는 앞말 칸(88px)이 아니다 — 줄 전체 폭을 쓴다. 안 그러면 「매주 월요일 휴/장」처럼 잘린다(사장님 2026-09-17) */
+.dlist li b.nstrong{flex:1 1 auto;min-width:0;display:inline}
+.dlist li .nv b.nstrong{flex:none}
 .dlist li a{color:var(--fairway-mid);word-break:break-all}
 /* 호텔 객실 안내 표 — 좁은 화면에서는 표만 옆으로 밀린다(본문은 안 밀린다) */
 .rwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -1688,13 +1691,14 @@ function ro(w){
 function noteLine(s){ return String(noteLine0(s)).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'); }
 function noteLine0(s){
   /* 줄 맨 앞에 「!」를 붙이면 그 줄 전체를 진한 검은색으로 세운다 — 「!매주 월요일 휴장」(사장님 2026-09-17). ! 는 화면에 안 나온다 */
-  if(/^\s*[!！]/.test(String(s))) return '<b class="nstrong">' + linkify(String(s).replace(/^\s*[!！]\s*/, "")) + '</b>';
+  /* 앞말이 없는 줄은 통째로 .nv(뒷말 칸)에 담는다 — li가 flex라서 글자와 <b>가 따로 놀며 「매주 월요일 휴/장」처럼 잘렸다(사장님 2026-09-17) */
+  if(/^\s*[!！]/.test(String(s))) return '<span class="nv"><b class="nstrong">' + linkify(String(s).replace(/^\s*[!！]\s*/, "")) + '</b></span>';
   const m = String(s).match(/^([^:：]{1,14})\s*[:：]\s*(.+)$/);
   /* 「https://…」의 쌍점, 「10:00 오픈」의 시각은 앞말이 아니다.
      「주말&태국휴일 12:00 이후 티업가능」처럼 앞말이 숫자로 끝나고 뒷말이 숫자로 시작해도 시각이다(사장님 2026-09-17 알파인) */
   if(!m || /^https?$/i.test(m[1].trim()) || /^\d+$/.test(m[1].trim()) || /^\/\//.test(m[2])
      || (/\d$/.test(m[1].trim()) && /^\d/.test(m[2])))
-    return linkify(s);
+    return '<span class="nv">' + linkify(s) + '</span>';
   /* 뒷말은 제 칸(.nv)에 담는다 — 주소처럼 길어서 줄이 넘어가도 앞말 옆 줄에 맞춰 선다 */
   return "<b>" + esc(m[1].trim()) + "</b><span class=\"nv\">" + linkify(m[2].trim()) + "</span>";
 }
