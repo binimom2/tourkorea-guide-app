@@ -612,7 +612,8 @@ function tierValue(obj, N, key, full){
 /* ── 지역 선택(가는 순서) ──
    REGIONS = 관리자 코드관리('지역')에서 오는 목록. ROUTE = 클릭한 순서 = 실제 여행 순서. */
 let REGIONS=[];
-let FX_RATE=0;             // 1밧당 원화 (코드관리 '환율'에서 읽음, 0이면 한화 표기 안 함)
+let FX_RATE=0;             // 1밧당 원화. 2026-09-17부터 네이버(하나은행 고시) «현찰 살때»를 자동으로 받는다(사장님). 못 받으면 코드관리 '환율' 값, 그것도 없으면 0(한화 표기 안 함)
+let FX_SRC='';             // 환율 출처 글자(견적서 안내줄용) — 예: '하나은행 고시 현찰 살때 2026-09-17'
 let ROUTE=[];              // [{region, nights}]
 let LAST=null;             // 마지막 계산 결과 {lines,total,per,pax,nights} — 견적서가 이걸 쓴다
 let hotelPick={};          // {지역명: 숙소 index} — 다시 그려도 선택이 유지되게
@@ -1401,7 +1402,7 @@ function calc(){
     +`<div class="sum-row sum-mul"><span class="sum-k">인원수</span><span class="sum-v">× ${pax}명</span></div>`
     +`<div class="sum-row sum-total"><span class="sum-k">총액</span><span class="sum-v">${won(totKrw||total)} <em>${cur}</em></span></div>`
     +(miss.length?`<div class="sum-warn">⚠ 요금이 등록되지 않은 항목이 있습니다 — ${miss.join(', ')}</div>`:'')
-    +(perKrw?'':`<div class="sum-warn">⚠ 환율이 등록되지 않아 밧으로 표시 중입니다 — 코드·요금 관리 &gt; 코드관리 &gt; 환율에 1밧당 원화를 등록하세요</div>`);
+    +(perKrw?'':`<div class="sum-warn">⚠ 환율을 자동으로 받지 못해 밧으로 표시 중입니다 — 새로고침해 보고, 계속 그러면 코드·요금 관리 &gt; 코드관리 &gt; 환율에 1밧당 원화를 등록하세요</div>`);
   $('#perp').textContent='';
 }
 
@@ -1529,6 +1530,7 @@ function quoteSnapshot(){
     noHotel: !useHotelOn(),   // 호텔·차량도 안 골랐으면 불포함 사항 맨 앞에 빨갛게(사장님 2026-09-15)
     noVeh: !useVehOn(),
     fx: FX_RATE||0,
+    fxSrc: FX_SRC||'',              // 환율 출처(자동이면 '하나은행 고시 현찰 살때 날짜', 코드관리 값이면 빈 칸)
     lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
     total: LAST.total, per: LAST.per
   };
@@ -1670,7 +1672,7 @@ function buildQuoteHtml(mode, Q){
 
     <div style="margin-top:14px;font-size:11px;color:#5E6F66;line-height:1.7">
       ${mode==='internal'
-        ? `${FX>0?`※ 한화는 1밧 = ${FX} 원으로 환산해 1인 요금을 천원 단위로 올린 뒤 인원수를 곱한 금액입니다.<br>`:''}※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>`
+        ? `${FX>0?`※ 한화는 1밧 = ${FX} 원${Q.fxSrc?`(${Q.fxSrc})`:''}으로 환산해 1인 요금을 천원 단위로 올린 뒤 인원수를 곱한 금액입니다.<br>`:''}※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>`
         : `※ 표시 금액은 원화 기준이며 항공료는 포함되지 않습니다.<br>`}
       ※ 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
       ※ 골프장 사정과 환율 변동에 따라 금액이 달라질 수 있습니다.
@@ -2144,6 +2146,22 @@ async function loadRegionCodes(){
   }catch(e){}
   REGIONS=REGION_FALLBACK.slice();
 }
+/* 환율 자동 — /api/fx(네이버 금융·하나은행 고시)의 «현찰 살때»를 1밧당 원화로 쓴다(사장님 2026-09-17).
+   손님 사이트 카드·견적 패널(서버 golf-price/golf-quote)과 같은 기준이라 두 곳 한화가 맞는다.
+   못 받으면(통신 실패 등) 코드관리 '환율' 값이 그대로 남는다 — loadRegionCodes 다음에 부른다.
+   한화 = 1인 밧 요금 × 환율을 «천원 단위로 올림»(krwUp) × 인원수. 예) 875,200 → 876,000원. */
+async function loadFxAuto(){
+  try{
+    const r=await fetch('/api/fx',{cache:'no-store'});
+    if(!r.ok) return false;
+    const j=await r.json();
+    const buy=parseFloat(j&&j.cashBuy);
+    if(!(j&&j.ok)||!(buy>0)) return false;
+    FX_RATE=buy;
+    FX_SRC=`하나은행 고시 현찰 살때${j.date?' '+String(j.date).slice(0,10):''}`;
+    return true;
+  }catch(e){ return false; }
+}
 /* 가이드 선택지는 관리자 요금표에 등록된 종류를 그대로 쓴다.
    (예전엔 HTML에 두 개가 박혀 있어 관리자에서 종류를 추가해도 여기 안 나왔다) */
 function buildGuideOptions(){
@@ -2191,10 +2209,10 @@ async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.relo
 (async function boot(){
   try{
     const {data:{session}}=await sb.auth.getSession();
-    if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(session.user); return; }
+    if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadFxAuto(); await loadGolfRoles(); startApp(session.user); return; }
     /* 손님 사이트 팝업 + 로그인 없음 → 요금표가 읽히면(테스트용 anon 읽기 정책이 열려 있으면) 손님 모드로 연다.
        정책이 닫혀 있으면 요금표가 안 읽혀 아래 로그인 화면으로 간다(사장님 2026-09-17 「로그인 없이 완전 개방」, 테스트 뒤 다시 잠금). */
-    if(EMBED && await loadPricing()){ GUEST=true; await loadRegionCodes(); startApp(null); return; }
+    if(EMBED && await loadPricing()){ GUEST=true; await loadRegionCodes(); await loadFxAuto(); startApp(null); return; }
   }catch(e){}
   $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus();
 })();
