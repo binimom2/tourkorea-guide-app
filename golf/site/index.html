@@ -1684,7 +1684,9 @@ function ro(w){
 /* 안내사항 한 줄 — 「위치: 터미널21 부근」처럼 앞말을 적어 두면 앞말만 진하게 세운다.
    앞말이 없으면 그냥 한 줄로 나간다. 주소 안의 「:」(https://)까지 앞말로 보면 안 되므로
    앞말에는 「/」를 못 넣고, https·http는 앞말로 치지 않는다. */
-function noteLine(s){
+/* 「**글자**」로 감싼 부분만 진한 검은색 — 한 줄 안에서 일부만 강조할 때(사장님 2026-09-17). 별표는 화면에 안 나온다 */
+function noteLine(s){ return String(noteLine0(s)).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'); }
+function noteLine0(s){
   /* 줄 맨 앞에 「!」를 붙이면 그 줄 전체를 진한 검은색으로 세운다 — 「!매주 월요일 휴장」(사장님 2026-09-17). ! 는 화면에 안 나온다 */
   if(/^\s*[!！]/.test(String(s))) return '<b class="nstrong">' + linkify(String(s).replace(/^\s*[!！]\s*/, "")) + '</b>';
   const m = String(s).match(/^([^:：]{1,14})\s*[:：]\s*(.+)$/);
