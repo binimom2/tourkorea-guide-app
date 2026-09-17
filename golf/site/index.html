@@ -936,6 +936,45 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   </div>
 </div>
 
+<!-- 여행사 회원 로그인 · 가입 신청 (사장님 2026-09-17, B2B) — 아래 「손님 간편 로그인」 칸은 안 쓰지만 코드는 남겨 둔다 -->
+<div class="mask" id="agMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="agTitle">
+    <button class="mclose" id="agClose" type="button" aria-label="닫기">×</button>
+    <h3 id="agTitle">여행사 로그인</h3>
+    <p class="sub" id="agSub">투어코리아 여행사 회원 전용입니다. 가입 승인 후 실시간 견적·예약 요청을 이용하실 수 있습니다.</p>
+
+    <!-- 로그인 -->
+    <div id="agLogin">
+      <div class="mfield"><label for="agId">아이디</label><input type="text" id="agId" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+      <div class="mfield"><label for="agPw">비밀번호</label><input type="password" id="agPw" autocomplete="current-password"></div>
+      <button class="mbtn" id="agLoginBtn" type="button">로그인</button>
+      <p class="mnote">아직 회원이 아니시면 <a href="#" id="agToSignup"><b>여행사 가입 신청</b></a> · 비밀번호를 잊으셨으면 아래 연락처로 문의해 주세요.</p>
+    </div>
+
+    <!-- 가입 신청 -->
+    <div id="agSignup" class="hide">
+      <div class="mfield"><label for="sgId">아이디 <i style="font-style:normal;color:var(--muted);font-weight:600">(영문 소문자·숫자 3~24자)</i></label><input type="text" id="sgId" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="mfield"><label for="sgPw">비밀번호 <i style="font-style:normal;color:var(--muted);font-weight:600">(6자 이상)</i></label><input type="password" id="sgPw" autocomplete="new-password"></div>
+      <div class="mfield"><label for="sgCompany">여행사명</label><input type="text" id="sgCompany" autocomplete="organization"></div>
+      <div class="mfield"><label for="sgContact">담당자 성함</label><input type="text" id="sgContact" autocomplete="name"></div>
+      <div class="mfield"><label for="sgTel">연락처</label><input type="tel" id="sgTel" autocomplete="tel"></div>
+      <div class="mfield"><label for="sgEmail">이메일 <i style="font-style:normal;color:var(--muted);font-weight:600">(승인 안내용)</i></label><input type="email" id="sgEmail" autocomplete="email"></div>
+      <div class="mfield">
+        <label for="sgCard">명함 사진 <i style="font-style:normal;color:var(--muted);font-weight:600">(JPG·PNG, 촬영본도 됩니다)</i></label>
+        <input type="file" id="sgCard" accept="image/*">
+        <img id="sgCardPrev" alt="" class="hide" style="max-width:100%;max-height:160px;border:1px solid var(--line);border-radius:8px;object-fit:contain">
+      </div>
+      <button class="mbtn" id="agSignupBtn" type="button">가입 신청</button>
+      <p class="mnote">이미 회원이시면 <a href="#" id="agToLogin"><b>로그인</b></a>. 신청 후 담당자가 명함을 확인하고 승인해 드립니다(영업일 기준 1일 이내).</p>
+    </div>
+
+    <!-- 로그인 뒤 상태(승인 대기 등) -->
+    <div id="agStatus" class="hide"></div>
+
+    <div class="mmsg" id="agMsg"></div>
+  </div>
+</div>
+
 <!-- 손님 간편 로그인 -->
 <div class="mask" id="loginMask">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
@@ -2999,6 +3038,186 @@ $("#qTel").addEventListener("change", remember);
 /* 차량 탑승 인원수를 적으면 공항 미팅 아따비가 바로 합계에 반영된다 */
 $("#qpRiders").addEventListener("input", () => { try{ qpCalc(); }catch(e){} });
 paint();
+
+/* ══════════════════════════════════════════════════════════════════
+   여행사 회원 (B2B) — 사장님 2026-09-17 결정
+   · 가입 신청(아이디·비밀번호·여행사명·담당자·연락처·명함 사진) → 서버 /api/agency 가 계정을 만들고 «승인 대기»로 둔다.
+   · 관리 화면(admin/ → 여행사 회원)에서 직원이 명함을 보고 승인하면, 그 아이디로 로그인해 실시간 견적을 바로 쓴다.
+   · 레벨은 하나. 여행사별 마진 예외만 관리 화면에 있다.
+   · 로그인은 직원용과 같은 Supabase 프로젝트지만 localStorage 열쇠가 다르다(golf-agency-auth).
+     실시간 견적 팝업(/golf/?embed=site)이 같은 열쇠를 읽어 로그인 상태를 그대로 이어받는다.
+   · 위의 「손님 간편 로그인」(GUEST_AUTH)은 쓰지 않는다 — 코드만 남겨 둔다.
+   ══════════════════════════════════════════════════════════════════ */
+const AG_DOMAIN = "agency.tourkorea.biz";     // 아이디@이 도메인 = Auth 계정 이메일(형식만, 메일은 안 보낸다)
+const AG_STORE  = "golf-agency-auth";
+let asb = null, agency = null;                 // agency = { id, company, approved, status }
+
+async function agClient(){
+  if(asb) return asb;
+  await loadSb();
+  asb = window.supabase.createClient(SB_URL, SB_KEY, { auth:{ storageKey: AG_STORE, persistSession:true, autoRefreshToken:true } });
+  return asb;
+}
+function agMsg(t, bad){
+  const m = $("#agMsg");
+  m.textContent = t || "";
+  m.classList.toggle("on", !!t);
+  m.classList.toggle("bad", !!bad);
+}
+function agSet(user){
+  const m = (user && user.user_metadata) || null;
+  if(m && m.kind === "agency"){
+    agency = { id: String(m.acc_id || m.login_name || (user.email || "").split("@")[0] || ""),
+               company: m.company || "", contact: m.contact || "",
+               approved: m.approved === true, status: m.status || (m.approved === true ? "approved" : "pending") };
+  }else agency = null;
+  agPaint();
+}
+function agPaint(){
+  const b = $("#loginBtn");
+  if(agency){
+    b.textContent = (agency.company || agency.id) + (agency.approved ? "" : " · 승인 대기") + " · 로그아웃";
+    b.classList.add("on");
+  }else{
+    b.textContent = "여행사 로그인";
+    b.classList.remove("on");
+  }
+}
+const AG_STATUS_TXT = {
+  pending:   "가입 신청이 접수되었습니다. 담당자가 명함을 확인한 뒤 승인해 드립니다.\n승인되면 같은 아이디로 로그인하셔서 바로 실시간 견적을 이용하실 수 있습니다.",
+  rejected:  "가입 신청이 승인되지 않았습니다. 궁금하신 점은 아래 연락처로 문의해 주세요.",
+  suspended: "이용이 잠시 중지된 계정입니다. 아래 연락처로 문의해 주세요.",
+  approved:  "승인된 여행사 회원입니다."
+};
+function agView(v){
+  $("#agLogin").classList.toggle("hide", v !== "login");
+  $("#agSignup").classList.toggle("hide", v !== "signup");
+  $("#agStatus").classList.toggle("hide", v !== "status");
+  $("#agTitle").textContent = v === "signup" ? "여행사 가입 신청" : v === "status" ? "회원 상태" : "여행사 로그인";
+  if(v === "status" && agency){
+    $("#agStatus").innerHTML =
+      '<p class="sub" style="margin:0 0 12px"><b>' + esc(agency.company || agency.id) + '</b> (' + esc(agency.id) + ')</p>'
+      + '<div class="mmsg on" style="display:block">' + esc(AG_STATUS_TXT[agency.status] || AG_STATUS_TXT.pending) + '</div>'
+      + (agency.approved ? '<button class="mbtn" id="agGoQuote" type="button" style="margin-top:12px">⚡ 실시간 견적 열기</button>' : '')
+      + '<p class="mnote"><a href="#" id="agLogout2">로그아웃</a></p>';
+    const g = $("#agGoQuote"); if(g) g.onclick = () => { agClose(); goQuote(); };
+    $("#agLogout2").onclick = e => { e.preventDefault(); agLogout(); agClose(); };
+  }
+  agMsg("");
+}
+function agOpen(v){
+  $("#menu").classList.remove("open");
+  $("#agMask").classList.add("on");
+  agView(v || (agency ? "status" : "login"));
+  const f = v === "signup" ? $("#sgId") : $("#agId");
+  if(f && !agency) setTimeout(() => f.focus(), 50);
+}
+function agClose(){ $("#agMask").classList.remove("on"); agMsg(""); }
+async function agLogout(){
+  try{ const c = await agClient(); await c.auth.signOut(); }catch(e){}
+  agSet(null);
+}
+
+/* 새로고침해도 로그인 유지 — 승인 여부는 서버에서 다시 읽는다(승인 직후 옛 토큰에 approved:false 가 남아 있을 수 있다) */
+(async () => {
+  try{
+    const c = await agClient();
+    const { data } = await c.auth.getSession();
+    if(!(data && data.session)) return;
+    let user = data.session.user;
+    try{ const r = await c.auth.getUser(); if(r && r.data && r.data.user) user = r.data.user; }catch(e){}
+    if(user && user.user_metadata && user.user_metadata.kind === "agency"){
+      if(user.user_metadata.approved === true && data.session.user.user_metadata.approved !== true){
+        try{ await c.auth.refreshSession(); }catch(e){}   /* 승인 뒤 첫 방문 — 토큰을 새로 받아 두면 팝업(계산기)도 승인 상태로 읽는다 */
+      }
+      agSet(user);
+    }
+  }catch(e){}
+})();
+
+/* 헤더 단추 — 로그인/로그아웃(회원) */
+$("#loginBtn").onclick = async () => {
+  if(agency){
+    agOpen("status");
+    return;
+  }
+  agOpen("login");
+};
+$("#agClose").onclick = agClose;
+$("#agMask").onclick = e => { if(e.target === $("#agMask")) agClose(); };
+$("#agToSignup").onclick = e => { e.preventDefault(); agView("signup"); setTimeout(() => $("#sgId").focus(), 50); };
+$("#agToLogin").onclick  = e => { e.preventDefault(); agView("login"); };
+document.addEventListener("keydown", e => { if(e.key === "Escape") agClose(); });
+
+$("#agLoginBtn").onclick = async () => {
+  const id = $("#agId").value.trim().toLowerCase(), pw = $("#agPw").value;
+  if(!id || !pw){ agMsg("아이디와 비밀번호를 입력해 주세요.", true); return; }
+  $("#agLoginBtn").disabled = true; agMsg("확인 중입니다…");
+  try{
+    const c = await agClient();
+    const { data, error } = await c.auth.signInWithPassword({ email: id + "@" + AG_DOMAIN, password: pw });
+    if(error) throw error;
+    const m = (data.user && data.user.user_metadata) || {};
+    if(m.kind !== "agency"){ await c.auth.signOut(); throw new Error("not-agency"); }
+    agSet(data.user);
+    if(agency.approved){ agClose(); goQuote(); }
+    else agView("status");
+  }catch(e){
+    agMsg(e && e.message === "not-agency" ? "여행사 회원 계정이 아닙니다." : "아이디 또는 비밀번호가 맞지 않습니다.", true);
+  }
+  $("#agLoginBtn").disabled = false;
+};
+$("#agPw").addEventListener("keydown", e => { if(e.key === "Enter") $("#agLoginBtn").click(); });
+
+/* 명함 사진 — 긴 변 1400px·JPEG 로 줄여서 보낸다(휴대폰 원본은 5~10MB라 그대로는 못 보낸다) */
+let sgCardData = null;
+$("#sgCard").onchange = () => {
+  const f = $("#sgCard").files && $("#sgCard").files[0];
+  sgCardData = null; $("#sgCardPrev").classList.add("hide");
+  if(!f) return;
+  const img = new Image();
+  const url = URL.createObjectURL(f);
+  img.onload = () => {
+    const MAX = 1400, sc = Math.min(1, MAX / Math.max(img.width, img.height));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    sgCardData = cv.toDataURL("image/jpeg", 0.85);
+    $("#sgCardPrev").src = sgCardData; $("#sgCardPrev").classList.remove("hide");
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => { agMsg("사진 파일을 읽지 못했습니다. JPG·PNG로 다시 골라 주세요.", true); URL.revokeObjectURL(url); };
+  img.src = url;
+};
+$("#agSignupBtn").onclick = async () => {
+  const id = $("#sgId").value.trim().toLowerCase(), pw = $("#sgPw").value;
+  const company = $("#sgCompany").value.trim(), contact = $("#sgContact").value.trim(), tel = $("#sgTel").value.trim(), email = $("#sgEmail").value.trim();
+  if(!/^[a-z0-9][a-z0-9._-]{2,23}$/.test(id)){ agMsg("아이디는 영문 소문자·숫자 3~24자로 적어 주세요.", true); return; }
+  if(pw.length < 6){ agMsg("비밀번호는 6자 이상이어야 합니다.", true); return; }
+  if(!company || !contact || !tel){ agMsg("여행사명·담당자·연락처는 꼭 적어 주세요.", true); return; }
+  if(!sgCardData){ agMsg("명함 사진을 올려 주세요.", true); return; }
+  $("#agSignupBtn").disabled = true; agMsg("신청을 보내는 중입니다…");
+  try{
+    const r = await fetch(API + "/api/agency", { method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ action:"signup", id, password: pw, company, contact, tel, email, card:{ data: sgCardData, type:"image/jpeg", name: id + ".jpg" } }) });
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok || !j.ok) throw new Error(j.error || "신청을 보내지 못했습니다.");
+    ["sgPw","sgCompany","sgContact","sgTel","sgEmail"].forEach(k => { $("#" + k).value = ""; });
+    $("#sgCard").value = ""; sgCardData = null; $("#sgCardPrev").classList.add("hide");
+    agView("login"); $("#agId").value = id;
+    agMsg("가입 신청이 접수되었습니다. 담당자가 명함을 확인한 뒤 승인해 드립니다.\n승인되면 이 아이디로 로그인해 주세요.");
+  }catch(e){ agMsg((e && e.message) || "신청을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.", true); }
+  $("#agSignupBtn").disabled = false;
+};
+
+/* 「실시간 견적」은 승인된 여행사 회원만 — 아니면 로그인/상태 창을 띄운다 */
+const _goQuoteOpen = goQuote;
+goQuote = function(){
+  if(!agency){ agOpen("login"); return; }
+  if(!agency.approved){ agOpen("status"); return; }
+  _goQuoteOpen();
+};
+agPaint();
 
 /* 직원·어드민이 이 브라우저에서 업무 화면에 로그인해 뒀으면 「⚙ 관리」 버튼을 띄운다.
    손님 「로그인」과는 별개의 문이다 — 손님은 이 버튼을 볼 일이 없다.

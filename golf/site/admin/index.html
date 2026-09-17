@@ -632,6 +632,9 @@ const TABS=[
   {k:'books',  label:'📋 예약요청', roles:['admin','manager','manager2']},
   /* 실시간 견적(/golf/)에서 견적서를 뽑을 때 guide_data/golf_quotes 에 남는 그때 금액(원가 항목별) — 표로 확인(사장님 2026-09-16) */
   {k:'quotes', label:'📑 견적 기록', roles:['admin','manager','manager2']},
+  /* 여행사 회원(B2B, 사장님 2026-09-17): 가입 신청·명함 확인·승인/거절/정지·마진 예외. 서버 /api/agency 가 읽고 쓴다.
+     승인·거절·마진은 어드민·매니저1, 매니저2는 보기만(서버도 같은 판정) */
+  {k:'agencies', label:'🏢 여행사 회원', roles:['admin','manager','manager2']},
   /* 요금표(차량·핸들링·가이드)·코드관리는 2026-09-11부터 「사이트 내용」의 하위 탭이다(사장님) — subs() 참고 */
   {k:'accounts',label:'계정관리', roles:['admin']}
 ];
@@ -651,6 +654,7 @@ function draw(){
   if(tab==='site') drawSite();
   else if(tab==='books') drawBooks();
   else if(tab==='quotes') drawQuotes();
+  else if(tab==='agencies') drawAgencies();
   else if(tab==='rates') drawRates();
   else if(tab==='codes') drawCodes();
   else drawAccounts();
@@ -748,6 +752,130 @@ function drawQuotes(){
   s.oninput=()=>{ quoteQ=s.value; const pos=s.selectionStart; drawQuotes(); const s2=document.getElementById('qtSearch'); s2.focus(); s2.setSelectionRange(pos,pos); };
   p.querySelector('.subtabs button[data-f="reload"]').onclick=()=>{ QUOTES=null; drawQuotes(); };
   p.querySelectorAll('tr[data-q]').forEach(tr=>tr.onclick=()=>{ quoteOpen=(quoteOpen===tr.dataset.q)?'':tr.dataset.q; drawQuotes(); });
+}
+
+/* ══════ 🏢 여행사 회원 (B2B, 사장님 2026-09-17) ══════
+   손님 사이트에서 여행사가 아이디·비밀번호·명함으로 가입을 신청하면 여기 「대기」로 들어온다.
+   명함을 보고 승인하면 그 아이디로 로그인해 실시간 견적을 바로 쓴다(별도 단계 없음). 레벨은 하나.
+   마진 예외: 비워 두면 기본, 특정 여행사만 다른 마진을 줄 때 숫자(밧)를 적는다.
+   ⚠ 첫 승인 전에 README-여행사회원-권한정책.txt 의 정책 SQL이 실행되어 있어야 한다. */
+const AG_STATUS=[
+  {k:'pending',   t:'대기',   c:'#E8A33D'},
+  {k:'approved',  t:'승인',   c:'#2E7D4F'},
+  {k:'rejected',  t:'거절',   c:'#B23B3B'},
+  {k:'suspended', t:'정지',   c:'#9AA5A0'}
+];
+let AGENCIES=null, agFilter='pending', agOpenId='', agCard={};
+const agSt=k=>AG_STATUS.filter(s=>s.k===k)[0]||AG_STATUS[0];
+async function agencyApi(action,payload){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session&&session.access_token;
+    if(!token) return {error:'로그인이 만료되었습니다. 다시 로그인해 주세요.'};
+    const r=await fetch('/api/agency',{method:'POST',
+      headers:{'content-type':'application/json',Authorization:'Bearer '+token},
+      body:JSON.stringify(Object.assign({action},payload||{}))});
+    return await r.json().catch(()=>({error:'서버 응답을 해석할 수 없습니다.'}));
+  }catch(e){ return {error:'서버 연결 실패: '+((e&&e.message)||e)}; }
+}
+async function loadAgencies(){
+  const j=await agencyApi('list');
+  AGENCIES=j.error?{error:j.error}:{list:Array.isArray(j.list)?j.list:[]};
+  drawAgencies();
+}
+function drawAgencies(){
+  const p=document.getElementById('pane');
+  if(AGENCIES===null){
+    p.innerHTML='<div class="card"><h2>🏢 여행사 회원</h2><p class="desc">불러오는 중…</p></div>';
+    loadAgencies(); return;
+  }
+  if(AGENCIES.error){
+    p.innerHTML='<div class="card"><h2>🏢 여행사 회원</h2><p class="desc" style="color:#B23B3B">'+esc(AGENCIES.error)+'</p><button class="add" id="agReload">다시 불러오기</button></div>';
+    document.getElementById('agReload').onclick=()=>{ AGENCIES=null; drawAgencies(); };
+    return;
+  }
+  const canDecide=(GROLE==='admin'||GROLE==='manager');
+  const all=AGENCIES.list||[];
+  const cnt=k=>all.filter(a=>a.status===k).length;
+  const list=all.filter(a=>agFilter==='all'||a.status===agFilter);
+  const th=(t,st)=>'<th style="text-align:left;white-space:nowrap;padding:8px 8px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);'+(st||'')+'">'+t+'</th>';
+  const td=(t,st)=>'<td style="padding:8px 8px;font-size:12.5px;border-bottom:1px solid var(--line);vertical-align:top;'+(st||'')+'">'+t+'</td>';
+  const rows=list.map(a=>{
+    const st=agSt(a.status), open=agOpenId===a.id;
+    const badge='<span style="font-size:10.5px;font-weight:800;color:#fff;background:'+st.c+';border-radius:999px;padding:1px 8px">'+st.t+'</span>';
+    const main='<tr data-ag="'+esc(a.id)+'" style="cursor:pointer;'+(open?'background:#FBF7EC;':'')+'">'
+      +td(badge,'white-space:nowrap')
+      +td('<b>'+esc(a.company||'')+'</b><div style="color:var(--muted);font-size:11.5px">'+esc(a.id)+'</div>')
+      +td(esc(a.contact||'')+'<div style="color:var(--muted);font-size:11.5px">'+esc(a.tel||'')+(a.email?' · '+esc(a.email):'')+'</div>')
+      +td(esc((a.at||'').replace('T',' ').slice(0,16)),'white-space:nowrap;color:var(--muted)')
+      +td(a.margin==null?'<span style="color:var(--muted)">기본</span>':'<b>'+esc(a.margin)+'밧</b>','white-space:nowrap')
+      +td(esc(a.note||''),'max-width:220px;color:var(--muted)')
+      +td(open?'▲':'▼','text-align:center;color:var(--muted)')
+      +'</tr>';
+    if(!open) return main;
+    const card=agCard[a.id];
+    const cardHtml=card===undefined?'<p class="hint">명함을 불러오는 중…</p>'
+      :(card&&card.data?'<img src="'+card.data+'" alt="명함" style="max-width:100%;max-height:360px;border:1px solid var(--line);border-radius:8px;background:#fff;object-fit:contain">'
+        :'<p class="hint" style="color:#B23B3B">'+esc((card&&card.error)||'명함이 없습니다.')+'</p>');
+    const hist=(a.history||[]).slice().reverse().map(h=>'<div>'+esc((h.at||'').replace('T',' ').slice(0,16))+' · '+esc(agSt(h.status).t)+(h.by?' · '+esc(h.by):'')+'</div>').join('');
+    const btn=(k,t,c)=>'<button data-st="'+k+'" '+(canDecide?'':'disabled')+' style="background:'+c+';color:#fff;border:0;border-radius:8px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;opacity:'+(a.status===k?'.35':'1')+'">'+t+'</button>';
+    const sub='<tr data-agsub="'+esc(a.id)+'"><td colspan="7" style="padding:12px 14px 16px;background:#FBF7EC;border-bottom:1px solid var(--line)">'
+      +'<div style="display:grid;grid-template-columns:minmax(260px,1fr) 1.2fr;gap:16px;align-items:start">'
+        +'<div><div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:6px">명함</div>'+cardHtml+'</div>'
+        +'<div>'
+          +'<div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:6px">처리</div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+btn('approved','✔ 승인','#2E7D4F')+btn('rejected','거절','#B23B3B')+btn('suspended','정지','#9AA5A0')+btn('pending','대기로','#E8A33D')+'</div>'
+          +(canDecide?'':'<p class="hint">승인·거절은 어드민·매니저1만 할 수 있습니다.</p>')
+          +'<div style="margin-top:12px;font-size:12px;font-weight:800;color:var(--fairway)">마진 예외 (밧, 비우면 기본)</div>'
+          +'<div style="display:flex;gap:6px;margin-top:4px"><input data-margin type="number" min="0" step="1" value="'+(a.margin==null?'':esc(a.margin))+'" placeholder="기본" '+(canDecide?'':'disabled')+' style="width:110px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit">'
+          +'<button data-f="margin" '+(canDecide?'':'disabled')+' class="add">저장</button></div>'
+          +'<div style="margin-top:12px;font-size:12px;font-weight:800;color:var(--fairway)">직원 메모</div>'
+          +'<div style="display:flex;gap:6px;margin-top:4px"><input data-note type="text" value="'+esc(a.note||'')+'" placeholder="예: 모두투어 협력사 · 담당 김OO" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit">'
+          +'<button data-f="note" class="add">저장</button></div>'
+          +'<div style="margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.6">'+(hist||'')+'</div>'
+          +(GROLE==='admin'?'<div style="margin-top:14px"><button data-f="remove" style="background:none;border:1px solid #B23B3B;color:#B23B3B;border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer">계정·명함·기록 삭제</button></div>':'')
+        +'</div>'
+      +'</div></td></tr>';
+    return main+sub;
+  }).join('');
+  const fbtn=(k,t)=>'<button data-flt="'+k+'" class="'+(agFilter===k?'on':'')+'">'+t+(k==='all'?' ('+all.length+')':' ('+cnt(k)+')')+'</button>';
+  p.innerHTML='<div class="card">'
+    +'<h2>🏢 여행사 회원 <span class="bkcnt">대기 '+cnt('pending')+'건</span></h2>'
+    +'<p class="desc">손님 사이트에서 들어온 여행사 가입 신청입니다. 줄을 누르면 명함이 펼쳐집니다. <b>승인</b>하면 그 아이디로 로그인해 실시간 견적을 바로 쓸 수 있습니다. 레벨은 하나이고, 특정 여행사만 마진을 달리 줄 때 「마진 예외」에 적습니다.</p>'
+    +'<div class="subtabs">'+fbtn('pending','대기')+fbtn('approved','승인')+fbtn('rejected','거절')+fbtn('suspended','정지')+fbtn('all','전부')+'<button data-f="reload">↻ 새로고침</button></div>'
+    +(list.length?'<div style="overflow:auto"><table style="min-width:820px"><thead><tr>'+th('상태')+th('여행사 · 아이디')+th('담당자 · 연락처')+th('신청일시')+th('마진')+th('메모')+th('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      :'<p class="desc" style="padding:18px 0">'+(agFilter==='pending'?'대기 중인 신청이 없습니다.':'해당하는 여행사가 없습니다.')+'</p>')
+    +'</div>';
+  p.querySelectorAll('.subtabs button[data-flt]').forEach(b=>b.onclick=()=>{ agFilter=b.dataset.flt; drawAgencies(); });
+  p.querySelector('.subtabs button[data-f="reload"]').onclick=()=>{ AGENCIES=null; agCard={}; drawAgencies(); };
+  p.querySelectorAll('tr[data-ag]').forEach(tr=>tr.onclick=()=>{
+    const id=tr.dataset.ag;
+    agOpenId=(agOpenId===id)?'':id;
+    drawAgencies();
+    if(agOpenId&&agCard[id]===undefined){ agencyApi('card',{id}).then(j=>{ agCard[id]=j.error?{error:j.error}:{data:j.data}; if(agOpenId===id) drawAgencies(); }); }
+  });
+  const openRow=agOpenId?p.querySelector('tr[data-agsub="'+CSS.escape(agOpenId)+'"]'):null;
+  if(openRow&&agOpenId){
+    const a=all.find(x=>x.id===agOpenId);
+    openRow.querySelectorAll('button[data-st]').forEach(b=>b.onclick=async(e)=>{
+      e.stopPropagation();
+      const st=b.dataset.st, t=agSt(st).t;
+      if(st===a.status) return;
+      if(!confirm('['+(a.company||a.id)+'] 을(를) 「'+t+'」 상태로 바꿉니다.'+(st==='approved'?'\n승인하면 이 아이디로 로그인해 실시간 견적을 볼 수 있습니다.':'')+'\n\n계속할까요?')) return;
+      b.disabled=true;
+      const j=await agencyApi('status',{id:a.id,status:st});
+      if(j.error){ alert(j.error); b.disabled=false; return; }
+      a.status=st; a.history=(a.history||[]).concat([{at:new Date().toISOString(),status:st,by:'나'}]);
+      drawAgencies();
+    });
+    const mBtn=openRow.querySelector('button[data-f="margin"]');
+    if(mBtn) mBtn.onclick=async(e)=>{ e.stopPropagation(); const v=openRow.querySelector('input[data-margin]').value.trim(); const j=await agencyApi('margin',{id:a.id,margin:v===''?'':+v}); if(j.error){ alert(j.error); return; } a.margin=j.margin; drawAgencies(); };
+    const nBtn=openRow.querySelector('button[data-f="note"]');
+    if(nBtn) nBtn.onclick=async(e)=>{ e.stopPropagation(); const v=openRow.querySelector('input[data-note]').value.trim(); const j=await agencyApi('note',{id:a.id,note:v}); if(j.error){ alert(j.error); return; } a.note=v; drawAgencies(); };
+    const rBtn=openRow.querySelector('button[data-f="remove"]');
+    if(rBtn) rBtn.onclick=async(e)=>{ e.stopPropagation(); if(!confirm('['+(a.company||a.id)+'] 계정과 명함, 신청 기록을 모두 지웁니다. 되돌릴 수 없습니다.\n\n정말 삭제할까요?')) return; const j=await agencyApi('remove',{id:a.id}); if(j.error){ alert(j.error); return; } AGENCIES.list=all.filter(x=>x.id!==a.id); agOpenId=''; drawAgencies(); };
+    openRow.querySelectorAll('input').forEach(i=>i.onclick=e=>e.stopPropagation());
+  }
 }
 
 /* ══════ 📋 예약요청 ══════

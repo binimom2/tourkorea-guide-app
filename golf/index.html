@@ -1484,8 +1484,8 @@ async function ensureQuoteNo(){
   const date=($('#startDate').value||'').replace(/-/g,'');
   if(!date) return '';
   if(QUOTE_NO&&QUOTE_NO_FOR===date) return QUOTE_NO;   // 같은 출발일자면 번호를 다시 뽑지 않는다
-  if(GUEST){
-    /* 손님 모드는 서버 순번(golf_quote_seq)에 쓰지 못한다 → 이 브라우저 기준 번호, 직원 G번호와 안 겹치게 S */
+  if(GUEST||GROLE==='agency'){
+    /* 손님·여행사 모드는 서버 순번(golf_quote_seq)에 쓰지 못한다 → 이 브라우저 기준 번호, 직원 G번호와 안 겹치게 S */
     const k='golf_quote_seq_site'; let map={}; try{ map=JSON.parse(localStorage.getItem(k)||'{}'); }catch(_){}
     const n=(+map[date]||0)+1; map[date]=n; try{ localStorage.setItem(k,JSON.stringify(map)); }catch(_){}
     QUOTE_NO=`${date}-S${String(n).padStart(3,'0')}`; QUOTE_NO_FOR=date;
@@ -1854,8 +1854,8 @@ async function downloadQuote(mode){
       document.body.appendChild(a); a.click(); a.remove();
     } else showQuotePreview(url,name);
     // 보관 실패해도 견적서는 이미 만들어졌으므로 알리기만 한다
-    if(GUEST){
-      /* 손님 모드: 로그인 없이는 서버(golf_quotes)에 쓸 수 없어 견적 이력에 남기지 않는다.
+    if(GUEST||GROLE==='agency'){
+      /* 손님·여행사 모드: 서버(golf_quotes)에 쓸 권한이 없어 견적 이력에 남기지 않는다.
          직원 화면의 「견적 이력」에는 안 보이고, 손님은 받은 견적서 그림만 보관한다. */
     } else if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 견적 보관에 실패했습니다.\n나중에 「견적 이력」에서 찾을 수 없으니 파일을 꼭 보관해 주세요.');
   }catch(e){
@@ -2062,7 +2062,10 @@ document.addEventListener('change',e=>{
 /* ── Supabase 로그인 + 요금 로드 ── */
 const SUPABASE_URL='https://aplevsrmxkzghutihyvs.supabase.co';
 const SUPABASE_KEY='sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-auth',persistSession:true,autoRefreshToken:true}});
+/* 로그인 열쇠(localStorage) — 직원은 gs-auth. 손님 사이트 팝업(embed=site)에서 직원 로그인이 없고
+   여행사 로그인(golf-agency-auth, 사이트 index.html의 AG_STORE)만 있으면 그 열쇠를 이어받는다(사장님 2026-09-17 B2B). */
+const AUTH_STORE=(()=>{ try{ if(EMBED&&!localStorage.getItem('gs-auth')&&localStorage.getItem('golf-agency-auth')) return 'golf-agency-auth'; }catch(e){} return 'gs-auth'; })();
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:AUTH_STORE,persistSession:true,autoRefreshToken:true}});
 const ELEVATED_ADMIN_IDS=['lds1207','sooyoung'];
 /* ── 골프 권한 3단계 (골프에서만 쓴다, 사장님 2026-09-16 개편: 에이전트 없음, 전부 우리 직원) ──
    admin    : 모두 — 견적 · 사이트 내용(요금·코드) · 예약요청 · 견적 기록 · 계정관리
@@ -2082,6 +2085,8 @@ async function loadGolfRoles(){
    명단에 없으면 로그인은 되어도 골프 화면은 열리지 않는다(빈 문자열). */
 function golfRoleOf(u){
   const m=(u&&u.user_metadata)||{}, id=loginIdOf(u);
+  /* 여행사 회원(B2B, 사장님 2026-09-17): 승인된 계정이면 'agency' — 계산기만 쓴다(관리 링크·견적 이력 없음). 승인 전이면 못 들어온다 */
+  if(m.kind==='agency') return m.approved===true?'agency':'';
   if(m.role==='admin'||ELEVATED_ADMIN_IDS.includes(id)) return 'admin';
   const r=GROLE_MAP[id]==='agent'?'manager2':GROLE_MAP[id];
   return (r==='admin'||r==='manager'||r==='manager2')?r:'';
@@ -2192,8 +2197,8 @@ async function startApp(user){
     return;
   }
   // 사이트 관리 링크는 세 등급 모두 — 매니저2는 그 안에서 예약요청·견적 기록만 보인다(사장님 2026-09-16)
-  if(!GUEST){ const sl=document.getElementById('siteLink'); sl.style.display=''; if(GROLE==='manager2') sl.textContent='🌐 사이트 관리 (예약·견적)'; }
-  if(wb) wb.textContent=GUEST?'':`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`;
+  if(!GUEST&&GROLE!=='agency'){ const sl=document.getElementById('siteLink'); sl.style.display=''; if(GROLE==='manager2') sl.textContent='🌐 사이트 관리 (예약·견적)'; }
+  if(wb) wb.textContent=GUEST?'':(GROLE==='agency'?`${((user&&user.user_metadata)||{}).company||loginIdOf(user)||''} · 여행사`:`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`);
   // 출발일자는 빈 칸으로 시작한다(사장님 2026-09-11) — 예전엔 2주 뒤 날짜를 미리 넣었다
   if(EMBED) await applySiteExposure();   // 팝업에서는 사이트에 노출한 골프장·호텔만
   buildGuideOptions();
