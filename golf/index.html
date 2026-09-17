@@ -558,6 +558,23 @@ function stayDates(r,nn){
 }
 /* 팝업(손님 사이트)에서는 사이트에 «노출한» 골프장·호텔만 고를 수 있다(사장님 2026-09-10).
    golf_site 의 courses/hotels 가운데 on:false 가 아닌 이름만 남긴다. */
+/* 골프장 휴장 요일(사장님 2026-09-17) — 사이트 관리에서 체크한 courses[].closed(0 일 … 6 토)를 golf_site에서 읽어 둔다.
+   직원·손님·여행사 모두 같은 자료를 본다(golf_site는 누구나 읽는다). 이름(공백 제거·소문자)으로 맞춘다. */
+let SITE_CLOSED={};
+const _cname=n=>String(n||'').replace(/\s+/g,'').toLowerCase();
+async function loadSiteClosed(){
+  try{
+    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_site').maybeSingle();
+    const d=row&&row.data; if(!d) return;
+    const m={};
+    (Array.isArray(d.courses)?d.courses:[]).forEach(c=>{ if(c&&c.n&&Array.isArray(c.closed)&&c.closed.length) m[_cname(c.n)]=c.closed.map(Number); });
+    SITE_CLOSED=m;
+  }catch(e){}
+}
+function courseClosedOn(name,ds){
+  const days=SITE_CLOSED[_cname(name)]; if(!days||!days.length) return false;
+  const d=new Date(ds+'T00:00:00'); return days.includes(d.getDay());
+}
 async function applySiteExposure(){
   try{
     const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_site').maybeSingle();
@@ -1166,7 +1183,12 @@ function fillCourses(i){
   const st=dayState[i];
   const sel=document.querySelector(`[data-c="${i}"]`);
   const list=(COURSES[st.region]||[]).slice().sort(ganada);
-  sel.innerHTML='<option value="">골프장 선택</option>'+list.map(c=>`<option value="${c.n}">${c.n}</option>`).join('');
+  /* 그날 요일에 쉬는 골프장은 「✕ 휴장」으로 표시하고 고를 수 없게 한다(사장님 2026-09-17) */
+  sel.innerHTML='<option value="">골프장 선택</option>'+list.map(c=>{
+    const x=courseClosedOn(c.n,st.date);
+    return `<option value="${c.n}"${x?' disabled':''}>${x?'✕ ':''}${c.n}${x?' (휴장)':''}</option>`;
+  }).join('');
+  if(st.course&&courseClosedOn(st.course,st.date)) st.course='';   // 날짜가 바뀌어 휴장일에 걸리면 선택을 푼다
   sel.value=st.course||'';
   fillHoles(i);
 }
@@ -2214,10 +2236,10 @@ async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.relo
 (async function boot(){
   try{
     const {data:{session}}=await sb.auth.getSession();
-    if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadFxAuto(); await loadGolfRoles(); startApp(session.user); return; }
+    if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadFxAuto(); await loadSiteClosed(); await loadGolfRoles(); startApp(session.user); return; }
     /* 손님 사이트 팝업 + 로그인 없음 → 요금표가 읽히면(테스트용 anon 읽기 정책이 열려 있으면) 손님 모드로 연다.
        정책이 닫혀 있으면 요금표가 안 읽혀 아래 로그인 화면으로 간다(사장님 2026-09-17 「로그인 없이 완전 개방」, 테스트 뒤 다시 잠금). */
-    if(EMBED && await loadPricing()){ GUEST=true; await loadRegionCodes(); await loadFxAuto(); startApp(null); return; }
+    if(EMBED && await loadPricing()){ GUEST=true; await loadRegionCodes(); await loadFxAuto(); await loadSiteClosed(); startApp(null); return; }
   }catch(e){}
   $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus();
 })();

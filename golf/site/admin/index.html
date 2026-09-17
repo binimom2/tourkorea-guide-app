@@ -2196,6 +2196,7 @@ function itemBodyHTML(k){
         +(k==='hotels' ? roomCell(o.x,o.i)
           : '<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
             +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
+            +(k==='courses'?closedCell(o.i,o.x):'')
             +priceCell(k,o.x))
         /* 바우처(예약 확정서) 머리에 찍히는 업체 주소·전화 — 손님 화면에는 안 나온다 */
         +'<div class="iecell vcell"><b>바우처용 주소 · 전화 <span class="rhint">예약 확정서 머리에 찍힙니다</span></b>'
@@ -2212,6 +2213,28 @@ function redrawItems(k){
   const rc=document.getElementById('iRegs'); if(rc) rc.innerHTML=regChipsHTML(k);
   bindRowBtns();
   bindItemExtras(k);
+}
+/* ── 골프장 휴장 요일(사장님 2026-09-17) ──
+   방콕 쪽은 매주 월요일처럼 정해진 요일에 쉬는 골프장이 많다. 요일을 체크해 두면
+   실시간 견적(/golf/)의 날짜별 골프장 선택과 손님 상세의 달력판에서 그 요일이 ✕로 막힌다.
+   저장 위치: golf_site courses[i].closed = [요일 번호…] (0 일 … 6 토). 손님도 읽는 자료라 원가와 무관하다. */
+const WD_KO=['일','월','화','수','목','금','토'];
+function closedCell(i,x){
+  const set=new Set(Array.isArray(x.closed)?x.closed.map(Number):[]);
+  return '<div class="iecell"><b>휴장 요일 <span class="rhint">체크한 요일은 견적·달력에서 ✕ (선택 불가)</span></b>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+    +WD_KO.map((w,d)=>'<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;'+(d===0?'color:#B23B3B':'')+'"><input type="checkbox" data-closed="'+i+'" data-d="'+d+'"'+(set.has(d)?' checked':'')+'> '+w+'</label>').join('')
+    +'</div></div>';
+}
+function bindClosed(k){
+  if(k!=='courses') return;
+  document.querySelectorAll('#iBody input[data-closed]').forEach(c=>c.onchange=()=>{
+    const x=itemsArr(k)[+c.dataset.closed]; if(!x) return;
+    const set=new Set(Array.isArray(x.closed)?x.closed.map(Number):[]);
+    if(c.checked) set.add(+c.dataset.d); else set.delete(+c.dataset.d);
+    x.closed=[...set].sort();
+    markDirty('site');
+  });
 }
 /* ── 지역 칩·접기(사장님 2026-09-17) ── */
 /* 지역 칩: 전체 · 방콕 n · 파타야 n … (regionOrder 차례, 거기 없는 지역은 뒤에, 지역 칸이 빈 줄은 「지역 없음」) */
@@ -2235,6 +2258,7 @@ function toggleFold(k,i,btn){
 function bindItemExtras(k){
   const tb=document.getElementById('iBody'); if(!tb) return;
   tb.querySelectorAll('button[data-fold]').forEach(b=>b.onclick=()=>toggleFold(k,+b.dataset.fold,b));
+  bindClosed(k);
   const rc=document.getElementById('iRegs');
   if(rc) rc.querySelectorAll('button[data-reg]').forEach(b=>b.onclick=()=>{ iRegion[k]=b.dataset.reg; redrawItems(k); });
   const oa=document.getElementById('iOpenAll'), ca=document.getElementById('iCloseAll');

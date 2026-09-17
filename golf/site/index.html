@@ -202,6 +202,9 @@ body.bar-light .trust button.hot{animation-name:hotglow-light}
 .trust .secdd button i{font-style:normal;font-weight:600;color:var(--muted);margin-left:6px;font-size:12.5px}
 .trust .secdd .secask{display:block;padding:9px 12px;font-size:14.5px;font-weight:800;color:var(--fairway);white-space:nowrap}
 @media(hover:hover){ .trust .secw:hover .secdd{display:block} }
+/* 달력판 골프장 휴장일 — 빨간 ✕가 겹쳐 찍히고 눌리지 않는다(사장님 2026-09-17) */
+.qp-calgrid button.closed{position:relative;color:#B23B3B;opacity:.55;cursor:not-allowed}
+.qp-calgrid button.closed .cx{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px;font-weight:900;color:#B23B3B;pointer-events:none}
 
 /* ── 공통 섹션 ── */
 section{padding:64px 0}
@@ -1953,9 +1956,15 @@ function drawCal(){
   const min = calHalf ? dadd(calHalf, 1) : tdy;
   const cells = [];
   for(let i = 0; i < first.getDay(); i++) cells.push("<span></span>");
+  /* 골프장 휴장 요일(관리 화면에서 체크, courses[].closed = [0 일 … 6 토]) — 그 요일은 ✕로 막는다(사장님 2026-09-17) */
+  const closedSet = new Set((qpKind === "courses" && qpItem && Array.isArray(qpItem.closed)) ? qpItem.closed.map(Number) : []);
+  let anyClosed = false;
   for(let d = 1; d <= last.getDate(); d++){
     const s = y + "-" + D2(m + 1) + "-" + D2(d), cls = [];
-    if(new Date(y, m, d).getDay() === 0) cls.push("sun");
+    const wd = new Date(y, m, d).getDay();
+    if(wd === 0) cls.push("sun");
+    const closed = closedSet.has(wd);
+    if(closed){ cls.push("closed"); anyClosed = true; }
     if(calHalf){
       if(s === calHalf) cls.push("edge");
     }else if(qpKind === "hotels" && inn && qpCheckout){
@@ -1963,7 +1972,7 @@ function drawCal(){
       else if(s > inn && s < qpCheckout) cls.push("mid");
     }else if(s === inn) cls.push("edge");
     cells.push('<button type="button" data-d="' + s + '" class="' + cls.join(" ") + '"'
-      + (s < min ? " disabled" : "") + ">" + d + "</button>");
+      + ((s < min || closed) ? " disabled" : "") + (closed ? ' title="휴장일"' : "") + ">" + d + (closed ? '<i class="cx">✕</i>' : "") + "</button>");
   }
   $("#qpCalGrid").innerHTML = cells.join("");
   $("#qpCalGrid").querySelectorAll("[data-d]").forEach(b => b.onclick = () => calPick(b.dataset.d));
@@ -1971,9 +1980,10 @@ function drawCal(){
   const t = dparse(tdy);
   $("#qpCalPrev").disabled = (y * 12 + m) <= (t.getFullYear() * 12 + t.getMonth());
   /* 「라운드」는 골프장에서만 — 차량·스파 등은 「이용하실 날짜」(사장님 2026-09-11) */
-  $("#qpCalFoot").textContent = qpKind === "courses" ? "라운드 하실 날짜를 선택해 주세요"
+  $("#qpCalFoot").textContent = (qpKind === "courses" ? "라운드 하실 날짜를 선택해 주세요"
     : qpKind !== "hotels" ? "이용하실 날짜를 선택해 주세요"
-    : calHalf ? "체크아웃 날짜를 선택해 주세요" : "체크인 날짜를 선택해 주세요";
+    : calHalf ? "체크아웃 날짜를 선택해 주세요" : "체크인 날짜를 선택해 주세요")
+    + (anyClosed ? " · ✕ 표시는 골프장 휴장일입니다" : "");
 }
 function calPick(s){
   if(qpKind !== "hotels"){
