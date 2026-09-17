@@ -188,6 +188,20 @@ body.bar-light .trust button.hot{animation-name:hotglow-light}
   .trust .wrap{padding:4px 10px}
   .trust button{flex:1 1 88px;padding:11px 4px}
 }
+/* 섹터 띠 하위메뉴(사장님 2026-09-17) — 골프장·호텔… 칸에 마우스를 올리면 그 종류의 지역(방콕·파타야·후아힌…)이
+   아래로 펼쳐지고, 지역을 누르면 그 페이지의 그 지역으로 간다. 패스트트랙 아래에는 「별도문의」만 띄운다.
+   마우스가 없는 기기(휴대폰)에서는 펼치지 않고 전처럼 칸을 눌러 들어간다. */
+.trust .secw{flex:1 1 118px;position:relative;display:flex}
+.trust .secw>button{flex:1 1 auto;width:100%}
+.trust .secdd{display:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);z-index:30;min-width:150px;padding:6px;
+  background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.16)}
+.trust .secdd::before{content:"";position:absolute;left:0;right:0;top:-10px;height:10px}   /* 칸과 메뉴 사이 틈을 지나가도 안 닫히게 */
+.trust .secdd button{display:block;width:100%;flex:none;padding:9px 12px;border-radius:8px;text-align:left;
+  color:#1A1A1A;background:none;font-size:14.5px;font-weight:800;white-space:nowrap;transform:none;box-shadow:none;animation:none}
+.trust .secdd button:hover{background:rgba(18,58,43,.08)}
+.trust .secdd button i{font-style:normal;font-weight:600;color:var(--muted);margin-left:6px;font-size:12.5px}
+.trust .secdd .secask{display:block;padding:9px 12px;font-size:14.5px;font-weight:800;color:var(--fairway);white-space:nowrap}
+@media(hover:hover){ .trust .secw:hover .secdd{display:block} }
 
 /* ── 공통 섹션 ── */
 section{padding:64px 0}
@@ -1508,11 +1522,25 @@ function drawSectors(){
   if(!TOURS_HIDDEN && (SITE.tours || []).length) items.push({ ic: sc.toursIc || "🚌", t: sc.toursT || "기타투어", go:"#tours" });
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 «맨 앞»에 금색으로 도드라지게 둔다(사장님 2026-09-11, 전에는 맨 뒤) */
   items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true });
-  $("#trustBox").innerHTML = items.slice(0, SECTOR_MAX).map(s =>
-    '<button type="button"' + (s.hot ? ' class="hot"' : '') + ' data-go="' + esc(s.go) + '">'
-    + (s.ic ? '<em>' + esc(s.ic) + '</em>' : '')
-    + '<b>' + esc(s.t) + '</b></button>').join("");
-  $("#trustBox").querySelectorAll("button").forEach(b => b.onclick = () => {
+  /* 종류 칸은 감싸는 칸(.secw) 안에 넣고 아래에 지역 하위메뉴(.secdd)를 붙인다(사장님 2026-09-17).
+     패스트트랙(종류 이름으로 잡는다 — 키가 자동번호라서)은 지역 대신 「별도문의」. 실시간 견적 칸은 그대로. */
+  const isAsk = t => /패스트트랙/.test(String(t || ""));
+  $("#trustBox").innerHTML = items.slice(0, SECTOR_MAX).map(s => {
+    const btn = '<button type="button"' + (s.hot ? ' class="hot"' : '') + ' data-go="' + esc(s.go) + '">'
+      + (s.ic ? '<em>' + esc(s.ic) + '</em>' : '')
+      + '<b>' + esc(s.t) + '</b></button>';
+    if(s.go.indexOf("cat:") !== 0) return btn;
+    const k = s.go.slice(4);
+    const dd = isAsk(s.t)
+      ? '<span class="secask">별도문의</span>'
+      : regionsOf(itemsOf(k)).map(x => '<button type="button" data-cat="' + esc(k) + '" data-r="' + esc(x.r) + '">' + esc(x.r) + '<i>' + x.n + '</i></button>').join("");
+    return '<div class="secw">' + btn + (dd ? '<div class="secdd">' + dd + '</div>' : '') + '</div>';
+  }).join("");
+  $("#trustBox").querySelectorAll(".secdd button[data-r]").forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    pickCat(b.dataset.cat, b.dataset.r);
+  });
+  $("#trustBox").querySelectorAll("button[data-go]").forEach(b => b.onclick = () => {
     const go = b.dataset.go;
     if(go === "quote"){ goQuote(); return; }
     if(go.indexOf("cat:") === 0){
