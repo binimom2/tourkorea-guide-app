@@ -216,10 +216,10 @@ export async function onRequestPost({ request, env }) {
     if (airportTip > 0) total += airportTip * pax;
   }
 
-  /* 3) 핸들링 차지 — 직원용 견적기와 같이 항상 붙는다 */
+  /* 3) 핸들링 차지 — 요금표에 있으면 붙고, 없거나 0이면 조용히 빠진다(직원용 견적기와 같다, 사장님 2026-09-17).
+     예전엔 없으면 손님 화면에 「핸들링 요금이 등록되어 있지 않습니다」 경고가 떴다 — 핸들링을 안 쓰는 기간에 그 경고가 손님에게 보이면 안 된다. */
   const ht = tierValue(P.handlingPeriods || {}, nights, 'amount');
   if (ht) total += ht.value * pax;
-  else warnings.push('핸들링 요금이 등록되어 있지 않습니다');
 
   /* 4) 가이드 — 고른 종류가 있을 때만 */
   const gt = String(B.guide || '');

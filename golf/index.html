@@ -471,9 +471,12 @@ const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 /* 한화는 백원 단위를 남기지 않는다 — 천원 단위로 무조건 올림.
    583,200원 → 584,000원. 손님에게 나가는 금액이라 내리지 않고 항상 올린다. */
 const krwUp=n=>Math.ceil(n/1000)*1000;
-/* 손님가에 얹는 마진(밧). 요금표의 각 줄 '마진' 칸에서 오고, 비어 있으면 100밧.
-   손님 사이트(/api/golf-price)와 같은 규칙이라야 두 곳 금액이 어긋나지 않는다. */
-const MG=v=>(Number.isFinite(+v)&&+v>=0)?+v:100;
+/* 실시간 견적(이 계산기)의 골프장·호텔 마진 — 2026-09-17부터 «0», 즉 요금표 원가 그대로(사장님).
+   여행사(B2B)에게 주는 실시간 견적은 골프·호텔 원가 + 차량(요금표에 이미 약간의 수익 포함) + 핸들링 차지로 잡고,
+   수익 조정은 핸들링 차지에서 한다. 손님 사이트 카드·상세 요금(/api/golf-price)은 여전히 +100밧(요금표 '마진' 칸, 비면 100)이라
+   두 곳 금액이 일부러 다르다 — 카드는 참고가, 실시간은 정산가.
+   예전 규칙(카드와 같게)으로 되돌리려면: const MG=v=>(Number.isFinite(+v)&&+v>=0)?+v:100; */
+const MG=v=>0;
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
@@ -1325,8 +1328,10 @@ function calc(){
   }
   // 3) 핸들링
   const ht=tierValue(P.handlingPeriods||{},nights,'amount');
+  /* 핸들링 차지는 «있으면» 붙고, 요금표에 없거나 0이면 조용히 빠진다.
+     수익은 품목마다 +100밧(골프장 라운드·호텔 1실 1박)으로 잡기로 해서 핸들링은 안 쓴다(사장님 2026-09-17, B안).
+     예전엔 없으면 「핸들링 요금 미입력」 경고를 띄웠다 — 이제는 경고 없음. 다시 쓰려면 요금 관리에 금액만 넣으면 된다. */
   if(ht) lines.push({t:'핸들링 차지',s:`${won(ht.value)}${ht.extra?` (기본 ${won(ht.base)} +1박추가 ${won(ht.oneMore)}×${ht.extra})`:''} × ${pax}명`,v:ht.value*pax});
-  else lines.push({t:'핸들링',s:'요금 미입력',v:0,warn:1});
   // 4) 가이드 (기간값 + 1박추가 확장 + 파타야 박당) — '가이드 원하시나요?'를 체크했을 때만
   const gt=useGuideOn()?$('#guide').value:'';
   if(gt){
@@ -1441,7 +1446,7 @@ function quoteIncludes(mode){
     if(lugTxt){ if(vehLines.length) vehLines[vehLines.length-1]+=` · ${lugTxt}`; else vehLines.push(`차량 - ${lugTxt}`); }
     out.push(...vehLines);
   }
-  if(mode==='internal') out.push('핸들링 차지');
+  if(mode==='internal' && tierValue(P.handlingPeriods||{},totalNights(),'amount')) out.push('핸들링 차지');   // 핸들링이 요금표에 있을 때만(2026-09-17)
   /* 가이드는 한 줄로 — 「가이드 - 로컬가이드(영어사용) 1명, 한국인가이드 1명」(버스 동승 로컬 + 6번 가이드, 사장님 2026-09-15).
      견적서 글자에서는 「(영어만)」을 「(영어사용)」으로 바꿔 적는다(요금표 종류 이름은 그대로) */
   const gdoc=t=>guideLabel(t).replace(/영어만/g,'영어사용');
