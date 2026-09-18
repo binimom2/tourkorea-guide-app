@@ -713,7 +713,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .lbox.on{display:flex}
 /* 확대 사진은 원본 크기와 상관없이 늘 같은 3:2 틀로 띄운다(사장님 2026-09-18) — 전에는 원본이 작으면 작게,
    크면 크게 떠서 넘길 때마다 크기가 달라졌다. 폭 = 1100px·화면 폭 94%·화면 높이 78%(=117vh÷1.5) 중 작은 값.
-   가로·정사각 사진은 틀에 꽉 채우고(가장자리만 조금 잘림 — 카드와 같은 방식), 세로 사진만 잘리지 않게 통째로 넣는다(.tall) */
+   비율이 3:2에 가까운 사진(대부분의 코스 사진)만 틀에 꽉 채우고, 그 밖의 사진 — 가로로 긴 스코어카드·요금표, 정사각,
+   세로 사진 — 은 잘리지 않게 같은 틀 안에 통째로 넣는다(.tall). 처음엔 가로 사진을 다 채웠더니 스코어카드 양옆이 잘렸다 */
 .lbox img{width:min(1100px,94vw,117vh);aspect-ratio:3/2;height:auto;border-radius:12px;object-fit:cover;background:#0B1711}
 .lbox img.tall{object-fit:contain}
 .lbox .lnav{display:flex;align-items:center;gap:18px;color:#fff;font-size:14px;font-weight:700}
@@ -2505,10 +2506,11 @@ function openLbox(i, list){
   if(!lbList.length) return;
   const n = lbList.length;
   lbi = ((i || 0) % n + n) % n;
-  /* 세로로 긴 사진은 3:2 틀에 채우면 위아래가 크게 잘린다 — 그런 사진만 통째로 넣는다(틀 크기는 같다) */
+  /* 비율이 3:2(1.5)에 가까운 사진만 틀에 채운다(잘려도 가장자리 몇 %). 그 밖 — 스코어카드처럼 가로로 긴 것, 정사각,
+     세로 — 은 통째로 넣는다(틀 크기는 같다). 사진이 뜨기 전에는 통째(.tall)로 두어, 채웠다가 줄어드는 깜빡임이 없게 한다 */
   const lim = $("#lboxImg");
-  lim.classList.remove("tall");
-  lim.onload = () => lim.classList.toggle("tall", lim.naturalHeight > lim.naturalWidth * 1.05);
+  lim.classList.add("tall");
+  lim.onload = () => { const ar = lim.naturalWidth / (lim.naturalHeight || 1); lim.classList.toggle("tall", !(ar >= 1.4 && ar <= 1.62)); };
   lim.src = lbList[lbi];
   $("#lboxNum").textContent = (lbi + 1) + " / " + n;
   $("#lbox").classList.add("on");
