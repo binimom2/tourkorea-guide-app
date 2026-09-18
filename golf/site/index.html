@@ -632,6 +632,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .ntbtn b{position:absolute;top:-1px;right:-1px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;
   background:#E0464B;color:#fff;font-size:10.5px;font-weight:900;line-height:16px;text-align:center}
 #navCart b{background:var(--marigold);color:#2A1A00}
+/* 내 견적 보관함(장바구니 바로 뒤) — 장바구니와 같은 초록 아이콘·주황 숫자 */
+.ntbtn.has#navBox{color:var(--fairway)}
+#navBox b{background:var(--marigold);color:#2A1A00}
+#navBox[hidden]{display:none}
 /* 태국환율 — 손님이 밧을 얼마에 바꾸시는지 바로 보이게(사장님). 살때·팔때 두 줄. */
 /* 60px 줄 안에서 다른 칸들과 키가 맞도록 44px 안팎으로 눌러 둔다 —
    전에는 54px이라 혼자 위아래를 꽉 채워 줄이 무거워 보였다(사장님 2026-09-08) */
@@ -751,6 +755,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     <div class="navtools">
       <button type="button" class="ntbtn" id="navFav" aria-label="찜한 곳"></button>
       <button type="button" class="ntbtn" id="navCart" aria-label="장바구니"></button>
+      <!-- 내 견적 보관함 — 승인된 여행사로 로그인했을 때만 보인다(사장님 2026-09-18). 실시간 견적으로 낸 견적이 담긴다 -->
+      <button type="button" class="ntbtn" id="navBox" aria-label="내 견적 보관함" title="내 견적 보관함 — 실시간 견적으로 낸 견적이 담깁니다" hidden></button>
       <div class="fxbox" id="fxBox" hidden></div>
     </div>
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
@@ -2606,6 +2612,52 @@ const ICON_CART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
   + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M2.6 3.6h2.1l2.4 10.7a1.9 1.9 0 0 0 1.9 1.5h8a1.9 1.9 0 0 0 1.9-1.4L20.8 7H5.6"/>'
   + '<circle cx="9.6" cy="20" r="1.4"/><circle cx="17.4" cy="20" r="1.4"/></svg>';
+/* ── 내 견적 보관함(상단 아이콘) — 사장님 2026-09-18: 여행사가 낸 견적이 장바구니처럼 상단에서 보여야 한다 ──
+   승인된 여행사로 로그인했을 때만 뜬다. 숫자 = 보관함에 담긴 견적 수(서버 /api/agency quoteList).
+   누르면 실시간 견적 창을 열고 그 안의 보관함을 띄운다 — 견적서를 「그때 금액 그대로」 다시 그리는 코드가 견적기 쪽에 있어서다.
+   견적기가 견적을 담거나 뺄 때마다 「tk-quote-box-count」로 숫자를 알려 준다 */
+const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"'
+  + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M6.5 3.5h8l4 4v13h-12z"/><path d="M14.5 3.5v4h4"/><path d="M9.3 12.2h6.2M9.3 15.8h6.2"/></svg>';
+let BOXN = 0;
+function drawBoxBtn(){
+  const b = $("#navBox"); if(!b) return;
+  const on = !!(agency && agency.approved);
+  b.hidden = !on;
+  if(!on) return;
+  b.innerHTML = ICON_BOX + (BOXN ? '<b>' + BOXN + '</b>' : '');
+  b.classList.toggle("has", !!BOXN);
+}
+async function loadBoxCount(){
+  if(!(agency && agency.approved)){ BOXN = 0; drawBoxBtn(); return; }
+  try{
+    const c = await agClient();
+    const { data } = await c.auth.getSession();
+    const tk = data && data.session && data.session.access_token;
+    if(tk){
+      const r = await fetch(API + "/api/agency", { method:"POST",
+        headers:{ "content-type":"application/json", Authorization:"Bearer " + tk },
+        body: JSON.stringify({ action:"quoteList" }) });
+      const j = await r.json();
+      if(j && Array.isArray(j.list)) BOXN = j.list.length;
+    }
+  }catch(e){}
+  drawBoxBtn();
+}
+function openQuoteBox(){
+  const go = quoteHref();
+  if(go.charAt(0) === "#"){ goQuote(); return; }          // 견적이 창이 아니라 화면 안 자리로 잡혀 있는 설정이면 거기로
+  openQuoteModal(go);
+  const f = $("#qFrame");
+  const post = () => { try{ f.contentWindow.postMessage({ type:"tk-open-quote-box" }, location.origin); }catch(e){} };
+  if(f.dataset.loaded === "1") post(); else f.addEventListener("load", post, { once:true });
+}
+$("#qFrame").addEventListener("load", () => { $("#qFrame").dataset.loaded = "1"; });
+$("#navBox").onclick = openQuoteBox;
+window.addEventListener("message", e => {
+  if(e.origin !== location.origin || !e.data || e.data.type !== "tk-quote-box-count") return;
+  BOXN = Math.max(0, +e.data.count || 0); drawBoxBtn();
+});
 function drawTools(){
   const f = $("#navFav"), c = $("#navCart");
   f.innerHTML = ICON_HEART + (FAV.length  ? '<b>' + FAV.length  + '</b>' : '');
@@ -3162,6 +3214,14 @@ function agSet(user){
                approved: m.approved === true, status: m.status || (m.approved === true ? "approved" : "pending") };
   }else agency = null;
   agPaint();
+  /* 로그인한 여행사가 바뀌면(로그인·로그아웃) 이미 열어 둔 견적 창을 비운다 — 안 비우면 앞 사람 로그인으로 계속 돈다.
+     그리고 상단 「내 견적 보관함」 아이콘과 숫자를 맞춘다 */
+  const who = agency ? agency.id + "|" + agency.approved : "";
+  if(agSet._who !== undefined && agSet._who !== who){
+    const f = $("#qFrame"); if(f){ f.removeAttribute("src"); delete f.dataset.loaded; }
+  }
+  agSet._who = who;
+  loadBoxCount();
 }
 function agPaint(){
   const b = $("#loginBtn");
