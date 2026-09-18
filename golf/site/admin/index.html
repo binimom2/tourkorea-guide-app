@@ -100,11 +100,12 @@ tr.subrow td{padding:0 6px 11px}
 /* 요금 줄 — 기간 · 구분 · 시간 · 18홀 · 9홀 한 줄. 「＋」로 얼마든지 더한다. */
 .rhint{font-weight:700;color:var(--muted)}
 .rlist{display:flex;flex-direction:column;gap:4px}
-.rhead,.rrow{display:grid;grid-template-columns:234px 84px 74px 88px 88px 26px;
+/* 기간 칸 258px — 날짜 입력 두 개(각 116px)+물결+틈에 252px이 든다. 234px일 때 끝 날짜가 「구분」 칸 위로 13px 넘어가 겹쳤다(사장님 2026-09-18) */
+.rhead,.rrow{display:grid;grid-template-columns:258px 84px 74px 88px 88px 26px;
   gap:5px;align-items:center}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
 /* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 적용 기간 · 밧 네 칸 */
-.mhead,.mrow{grid-template-columns:1fr 1.1fr 236px 100px 26px}
+.mhead,.mrow{grid-template-columns:1fr 1.1fr 258px 100px 26px}
 .mrow .rdate.mprom input{background:#FEF6E4;border-color:#E8C88A}   /* 기간이 든 줄(프로모션)은 노랗게 */
 /* 기간 칸 — 위는 「자주 쓰는 기간」 고르기, 아래는 날짜 두 개.
    달력을 매번 여는 게 일이라, 한 번 담아 둔 기간을 골라 쓰는 길을 위에 뒀다. */
@@ -147,7 +148,7 @@ tr.subrow td{padding:0 6px 11px}
 .rmex input{flex:none;width:92px;text-align:right;font-variant-numeric:tabular-nums}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
-.rmhd,.rmrate{display:grid;grid-template-columns:234px 108px 88px 88px 22px;gap:5px;align-items:center}
+.rmhd,.rmrate{display:grid;grid-template-columns:258px 108px 88px 88px 22px;gap:5px;align-items:center}
 /* 써차지(특별일 추가요금) 줄은 눈에 띄게 — 기본요금과 헷갈리면 값이 두 배로 나간다 */
 .rmrate.sur{background:#FFF6E6;border-radius:7px;padding:3px;margin:-3px}
 .rmrate.sur input[type=number]{border-color:var(--marigold)}
