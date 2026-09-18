@@ -298,6 +298,11 @@ tr.mainrow.offrow td:first-child{box-shadow:inset 3px 0 0 var(--marigold)}
 .picth b{position:absolute;top:0;right:0;background:rgba(20,20,20,.62);color:#fff;font-size:10px;font-weight:800;
   width:15px;height:15px;line-height:15px;text-align:center;cursor:pointer;border-radius:0 0 0 5px}
 .picth b:hover{background:var(--danger)}
+/* 노출 차례 단추(⤒ ▲ ▼) — 줄 오른쪽 끝 단추 묶음 맨 위에 한 줄로 */
+.mvbtns{display:flex;gap:3px;margin-bottom:4px}
+.mvbtns button{flex:1;padding:3px 0;font-size:12px;line-height:1.2;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--fairway-deep,#1F4D36);cursor:pointer}
+.mvbtns button:hover{background:#FFF3DA;border-color:#F0D39A}
+tr.mainrow.hotmove td{background:#FFF3C4}       /* 방금 옮긴 줄 */
 /* 끌어서 순서 바꾸기 — 끄는 사진은 흐리게, 놓일 자리는 주황 세로줄(왼쪽=앞, 오른쪽=뒤) */
 .picth{cursor:grab}
 .picth.dragging{opacity:.35}
@@ -1236,7 +1241,7 @@ async function saveSite(){
       else if(await saveSafe(PRICE_KEY,merged)){ P=merged; clearDirty('rates'); msg.push('요금'); }
       else ok=false;
     }
-    if(ok) hotRate=null;               // 저장이 끝나면 요금 줄의 노란 표시를 지운다
+    if(ok){ hotRate=null; hotItem=null; }   // 저장이 끝나면 요금 줄·옮긴 줄의 노란 표시를 지운다
     drawTabs();
     /* 저장이 막혔을 때 아무 말도 없으면 저장된 줄 안다 — 특히 요금만 실패했을 때 */
     if(ok) toast(msg.length?('✅ '+msg.join('·')+' 저장했습니다'):'저장할 변경이 없습니다');
@@ -2310,7 +2315,7 @@ function itemBodyHTML(k){
       grp='<tr class="grp"><td colspan="8">'+esc(last||'지역 없음')+' · '+cnt+u+'</td></tr>'; }
     const off=o.x.on===false?' offrow':'';   // 체크를 끈 줄은 위·아래 줄 모두 흐리게
     /* 체크를 풀면 손님 화면에서만 빠진다 — 자료(사진·문구)는 그대로 남는다 */
-    return grp+'<tr class="mainrow'+off+'">'
+    return grp+'<tr class="mainrow'+off+(o.x===hotItem?' hotmove':'')+'">'
       +'<td style="text-align:center"><input type="checkbox" data-p="'+esc(p)+'.on" data-bool="1" data-itemon="1"'
         +(o.x.on===false?'':' checked')+' title="끄면 손님 화면에서 감춰집니다"></td>'
       +'<td>'+inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')+'</td>'
@@ -2319,7 +2324,12 @@ function itemBodyHTML(k){
       +'<td>'+inp(p+'.'+bk,o.x[bk]||'',bp)+'</td>'
       +'<td>'+ta(p+'.d',o.x.d||'','','big')+'</td>'
       +'<td>'+picsTa(p,o.x)+'</td>'
-      +'<td><button class="cpy foldb" data-fold="'+o.i+'" type="button" title="아래 줄(포함·불포함·요금·바우처 주소) 펼치기/접기">'+(openSet(k).has(o.i)?'▾ 접기':'▸ 펼치기')+'</button>'
+      /* 손님 화면 노출 차례 — 손님 사이트는 지역 탭 안에서 이 표에 든 차례 그대로 카드를 보여 준다(사장님 2026-09-18 상위노출) */
+      +'<td><div class="mvbtns">'
+        +'<button type="button" data-mv="top" data-k="'+esc(k)+'" data-i="'+o.i+'" title="이 지역의 맨 위로 — 손님 화면에서 가장 먼저 나옵니다">⤒</button>'
+        +'<button type="button" data-mv="up" data-k="'+esc(k)+'" data-i="'+o.i+'" title="한 칸 위로">▲</button>'
+        +'<button type="button" data-mv="down" data-k="'+esc(k)+'" data-i="'+o.i+'" title="한 칸 아래로">▼</button></div>'
+      +'<button class="cpy foldb" data-fold="'+o.i+'" type="button" title="아래 줄(포함·불포함·요금·바우처 주소) 펼치기/접기">'+(openSet(k).has(o.i)?'▾ 접기':'▸ 펼치기')+'</button>'
         +'<button class="cpy" data-copy="'+esc(k)+'" data-i="'+o.i+'" '
         +'title="이 줄을 요금까지 그대로 베껴 바로 아래에 새로 만듭니다">복사</button>'
         +'<button class="del" data-del="'+esc(k==='courses'||k==='hotels'?k:'items.'+k)+'" data-i="'+o.i+'">삭제</button></td></tr>'
@@ -2407,6 +2417,7 @@ function subItems(k){
     '<div class="card"><h2>'+esc((cat.ic?cat.ic+' ':'')+(cat.t||k))+'</h2>'
     +'<p class="desc">손님 화면 1차 목록에 깔리는 카드입니다. 카드를 누르면 2차 상세가 열리고, '
     +'「사진」에 적은 것이 상세의 사진 여러 장으로 나옵니다. 요금·원가는 넣지 마세요 — 손님에게 그대로 보입니다.<br>'
+    +'<b>노출 차례</b> — 손님 화면에는 지역 안에서 <b>이 표의 차례대로</b> 나옵니다. 줄 오른쪽의 <b>⤒</b>(맨 위) <b>▲ ▼</b> 로 바꾸고 저장하세요.<br>'
     /* 소개 문구 강조 규칙(사장님 2026-09-17) — 손님 화면 noteLine()과 같다 */
     +'<span class="rhint">소개 문구 강조: 줄 맨 앞에 <b>!</b>를 붙이면 그 줄 전체가 진한 검은색(예: <b>!매주 월요일 휴장</b>), '
     +'<b>**글자**</b>처럼 별표 두 개로 감싸면 그 부분만 진하게(예: 주말&amp;휴일 <b>**11:00 이후 오후요금 적용**</b>). 「위치: …」처럼 쌍점 앞말은 자동으로 진하게.</span></p>'
@@ -2707,6 +2718,7 @@ function bindRowBtns(){
   p.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{
     copyItem(b.dataset.copy, Number(b.dataset.i));
   });
+  p.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>moveItem(b.dataset.k, Number(b.dataset.i), b.dataset.mv));
   p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
     const arr=getPath(S,b.dataset.del), i=Number(b.dataset.i);
     const what=(arr[i]&&(arr[i].n||arr[i].t||arr[i].b))||'이 줄';
@@ -2716,6 +2728,28 @@ function bindRowBtns(){
     const ik=itemKeyOfPath(b.dataset.del); if(ik){ openSet(ik).delete(i); shiftOpen(ik,i+1,-1); }
     markDirty('site'); drawTabs();
   });
+}
+/* ── 노출 차례 바꾸기(사장님 2026-09-18 「상위노출」) ──
+   손님 사이트는 지역 탭 안에서 배열에 든 차례 그대로 카드를 그린다 — 그래서 배열 자리를 옮기면 그게 곧 노출 차례다.
+   옮기는 범위는 **같은 지역 안**이다(손님도 지역별로 본다). how = 'top' 그 지역 맨 위 · 'up' 한 칸 위 · 'down' 한 칸 아래.
+   요금표(golf_pricing)는 이름으로 이어지므로 차례와 무관하다. 저장을 눌러야 손님 화면에 반영된다 */
+let hotItem=null;      // 방금 옮긴 줄 — 노랗게 칠해 어디로 갔는지 보이게
+function moveItem(k,i,how){
+  const arr=itemsArr(k), it=arr[i]; if(!it) return;
+  const reg=x=>String(x&&x.r||'').trim(), mine=reg(it);
+  let j=-1;
+  if(how==='up'){ for(let t=i-1;t>=0;t--) if(reg(arr[t])===mine){ j=t; break; } }
+  else if(how==='down'){ for(let t=i+1;t<arr.length;t++) if(reg(arr[t])===mine){ j=t; break; } }
+  else { for(let t=0;t<i;t++) if(reg(arr[t])===mine){ j=t; break; } }
+  if(j<0){ toast(how==='down'?'이미 이 지역의 맨 아래입니다':'이미 이 지역의 맨 위입니다'); return; }
+  /* 옛 번호를 새 차례로 늘어놓는다 — i를 빼서 j 자리에 끼우면 위로는 그 줄 앞, 아래로는 그 줄 뒤가 된다 */
+  const order=arr.map((_,n)=>n); order.splice(i,1); order.splice(j,0,i);
+  const open=openSet(k), next=new Set();
+  order.forEach((old,n)=>{ if(open.has(old)) next.add(n); });   // 펼침 기록도 새 번호로
+  iOpen[k]=next;
+  const moved=order.map(n=>arr[n]); arr.splice(0,arr.length,...moved);
+  hotItem=it; markDirty('site'); redrawItems(k);
+  const tr=document.querySelector('#iBody tr.hotmove'); if(tr) tr.scrollIntoView({block:'center'});
 }
 /* 펼침 기록(iOpen)의 줄 번호를 from 이상은 delta 만큼 민다 — 줄을 끼우거나 지울 때 */
 function shiftOpen(k,from,delta){
