@@ -113,6 +113,8 @@ tr.subrow td{padding:0 6px 11px}
 .rrow input,.rrow select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
 .rrow input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
+/* 방금 더했거나 마지막으로 손댄 요금 줄 — 정렬로 자리가 바뀌어도 찾기 쉽게 노랗게(사장님 2026-09-18) */
+.rrow.hot{background:#FFE9A8;border-radius:8px;box-shadow:0 0 0 4px #FFE9A8}
 .rtil{text-align:center;color:var(--muted);font-size:11px}
 .rdel{background:none;border:0;color:var(--danger);font-size:13px;font-weight:900;
   cursor:pointer;padding:2px}
@@ -1219,6 +1221,7 @@ async function saveSite(){
       else if(await saveSafe(PRICE_KEY,merged)){ P=merged; clearDirty('rates'); msg.push('요금'); }
       else ok=false;
     }
+    if(ok) hotRate=null;               // 저장이 끝나면 요금 줄의 노란 표시를 지운다
     drawTabs();
     /* 저장이 막혔을 때 아무 말도 없으면 저장된 줄 안다 — 특히 요금만 실패했을 때 */
     if(ok) toast(msg.length?('✅ '+msg.join('·')+' 저장했습니다'):'저장할 변경이 없습니다');
@@ -1668,6 +1671,8 @@ function ratePeriods(){
 const perKey=(f,t)=>(f||'')+'~'+(t||'');
 /* 마지막으로 쓴 기간 — 요금줄이 하나도 없는 골프장에 첫 줄을 더할 때 물려준다 */
 let lastPeriod={from:'',to:''};
+/* 방금 더했거나 마지막으로 고친 요금 줄(자료 그 자체를 가리킨다 — 저장되는 값에는 아무것도 안 붙는다) */
+let hotRate=null;
 function rememberPeriod(f,t){ if(f||t) lastPeriod={from:f||'',to:t||''}; }
 function periodSelHTML(r){
   /* 「기간 고르기」 칸은 화면에서 뺐다(사장님 2026-09-18) — 고를 게 없어 줄 높이만 차지했고, 줄 추가 때 앞 줄 기간을
@@ -1686,7 +1691,8 @@ function periodSelHTML(r){
 function rateRowHTML(k,idx,r){
   const n=v=>(v===''||v==null)?'':v;
   const sel=(cur,list)=>list.map(v=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
-  return '<div class="rrow" data-ri="'+idx+'">'
+  /* 방금 더했거나 마지막으로 손댄 줄은 노랗게 칠한다(hotRate) — 정렬로 자리가 바뀌어도 눈으로 따라갈 수 있게(사장님 2026-09-18) */
+  return '<div class="rrow'+(r===hotRate?' hot':'')+'" data-ri="'+idx+'">'
     +'<div class="rper">'+periodSelHTML(r)
       +'<div class="rdate">'
       +'<input type="date" data-rf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
@@ -1745,7 +1751,10 @@ function priceCell(k,x){
   if(Array.isArray(rates)&&rates.length>1){
     const P_ORD={'주중':0,'주말·휴일':1,'주말':1,'태국휴일':1}, T_ORD={'종일':0,'오전':1,'오후':2,'트와일라잇':3,'나이트':4};
     const d=v=>String(v||'')||'9999-99-99';
-    rates.sort((a,b)=>d(a.from).localeCompare(d(b.from))||d(a.to).localeCompare(d(b.to))
+    /* 요금(18홀·9홀)을 아직 안 넣은 줄은 맨 아래에 그대로 둔다(사장님 2026-09-18) — 「＋ 요금 줄 추가」 뒤 날짜만 찍었는데
+       줄이 제자리를 찾아 올라가 버려 요금을 어디에 넣을지 헷갈렸다. 요금을 넣고 칸에서 손을 떼면 그때 제자리로 간다 */
+    const noPrice=r=>(r.p18===''||r.p18==null)&&(r.p9===''||r.p9==null)?1:0;
+    rates.sort((a,b)=>(noPrice(a)-noPrice(b))||d(a.from).localeCompare(d(b.from))||d(a.to).localeCompare(d(b.to))
       ||((P_ORD[normPart(a.part)]||0)-(P_ORD[normPart(b.part)]||0))||((T_ORD[a.time]||0)-(T_ORD[b.time]||0)));
   }
   let body;
@@ -1807,7 +1816,8 @@ document.getElementById('pane').addEventListener('click',e=>{
     /* 기간은 물려받는다 — 같은 기간에 오전·오후를 잇달아 넣는 일이 많다.
        이 골프장에 줄이 하나도 없으면 방금 다른 골프장에서 쓴 기간을 가져온다. */
     const last=o.rates[o.rates.length-1]||lastPeriod;
-    o.rates.push({from:last.from||'',to:last.to||'',part:normPart(last.part),time:'종일',p18:'',p9:''});
+    hotRate={from:last.from||'',to:last.to||'',part:normPart(last.part),time:'종일',p18:'',p9:''};
+    o.rates.push(hotRate);
   }else{
     const row=e.target.closest('.rrow'); if(!row) return;
     o.rates.splice(Number(row.dataset.ri),1);
@@ -1830,7 +1840,12 @@ document.getElementById('pane').addEventListener('input',e=>{
     else rememberPeriod(r.from,r.to);
   }
   /* 정렬 기준(기간·구분·시간)이 바뀌었다 — 입력 중에 줄이 튀지 않게, 이 요금 칸에서 손을 뗄 때(아래 focusout) 다시 세운다(사장님 2026-09-18) */
-  if(!isMenuKind(k)&&(f==='from'||f==='to'||f==='part'||f==='time')) cell.dataset.resort='1';
+  /* 요금(18홀·9홀)도 포함 — 요금이 빈 줄은 맨 아래에 있다가 요금이 들어오면 제자리로 가야 한다 */
+  if(!isMenuKind(k)){
+    cell.dataset.resort='1';
+    /* 지금 고치는 줄로 노란 표시를 옮긴다 — 손 떼고 줄이 움직여도 어느 줄이었는지 보인다 */
+    if(hotRate!==r){ hotRate=r; cell.querySelectorAll('.rrow.hot').forEach(x=>x.classList.remove('hot')); row.classList.add('hot'); }
+  }
   markDirty('rates');
 });
 /* 요금 칸 밖으로 초점이 나가면(다른 칸을 누르거나 빈 곳을 누르면) 기간·주중/주말·시간 차례로 줄을 다시 세운다.
@@ -1840,6 +1855,9 @@ document.getElementById('pane').addEventListener('focusout',e=>{
   if(!cell||!cell.dataset.resort) return;
   const to=e.relatedTarget;
   if(to&&cell.contains(to)) return;
+  /* 달력 팝업이 뜨거나 다른 창으로 넘어가 «창 자체»가 초점을 잃은 것이면 세우지 않는다 — 달력이 닫히거나 입력이 끊긴다.
+     표시는 남겨 두므로 다음에 진짜로 칸 밖을 누를 때 세워진다 */
+  if(!document.hasFocus()) return;
   delete cell.dataset.resort;
   redrawRateCell(cell);
 });
