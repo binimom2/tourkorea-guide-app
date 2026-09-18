@@ -1766,7 +1766,7 @@ async function openQuoteHistory(){
   const list=await loadQuoteRecords();
   if(list===null){ box.innerHTML='<div style="padding:18px;color:#c0492f">견적 이력을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</div>'; return; }
   if(!list.length){ box.innerHTML='<div style="padding:18px;color:#5E6F66">아직 보관된 견적이 없습니다.<br><span style="font-size:12px">'
-    +(GROLE==='agency'?'「견적서 보기」를 누르면 그때 금액이 자동으로 이 보관함에 담깁니다.':'견적서를 내려받으면 그때 금액이 자동으로 보관됩니다.')+'</span></div>'; return; }
+    +(GROLE==='agency'?'「견적서 보기」 창에서 「💾 저장하기」를 누르면 견적서가 내려받아지고 이 보관함에도 담깁니다.':'견적서를 내려받으면 그때 금액이 자동으로 보관됩니다.')+'</span></div>'; return; }
   QH_LIST=list;
   box.innerHTML=`
     <div style="padding:10px 12px;border-bottom:1px solid #e7e3d8;">
@@ -1854,7 +1854,9 @@ function showNotice(msg){
   n.querySelector('#ntOk').focus();
 }
 /* 견적서 미리보기 창 — 그림을 화면에 보여 주고, 원하면 「다운로드」로 파일을 받는다 */
-function showQuotePreview(url,name){
+/* saveQ — 여행사가 방금 낸 견적(아직 보관함에 안 담긴 것). 주면 단추가 「💾 저장하기」가 되어 **내려받기와 보관함 담기를 한 번에** 한다
+   (사장님 2026-09-18: 보기만 한 견적까지 쌓이지 않게, 저장을 누른 것만 담는다). 안 주면 전처럼 「⬇ 다운로드」만 */
+function showQuotePreview(url,name,saveQ){
   let m=$('#qvModal');
   if(!m){
     m=document.createElement('div'); m.id='qvModal'; m.hidden=true;
@@ -1874,9 +1876,19 @@ function showQuotePreview(url,name){
   }
   document.body.classList.add('qv-open');
   m.querySelector('#qvImg').src=url;
-  m.querySelector('#qvDl').onclick=()=>{
+  const dl=m.querySelector('#qvDl');
+  dl.disabled=false;
+  dl.textContent=saveQ?'💾 저장하기':'⬇ 다운로드';
+  dl.title=saveQ?'견적서 그림을 내려받고, 「내 견적 보관함」에도 담습니다':'';
+  dl.onclick=async()=>{
     const a=document.createElement('a'); a.href=url; a.download=name;
     document.body.appendChild(a); a.click(); a.remove();
+    if(!saveQ) return;
+    dl.disabled=true; dl.textContent='담는 중…';
+    const ok=await saveQuoteRecord(saveQ);
+    dl.disabled=false;
+    if(ok){ dl.textContent='✅ 보관함에 담았습니다'; }
+    else{ dl.textContent='💾 저장하기'; alert('견적서는 내려받았지만 「내 견적 보관함」에 담지 못했습니다.\n인터넷 연결을 확인하고 「저장하기」를 다시 눌러 주세요.'); }
   };
   m.hidden=false;
   m.querySelector('.qv-body').scrollTop=0;
@@ -1914,13 +1926,13 @@ async function downloadQuote(mode){
     if(mode==='internal'){
       const a=document.createElement('a'); a.href=url; a.download=name;
       document.body.appendChild(a); a.click(); a.remove();
-    } else showQuotePreview(url,name);
+    } else showQuotePreview(url,name,GROLE==='agency'?Q:null);   // 여행사는 미리보기 창의 「저장하기」에서 보관함에 담는다
     // 보관 실패해도 견적서는 이미 만들어졌으므로 알리기만 한다
     if(GUEST){
       /* 로그인 없는 손님 모드: 서버에 쓸 권한이 없어 남기지 않는다 — 받은 견적서 그림만 보관한다. */
     } else if(GROLE==='agency'){
-      /* 여행사: 그 여행사의 「내 견적 보관함」에 담는다(서버 함수 경유, 사장님 2026-09-18). 직원 「견적 이력」과는 따로다 */
-      if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 「내 견적 보관함」에 담지 못했습니다.\n견적서 그림을 꼭 저장해 두세요.');
+      /* 여행사: 여기서 자동으로 담지 않는다 — 미리보기 창의 「💾 저장하기」를 누르면 내려받기와 「내 견적 보관함」 담기가
+         같이 된다(위 showQuotePreview의 saveQ, 사장님 2026-09-18). 보기만 한 견적이 쌓이지 않게. 직원 「견적 이력」과는 따로다 */
     } else if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 견적 보관에 실패했습니다.\n나중에 「견적 이력」에서 찾을 수 없으니 파일을 꼭 보관해 주세요.');
   }catch(e){
     alert('견적서를 만들지 못했습니다. 인터넷 연결을 확인하고 다시 눌러주세요.');
