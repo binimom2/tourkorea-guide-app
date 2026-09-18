@@ -1617,7 +1617,8 @@ function incExcDef(k){
 /* 태국휴일은 주말과 요금이 같다(사장님 확인) — 그래서 칸을 하나로 묶었다.
    견적에서 날짜를 볼 때 토·일과 태국휴일을 똑같이 「주말·휴일」로 친다. */
 const RATE_PARTS=['주중','주말·휴일'];
-const RATE_TIMES=['종일','오전','오후'];
+/* 트와일라잇·나이트(사장님 2026-09-18)는 넣어 두기만 한다 — 손님 최저가·견적 계산은 종일·오전·오후만 본다(나이트 값이 최저가로 잡히면 안 되므로) */
+const RATE_TIMES=['종일','오전','오후','트와일라잇','나이트'];
 /* 예전에 「주말」·「태국휴일」로 따로 적힌 것이 있으면 묶어서 보여 준다 */
 function normPart(v){ return (v==='주말'||v==='태국휴일'||v==='주말·휴일')?'주말·휴일':'주중'; }
 /* 이 항목의 요금 줄들을 꺼내 온다. 없으면 빈 배열을 만들어 둔다. */
@@ -1739,7 +1740,7 @@ function priceCell(k,x){
   /* 요금 줄은 기간 차례로 세운다(사장님 2026-09-17) — 시작일 → 끝일 → 주중/주말 → 종일/오전/오후.
      배열 자체를 정렬해 저장 순서도 같아진다(계산은 순서와 무관). 칸을 다시 그릴 때만 정렬하므로 입력 중에 줄이 튀지 않는다 */
   if(Array.isArray(rates)&&rates.length>1){
-    const P_ORD={'주중':0,'주말·휴일':1,'주말':1,'태국휴일':1}, T_ORD={'종일':0,'오전':1,'오후':2};
+    const P_ORD={'주중':0,'주말·휴일':1,'주말':1,'태국휴일':1}, T_ORD={'종일':0,'오전':1,'오후':2,'트와일라잇':3,'나이트':4};
     const d=v=>String(v||'')||'9999-99-99';
     rates.sort((a,b)=>d(a.from).localeCompare(d(b.from))||d(a.to).localeCompare(d(b.to))
       ||((P_ORD[normPart(a.part)]||0)-(P_ORD[normPart(b.part)]||0))||((T_ORD[a.time]||0)-(T_ORD[b.time]||0)));
@@ -1825,7 +1826,19 @@ document.getElementById('pane').addEventListener('input',e=>{
     if(isMenuKind(k)){ const dbox=e.target.closest('.rdate'); if(dbox) dbox.classList.toggle('mprom',!!(r.from||r.to)); }
     else rememberPeriod(r.from,r.to);
   }
+  /* 정렬 기준(기간·구분·시간)이 바뀌었다 — 입력 중에 줄이 튀지 않게, 이 요금 칸에서 손을 뗄 때(아래 focusout) 다시 세운다(사장님 2026-09-18) */
+  if(!isMenuKind(k)&&(f==='from'||f==='to'||f==='part'||f==='time')) cell.dataset.resort='1';
   markDirty('rates');
+});
+/* 요금 칸 밖으로 초점이 나가면(다른 칸을 누르거나 빈 곳을 누르면) 기간·주중/주말·시간 차례로 줄을 다시 세운다.
+   칸 안에서 옮겨 다니는 동안은 안 세운다 — 세우면 칸이 새로 그려져 누른 칸의 초점이 날아간다 */
+document.getElementById('pane').addEventListener('focusout',e=>{
+  const cell=e.target&&e.target.closest&&e.target.closest('.pcell');
+  if(!cell||!cell.dataset.resort) return;
+  const to=e.relatedTarget;
+  if(to&&cell.contains(to)) return;
+  delete cell.dataset.resort;
+  redrawRateCell(cell);
 });
 /* 「기간 고르기」 드롭다운 — 고르면 그 줄의 시작·끝 날짜가 한 번에 채워진다 */
 document.getElementById('pane').addEventListener('change',e=>{

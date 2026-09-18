@@ -83,6 +83,8 @@ const posNum = (v) => { const n = +v; return Number.isFinite(n) && n > 0 ? n : n
 const partOf = (v) => (v === '주말' || v === '태국휴일' || v === '주말·휴일') ? 'we' : 'wd';
 /* 기간을 비워 둔 줄은 «언제나»로 본다 — 한 해 내내 같은 값인 곳이 있다 */
 const rateCovers = (r, date) => (blank(r.from) || date >= r.from) && (blank(r.to) || date <= r.to);
+/* 트와일라잇·나이트 줄(2026-09-18)은 손님 최저가·날짜 요금에서 뺀다 — 손님이 시간을 안 고르는데 나이트 값이 «~»로 잡히면 안 된다 */
+const dayTime = (r) => blank(r.time) || r.time === '종일' || r.time === '오전' || r.time === '오후';
 function rateUnits(r, c) {
   const m = pickMargin(r.margin, c && c.margin);
   const p18 = posNum(r.p18), p9 = posNum(r.p9);
@@ -181,7 +183,7 @@ export async function onRequestGet({ env }) {
         if (u.u18 != null && (lo18 == null || u.u18 < lo18)) lo18 = u.u18;
         if (u.u9 != null && (lo9 == null || u.u9 < lo9)) lo9 = u.u9;
       };
-      if (Array.isArray(c.rates)) take(lowestOf(c.rates, c));
+      if (Array.isArray(c.rates)) take(lowestOf(c.rates.filter(dayTime), c));
       if (lo18 == null && lo9 == null) return;   // 요금이 하나도 없는 골프장은 값을 안 내보낸다
       /* 밧도 같이 내려보낸다(사장님 지시) — 카드에 「94,700원~ (฿2,150~)」로 붙는다.
          내려보내는 밧은 **손님가**(합산가+마진)다. 그린피·캐디·카트 내역은 여전히 안 보낸다. */
@@ -335,7 +337,7 @@ export async function onRequestPost({ request, env }) {
   const rates = Array.isArray(course.rates) ? course.rates : [];
   if (rates.length) {
     const want = we ? 'we' : 'wd';
-    const hit = rates.filter((r) => rateCovers(r, date) && partOf(r.part) === want);
+    const hit = rates.filter((r) => dayTime(r) && rateCovers(r, date) && partOf(r.part) === want);
     if (hit.length) {
       u = lowestOf(hit, course);
       const r0 = hit[0];

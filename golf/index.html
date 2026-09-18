@@ -502,7 +502,9 @@ const rateCovers=(r,date)=>(blank(r.from)||date>=r.from)&&(blank(r.to)||date<=r.
 const margin9=m=>Math.round(m/2);
 /* 새 요금줄 → 시즌줄. 같은 기간의 주중·주말 줄을 한 시즌으로 묶고, 오전·오후가 갈리면 싼 값 */
 function ratesToSeasons(c){
-  const rates=(Array.isArray(c.rates)?c.rates:[]).filter(r=>r&&(posNum(r.p18)||posNum(r.p9)));
+  /* 트와일라잇·나이트 줄(2026-09-18)은 견적에 안 쓴다 — 시간을 안 고르는 견적에 나이트 값이 섞이면 안 된다. 종일·오전·오후만 */
+  const dayTime=r=>blank(r.time)||r.time==='종일'||r.time==='오전'||r.time==='오후';
+  const rates=(Array.isArray(c.rates)?c.rates:[]).filter(r=>r&&dayTime(r)&&(posNum(r.p18)||posNum(r.p9)));
   const g={}, order=[];
   rates.forEach(r=>{
     const k=(r.from||'')+'|'+(r.to||'');
