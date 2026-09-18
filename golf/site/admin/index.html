@@ -1670,6 +1670,9 @@ const perKey=(f,t)=>(f||'')+'~'+(t||'');
 let lastPeriod={from:'',to:''};
 function rememberPeriod(f,t){ if(f||t) lastPeriod={from:f||'',to:t||''}; }
 function periodSelHTML(r){
+  /* 「기간 고르기」 칸은 화면에서 뺐다(사장님 2026-09-18) — 고를 게 없어 줄 높이만 차지했고, 줄 추가 때 앞 줄 기간을
+     물려받고 복사 기능도 있어 필요 없다. 골프장 요금 줄·호텔 객실 요금 줄 둘 다 빠진다. 담아 둔 기간 목록(ratePeriods)은 그대로 둔다 */
+  return '';
   const list=ratePeriods(), cur=perKey(r.from,r.to);
   return '<select data-rper="1" title="자주 쓰는 기간에서 고르기 — 달력을 안 눌러도 됩니다">'
     +'<option value="">기간 고르기…</option>'
