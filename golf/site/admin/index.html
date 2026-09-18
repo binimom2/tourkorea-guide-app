@@ -624,6 +624,15 @@ function clearDirty(k){
 document.getElementById('pane').addEventListener('focusin',e=>{
   const el=e.target; if(el&&el.dataset&&el.dataset.pname) el.dataset.prev=el.value;
 });
+/* 글 칸(소개 문구·포함·불포함…)은 눌러 들어가면 내용 길이만큼 저절로 늘어난다(사장님 2026-09-18) — 전에는 매번 모서리를
+   끌어서 늘린 뒤 작업했다. 칸을 벗어나도 줄이지 않는다 — 줄이면 아래 칸들이 위로 튀어 방금 누른 단추를 빗나간다.
+   표를 다시 그리면(찾기·저장 등) 원래 높이로 돌아가 목록은 계속 짧게 유지된다. 사진 주소 칸은 제외 */
+function growTa(el){
+  if(!el||el.tagName!=='TEXTAREA'||!el.dataset||!el.dataset.p||el.closest('.picbox')) return;
+  if(el.scrollHeight>el.clientHeight+2) el.style.height=(el.scrollHeight+6)+'px';
+}
+document.getElementById('pane').addEventListener('focusin',e=>growTa(e.target));
+document.getElementById('pane').addEventListener('input',e=>growTa(e.target));
 /* 요금표(golf_pricing)는 이름으로 이어진다. 이름을 고치면 옛 이름 자리의 요금이 못 찾아져 「요금이 사라진」 것처럼 보였다
    (복사 뒤 풀네임으로 고칠 때, 사장님 2026-09-17). 그래서 이름이 바뀌면 요금표 자리의 이름도 같이 바꾼다.
    새 이름 자리에 이미 요금이 들어 있으면 그쪽을 살리고(합치지 않는다) 옛 자리는 그대로 둔다. */
