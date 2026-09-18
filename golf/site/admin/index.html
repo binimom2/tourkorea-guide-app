@@ -573,7 +573,14 @@ document.getElementById('pane').addEventListener('input',e=>{
        — 62줄을 다시 그리면 보고 있던 자리가 위로 튄다 */
     if(el.dataset.itemon) refreshItemOn(el);
   }else if(el.dataset.pname){          // 이름칸 — 요금표와 이어지는 기준이라 따로 표시하지 않는다
+    /* 예전 이름은 글자를 고치기 «전» S에 든 값으로 잡는다 — focusin에만 맡기면 복사 직후처럼
+       프로그램이 커서를 넣어 준 경우(창이 아직 초점을 못 받아 focusin이 안 뜸)에 예전 이름이 비어
+       요금표 자리가 안 따라가 요금이 사라졌다(사장님 2026-09-18). 글자마다 요금표 자리 이름도 같이 옮겨
+       두면 칸을 벗어나기 전에 Ctrl+S를 눌러도 요금이 새 이름을 따라간다. */
+    if(el.dataset.prev===undefined) el.dataset.prev=String(getPath(S,p)||'');
     setPath(S,p,el.value);             // (다 치고 칸을 벗어날 때 요금 칸만 새로 그린다)
+    const cntEl=document.getElementById('iCnt');
+    if(cntEl&&el.dataset.prev!==el.value&&renamePriceHome(cntEl.dataset.k,el.dataset.prev,el.value)) el.dataset.prev=el.value;
   }else if(el.dataset.list){           // 지역 차례처럼 「·」로 이어 적고 목록으로 저장하는 칸
     setPath(S,p,el.value.split(/[·,]/).map(s=>s.trim()).filter(Boolean));
   }else if(el.dataset.pics){           // 사진칸 — 첫 줄이 대표(img), 나머지가 imgs
@@ -1897,7 +1904,8 @@ function copyItem(k,i){
   drawTabs();
   /* 새로 생긴 줄의 이름칸으로 데려다 준다 */
   const el=document.querySelector('[data-p="'+itemsPath(k,i+1)+'.n"]');
-  if(el){ el.scrollIntoView({block:'center'}); el.focus(); }
+  /* prompt 창이 닫힌 직후라 창이 초점을 못 받아 focusin이 안 뜰 수 있다 — 예전 이름을 여기서 직접 적어 둔다 */
+  if(el){ el.scrollIntoView({block:'center'}); el.focus(); el.dataset.prev=el.value; }
   /* 요금이 몇 줄 따라왔는지 꼭 말해 준다 — 안 따라온 것을 모르고 넘어가면 안 된다 */
   const got=nRate?('요금 '+nRate+'줄 포함'):nSeason?('옛 요금표 '+nSeason+'줄 포함')
     :(home?'※ 원본에 요금이 없어 요금은 안 따라왔습니다':'※ 원본이 요금표에 없어 요금은 안 따라왔습니다');
