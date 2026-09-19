@@ -528,6 +528,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-agefld label{flex:1;display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700;color:var(--muted)}
 .qp-agefld input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;
   font-size:13px;background:#fff;color:inherit}
+.qp-agefld label{flex:0 0 118px}
+.qp-ageout{flex:1;align-self:flex-end;padding-bottom:7px;font-size:12px;font-weight:700;color:var(--ink,#222);line-height:1.35}
+.qp-ageout em.bad{font-style:normal;color:#C0492F;font-weight:800}
 .qp-agefld .age{flex:0 0 74px}
 .qp-agefld .age input{text-align:right}
 .qp-agefld input:focus{outline:none;border-color:var(--fairway)}
@@ -932,7 +935,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
                 </div>
               </div>
               <div class="qp-occrow">
-                <span>아동<i>12세 이하</i></span>
+                <span>아동<i>만 11세까지</i></span>
                 <div class="qp-pax">
                   <button type="button" id="qpCMinus" aria-label="아동 줄이기">−</button>
                   <span id="qpChildN">0명</span>
@@ -2206,7 +2209,7 @@ function drawRoomsBtn(){
 function openOcc(){ $("#qpOcc").hidden = false; }
 function closeOcc(){ $("#qpOcc").hidden = true; }
 
-const CHILD_MAX_AGE = 12;      // 아동은 12세까지다(사장님) — 위·아래 화살표도 여기서 멈춘다
+const CHILD_MAX_AGE = 11;      // 아동은 만 11세까지다(12세 미만 · 사장님 2026-09-19) — 위·아래 화살표도 여기서 멈춘다
 /* 투숙 끝나는 날 기준 만나이 — 타사도 「투숙 종료일 기준」으로 센다 */
 function ageOn(b8, on){
   const y = +b8.slice(0, 4), m = +b8.slice(4, 6), d = +b8.slice(6, 8), t = dparse(on);
@@ -2224,37 +2227,54 @@ function drawAges(){
   const box = $("#qpAges");
   if(!qpChild){ box.innerHTML = ""; return; }
   box.innerHTML =
-    '<div class="qp-agenote">아동 나이는 <b>투숙 종료일 기준 만나이</b>입니다. '
-    + '생년월일(여권 기준)을 적으시면 나이가 저절로 셈해집니다.</div>'
+    '<div class="qp-agenote">아동은 <b>만 11세까지(12세 미만)</b>입니다 — 만 12세부터는 성인으로 선택해 주세요. '
+    + '<b>생년월일(여권 기준)</b> 여덟 자리를 적어 주세요 — 나이는 투숙 종료일 기준 만나이로 저절로 셈해집니다.</div>'
+    /* 나이를 손으로 적는 칸은 없앴다(사장님 2026-09-19 「어린이 생년월일 2020년 10월 6일 이렇게 받아야 합니다」) —
+       생년월일만 받고, 그 옆에 「2020년 10월 6일 · 만 5세」로 되읽어 드린다. */
     + qpAges.map((v, i) =>
       '<div class="qp-agerow"><b>아동 ' + (i + 1) + '</b><div class="qp-agefld">'
-      + '<label class="age">나이<input type="number" min="0" max="' + CHILD_MAX_AGE + '"'
-      + ' inputmode="numeric" placeholder="세" data-age="' + i + '"'
-      + ' value="' + (v === "" || v == null ? "" : esc(String(v))) + '"></label>'
-      + '<label>생년월일<input type="text" inputmode="numeric" maxlength="8" placeholder="20001201"'
+      + '<label>생년월일<input type="text" inputmode="numeric" maxlength="8" placeholder="예: 20201006"'
       + ' data-birth="' + i + '" value="' + esc(qpBirth[i] || "") + '"></label>'
+      + '<span class="qp-ageout" data-ageout="' + i + '">' + birthEcho(i) + '</span>'
       + '</div></div>').join("");
-  /* 아동은 12세까지다(사장님) — 넘겨 적으면 칸에 보이는 숫자까지 12로 되돌린다 */
-  box.querySelectorAll("[data-age]").forEach(el => el.oninput = () => {
-    const i = Number(el.dataset.age), v = el.value.trim();
-    if(v === ""){ qpAges[i] = ""; return; }
-    const n = Math.max(0, Math.min(CHILD_MAX_AGE, Number(v)));
-    qpAges[i] = n;
-    if(String(n) !== v) el.value = n;
-  });
-  /* 생년월일 여덟 자리가 다 채워지면 나이 칸을 대신 채워 준다 */
   box.querySelectorAll("[data-birth]").forEach(el => el.oninput = () => {
     const i = Number(el.dataset.birth);
     const v = el.value.replace(/\D/g, "").slice(0, 8);
     if(v !== el.value) el.value = v;
     qpBirth[i] = v;
-    if(v.length !== 8) return;
-    const a = ageOn(v, ageBaseDate());
-    if(a < 0 || a > 120) return;                       // 잘못 적은 날짜는 그냥 둔다
-    qpAges[i] = Math.min(CHILD_MAX_AGE, a);
-    const ageEl = box.querySelector('[data-age="' + i + '"]');
-    if(ageEl) ageEl.value = qpAges[i];
+    syncAges();
+    const out = box.querySelector('[data-ageout="' + i + '"]');
+    if(out) out.innerHTML = birthEcho(i);
+    /* 만 12세부터는 아동 요금이 안 된다(사장님 2026-09-19) — 성인으로 선택하시라고 알린다 */
+    const a = birthOk(v) ? ageOn(v, ageBaseDate()) : null;
+    qpTell(a != null && a > CHILD_MAX_AGE
+      ? "생년월일로 보면 <b>만 " + a + "세</b>입니다. 만 " + (CHILD_MAX_AGE + 1) + "세부터는 <b>성인</b>으로 선택해 주세요." : "");
   });
+}
+/* 여덟 자리 생년월일이 «있는 날짜»인가 — 20201306·20200231·내일 이후는 안 받는다 */
+function birthOk(b8){
+  if(!/^\d{8}$/.test(String(b8 || ""))) return false;
+  const y = +b8.slice(0, 4), m = +b8.slice(4, 6), d = +b8.slice(6, 8);
+  const t = new Date(y, m - 1, d);
+  return y >= 1900 && t.getFullYear() === y && t.getMonth() === m - 1 && t.getDate() === d && t <= new Date();
+}
+/* 생년월일 → 만나이(투숙 종료일 기준). 날짜(체크인·박수)가 바뀌면 나이도 달라질 수 있어 셈할 때마다 다시 맞춘다.
+   아동 나이를 넘거나 잘못 적은 날짜는 빈 칸("")으로 둔다 — 담기 전에 다시 묻는다. */
+function syncAges(){
+  for(let i = 0; i < qpChild; i++){
+    const b = qpBirth[i] || "";
+    const a = birthOk(b) ? ageOn(b, ageBaseDate()) : null;
+    qpAges[i] = (a != null && a >= 0 && a <= CHILD_MAX_AGE) ? a : "";
+  }
+}
+const birthLabel = b8 => +b8.slice(0, 4) + "년 " + +b8.slice(4, 6) + "월 " + +b8.slice(6, 8) + "일";
+/* 생년월일 칸 옆의 되읽기 — 「2020년 10월 6일 · 만 5세」 */
+function birthEcho(i){
+  const b = qpBirth[i] || "";
+  if(b.length < 8) return "";
+  if(!birthOk(b)) return '<em class="bad">날짜를 다시 확인해 주세요</em>';
+  const a = ageOn(b, ageBaseDate());
+  return esc(birthLabel(b)) + " · <b>만 " + a + "세</b>" + (a > CHILD_MAX_AGE ? ' <em class="bad">성인 요금</em>' : "");
 }
 function syncPax(){ if(qpKind === "hotels") qpPax = qpAdult + qpChild; }
 /* 골프장 인원 — 고치시면 «골프장 인원»으로 따로 기억해 둔다(호텔 인원과 섞이지 않게) */
@@ -2287,8 +2307,14 @@ function paxLabel(){
   if(qpKind !== "hotels") return qpPax + cntUnit(qpKind);   // 차량은 「2대」
   let s = "성인 " + qpAdult + "명";
   if(qpChild){
-    const ages = qpAges.filter(v => v !== "" && v != null).map(v => v + "세");
-    s += " · 아동 " + qpChild + "명" + (ages.length ? "(" + ages.join("·") + ")" : "");
+    /* 생년월일과 만나이를 같이 적는다 — 「아동 2명(2020.10.06 만5세 · 2018.03.02 만8세)」. 예약요청에 그대로 실려 직원이 본다 */
+    const ages = [];
+    for(let i = 0; i < qpChild; i++){
+      const b = qpBirth[i] || "", v = qpAges[i];
+      if(v === "" || v == null) continue;
+      ages.push((birthOk(b) ? b.slice(0, 4) + "." + b.slice(4, 6) + "." + b.slice(6, 8) + " " : "") + "만" + v + "세");
+    }
+    s += " · 아동 " + qpChild + "명" + (ages.length ? "(" + ages.join(" · ") + ")" : "");
   }
   return s;
 }
@@ -2311,6 +2337,11 @@ function extraSum(){
 function fxNote(){ return ""; }
 async function qpCalc(){
   if(!qpItem) return;
+  /* 날짜·박수가 바뀌면 투숙 종료일 기준 만나이도 달라질 수 있다 — 생년월일로 다시 맞추고 되읽기도 고친다 */
+  if(qpKind === "hotels" && qpChild){
+    syncAges();
+    document.querySelectorAll("#qpAges [data-ageout]").forEach(el => { el.innerHTML = birthEcho(Number(el.dataset.ageout)); });
+  }
   const p = priceOf(qpItem, qpKind);
   const date = $("#qpDate").value;
   if(!p){
@@ -2742,6 +2773,7 @@ function cartItem(){
     nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
+    births: isH ? qpBirth.slice(0, qpChild).filter(birthOk) : [],   // 아동 생년월일(여덟 자리) — 예약요청에 같이 실린다
     krw:  (qpResult && qpResult.krw)  || 0,
     baht: (qpResult && qpResult.baht) || 0,
     asked: !!(qpResult && qpResult.asked),
@@ -2754,6 +2786,19 @@ function addToCart(){
   if(!dCur) return;
   if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
   if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 선택해 주세요.");
+  /* 아동이 있으면 나이를 꼭 받는다(사장님 2026-09-19) — 아동 요금(엑스트라 아동·아동 조식)은 만 11세까지(12세 미만)만 적용된다 */
+  if(qpKind === "hotels" && qpChild){
+    syncAges();
+    const bad = qpAges.slice(0, qpChild).findIndex(v => v === "" || v == null);
+    if(bad >= 0){
+      openOcc();
+      const el = $("#qpAges").querySelector('[data-birth="' + bad + '"]'); if(el) el.focus();
+      const b = qpBirth[bad] || "";
+      return qpTell(birthOk(b)
+        ? "아동 " + (bad + 1) + "은(는) 만 " + ageOn(b, ageBaseDate()) + "세입니다. 만 " + (CHILD_MAX_AGE + 1) + "세부터는 <b>성인</b>으로 선택해 주세요."
+        : "<b>아동 생년월일</b>을 적어 주세요(예: 20201006). 아동 요금은 만 11세까지(12세 미만) 적용됩니다.");
+    }
+  }
   /* 스파·티켓… 은 메뉴 요금이 있는 곳이면 메뉴를 골라야 담긴다(요금 없는 곳은 「문의」로 담긴다) */
   { const mp = isMenuKind(qpKind) ? priceOf(dCur, qpKind) : null;
     if(mp && (mp.menu || []).length && qpMenu < 0) return qpTell("<b>메뉴</b>를 선택해 주세요."); }

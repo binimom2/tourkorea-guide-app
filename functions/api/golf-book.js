@@ -263,6 +263,8 @@ function cleanItem(x) {
     adult:   num(x.adult),
     child:   num(x.child),
     ages:    Array.isArray(x.ages) ? x.ages.slice(0, 10).map(num) : [],
+    /* 아동 생년월일(여덟 자리, 2026-09-19) — 아동 요금은 만 11세까지라 호텔에 생년월일로 확인해 줘야 한다 */
+    births:  Array.isArray(x.births) ? x.births.slice(0, 10).map((b) => s(b, 8)).filter((b) => /^\d{8}$/.test(b)) : [],
     krw:     num(x.krw),             // 손님 화면에 보이던 합계(원)
     baht:    num(x.baht),
     label:   s(x.label, 200),        // 「2026-09-17 · 4명 · 18홀」

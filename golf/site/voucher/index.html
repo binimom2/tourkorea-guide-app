@@ -87,7 +87,11 @@ function itemHtml(v, it, i){
     if(ven.bed) rows.push(["Bed Type (침대 타입)", ven.bed]);
     rows.push(["Room(s) (객실 수)", (it.rooms || 1) + " Room(s)"]);
     rows.push(["Adult (성인)", "Total " + (it.adult || it.pax || 0)]);
-    if(it.child) rows.push(["Child (아동)", "Total " + it.child + ((it.ages || []).length ? " (" + it.ages.map(a => a + "세").join(", ") + ")" : "")]);
+    /* 아동은 생년월일도 같이 적는다(2026-09-19) — 호텔이 아동 요금(만 11세까지)을 생년월일로 확인한다 */
+    if(it.child) rows.push(["Child (아동)", "Total " + it.child + ((it.ages || []).length ? " (" + it.ages.map((a, k) => {
+      const b = (it.births || [])[k] || "";
+      return (b.length === 8 ? b.slice(0, 4) + "-" + b.slice(4, 6) + "-" + b.slice(6, 8) + " · " : "") + a + "세";
+    }).join(", ") + ")" : "")]);
     rows.push(["Meal Plan (식사)", ven.bf === true ? "Breakfast Included" : ven.bf === false ? "Room Only" : "-"]);
   } else if(it.kind === "courses"){
     rows.push(["Tee Date (라운드 날짜)", date]);
