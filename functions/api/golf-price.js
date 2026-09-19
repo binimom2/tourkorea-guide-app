@@ -63,8 +63,13 @@ const isWeekendDate = (ds) => [0, 6].includes(new Date(ds + 'T00:00:00Z').getUTC
    그래서 «9홀당 50밧»으로 두면 셈이 저절로 맞는다:
      27홀 = 18홀(100) + 9홀(50) = 150 · 36홀 = 18홀 × 2 = 200.
    요금표에 마진을 따로 적어 둔 골프장은 그 값이 18홀 기준이 되고, 9홀은 그 절반이 된다. */
-const DEFAULT_MARGIN = 100;
-const marginOf = (v) => (Number.isFinite(+v) && +v >= 0 ? +v : DEFAULT_MARGIN);
+/* ★ 2026-09-19 사장님: 「모든 호텔·골프 +100밧 → +200밧」. 골프장(18홀)·호텔(1실 1박)의 기본 마진을 200으로 올렸다.
+     18홀 +200 · 9홀 +100 · 27홀 +300 · 36홀 +400 · 호텔 1실 1박 +200.
+   스파·티켓·차량 같은 메뉴 요금은 말씀이 없어 예전 그대로 100이다(MENU_MARGIN).
+   요금표에 마진을 따로 적어 둔 곳(margin 칸)은 여전히 그 값이 우선한다. */
+const DEFAULT_MARGIN = 200;
+const MENU_MARGIN = 100;
+const marginOf = (v, d) => (Number.isFinite(+v) && +v >= 0 && !blank(v) ? +v : (d == null ? DEFAULT_MARGIN : d));
 const margin9Of = (m) => Math.round(m / 2);
 
 /* 옛 시즌줄(seasons[], 엑셀 요금표)은 2026-09-11부터 읽지 않는다 — 새 요금줄(rates[])만 본다(사장님) */
@@ -305,7 +310,7 @@ export async function onRequestGet({ env }) {
       if (k === 'courses' || k === 'hotels' || !Array.isArray(rv[k])) return;
       rv[k].forEach((o) => {
         if (!o || !o.name) return;
-        const m = marginOf(o.margin);
+        const m = marginOf(o.margin, MENU_MARGIN);   // 스파·티켓…은 예전 그대로 기본 100밧
         const menu = [];
         (Array.isArray(o.menu) ? o.menu : []).forEach((r) => {
           const p = r ? +r.p : NaN;
