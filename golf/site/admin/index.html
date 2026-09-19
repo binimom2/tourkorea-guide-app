@@ -114,11 +114,17 @@ tr.subrow td{padding:0 6px 11px}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
 /* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 적용 기간 · 밧 네 칸 */
 .mhead,.mrow{grid-template-columns:1fr 1.1fr 258px 100px 26px}
+.mhead{align-items:end}   /* 「적용 기간」 머리글이 두 줄(설명 + 시작일·끝일)이라 아래로 맞춘다 */
 .mrow .rdate.mprom input{background:#FEF6E4;border-color:#E8C88A}   /* 기간이 든 줄(프로모션)은 노랗게 */
 /* 기간 칸 — 위는 「자주 쓰는 기간」 고르기, 아래는 날짜 두 개.
    달력을 매번 여는 게 일이라, 한 번 담아 둔 기간을 골라 쓰는 길을 위에 뒀다. */
 .rper{display:flex;flex-direction:column;gap:3px;min-width:0}
-.rper .rdate{display:grid;grid-template-columns:1fr 10px 1fr;gap:4px;align-items:center}
+/* 날짜 두 칸은 어디서든 «시작 ~ 끝» 한 줄로 나란히 — 스파·티켓 메뉴 줄은 .rper 없이 .rdate만 써서 이 배치가 안 먹고
+   시작·끝이 세로로 쌓여 윗줄·아랫줄 날짜와 섞여 보였다(사장님 2026-09-19 「기간이 헷갈림」). 그래서 .rper 조건을 뺐다 */
+.rdate{display:grid;grid-template-columns:1fr 10px 1fr;gap:4px;align-items:center;min-width:0}
+/* 머리글의 「시작일 ~ 끝일」 — 아래 날짜 칸과 같은 배치라 칸 위에 딱 맞게 선다 */
+.rdhd{margin-top:2px}
+.rdhd>span{font-weight:800;color:var(--ink)}
 .rrow input,.rrow select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
 .rrow input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
@@ -1863,7 +1869,8 @@ function priceCell(k,x){
       +'」이 없습니다 — 아래 ＋를 누르면 만들어집니다</span></div>';
     else body='<div class="rlist">'
       +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스 · 내용</span>'
-        +'<span>적용 기간 <span class="rhint">비우면 늘 · 넣으면 그 기간만(프로모션)</span></span><span>밧 (원가)</span></div>'
+        +'<span>적용 기간 <span class="rhint">비우면 늘 · 넣으면 그 기간만(프로모션)</span>'
+          +'<span class="rdate rdhd"><span>시작일</span><span></span><span>끝일</span></span></span><span>밧 (원가)</span></div>'
       +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
       +'</div>';
     return '<div class="iecell pcell" data-pk="'+esc(k)+'" data-pn="'+esc(x.n||'')+'">'
