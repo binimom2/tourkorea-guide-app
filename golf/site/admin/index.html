@@ -20,7 +20,9 @@
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
 button{font:inherit;cursor:pointer}
-input,select,textarea{font:inherit;color:var(--ink)}
+/* 적어 넣은 글자는 진한 검정·굵게, 예시 글(placeholder)은 옅은 회색·가늘게 — 둘이 비슷해 보여 헷갈린다고 하심(사장님 2026-09-19) */
+input,select,textarea{font:inherit;color:#000;font-weight:700}
+input::placeholder,textarea::placeholder{color:#B4BDB8;font-weight:400;opacity:1}
 
 /* ── 로그인 ── */
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
@@ -159,7 +161,7 @@ tr.subrow td{padding:0 6px 11px}
 .rmrate.sur{background:#FDE3E1;border-left-color:#D32F2F}
 .rmrate.sur select[data-rmf=sur]{background:#D32F2F;border-color:#D32F2F}
 .rmrate.sur .rmgrid>span{color:#B71C1C}
-.rmrate.sur input[type=number]{border-color:#E57373;color:#B71C1C;font-weight:700}
+.rmrate.sur input[type=number]{border-color:#E57373}
 .rmhd{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 6px 0 13px}
 .rmrate input,.rmrate select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
