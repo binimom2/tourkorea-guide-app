@@ -92,6 +92,8 @@ function itemHtml(v, it, i){
       const b = (it.births || [])[k] || "";
       return (b.length === 8 ? b.slice(0, 4) + "-" + b.slice(4, 6) + "-" + b.slice(6, 8) + " · " : "") + a + "세";
     }).join(", ") + ")" : "")]);
+    /* 아동 엑스트라 베드를 «추가 안 함»으로 고른 예약(2026-09-19) — 호텔이 베드를 넣지 않게 적어 준다 */
+    if(it.noBed) rows.push(["Extra Bed (엑스트라 베드)", "No extra bed for child (breakfast only · 아동 조식만)"]);
     rows.push(["Meal Plan (식사)", ven.bf === true ? "Breakfast Included" : ven.bf === false ? "Room Only" : "-"]);
   } else if(it.kind === "courses"){
     rows.push(["Tee Date (라운드 날짜)", date]);
