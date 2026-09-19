@@ -588,6 +588,36 @@ function inpList(path,arr,ph){
   return '<input data-p="'+esc(path)+'" data-list="1" type="text" value="'+esc((arr||[]).join(' · '))+'"'
     +(ph?' placeholder="'+esc(ph)+'"':'')+'>';
 }
+/* ══ 한글 마지막 글자 지킴이 (사장님 2026-09-19) ══
+   증상: 「소파」까지 치고 마우스로 다른 곳을 누르면 조합 중이던 마지막 글자(「파」)가 사라져 두 번씩 친다.
+         키보드로 확정(스페이스·엔터 등)하지 않은 글자를, 브라우저(IME)가 클릭 순간 «확정»이 아니라 «취소»해 버리는 것이다.
+         이 화면의 입력 처리기에는 그 칸의 값을 고치는 곳이 없다 — 그래서 값을 되살리는 쪽으로 막는다.
+   원리: 조합 중에 본 마지막 값(치던 글자 포함)을 기억해 두었다가, 조합이 끝난 직후 값이 그보다 «짧아졌고»
+         그게 키보드(백스페이스·Esc)가 아니라 마우스 클릭 직후에 벌어진 일이면 기억해 둔 값으로 되돌리고
+         input 이벤트를 다시 보내 자료(S·요금표)에도 반영한다. 글자를 일부러 지운 경우(키보드)는 건드리지 않는다. */
+(function(){
+  const ime={el:null,val:null,keyTs:0,downTs:0};
+  document.addEventListener('keydown',()=>{ ime.keyTs=Date.now(); },true);
+  document.addEventListener('mousedown',()=>{ ime.downTs=Date.now(); },true);
+  document.addEventListener('input',e=>{
+    const el=e.target;
+    if(!el||(el.tagName!=='INPUT'&&el.tagName!=='TEXTAREA')) return;
+    if(e.isComposing){ ime.el=el; ime.val=el.value; }
+  },true);
+  document.addEventListener('compositionend',e=>{
+    const el=e.target, want=(ime.el===el)?ime.val:null;
+    ime.el=null; ime.val=null;
+    if(want==null) return;
+    const fix=()=>{
+      if(el.value===want||el.value.length>=want.length) return;          // 제대로 확정됐다
+      const now=Date.now();
+      if(now-ime.downTs>1500||ime.keyTs>ime.downTs) return;               // 클릭 때문이 아니다(키보드로 지운 것 등)
+      el.value=want;
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+    };
+    fix(); setTimeout(fix,0); setTimeout(fix,60);                         // 브라우저마다 값이 빠지는 때가 조금씩 다르다
+  },true);
+})();
 /* 입력은 전부 여기서 받아 S에 반영한다 */
 document.getElementById('pane').addEventListener('input',e=>{
   const el=e.target, p=el.dataset.p;
