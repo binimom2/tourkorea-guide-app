@@ -1922,6 +1922,10 @@ function menuFor(p, date){
 function todayStr(){ const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }
 /* 기간 줄 표시 문구 — 「9월 15일~9월 30일 요금」 */
 function menuPeriod(m){
+  /* 기간 글자(「9월 1일~12월 31일 요금」)는 손님에게 안 보인다(사장님 2026-09-19 「스파·차량·가이드 메뉴 선택란에 기간 노출 금지」) —
+     메뉴 단추와 상세의 요금 안내 표 둘 다. 요금은 전처럼 고른 날짜에 사는 줄로 계산되고, 글자만 감춘다.
+     다시 보이게 하려면 아래 return "" 한 줄만 지우면 된다. */
+  return "";
   if(!m.from && !m.to) return "";
   const f = s => s ? (+s.slice(5, 7)) + "월 " + (+s.slice(8, 10)) + "일" : "";
   return (m.from && m.to) ? f(m.from) + "~" + f(m.to) + " 요금" : m.from ? f(m.from) + "부터 요금" : f(m.to) + "까지 요금";
