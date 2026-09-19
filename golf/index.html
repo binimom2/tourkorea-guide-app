@@ -407,6 +407,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <div class="cbody">
       <div class="f"><select id="tourSel" style="font-size:14px;font-weight:700;"></select></div>
       <div id="tourPicked"></div>
+      <div id="tourEmptyHint" style="display:none;margin-top:8px;font-size:12.5px;font-weight:700;color:#b23b3b;">아직 등록된 기타투어가 없습니다 — 사이트 관리 → 「💰 실시간 요금표&amp;코드관리」 → 「🎫 기타투어」에서 제목과 금액을 넣고 저장하세요. (이 안내는 직원에게만 보입니다)</div>
       <div class="hint" style="margin-top:8px;font-weight:700;">* 확정 시 원하는 날짜와 시간대를 알려 주셔야 합니다</div>
     </div>
   </div>
@@ -598,7 +599,7 @@ function stayDates(r,nn){
 /* 골프장 휴장 요일(사장님 2026-09-17) — 사이트 관리에서 체크한 courses[].closed(0 일 … 6 토)를 golf_site에서 읽어 둔다.
    직원·손님·여행사 모두 같은 자료를 본다(golf_site는 누구나 읽는다). 이름(공백 제거·소문자)으로 맞춘다. */
 let SITE_CLOSED={};
-let SITE_TOURS=[];        // 7번 기타투어 목록 [{n:투어 제목, p:1인 밧}] — loadSiteClosed가 golf_site.quoteTours에서 채운다
+let SITE_TOURS=[];        // 7번 기타투어 목록 [{n:투어 제목, p:1인 밧}] — buildTourSelOptions가 요금표(P.quoteTours)에서 채운다
 let TOUR_PICKS=[];        // 7번에서 담은 투어 [{n,p,cnt}] — cnt는 참가 인원(기본 = 전체 인원)
 const _cname=n=>String(n||'').replace(/\s+/g,'').toLowerCase();
 async function loadSiteClosed(){
@@ -608,11 +609,6 @@ async function loadSiteClosed(){
     const m={};
     (Array.isArray(d.courses)?d.courses:[]).forEach(c=>{ if(c&&c.n&&Array.isArray(c.closed)&&c.closed.length) m[_cname(c.n)]=c.closed.map(Number); });
     SITE_CLOSED=m;
-    /* 7번 기타투어 목록 — 사이트 관리 「기타투어」 탭 맨 위의 «실시간 견적 7번 목록»(golf_site.quoteTours)만 읽는다.
-       손님 사이트용 기타투어 묶음(tours)은 종류가 많아 견적 칸에 다 내걸면 곤란하다고 하셔서 따로 뒀다(사장님 2026-09-19).
-       제목과 1인 밧 금액이 둘 다 적혀 있고 «보이기»가 켜진 줄만 나온다. */
-    SITE_TOURS=(Array.isArray(d.quoteTours)?d.quoteTours:[]).filter(i=>i&&i.on!==false&&String(i.n||'').trim())
-      .map(i=>({n:String(i.n).trim(),p:Number(String(i.p||'').replace(/[^\d.]/g,''))||0})).filter(i=>i.p>0);
   }catch(e){}
 }
 function courseClosedOn(name,ds){
@@ -1136,7 +1132,14 @@ function buildGuideSelOptions(){
    금액 = 1인 밧(사이트 관리 「기타투어」 탭의 요금) × 참가 인원. 마진은 안 얹는다 — 그 탭에 적는 값이 곧 파는 값이다. */
 function buildTourSelOptions(){
   const card=$('#s7'), sel=$('#tourSel'); if(!card||!sel) return;
-  card.style.display=SITE_TOURS.length?'':'none';            // 요금 적힌 투어가 하나도 없으면 7번 칸을 감춘다
+  /* 목록은 요금표(golf_pricing)의 quoteTours — 코드·요금 관리 「💰 실시간견적 요금표 관리 → 🎫 기타투어」에서 넣는다(차량·핸들링·가이드와 같은 자리).
+     제목과 1인 밧 금액이 둘 다 있고 «보이기»가 켜진 줄만 나온다. */
+  SITE_TOURS=(Array.isArray(P&&P.quoteTours)?P.quoteTours:[]).filter(i=>i&&i.on!==false&&String(i.n||'').trim())
+    .map(i=>({n:String(i.n).trim(),p:Number(String(i.p==null?'':i.p).replace(/[^\d.]/g,''))||0})).filter(i=>i.p>0);
+  /* 목록이 비면 손님·여행사 화면에서는 7번 칸을 감춘다. 직원 화면에서는 칸을 남기고 어디서 넣는지 알려 준다 */
+  const staff=!GUEST&&GROLE!=='agency';
+  card.style.display=(SITE_TOURS.length||staff)?'':'none';
+  const hint=$('#tourEmptyHint'); if(hint) hint.style.display=(!SITE_TOURS.length&&staff)?'':'none';
   const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   /* 이 화면은 손님에게 그대로 보여 주는 면이라 밧을 적지 않는다 — 환율이 있으면 1인 원화 값을 옆에 적는다 */
   const price=p=>(FX_RATE>0)?` — 1인 ${won(krwUp(p*FX_RATE))}원`:'';
@@ -2281,6 +2284,7 @@ async function loadPricing(){
         ? d.vehicleGroups
         : [{id:'vg1',label:'기본',periods:d.vehiclePeriods||{}}],
       vehicleNotes:Array.isArray(d.vehicleNotes)?d.vehicleNotes:[],
+      quoteTours:Array.isArray(d.quoteTours)?d.quoteTours:[],   // 7번 기타투어 목록(관리 → 🎫 기타투어, 사장님 2026-09-19)
       transfers:Array.isArray(d.transfers)?d.transfers:[],
       // 미팅샌딩 짐밴(구간별 1회 요금 + 노출 인원) — 관리 → 차량 요금(사장님 2026-09-15)
       luggageVan:(d.luggageVan&&typeof d.luggageVan==='object')?d.luggageVan:{legs:[],paxMin:null,paxMax:null},
