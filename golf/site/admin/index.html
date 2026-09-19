@@ -23,9 +23,12 @@ button{font:inherit;cursor:pointer}
 /* 적어 넣은 글자는 검정(굵기는 보통 — 굵게 했더니 너무 진하다고 하심), 예시 글(placeholder)은 옅은 회색 — 둘이 비슷해 보여 헷갈린다고 하심(사장님 2026-09-19) */
 /* 이 PC 글꼴(맑은 고딕)은 굵기가 보통·굵게 둘뿐이라 그 사이가 없다 — 보통 굵기에 아주 가는 검정 테두리(0.3px)를 둘러
    「보통과 굵게의 중간」으로 보이게 한다. 보통은 회색처럼 보이고 굵게는 너무 진하다고 하심(사장님 2026-09-19) */
-input,select,textarea{font:inherit;color:#000;-webkit-text-stroke:.3px #000}
-input::placeholder,textarea::placeholder{color:#B4BDB8;font-weight:400;opacity:1;-webkit-text-stroke:0}
-select[data-rmf=sur]{-webkit-text-stroke:0}
+/* ⚠ 처음엔 -webkit-text-stroke(글자 테두리)로 했는데, 그 뒤로 「한글을 치면 마지막 글자가 지워져 두 번씩 친다」고 하심.
+   입력 처리 코드에는 그 칸 값을 건드리는 곳이 없어, 한글 조합 중인 글자와 테두리 그리기가 부딪친 것으로 보고
+   조합과 무관한 그림자(text-shadow)로 바꿨다 — 다시 text-stroke로 돌리지 말 것. */
+input,select,textarea{font:inherit;color:#000;text-shadow:0 0 .55px rgba(0,0,0,.75)}
+input::placeholder,textarea::placeholder{color:#B4BDB8;font-weight:400;opacity:1;text-shadow:none}
+select[data-rmf=sur]{text-shadow:none}
 
 /* ── 로그인 ── */
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
