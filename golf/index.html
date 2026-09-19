@@ -1912,6 +1912,13 @@ function renderQuoteHistory(){
         <div style="font-size:12px;font-weight:700;margin-top:3px;">${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+        ${GROLE==='agency'
+          /* 확정된 견적을 어드민으로 넘긴다(사장님 2026-09-19 「확정 시 수배하기로 전달, 어드민으로」) — 이미 넘긴 건은 초록 표시 + 요청사항 고치기 */
+          ? (r.book
+              ? `<span style="font-size:10.5px;font-weight:800;color:#1f6b3f;background:#e3f3e8;border-radius:6px;padding:4px 8px;text-align:center;white-space:nowrap;">✅ 수배 요청함 · ${esc(String(r.book.at||'').slice(5,10).replace('-','/'))}</span>
+                 <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">요청사항 고치기</button>`
+              : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
+          : ''}
         <button type="button" onclick="reissueQuote(${idx},'customer')" style="border:none;background:#123A2B;color:#fff;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">${GROLE==='agency'?'견적서 다시 보기':'손님용 다시받기'}</button>
         ${GROLE==='agency'
           /* 여행사는 내부용(원가 내역)이 없다 — 대신 보관함에서 빼기 */
@@ -1943,6 +1950,25 @@ async function reissueQuote(idx, mode){
     }
   }catch(e){ alert('견적서를 다시 만들지 못했습니다. 인터넷 연결을 확인해 주세요.'); }
   finally{ host.innerHTML=''; }
+}
+/* ── 확정 · 수배 요청(사장님 2026-09-19) ──
+   보관함의 견적을 어드민 「📋 예약요청」으로 넘긴다. 금액·일정은 서버가 보관함에 담긴 값을 그대로 쓰고, 여기서는
+   견적번호와 요청사항(티타임·기타투어 날짜와 시간대·명단 등)만 보낸다. 같은 견적을 다시 누르면 요청사항만 고쳐진다. */
+async function bookAgencyQuote(idx){
+  const Q=QH_LIST[idx]; if(!Q||GROLE!=='agency') return;
+  const again=!!Q.book;
+  const memo=prompt(
+    (again?`견적 ${Q.quoteNo} 의 요청사항을 고칩니다.`:`견적 ${Q.quoteNo}${Q.team?' ('+Q.team+')':''} 을(를) 확정하고 수배를 요청합니다.`)
+    +`\n${Q.start} ~ ${Q.end||''} · ${Q.pax}명 · ${Q.route||''}`
+    +'\n\n요청사항을 적어 주세요 (희망 티타임, 기타투어 날짜·시간대, 항공편 등 — 없으면 비워 두셔도 됩니다)',
+    (Q.book&&Q.book.memo)||'');
+  if(memo===null) return;                                  // 취소
+  let j;
+  try{ j=await agencyApi({action:'quoteBook',quoteNo:Q.quoteNo,memo:String(memo).trim()}); }
+  catch(e){ alert('수배 요청을 보내지 못했습니다.\n'+((e&&e.message)||'인터넷 연결을 확인해 주세요.')); return; }
+  Q.book={no:j.no,at:new Date().toISOString(),memo:String(memo).trim()};
+  renderQuoteHistory();
+  alert(again?'요청사항을 고쳤습니다.':`수배 요청을 보냈습니다.\n접수번호: ${j.no}\n\n담당자가 확인하고 연락드리겠습니다.`);
 }
 /* 여행사 보관함에서 한 건 빼기 — 서버의 그 여행사 자리에서만 지운다 */
 async function removeAgencyQuote(idx){
