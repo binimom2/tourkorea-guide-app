@@ -656,6 +656,8 @@ document.getElementById('pane').addEventListener('input',e=>{
       if(!confirm('['+nm+'] 을(를) 손님 화면에서 노출 금지하겠습니까?\n(자료는 그대로 남고, 저장을 눌러야 반영됩니다)')){ el.checked=true; return; }
     }
     setPath(S,p,el.checked);
+    /* 기타투어의 노출 체크 — 색·흐림·안내 글이 같이 바뀌어야 해서 그 탭만 다시 그린다(글자를 치는 칸이 아니라 조합이 끊길 일이 없다) */
+    if(el.dataset.redraw==='tours'){ markDirty('site'); subTours(); return; }
     /* 항목 「보이기」는 표 전체를 다시 그리지 않고 그 줄과 숫자만 고친다
        — 62줄을 다시 그리면 보고 있던 자리가 위로 튄다 */
     if(el.dataset.itemon) refreshItemOn(el);
@@ -2689,16 +2691,30 @@ function subTours(){
   document.getElementById('subpane').innerHTML=
     '<div class="card"><h2>기타 투어</h2>'
     +'<p class="desc">섬 투어 · 쇼 · 스파&amp;마사지 · 패스트트랙처럼 묶음으로 보여줍니다.</p>'
+    /* ── 노출 단추(사장님 2026-09-19) ──
+       기타투어 섹션은 2026-09-11부터 손님 화면에서 통째로 감춰져 있었다(코드로 고정). 이제 여기서 켜고 끈다.
+         S.toursOn        = 섹션 전체 (기본 «꺼짐» — 지금까지 감춰 온 상태 그대로)
+         tours[i].on      = 묶음 하나 (기본 켜짐)
+         tours[i].items[j].on = 항목 하나 (기본 켜짐)
+       끄면 손님 화면에서만 빠지고 적어 둔 자료는 그대로 남는다. */
+    +'<label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-weight:800;cursor:pointer;background:'+(S.toursOn===true?'#EAF5EE':'#FDE3E1')+'">'
+      +'<input type="checkbox" data-p="toursOn" data-bool="1" data-redraw="tours"'+(S.toursOn===true?' checked':'')+' style="width:auto;margin:0">'
+      +'손님 화면에 「기타투어」 보이기 <span class="rhint" style="font-size:11.5px">'+(S.toursOn===true?'지금 보이는 중 — 아래에서 체크된 묶음·항목만 나갑니다':'지금 감춰져 있습니다 — 체크하고 저장하면 섹터 띠와 섹션이 나타납니다')+'</span></label>'
     +(S.tours||[]).map((t,i)=>
-      '<div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px">'
+      '<div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px'+(t.on===false?';opacity:.55':'')+'">'
+      +'<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;font-weight:800;cursor:pointer">'
+        +'<input type="checkbox" data-p="tours.'+i+'.on" data-bool="1" data-redraw="tours"'+(t.on===false?'':' checked')+' style="width:auto;margin:0">이 묶음 보이기</label>'
       +'<div class="grid2">'
       +'<div class="f"><label>아이콘 / 묶음 이름</label><div class="pwbox">'
         +inp('tours.'+i+'.icon',t.icon)+inp('tours.'+i+'.t',t.t)+'</div></div>'
       +'<div class="f"><label>묶음 설명</label>'+inp('tours.'+i+'.d',t.d)+'</div></div>'
       +'<div class="tblwrap" style="margin-top:10px"><table style="min-width:520px"><thead><tr>'
       /* 메뉴 · 상세 메뉴 안내 · 요금 · 비고 네 칸(사장님 2026-09-11). 요금을 비우면 손님 화면에 요금이 안 붙는다 */
+      +'<th style="width:44px;text-align:center" title="체크를 끄면 그 항목만 손님 화면에서 빠집니다">보이기</th>'
       +'<th style="width:170px">메뉴</th><th>상세 메뉴 안내</th><th style="width:130px">요금 (밧 · 1인)</th><th style="width:180px">비고 (소요시간·포함 등)</th><th style="width:64px"></th></tr></thead><tbody>'
-      +(t.items||[]).map((it,j)=>'<tr><td>'+inp('tours.'+i+'.items.'+j+'.n',it.n)+'</td>'
+      +(t.items||[]).map((it,j)=>'<tr'+(it.on===false?' style="opacity:.5"':'')+'><td style="text-align:center"><input type="checkbox" data-p="tours.'+i+'.items.'+j+'.on" data-bool="1" data-redraw="tours"'
+          +(it.on===false?'':' checked')+' style="width:auto;margin:0" title="끄면 손님 화면에서 감춰집니다"></td>'
+        +'<td>'+inp('tours.'+i+'.items.'+j+'.n',it.n)+'</td>'
         +'<td>'+ta('tours.'+i+'.items.'+j+'.s',it.s)+'</td>'
         +'<td>'+inp('tours.'+i+'.items.'+j+'.p',it.p,'예: 1500')+'</td>'
         +'<td>'+inp('tours.'+i+'.items.'+j+'.m',it.m,'예: 약 6시간 · 점심 포함')+'</td>'

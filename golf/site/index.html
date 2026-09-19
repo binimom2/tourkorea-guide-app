@@ -1454,8 +1454,19 @@ function drawItemsOf(k){
 }
 /* 요금이 늦게 붙었을 때 카드를 전부 다시 그린다 */
 function drawAllItems(){ catList().forEach(c => drawItemsOf(c.k)); }
+/* 손님에게 보일 기타투어 묶음 — 관리 화면의 노출 체크를 따른다(사장님 2026-09-19).
+   섹션 전체(SITE.toursOn, 켜야만 보인다) → 묶음(on:false면 빠짐) → 항목(on:false면 빠짐). 보일 항목이 없는 묶음은 빠진다. */
+function toursShown(){
+  if(SITE.toursOn !== true) return [];
+  return (SITE.tours || []).filter(t => t && t.on !== false)
+    .map(t => Object.assign({}, t, { items: (t.items || []).filter(i => i && i.on !== false && String(i.n || "").trim()) }))
+    .filter(t => t.items.length);
+}
 function drawTours(){
-  $("#tourList").innerHTML = SITE.tours.map(t =>
+  const list = toursShown();
+  /* CSS에서 #tours 는 기본으로 감춰져 있다 — 보일 것이 있을 때만 연다 */
+  const sec = $("#tours"); if(sec) sec.style.display = list.length ? "block" : "none";
+  $("#tourList").innerHTML = list.map(t =>
     '<div class="tourcat"><h3><em>' + t.icon + '</em>' + esc(t.t) + '</h3>'
     + '<p>' + esc(t.d) + '</p><div class="pills">'
     /* 요금(밧·1인)이 적혀 있으면 항목 오른쪽에 붙인다(사장님 2026-09-11) */
@@ -1553,8 +1564,9 @@ function drawSectors(){
   /* 뒤의 고정 두 칸 문구는 관리 화면 「첫 화면 → 섹터 메뉴」에서 바꾼다(SITE.sector). */
   const sc = SITE.sector || {};
   /* 기타투어 칸 — 섹션을 감춘 뒤로는(2026-09-10) 띠에서도 뺀다. 되살리려면 위 CSS의 #tours 와 이 줄을 같이 */
-  const TOURS_HIDDEN = true;    // 2026-09-11 저녁 다시 감춤(사장님 「노출 삭제」) — 자료·어드민 탭은 그대로
-  if(!TOURS_HIDDEN && (SITE.tours || []).length) items.push({ ic: sc.toursIc || "🚌", t: sc.toursT || "기타투어", go:"#tours" });
+  /* 2026-09-19부터는 관리 화면 「기타투어」 탭의 노출 체크(SITE.toursOn)를 따른다 — 기본은 꺼짐(지금까지 감춰 온 그대로) */
+  const TOURS_HIDDEN = !toursShown().length;
+  if(!TOURS_HIDDEN) items.push({ ic: sc.toursIc || "🚌", t: sc.toursT || "기타투어", go:"#tours" });
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 «맨 앞»에 금색으로 도드라지게 둔다(사장님 2026-09-11, 전에는 맨 뒤) */
   items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true });
   /* 종류 칸은 감싸는 칸(.secw) 안에 넣고 아래에 지역 하위메뉴(.secdd)를 붙인다(사장님 2026-09-17).
