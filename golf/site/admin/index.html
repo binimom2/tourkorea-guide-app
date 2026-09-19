@@ -595,28 +595,45 @@ function inpList(path,arr,ph){
    원리: 조합 중에 본 마지막 값(치던 글자 포함)을 기억해 두었다가, 조합이 끝난 직후 값이 그보다 «짧아졌고»
          그게 키보드(백스페이스·Esc)가 아니라 마우스 클릭 직후에 벌어진 일이면 기억해 둔 값으로 되돌리고
          input 이벤트를 다시 보내 자료(S·요금표)에도 반영한다. 글자를 일부러 지운 경우(키보드)는 건드리지 않는다. */
+/* 2차(같은 날): 객실 이름 칸(「슈페리어스위트」의 「트」)에서도 나왔다 — 클릭뿐 아니라 Tab으로 넘어갈 때·칸을 벗어난 뒤
+   늦게 빠지는 경우까지 막는다. 「클릭 직후일 때만」 조건을 버리고, **지우는 키(Backspace·Delete·Esc)를 누른 경우만 빼고**
+   되살린다. 칸을 벗어날 때(focusout)와 change 직전(캡처 단계 — 이름 칸의 change 처리기가 잘린 이름으로 요금표 자리를
+   옮기기 전에)에도 한 번 더 본다. */
 (function(){
-  const ime={el:null,val:null,keyTs:0,downTs:0};
-  document.addEventListener('keydown',()=>{ ime.keyTs=Date.now(); },true);
-  document.addEventListener('mousedown',()=>{ ime.downTs=Date.now(); },true);
+  const DEL={Backspace:1,Delete:1,Escape:1};
+  const ime={el:null,val:null,valTs:0,delTs:0};
+  let pend=null;                                   // 조합이 막 끝난 칸 — {el,want,until}
+  document.addEventListener('keydown',e=>{ if(DEL[e.code]||DEL[e.key]){ ime.delTs=Date.now(); pend=null; } },true);   // 지우는 키를 누르면 되살리기를 그만둔다
   document.addEventListener('input',e=>{
     const el=e.target;
     if(!el||(el.tagName!=='INPUT'&&el.tagName!=='TEXTAREA')) return;
-    if(e.isComposing){ ime.el=el; ime.val=el.value; }
+    if(e.isComposing){ ime.el=el; ime.val=el.value; ime.valTs=Date.now(); }
   },true);
+  function fix(){
+    if(!pend) return;
+    const {el,want,until}=pend;
+    if(Date.now()>until){ pend=null; return; }
+    if(el.value===want||el.value.length>=want.length) return;            // 제대로 확정됐다(아직은) — 조금 뒤 다시 본다
+    pend=null;
+    const lost=want.slice(el.value.length);
+    el.value=want;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    /* 되살렸을 때 한 줄 알린다 — 「내 실수인지 프로그램 문제인지 알 수가 없다」(사장님). 이 알림이 뜨면 프로그램(입력기) 쪽에서
+       글자가 빠진 것을 잡아 준 것이고, 알림 없이 글자가 없으면 처음부터 안 쳐진 것이다. */
+    try{ if(typeof toast==='function') toast('↩ 빠질 뻔한 마지막 글자 「'+lost+'」를 되살렸습니다'); }catch(_){}
+  }
   document.addEventListener('compositionend',e=>{
-    const el=e.target, want=(ime.el===el)?ime.val:null;
+    const el=e.target, want=(ime.el===el)?ime.val:null, valTs=ime.valTs;
     ime.el=null; ime.val=null;
     if(want==null) return;
-    const fix=()=>{
-      if(el.value===want||el.value.length>=want.length) return;          // 제대로 확정됐다
-      const now=Date.now();
-      if(now-ime.downTs>1500||ime.keyTs>ime.downTs) return;               // 클릭 때문이 아니다(키보드로 지운 것 등)
-      el.value=want;
-      el.dispatchEvent(new Event('input',{bubbles:true}));
-    };
-    fix(); setTimeout(fix,0); setTimeout(fix,60);                         // 브라우저마다 값이 빠지는 때가 조금씩 다르다
+    if(ime.delTs>=valTs) return;                                          // 지우는 키로 끝난 조합 — 일부러 지운 것이다
+    pend={el,want,until:Date.now()+1200};
+    fix(); [0,60,250,600].forEach(ms=>setTimeout(fix,ms));                // 브라우저마다 값이 빠지는 때가 조금씩 다르다
   },true);
+  /* 칸을 벗어나는 순간·change 직전에도 본다. 다시 그 칸에 글자를 치기 시작하면 기다리던 것은 버린다 */
+  document.addEventListener('focusout',e=>{ if(pend&&pend.el===e.target) fix(); },true);
+  document.addEventListener('change',e=>{ if(pend&&pend.el===e.target) fix(); },true);
+  document.addEventListener('beforeinput',e=>{ if(pend&&pend.el===e.target&&!e.isComposing) pend=null; },true);
 })();
 /* 입력은 전부 여기서 받아 S에 반영한다 */
 document.getElementById('pane').addEventListener('input',e=>{
