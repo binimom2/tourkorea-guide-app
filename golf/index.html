@@ -541,15 +541,36 @@ function bestUnit(course,dateStr,wk,holes){
 const isSur=r=>r&&(r.sur===true||r.sur===1||r.sur==='1');
 function roomsWithRates(h){ return (Array.isArray(h&&h.rooms)?h.rooms:[]).filter(r=>r&&String(r.t||'').trim()&&Array.isArray(r.rates)&&r.rates.some(x=>x&&(posNum(x.wd)||posNum(x.we)))); }
 function roomBaht(r,we){ const wd=posNum(r.wd), wk=posNum(r.we); return we?(wk!=null?wk:wd):(wd!=null?wd:wk); }
-function roomOn(rm,h,date,we){
+/* 한 기간 줄의 다섯 가지 값(2026-09-19) — 더블·트윈 wd·we · 싱글 sgWd·sgWe · 엑스트라(성인) eaWd·eaWe · 엑스트라(아동) ecWd·ecWe · 아동 조식 cbWd·cbWe */
+function kindBaht(r,p,we){ const wd=posNum(r[p+'Wd']), wk=posNum(r[p+'We']); return we?(wk!=null?wk:wd):(wd!=null?wd:wk); }
+/* single=true면 1인 사용(싱글) 값 — 그 줄에 싱글 값이 없으면 더블·트윈 값으로 본다 */
+function roomOn(rm,h,date,we,single){
   let base=null, add=0;
   (rm.rates||[]).forEach(r=>{
     if(!rateCovers(r,date)) return;
-    const v=roomBaht(r,we); if(v==null) return;
+    let v=single?kindBaht(r,'sg',we):null;
+    if(v==null) v=roomBaht(r,we);
+    if(v==null) return;
     if(isSur(r)) add+=v; else if(base==null||v<base) base=v;
   });
   if(base==null) return null;
   return base+add+MG(blank(rm.margin)?h.margin:rm.margin);
+}
+/* 그 날짜의 엑스트라 베드(성인) 값 — 마진 없이. 기간 줄에 없으면 객실에 한 개씩 적어 둔 옛 값(extraChild·extraBed). 없으면 0 */
+function extraBedOn(rm,date,we){
+  const scan=q=>{ let base=null, add=0;
+    (rm.rates||[]).forEach(r=>{
+      if(!rateCovers(r,date)) return;
+      const v=kindBaht(r,q,we); if(v==null) return;
+      if(isSur(r)) add+=v; else if(base==null||v<base) base=v;
+    });
+    return {base,add}; };
+  let got=scan('ea');
+  /* 성인 값을 비워 두고 아동 값만 적은 호텔은 그 값으로 본다 — 0원으로 나가면 안 된다(서버와 같은 규칙) */
+  if(got.base==null){ const o=scan('ec'); if(o.base!=null) got={base:o.base,add:got.add||o.add}; }
+  let base=got.base;
+  if(base==null){ base=posNum(rm.extraChild); if(base==null) base=posNum(rm.extraBed); }
+  return (base||0)+got.add;
 }
 /* 그 지역에서 묵는 밤들의 날짜 — 출발일 + 앞 지역들 박수만큼 지난 날부터 nn일 */
 function stayDates(r,nn){
@@ -1389,14 +1410,19 @@ function calc(){
     const rws=roomsWithRates(h);
     if(rws.length){
       const rm=rws.find(x=>x.t===hotelRoomT[r.sid])||rws[0];
-      let sum=0, miss='';
+      /* 싱글은 1인 사용 값(없으면 더블·트윈 값), 트리플은 더블·트윈 값 + 3인째 엑스트라 베드(성인) 값(사장님 2026-09-19).
+         엑스트라 베드 수 = 방마다 2명씩 채우고 남는 사람 수 — 3명 1실이면 1개, 4명 2실이면 0개, 5명 2실이면 1개 */
+      const beds=rt==='triple'?Math.max(0,Math.min(rms,pax-rms*2)):0;
+      let sum=0, bedSum=0, miss='';
       stayDates(r,nn).forEach(d=>{
         if(miss) return;
-        const v=roomOn(rm,h,d,isWeekend(new Date(d+'T00:00:00'))||isHoliday(d));
-        if(v==null) miss=d; else sum+=v;
+        const we=isWeekend(new Date(d+'T00:00:00'))||isHoliday(d);
+        const v=roomOn(rm,h,d,we,rt==='single');
+        if(v==null) miss=d; else { sum+=v; if(beds) bedSum+=extraBedOn(rm,d,we); }
       });
       if(miss){ lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${miss} 요금 미등록`,v:0,warn:1}); return; }
-      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`,v:sum*rms});   // 「2트윈」꼴로 표기(사장님)
+      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`
+        +(beds&&bedSum?` + 엑스트라 베드 ${beds}개`:''),v:sum*rms+bedSum*beds});   // 「2트윈」꼴로 표기(사장님)
       return;
     }
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
