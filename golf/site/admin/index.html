@@ -2166,6 +2166,12 @@ function roomCell(x,i){
   return '<div class="iecell rcell" data-rn="'+esc(x.n||'')+'" data-rix="'+i+'">'
     +'<b>🛏 객실 타입별 요금 <span class="rhint">1박 · 밧 · 주중·주말 한쪽만 적으면 같은 값으로 봅니다 · 싱글을 비우면 더블·트윈 값으로 봅니다 · '
       +'「＋추가(써차지)」 줄은 그 기간에 걸린 날짜에 기본요금 위로 더해집니다</span></b>'
+    /* 아동으로 보는 나이 — 호텔마다 다르다(만 11세까지인 곳, 만 12세까지인 곳 · 사장님 2026-09-19).
+       golf_site의 그 호텔에 childMax로 들어가고, 손님 화면이 이 나이까지만 아동 요금(엑스트라 아동·아동 조식)을 준다. 안 고르면 11 */
+    +'<div class="rminc"><label>아동 요금 적용 나이</label>'
+      +'<select data-p="hotels.'+i+'.childMax" style="flex:none;width:auto;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px">'
+      +[11,12].map(a=>'<option value="'+a+'"'+((Number(x.childMax)||11)===a?' selected':'')+'>만 '+a+'세까지 ('+(a+1)+'세 미만)</option>').join('')
+      +'</select><span class="rhint">이 나이를 넘으면 손님 화면에서 성인으로 선택하게 안내합니다</span></div>'
     +(rooms.length
       ? '<div class="rmlist">'+rooms.map((rm,j)=>roomRowHTML(x,i,rm,j,findRoom(prs,rm.t))).join('')+'</div>'
       : '<div class="rnone">아직 객실이 없습니다 — 아래 「＋ 객실 추가」로 넣어 주세요</div>')
