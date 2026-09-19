@@ -799,6 +799,12 @@ function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); rend
    보관된 견적(golf_quotes)은 건드리지 않는다. */
 function newQuote(){
   if(!confirm('새 견적을 시작합니다.\n지금 입력한 내용은 지워집니다.')) return;
+  resetQuote();
+}
+/* 입력을 전부 비운다(묻지 않고) — 「새 견적」과 보관함의 「수정」(불러오기 전 비우기)이 같이 쓴다 */
+let EDIT_BASE='';   // 보관함에서 「수정」으로 불러온 견적의 원래 번호(수정본 꼬리 -1,-2 제외). 비어 있으면 새 견적
+function resetQuote(){
+  EDIT_BASE='';
   const tn=$('#teamName'); if(tn) tn.value='';
   // 출발일자는 비워 둔다 — 날짜를 미리 넣어 두면 안 된다(사장님 2026-09-11). 달력은 이번 달로 열린다.
   const sd=$('#startDate'); if(sd) sd.value='';
@@ -1631,6 +1637,17 @@ async function nextQuoteSeq(date){
 async function ensureQuoteNo(){
   const date=($('#startDate').value||'').replace(/-/g,'');
   if(!date) return '';
+  /* 보관함에서 「수정」으로 불러온 견적은 새 번호를 받지 않고 **원래 번호 뒤에 -1, -2 …**를 붙인다(사장님 2026-09-19
+     「동일 코드가 수정될 경우 수정본은 -1,-2 이런 식으로」). 이미 있는 수정본 가운데 가장 큰 꼬리 다음 번호를 쓴다 —
+     원본·앞 수정본은 보관함에 그대로 남는다. 수배 요청 접수번호도 이 번호를 그대로 물고 간다(AQ20261101-S001-1-아이디). */
+  if(EDIT_BASE){
+    if(QUOTE_NO&&QUOTE_NO_FOR==='edit:'+EDIT_BASE) return QUOTE_NO;
+    let n=0;
+    try{ const had=await loadQuoteRecords(); (had||[]).forEach(x=>{ const m=QNO_REV.exec(String(x&&x.quoteNo||'')); if(m&&m[1]===EDIT_BASE&&+(m[2]||0)>n) n=+m[2]; }); }catch(e){}
+    QUOTE_NO=`${EDIT_BASE}-${n+1}`; QUOTE_NO_FOR='edit:'+EDIT_BASE;
+    showQuoteNo();
+    return QUOTE_NO;
+  }
   if(QUOTE_NO&&QUOTE_NO_FOR===date) return QUOTE_NO;   // 같은 출발일자면 번호를 다시 뽑지 않는다
   if(GUEST||GROLE==='agency'){
     /* 손님·여행사 모드는 서버 순번(golf_quote_seq)에 쓰지 못한다 → 이 브라우저 기준 번호, 직원 G번호와 안 겹치게 S */
@@ -1683,8 +1700,38 @@ function quoteSnapshot(){
     fx: FX_RATE||0,
     fxSrc: FX_SRC||'',              // 환율 출처(자동이면 '하나은행 고시 현찰 살때 날짜', 코드관리 값이면 빈 칸)
     lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
-    total: LAST.total, per: LAST.per
+    total: LAST.total, per: LAST.per,
+    state: quoteState()              // 입력 상태 — 보관함에서 「수정」으로 다시 불러올 때 쓴다(2026-09-19)
   };
+}
+/* ── 입력 상태 얼리기(사장님 2026-09-19 「다시 보기로 불러오면 수정 기능이 있으면 좋겠다」) ──
+   견적서에 찍힌 결과(금액·문구)와 별개로, 화면에서 고른 것들을 그대로 담아 둔다. 호텔·버스는 번호(index) 대신
+   «이름»으로 담는다 — 요금표에서 줄이 늘거나 차례가 바뀌어도 같은 호텔·차량을 다시 찾게. */
+function quoteState(){
+  const chk=id=>{ const c=$('#'+id); return !!(c&&c.checked); };
+  return { v:1,
+    start:$('#startDate').value, end:$('#endDate').value, team:($('#teamName').value||'').trim(), pax:+$('#pax').value||0,
+    amDep:amDepOn(), amRet:amRetOn(),
+    route:ROUTE.map(r=>({region:r.region,nights:+r.nights||0})),
+    noHotel:!useHotelOn(),
+    hotels:ROUTE.map(r=>{ const idx=hotelPick[r.sid];
+      const h=(idx!==undefined&&idx!=='')?(((P.hotels||{})[r.region]||[])[+idx]||null):null;
+      return {name:h?h.name:'', nights:(hotelNights[r.sid]==null?'':hotelNights[r.sid]), room:hotelRoom[r.sid]||'', roomT:hotelRoomT[r.sid]||''}; }),
+    days:dayState.map(st=>({date:st.date,region:st.region||'',round:!!st.round,course:st.course||'',holes:st.holes||'18'})),
+    veh:{choice:vehChoice, busName:isBusChoice()?vehName((P.vehicleGroups||[])[busIdx]):'', extraVan:chk('extraVan'), extraLug:chk('extraLug'),
+         busGuide:($('#busGuide')||{}).value||''},
+    guide:{sel:($('#guideSel')||{}).value||'', cnt:guideCount()},
+    tours:TOUR_PICKS.map(t=>({n:t.n,cnt:t.cnt,times:t.times||1}))
+  };
+}
+/* 옛 견적(입력 상태 없이 저장된 것)은 남아 있는 결과에서 되짚는다 — 날짜·팀·인원·경로·날짜별 골프장까지.
+   호텔·차량·가이드는 결과 글자만 남아 있어 못 되살린다(불러온 뒤 다시 선택). */
+function stateFromOldQuote(Q){
+  const route=String(Q.route||'').split('→').map(x=>x.trim()).map(x=>{ const m=/^(.+?)\s+(\d+)박$/.exec(x); return m?{region:m[1].trim(),nights:+m[2]}:null; }).filter(Boolean);
+  return { v:0, start:Q.start||'', end:Q.end||'', team:Q.team||'', pax:+Q.pax||0,
+    amDep:/한국 오전 출발/.test(Q.flight||''), amRet:/태국 오전 출국/.test(Q.flight||''),
+    route, noHotel:!!Q.noHotel, hotels:[], veh:null, guide:null, tours:[],
+    days:(Q.days||[]).map(d=>({date:d.date,region:d.region||'',round:!!d.round,course:d.course||'',holes:d.holes||'18'})) };
 }
 
 /* 날짜별 숙박 호텔 — 일정표 「지역/호텔」 칸용. 자는 밤에만 적힌다(3박이면 앞 3일, 마지막 날은 없음)(사장님 2026-09-14) */
@@ -1919,6 +1966,7 @@ function renderQuoteHistory(){
                  <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">요청사항 고치기</button>`
               : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
           : ''}
+        <button type="button" onclick="editQuote(${idx})" style="border:1px solid #0b3d91;background:#fff;color:#0b3d91;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;" title="이 견적을 화면에 다시 불러와 고칩니다 — 저장하면 번호 뒤에 -1, -2 …가 붙은 수정본으로 담깁니다">✏ 불러와서 수정</button>
         <button type="button" onclick="reissueQuote(${idx},'customer')" style="border:none;background:#123A2B;color:#fff;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">${GROLE==='agency'?'견적서 다시 보기':'손님용 다시받기'}</button>
         ${GROLE==='agency'
           /* 여행사는 내부용(원가 내역)이 없다 — 대신 보관함에서 빼기 */
@@ -1950,6 +1998,92 @@ async function reissueQuote(idx, mode){
     }
   }catch(e){ alert('견적서를 다시 만들지 못했습니다. 인터넷 연결을 확인해 주세요.'); }
   finally{ host.innerHTML=''; }
+}
+/* ── 보관한 견적을 다시 불러와 고치기(사장님 2026-09-19) ──
+   보관함(여행사)·견적 이력(직원)의 「✏ 수정」. 입력을 비운 뒤 저장해 둔 입력 상태(Q.state)대로 화면을 다시 채운다.
+   금액은 «지금 요금표»로 다시 계산된다(그때 금액은 원본 견적에 그대로 남아 있다). 고쳐서 「견적서 보기 → 저장」하면
+   원래 번호 뒤에 -1, -2 …가 붙은 수정본으로 담긴다(ensureQuoteNo의 EDIT_BASE). */
+const QNO_REV=/^(\d{8}-[A-Z]\d+)(?:-(\d+))?$/;   // 20261101-S001 · 20261101-S001-2
+async function editQuote(idx){
+  const Q=QH_LIST[idx]; if(!Q) return;
+  if(!confirm(`견적 ${Q.quoteNo}${Q.team?' ('+Q.team+')':''} 을(를) 불러와 수정합니다.\n지금 화면에 입력한 내용은 지워집니다.\n\n· 금액은 지금 요금표로 다시 계산됩니다\n· 저장하면 수정본 번호(${(QNO_REV.exec(Q.quoteNo)||[])[1]||Q.quoteNo}-1, -2 …)로 따로 담깁니다`)) return;
+  const S=(Q.state&&Q.state.v)?Q.state:stateFromOldQuote(Q);
+  const missing=[];                                   // 요금표에서 없어져 되살리지 못한 것들
+  $('#qhModal').style.display='none';
+  resetQuote();
+  /* 1) 기본 정보 */
+  $('#teamName').value=S.team||''; $('#pax').value=S.pax>0?String(S.pax):'';
+  $('#startDate').value=S.start||'';
+  { const a=$('#amDep'), b=$('#amRet'); if(a) a.checked=!!S.amDep; if(b) b.checked=!!S.amRet; }
+  /* 2) 지역 — 정거장마다 새 sid를 받는다(호텔 선택의 열쇠) */
+  const srcIdx=[];                                    // ROUTE[i]가 저장본 route의 몇 번째였는지(없어진 지역이 빠지면 번호가 밀린다)
+  (S.route||[]).forEach((r,k)=>{ if(REGIONS.indexOf(r.region)<0){ missing.push(`지역 ${r.region}`); return; } ROUTE.push({region:r.region,nights:+r.nights||0,sid:'s'+(++STOP_SEQ)}); srcIdx.push(k); });
+  tripNights=ROUTE.reduce((a,r)=>a+(+r.nights||0),0);
+  autoPickVehicleGroup();
+  /* 3) 호텔 — 이름으로 다시 찾는다 */
+  { const c=$('#noHotel'); if(c) c.checked=!!S.noHotel; }
+  ROUTE.forEach((r,i)=>{
+    const hs=(S.hotels||[])[srcIdx[i]]; if(!hs||!hs.name) return;
+    const list=(P.hotels||{})[r.region]||[], k=list.findIndex(h=>h&&h.name===hs.name);
+    if(k<0){ missing.push(`호텔 ${hs.name}`); return; }
+    hotelPick[r.sid]=String(k);
+    if(hs.nights!==''&&hs.nights!=null) hotelNights[r.sid]=hs.nights;
+    if(hs.room) hotelRoom[r.sid]=hs.room;
+    if(hs.roomT) hotelRoomT[r.sid]=hs.roomT;
+  });
+  /* 5) 차량 — 인원 구간 표시를 먼저 맞춰 두어야 renderVehicleUI가 「구간이 바뀌었다」며 추천 구성으로 되돌리지 않는다 */
+  const V=S.veh;
+  if(V&&V.choice){
+    let ch=V.choice;
+    if(/^bus:/.test(ch)&&V.busName){ const k=(P.vehicleGroups||[]).findIndex(g=>g&&vehName(g)===V.busName); if(k>=0) ch='bus:'+k; else { missing.push(`차량 ${V.busName}`); ch=''; } }
+    _vehRuleIdx=vehRules().indexOf(vehRuleFor(curPax()));
+    setVehChoice(ch);
+  }
+  refreshAll();
+  if(V&&V.choice){
+    applyVehChoice();
+    const ev=$('#extraVan'), el2=$('#extraLug'); if(ev) ev.checked=!!V.extraVan; if(el2) el2.checked=!!V.extraLug;
+    if(V.extraVan||V.extraLug) setXtog('vehExtraBody',true);
+    syncVehShown();
+    const bg=$('#busGuide'); if(bg&&V.busGuide&&[...bg.options].some(o=>o.value===V.busGuide)) bg.value=V.busGuide;
+  }
+  /* 4) 골프장 — refreshAll이 날짜 줄을 새로 그린 뒤에, 같은 날짜 줄에 그때 고른 것을 다시 넣는다 */
+  (S.days||[]).forEach(d=>{
+    const i=dayState.findIndex(st=>st.date===d.date); if(i<0) return;
+    const st=dayState[i];
+    if(d.region&&d.region!==st.region&&REGIONS.indexOf(d.region)>=0){ st.region=d.region; const rs=document.querySelector(`[data-reg="${i}"]`); if(rs) rs.value=d.region; fillCourses(i); }
+    if(!d.round) return;
+    const cb=document.querySelector(`[data-r="${i}"]`); if(!cb||cb.disabled) return;      // 오전 출발·출국 규칙으로 잠긴 날은 건너뛴다
+    cb.checked=true; st.round=true;
+    const row=cb.closest('.day'); if(row) row.classList.remove('off');
+    const cs=document.querySelector(`[data-c="${i}"]`), hs=document.querySelector(`[data-h="${i}"]`);
+    if(cs) cs.disabled=false; if(hs) hs.disabled=false;
+    if(d.course){
+      const ok=cs&&[...cs.options].some(o=>o.value===d.course&&!o.disabled);
+      if(ok){ st.course=d.course; cs.value=d.course; st.holes=d.holes||'18'; fillHoles(i); }
+      else missing.push(`골프장 ${d.course}`);
+    }
+  });
+  /* 6) 가이드 */
+  if(S.guide){
+    buildGuideSelOptions();
+    const gs=$('#guideSel');
+    if(gs&&S.guide.sel){
+      if([...gs.options].some(o=>o.value===S.guide.sel)){ gs.value=S.guide.sel; onGuideSelChange(); const gc=$('#guideCnt'); if(gc&&S.guide.cnt>1){ gc.value=String(S.guide.cnt); setXtog('guideCntBody',true); } }
+      else missing.push(`가이드 ${guideLabel(S.guide.sel)}`);
+    }
+  }
+  /* 7) 기타투어 — 금액은 지금 목록의 값을 쓴다 */
+  (S.tours||[]).forEach(t=>{ const it=SITE_TOURS.find(x=>x.n===t.n); if(!it){ missing.push(`기타투어 ${t.n}`); return; }
+    TOUR_PICKS.push({n:it.n,d:it.d||'',r:it.r||'',p:it.p,cnt:Math.max(1,+t.cnt||1),times:Math.max(1,+t.times||1)}); });
+  renderTourPicks();
+  EDIT_BASE=(QNO_REV.exec(String(Q.quoteNo||''))||[])[1]||String(Q.quoteNo||'');
+  STEPS.forEach(id=>touched.add(id));
+  calc(); autoFold(null);
+  window.scrollTo({top:0,behavior:'smooth'});
+  const old=!(Q.state&&Q.state.v);
+  if(old||missing.length) showNotice((old?'예전에 저장한 견적이라 날짜·인원·지역·골프장만 불러왔습니다. 호텔·차량·가이드는 다시 선택해 주세요.':'')
+    +(missing.length?(old?'\n':'')+'지금 요금표에 없어 다시 선택해야 하는 것: '+missing.join(', '):''));
 }
 /* ── 확정 · 수배 요청(사장님 2026-09-19) ──
    보관함의 견적을 어드민 「📋 예약요청」으로 넘긴다. 금액·일정은 서버가 보관함에 담긴 값을 그대로 쓰고, 여기서는
