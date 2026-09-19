@@ -829,7 +829,7 @@ function toursCard(){
     box.innerHTML='';
     if(!Array.isArray(G.quoteTours)) G.quoteTours=[];
     const head=el('div'); head.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:11px;font-weight:800;color:#8b948e;';
-    head.innerHTML='<span style="width:44px;text-align:center">보이기</span><span style="width:110px">지역</span><span style="width:300px">투어 종류</span><span style="width:130px">금액 (밧 · 1인)</span><span style="width:22px"></span>';
+    head.innerHTML='<span style="width:44px;text-align:center">보이기</span><span style="width:110px">지역</span><span style="width:210px">투어 제목 <i style="font-style:normal;font-weight:700">(견적서에 나감)</i></span><span style="flex:1">내용 <i style="font-style:normal;font-weight:700">(선택 목록에만 보임)</i></span><span style="width:130px">금액 (밧 · 1인)</span><span style="width:22px"></span>';
     if(G.quoteTours.length) box.appendChild(head);
     G.quoteTours.forEach((t,i)=>{
       const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;'+(t.on===false?'opacity:.5;':'');
@@ -843,7 +843,11 @@ function toursCard(){
       rg.innerHTML='<option value="">전 지역</option>'+regs.map(r=>'<option>'+String(r).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))+'</option>').join('');
       rg.value=t.r||'';
       rg.onchange=()=>{ t.r=rg.value; _touch(); };
-      const n=document.createElement('input'); n.type='text'; n.value=t.n||''; n.placeholder='예: 알카자쇼'; n.style.cssText='width:300px;flex:0 1 300px;min-width:0;'+IN;   // 제목 칸은 길 필요가 없다(사장님 2026-09-19)
+      const n=document.createElement('input'); n.type='text'; n.value=t.n||''; n.placeholder='예: 전통맛사지 2시간'; n.style.cssText='width:210px;flex:0 0 210px;min-width:0;'+IN;   // 제목 칸은 길 필요가 없다(사장님 2026-09-19)
+      /* 내용(사장님 2026-09-19) — 제목과 나눠 적는다. 견적서에는 «제목만» 나가고, 내용은 견적 화면의 선택 목록·담긴 줄에서만 보인다.
+         예) 제목 「전통맛사지 2시간」 / 내용 「투어샵 · 팁 별도(100바트)」. 저장 자리 t.d */
+      const dsc=document.createElement('input'); dsc.type='text'; dsc.value=t.d||''; dsc.placeholder='예: 투어샵 · 팁 별도(100바트)'; dsc.style.cssText='flex:1;min-width:0;'+IN;
+      dsc.oninput=()=>{ t.d=dsc.value; _touch(); };
       n.oninput=()=>{ t.n=n.value; _touch(); };
       const p=document.createElement('input'); p.type='number'; p.inputMode='numeric'; p.min='0'; p.placeholder='밧';   // 0을 미리 넣지 않는다
       p.value=(t.p==null||t.p==='')?'':t.p; p.style.cssText='width:130px;text-align:right;'+IN;
@@ -851,7 +855,7 @@ function toursCard(){
       const x=el('button',null,'✕'); x.style.cssText='width:22px;border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
       x.title='이 줄 지우기';
       x.onclick=()=>{ if((t.n||t.p)&&!confirm('「'+(t.n||'이 줄')+'」을(를) 지웁니다.\n(저장을 눌러야 실제로 반영됩니다)')) return; G.quoteTours.splice(i,1); _touch(); draw(); };
-      row.appendChild(on); row.appendChild(rg); row.appendChild(n); row.appendChild(p); row.appendChild(x); box.appendChild(row);
+      row.appendChild(on); row.appendChild(rg); row.appendChild(n); row.appendChild(dsc); row.appendChild(p); row.appendChild(x); box.appendChild(row);
     });
     const add=el('button','btn ghost sm','＋ 투어 추가');
     add.onclick=()=>{ G.quoteTours.push({n:'',p:''}); _touch(); draw(); const ins=box.querySelectorAll('input[type=text]'); if(ins.length) ins[ins.length-1].focus(); };
