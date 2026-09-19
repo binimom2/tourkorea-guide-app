@@ -399,6 +399,18 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     </div>
   </div>
 
+  <!-- 7. 기타투어(사장님 2026-09-19) — 5·6번처럼 드롭다운에서 선택, 여러 개를 잇달아 담을 수 있다.
+       목록(투어 제목·1인 밧 금액)은 사이트 관리 「기타투어」 탭 맨 위 «실시간 견적 7번 목록»(golf_site.quoteTours)에 적는다 — 손님 사이트용 묶음과 따로다.
+       안 골라도 견적은 나온다(선택 사항). 자료가 하나도 없으면 이 칸은 아예 감춘다. -->
+  <div class="card step" id="s7" style="display:none">
+    <h2 class="steph">7. 기타투어<span class="csum" id="sum7"></span><span class="cedit">수정</span></h2>
+    <div class="cbody">
+      <div class="f"><select id="tourSel" style="font-size:14px;font-weight:700;"></select></div>
+      <div id="tourPicked"></div>
+      <div class="hint" style="margin-top:8px;font-weight:700;">* 확정 시 원하는 날짜와 시간대를 알려 주셔야 합니다</div>
+    </div>
+  </div>
+
   <section class="card res">
     <h2>견적 결과</h2>
     <!-- 상세 내역 없이 «1인 요금 × 인원수 = 총액»만 보여준다 -->
@@ -586,6 +598,8 @@ function stayDates(r,nn){
 /* 골프장 휴장 요일(사장님 2026-09-17) — 사이트 관리에서 체크한 courses[].closed(0 일 … 6 토)를 golf_site에서 읽어 둔다.
    직원·손님·여행사 모두 같은 자료를 본다(golf_site는 누구나 읽는다). 이름(공백 제거·소문자)으로 맞춘다. */
 let SITE_CLOSED={};
+let SITE_TOURS=[];        // 7번 기타투어 목록 [{n:투어 제목, p:1인 밧}] — loadSiteClosed가 golf_site.quoteTours에서 채운다
+let TOUR_PICKS=[];        // 7번에서 담은 투어 [{n,p,cnt}] — cnt는 참가 인원(기본 = 전체 인원)
 const _cname=n=>String(n||'').replace(/\s+/g,'').toLowerCase();
 async function loadSiteClosed(){
   try{
@@ -594,6 +608,11 @@ async function loadSiteClosed(){
     const m={};
     (Array.isArray(d.courses)?d.courses:[]).forEach(c=>{ if(c&&c.n&&Array.isArray(c.closed)&&c.closed.length) m[_cname(c.n)]=c.closed.map(Number); });
     SITE_CLOSED=m;
+    /* 7번 기타투어 목록 — 사이트 관리 「기타투어」 탭 맨 위의 «실시간 견적 7번 목록»(golf_site.quoteTours)만 읽는다.
+       손님 사이트용 기타투어 묶음(tours)은 종류가 많아 견적 칸에 다 내걸면 곤란하다고 하셔서 따로 뒀다(사장님 2026-09-19).
+       제목과 1인 밧 금액이 둘 다 적혀 있고 «보이기»가 켜진 줄만 나온다. */
+    SITE_TOURS=(Array.isArray(d.quoteTours)?d.quoteTours:[]).filter(i=>i&&i.on!==false&&String(i.n||'').trim())
+      .map(i=>({n:String(i.n).trim(),p:Number(String(i.p||'').replace(/[^\d.]/g,''))||0})).filter(i=>i.p>0);
   }catch(e){}
 }
 function courseClosedOn(name,ds){
@@ -795,6 +814,7 @@ function newQuote(){
   vehChoice=''; busIdx=-1; _vehRuleIdx=-2; _vehRecV='';   // 차량은 「차량 선택」 빈 상태로(사장님 2026-09-16)
   const gw=$('#guideWrap'); if(gw) gw.style.display='none';
   const gsl=$('#guideSel'); if(gsl) gsl.value=''; guideNone=false;
+  TOUR_PICKS.length=0; renderTourPicks();          // 7번 기타투어도 비운다
   const gc=$('#guideCnt'); if(gc) gc.value='1'; const gcw=$('#guideCntWrap'); if(gcw) gcw.style.display='none';   // 가이드 인원 1명으로
   setXtog('vehExtraBody',false); setXtog('guideCntBody',false);   // 추가 선택 칸은 접힌 상태로(사장님 2026-09-16)
   const vg=$('#vehGroup'); if(vg) vg.value='0';
@@ -1111,6 +1131,49 @@ function buildGuideSelOptions(){
     const cw=$('#guideCntWrap'); if(cw) cw.style.display='none';
   }
 }
+/* ── 7번 기타투어(사장님 2026-09-19) ──
+   드롭다운에서 투어를 선택하면 아래에 한 줄씩 담긴다(여러 개 가능). 담긴 줄마다 참가 인원(기본 = 전체 인원)을 고칠 수 있고 ✕로 뺀다.
+   금액 = 1인 밧(사이트 관리 「기타투어」 탭의 요금) × 참가 인원. 마진은 안 얹는다 — 그 탭에 적는 값이 곧 파는 값이다. */
+function buildTourSelOptions(){
+  const card=$('#s7'), sel=$('#tourSel'); if(!card||!sel) return;
+  card.style.display=SITE_TOURS.length?'':'none';            // 요금 적힌 투어가 하나도 없으면 7번 칸을 감춘다
+  const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  /* 이 화면은 손님에게 그대로 보여 주는 면이라 밧을 적지 않는다 — 환율이 있으면 1인 원화 값을 옆에 적는다 */
+  const price=p=>(FX_RATE>0)?` — 1인 ${won(krwUp(p*FX_RATE))}원`:'';
+  sel.innerHTML='<option value="">기타투어 선택</option>'
+    +SITE_TOURS.map((it,i)=>`<option value="${i}">${e(it.n)}${e(price(it.p))}</option>`).join('');
+}
+function renderTourPicks(){
+  const box=$('#tourPicked'); if(!box) return;
+  const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  box.innerHTML=TOUR_PICKS.map((t,i)=>
+    `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:7px 10px;border:1px solid var(--line,#e2e6dc);border-radius:9px;background:#fff;font-size:13.5px;font-weight:700;">`
+    +`<span style="flex:1;min-width:0;">${e(t.n)}</span>`
+    +`<div class="unit" style="flex:none;"><input type="number" min="1" inputmode="numeric" data-tourcnt="${i}" value="${t.cnt}" style="width:70px;"><span>명</span></div>`
+    +`<button type="button" data-tourdel="${i}" title="이 투어 빼기" style="flex:none;border:0;background:none;color:#c0492f;font-size:15px;font-weight:900;cursor:pointer;">✕</button>`
+    +`</div>`).join('');
+}
+function onTourSelChange(){
+  const sel=$('#tourSel'); if(!sel) return;
+  const v=sel.value; sel.value='';                            // 고르면 아래에 담고, 드롭다운은 다시 「기타투어 선택」으로 — 잇달아 담게
+  if(!/^\d+$/.test(v)) return;
+  const it=SITE_TOURS[+v]; if(!it) return;
+  if(TOUR_PICKS.some(t=>t.n===it.n)){ showNotice('이미 담은 투어입니다.'); return; }
+  TOUR_PICKS.push({n:it.n,p:it.p,cnt:Math.max(1,+$('#pax').value||1)});
+  renderTourPicks(); touched.add('s7'); autoFold('s7'); calc();
+}
+document.addEventListener('change',e=>{ if(e.target&&e.target.id==='tourSel') onTourSelChange(); });
+document.addEventListener('input',e=>{
+  const i=e.target&&e.target.dataset&&e.target.dataset.tourcnt; if(i==null) return;
+  const t=TOUR_PICKS[+i]; if(!t) return;
+  t.cnt=Math.max(1,Math.round(+e.target.value||1));          // 칸은 그대로 두고(지우고 다시 치는 중일 수 있다) 계산만 고친다
+  renderStepSummaries(); calc();
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-tourdel]'); if(!b) return;
+  TOUR_PICKS.splice(+b.dataset.tourdel,1);
+  renderTourPicks(); renderStepSummaries(); calc();
+});
 function onGuideSelChange(){
   const v=($('#guideSel')||{}).value||'';
   const ug=$('#useGuide'), g=$('#guide');
@@ -1428,6 +1491,8 @@ function calc(){
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
     lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
   });
+  /* 7) 기타투어(사장님 2026-09-19) — 1인 밧 × 참가 인원. 마진 없음(관리에 적는 값이 파는 값) */
+  TOUR_PICKS.forEach(t=>lines.push({t:`기타투어 · ${t.n}`,s:`${won(t.p)} × ${t.cnt}명`,v:t.p*t.cnt}));
   /* 2번 지역을 고르기 전에는 견적 결과를 비워 둔다 — 핸들링 차지만 13,000원처럼 떠서 손님이 헷갈린다(사장님 2026-09-16) */
   if(!ROUTE.length) lines.length=0;
   const total=lines.reduce((a,b)=>a+b.v,0);
@@ -1507,6 +1572,8 @@ function quoteIncludes(mode){
   if(busGuideName()) gparts.push(`${gdoc(busGuideName())} 1명`);
   if(useGuideOn()&&$('#guide').value) gparts.push(`${gdoc($('#guide').value)} ${guideCount()}명`);   // 명수는 1명이어도 적는다(사장님 2026-09-15)
   if(gparts.length) out.push(`가이드 - ${gparts.join(', ')}`);
+  /* 기타투어 — 「기타투어 - 알카자쇼 4명, 농눅빌리지 4명 (확정 시 원하는 날짜·시간대를 알려 주세요)」(사장님 2026-09-19) */
+  if(TOUR_PICKS.length) out.push(`기타투어 - ${TOUR_PICKS.map(t=>`${t.n} ${t.cnt}명`).join(', ')} (확정 시 원하는 날짜·시간대를 알려 주세요)`);
   /* 숙소 줄은 포함 사항에 적지 않는다 — 일정표 「지역/호텔」 칸에 호텔명·룸타입이 날짜별로 나온다(사장님 2026-09-14) */
   return out;
 }
@@ -1971,7 +2038,7 @@ async function downloadQuote(mode){
 /* ══════════════════════════ 단계 접기 ══════════════════════════
    칸 크기는 손님에게 보여주기 좋은 크기 그대로 두되, 다 채운 칸은 한 줄로 접어서
    화면이 넘치지 않게 한다. 다른 칸을 만지는 순간 접히고, 제목줄이나 [수정]을 누르면 펴진다. */
-const STEPS=['s1','s2','s3','s4','s5','s6'];
+const STEPS=['s1','s2','s3','s4','s5','s6','s7'];   // s7 기타투어는 선택 사항 — 담은 게 있을 때만 접힌다
 function stepDone(id){
   switch(id){
     case 's1': return !!$('#startDate').value && (+$('#pax').value>0);
@@ -1984,6 +2051,7 @@ function stepDone(id){
     case 's4': return dayState.some(st=>st.round&&st.course);
     case 's5': return vehPicked();   // 드롭다운에서 차량이나 「필요 없음」을 골라야 끝난 것(사장님 2026-09-16)
     case 's6': return useGuideOn() ? !!$('#guide').value : guideNone;   // 드롭다운에서 종류나 「필요 없음」을 골라야 끝난 것
+    case 's7': return TOUR_PICKS.length>0;
   }
   return false;
 }
@@ -2035,6 +2103,7 @@ function stepSummary(id){
     /* 지역(2번)을 고른 뒤부터만 「미선택」을 띄운다 — 아직 아무것도 안 고른 초기 화면에는 안 뜬다(사장님 2026-09-14 저녁) */
     /* 기본(아직 안 고름)은 빈칸, 「가이드 필요 없습니다」를 골랐을 때만 빨간 「가이드를 선택하지 않았습니다」(사장님 2026-09-15) */
     case 's6': return useGuideOn()?((guideLabel($('#guide').value)?guideLabel($('#guide').value)+(guideCount()>1?` ${guideCount()}명`:''):'')||'가이드 종류를 선택하지 않았습니다'):(guideNone?'가이드를 선택하지 않았습니다':'');
+    case 's7': return TOUR_PICKS.map(t=>`${t.n} ${t.cnt}명`).join(DOT);
   }
   return '';
 }
@@ -2314,6 +2383,7 @@ async function startApp(user){
   if(EMBED) await applySiteExposure();   // 팝업에서는 사이트에 노출한 골프장·호텔만
   buildGuideOptions();
   buildGuideSelOptions();
+  buildTourSelOptions();     // 7번 기타투어 — 요금 적힌 투어가 있으면 칸이 나타난다
   window._ready=true;
   refreshAll();
   $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
