@@ -1776,7 +1776,9 @@ function drawRooms(x, kind){
       /* 객실 이름 아래에 그 객실에 딸린 것들(에어컨·Wi-Fi·금고…)과 추가요금을 작게 붙인다 */
       + "<span>" + esc(r.t)
       + ((r.inc || "").trim() ? "<i class='rinc'>" + esc(r.inc.trim()) + "</i>" : "")
-      + exLine(rp)
+      /* 「3인째 엑스트라 베드 +36,000원 · 4인째 조식 +9,000원」 줄은 객실표에서 뺐다(사장님 2026-09-19) —
+         기본(2인)으로 보는 손님에게 굳이 안 보여도 되고, 인원을 3명 이상으로 선택하면 견적 금액에 저절로 더해진다.
+         다시 보이려면 여기에 + exLine(rp) 를 되살리면 된다. */
       + "</span></div></td>"
       + "<td class='rsub'>" + esc(r.size || "") + "</td>"
       + "<td class='rsub'>" + esc(r.view || "") + "</td>"
