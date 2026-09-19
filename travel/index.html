@@ -1230,7 +1230,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 18;   // 배포마다 +1 (구버전 탭 저장차단 기준). v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 19;   // 배포마다 +1 (구버전 탭 저장차단 기준). v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2882,7 +2882,12 @@ function downloadCostExcel(){
   rows.forEach(top=>{
     const base={}; Object.keys(top).forEach(k=>{ if(k!=='seasons') base[k]=top[k]; });
     const ss=Array.isArray(top.seasons)?top.seasons:[];
-    if(ss.length) ss.forEach(s=>flat.push(Object.assign({},base,s)));
+    if(ss.length) ss.forEach(s=>{
+      const row=Object.assign({},base,s);
+      // 관광·식당외에서 「비고 공통 사용」을 켠 항목은 화면처럼 공통 비고가 나가게(기간에 남아 있는 옛 비고가 덮지 않게)
+      if(costTab==='attraction'&&top.remarkCommon) row.remark=top.remark||'';
+      flat.push(row);
+    });
     else flat.push(base);
   });
   // 실제 데이터에 등장하는 모든 키 수집(상위→시즌), 보기 좋은 순서로 정렬
@@ -3788,8 +3793,13 @@ function renderAttrTable(){
              +`<td rowspan="${n}" class="num" style="vertical-align:middle;">${escapeHtml(a.region||'-')}</td>`;
       }
       html+=`<td class="num">${escapeHtml(s.period||'-')}</td>`
-           +`<td class="num">${escapeHtml(fmtMoney(s.adult))}</td><td class="num">${escapeHtml(fmtMoney(s.child))}</td>`
-           +`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
+           +`<td class="num">${escapeHtml(fmtMoney(s.adult))}</td><td class="num">${escapeHtml(fmtMoney(s.child))}</td>`;
+      // 비고: '공통' 켜져 있으면 기간 수만큼 한 칸으로 병합(호텔 탭과 같은 방식 · 사장님 2026-09-19)
+      if(a.remarkCommon){
+        if(si===0) html+=`<td rowspan="${n}" class="remark-col" style="vertical-align:middle;">${a.remark?renderRemark(a.remark):'-'}</td>`;
+      }else{
+        html+=`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
+      }
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openAttrEditor(${idx})">수정</a><a class="act-edit" onclick="openAttrDetail(${idx})">상세보기</a><a class="act-del" onclick="delAttr(${idx})">삭제</a></div>${costUpdNote(a)}</td>`;
       }
@@ -3808,9 +3818,23 @@ function syncAttrDraftFromDom(){
   _attrDraft.seasons=_attrDraft.seasons.map((s,i)=>{
     const o={};   // 시즌/날짜선택 없이 '기간'은 자유 입력
     ['period','adult','child'].forEach(k=>{ const el=document.getElementById(`a-${i}-${k}`); o[k]=el?el.value:(s[k]||''); });
-    const rm=document.getElementById(`a-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');
+    const rm=document.getElementById(`a-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');   // 공통을 켜 두면 칸이 없어 기존 값이 그대로 보존된다
     return o;
   });
+  // 공통 비고: 켜져 있으면 입력칸에서 읽고, 꺼져 있으면 기존 값 보존(호텔 탭과 같은 방식)
+  const cr=document.getElementById('a-remark-common'); if(cr) _attrDraft.remark=cr.value;
+}
+// 비고 공통 사용 켜기/끄기 — 켜면 기간이 여러 개여도 비고 한 칸(표에서 합쳐짐), 끄면 기간마다 비고
+function toggleAttrRemarkCommon(){
+  syncAttrDraftFromDom();
+  const a=_attrDraft; if(!a) return;
+  a.remarkCommon=!a.remarkCommon;
+  // 공통으로 켤 때 공통 비고가 비어 있으면, 기간에 적어 둔 비고를 끌어와 채움(사라진 것처럼 보이지 않게)
+  if(a.remarkCommon && !String(a.remark||'').trim()){
+    const first=(a.seasons||[]).map(s=>String(s.remark||'').trim()).filter(Boolean)[0];
+    if(first) a.remark=first;
+  }
+  renderAttrEditorBody();
 }
 function addAttrSeason(){ syncAttrDraftFromDom(); _attrDraft.seasons.push({}); renderAttrEditorBody(); }
 function delAttrSeason(i){
@@ -3819,7 +3843,7 @@ function delAttrSeason(i){
   else _attrDraft.seasons.splice(i,1);
   renderAttrEditorBody();
 }
-function attrSeasonBlockHtml(s,i){
+function attrSeasonBlockHtml(s,i,common){   // common=true면 기간별 비고 칸을 감춘다(아래 공통 비고 한 칸을 쓴다)
   return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${i+1}</span>
@@ -3829,7 +3853,7 @@ function attrSeasonBlockHtml(s,i){
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>기간</label><input type="text" id="a-${i}-period" value="${escapeAttr(s.period||'')}" placeholder="예: 연중, 4~10월"/></div>
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>성인요금</label><input type="text" id="a-${i}-adult" value="${escapeAttr(s.adult||'')}" placeholder="예: 500 또는 성인 500/학생 300"/></div>
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>어린이요금</label><input type="text" id="a-${i}-child" value="${escapeAttr(s.child||'')}"/></div>
-      <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('a-'+i+'-remark')}<textarea id="a-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>
+      ${common?'':`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('a-'+i+'-remark')}<textarea id="a-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>`}
     </div>
   </div>`;
 }
@@ -3843,9 +3867,20 @@ function renderAttrEditorBody(){
   </div>
   <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
     <b style="font-size:13px;color:#1f2a44;">기간별 요금 (${a.seasons.length}개)</b>
-    <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addAttrSeason()">＋ 기간 추가</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5570;cursor:pointer;user-select:none;">
+        <input type="checkbox" ${a.remarkCommon?'checked':''} onchange="toggleAttrRemarkCommon()" style="cursor:pointer;"/> 비고 공통 사용
+      </label>
+      <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addAttrSeason()">＋ 기간 추가</button>
+    </div>
   </div>`;
-  document.getElementById('soBody').innerHTML=head+`<div id="attrSeasons">${a.seasons.map((s,i)=>attrSeasonBlockHtml(s,i)).join('')}</div>`;
+  // 공통 비고 — 호텔 탭과 같은 모양. 기간이 몇 개든 비고 한 칸, 표에서 한 칸으로 합쳐진다(사장님 2026-09-19)
+  const commonBox=a.remarkCommon?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
+      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (공통 — 기간 ${a.seasons.length}개에 함께 적용, 표에서 한 칸으로 합쳐짐)</div>
+      ${remarkColorBar('a-remark-common')}
+      <textarea id="a-remark-common" style="width:100%;">${escapeHtml(a.remark||'')}</textarea>
+    </div>`:'';
+  document.getElementById('soBody').innerHTML=head+`<div id="attrSeasons">${a.seasons.map((s,i)=>attrSeasonBlockHtml(s,i,!!a.remarkCommon)).join('')}</div>`+commonBox;
 }
 function openAttrEditor(index){
   attrEditIndex=index;
@@ -3897,11 +3932,13 @@ function openAttrDetail(i){
     const rows=[['기간',s.period||'-'],['성인요금',fmtMoney(s.adult)],['어린이요금',fmtMoney(s.child)]];
     return `<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;margin-top:8px;">
       <div style="background:#eef2f9;padding:6px 10px;font-size:12px;font-weight:700;color:#1f2a44;">기간 ${i+1}</div>
-      ${rows.map(x=>line(x[0],x[1])).join('')}${line('비고', s.remark?renderRemark(s.remark):'-', true)}
+      ${rows.map(x=>line(x[0],x[1])).join('')}${a.remarkCommon?'':line('비고', s.remark?renderRemark(s.remark):'-', true)}
     </div>`;
   }).join('');
+  // 「비고 공통 사용」을 켠 항목은 기간마다가 아니라 맨 아래 한 번만 보여 준다(호텔 상세보기와 같은 모양)
+  const commonRemark=(a.remarkCommon&&a.remark)?`<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;"><div style="font-size:10.5px;color:#8892a0;font-weight:700;margin-bottom:3px;">비고 (공통)</div>${renderRemark(a.remark)}</div>`:'';
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
-    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>');
+    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>')+commonRemark;
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
