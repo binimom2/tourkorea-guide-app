@@ -792,7 +792,7 @@ function renderRegions(){
       <input type="number" min="0" max="14" value="${numval(r.nights)}" data-reg-n="${i}"><small>박</small>
       <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
 }
-function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); calc(); }
+function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); buildTourSelOptions(); calc(); }   // 7번 기타투어 목록은 2번에서 고른 지역을 따라간다
 
 /* 새 견적 내기 — 입력을 전부 비운다.
    견적번호도 비워야 다음 견적서에서 새 번호를 받는다(안 비우면 앞 팀 번호로 덮어써 보관된다).
@@ -1134,17 +1134,34 @@ function buildTourSelOptions(){
   const card=$('#s7'), sel=$('#tourSel'); if(!card||!sel) return;
   /* 목록은 요금표(golf_pricing)의 quoteTours — 코드·요금 관리 「💰 실시간견적 요금표 관리 → 🎫 기타투어」에서 넣는다(차량·핸들링·가이드와 같은 자리).
      제목과 1인 밧 금액이 둘 다 있고 «보이기»가 켜진 줄만 나온다. */
-  SITE_TOURS=(Array.isArray(P&&P.quoteTours)?P.quoteTours:[]).filter(i=>i&&i.on!==false&&String(i.n||'').trim())
-    .map(i=>({n:String(i.n).trim(),p:Number(String(i.p==null?'':i.p).replace(/[^\d.]/g,''))||0})).filter(i=>i.p>0);
+  const ALL=(Array.isArray(P&&P.quoteTours)?P.quoteTours:[]).filter(i=>i&&i.on!==false&&String(i.n||'').trim())
+    .map(i=>({n:String(i.n).trim(),r:String(i.r||'').trim(),p:Number(String(i.p==null?'':i.p).replace(/[^\d.]/g,''))||0})).filter(i=>i.p>0);
+  /* 지역 거르기(사장님 2026-09-19) — 2번에서 고른 지역의 투어만 나온다: 방콕+파타야면 둘 다, 파타야만이면 파타야만.
+     지역을 「전 지역」(빈칸)으로 둔 투어는 늘 나오고, 아직 2번을 안 골랐으면 전부 보여 준다. */
+  const regs=ROUTE.map(x=>String(x.region||'').trim()).filter(Boolean);
+  SITE_TOURS=ALL.filter(i=>!i.r||!regs.length||regs.indexOf(i.r)>=0);
+  /* 지역을 바꿔 목록에서 빠진 투어가 이미 담겨 있으면 같이 뺀다 — 안 가는 지역의 투어가 견적에 남으면 안 된다 */
+  const before=TOUR_PICKS.length;
+  TOUR_PICKS=TOUR_PICKS.filter(t=>SITE_TOURS.some(i=>i.n===t.n));
+  if(TOUR_PICKS.length!==before) renderTourPicks();
   /* 목록이 비면 손님·여행사 화면에서는 7번 칸을 감춘다. 직원 화면에서는 칸을 남기고 어디서 넣는지 알려 준다 */
   const staff=!GUEST&&GROLE!=='agency';
   card.style.display=(SITE_TOURS.length||staff)?'':'none';
-  const hint=$('#tourEmptyHint'); if(hint) hint.style.display=(!SITE_TOURS.length&&staff)?'':'none';
+  const hint=$('#tourEmptyHint');
+  if(hint){
+    hint.style.display=(!SITE_TOURS.length&&staff)?'':'none';
+    /* 목록은 있는데 고른 지역에 해당하는 투어가 없는 경우는 글을 달리한다 */
+    hint.textContent=ALL.length
+      ? `선택한 지역(${regs.join(' · ')})에 등록된 기타투어가 없습니다 — 「🎫 기타투어」에서 지역을 확인해 주세요. (이 안내는 직원에게만 보입니다)`
+      : '아직 등록된 기타투어가 없습니다 — 사이트 관리 → 「💰 실시간 요금표&코드관리」 → 「🎫 기타투어」에서 제목과 금액을 넣고 저장하세요. (이 안내는 직원에게만 보입니다)';
+  }
   const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-  /* 이 화면은 손님에게 그대로 보여 주는 면이라 밧을 적지 않는다 — 환율이 있으면 1인 원화 값을 옆에 적는다 */
+  /* 이 화면은 손님에게 그대로 보여 주는 면이라 밧을 적지 않는다 — 환율이 있으면 1인 원화 값을 옆에 적는다.
+     (한때 「금액은 노출 X」로 뺐다가, 실제 화면을 보시고 「금액 노출합시다」로 되돌림 — 사장님 2026-09-19) */
   const price=p=>(FX_RATE>0)?` — 1인 ${won(krwUp(p*FX_RATE))}원`:'';
   sel.innerHTML='<option value="">기타투어 선택</option>'
-    +SITE_TOURS.map((it,i)=>`<option value="${i}">${e(it.n)}${e(price(it.p))}</option>`).join('');
+    /* 두 지역 이상을 도는 일정이면(또는 아직 지역을 안 골랐으면) 어느 지역 투어인지 앞에 붙인다 — 「[파타야] 알카자쇼」 */
+    +SITE_TOURS.map((it,i)=>`<option value="${i}">${e((it.r&&new Set(regs).size!==1)?`[${it.r}] `:'')}${e(it.n)}${e(price(it.p))}</option>`).join('');
 }
 /* 「전통맛사지 2시간 4명×2회」 — 1회면 횟수는 안 적는다(접힌 요약·견적서 포함사항 공통) */
 function tourPickLabel(t){ const k=Math.max(1,+t.times||1); return `${t.n} ${t.cnt}명`+(k>1?`×${k}회`:''); }
@@ -1153,6 +1170,8 @@ function renderTourPicks(){
   const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   box.innerHTML=TOUR_PICKS.map((t,i)=>
     `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:7px 10px;border:1px solid var(--line,#e2e6dc);border-radius:9px;background:#fff;font-size:13.5px;font-weight:700;">`
+    /* 지역 / 투어 종류 / 인원 / 횟수 (사장님 2026-09-19) — 금액은 위 선택 목록에 1인 원화로 나온다 */
+    +(t.r?`<span style="flex:none;padding:2px 8px;border-radius:999px;background:#eef3ea;font-size:12px;font-weight:800;color:#2e5a43;">${e(t.r)}</span>`:'')
     +`<span style="flex:1;min-width:0;">${e(t.n)}</span>`
     +`<div class="unit" style="flex:none;"><input type="number" min="1" inputmode="numeric" data-tourcnt="${i}" value="${t.cnt}" style="width:70px;"><span>명</span></div>`
     /* 횟수(사장님 2026-09-19) — 맛사지 2시간을 2회·3회 받겠다는 팀이 있다. 금액 = 1인 밧 × 인원 × 횟수 */
@@ -1166,7 +1185,7 @@ function onTourSelChange(){
   if(!/^\d+$/.test(v)) return;
   const it=SITE_TOURS[+v]; if(!it) return;
   if(TOUR_PICKS.some(t=>t.n===it.n)){ showNotice('이미 담은 투어입니다.'); return; }
-  TOUR_PICKS.push({n:it.n,p:it.p,cnt:Math.max(1,+$('#pax').value||1),times:1});
+  TOUR_PICKS.push({n:it.n,r:it.r||'',p:it.p,cnt:Math.max(1,+$('#pax').value||1),times:1});
   renderTourPicks(); touched.add('s7'); autoFold('s7'); calc();
 }
 document.addEventListener('change',e=>{ if(e.target&&e.target.id==='tourSel') onTourSelChange(); });

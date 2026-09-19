@@ -820,22 +820,30 @@ function notesEditor(key,title){   // key: G의 문구 배열 이름(vehicleNote
    제목과 금액이 둘 다 있고 «보이기»가 켜진 줄만 견적에 나온다. 금액은 손님에게 받는 값 그대로 계산된다(마진을 따로 안 얹는다).
    손님 사이트의 「기타투어」 묶음(사이트 내용 탭)과는 따로다 — 거기는 종류가 많아 견적 칸에 다 내걸면 곤란하다고 하심. */
 function toursCard(){
-  const c=card('🎫 기타투어 (실시간 견적 7번)','실시간 견적의 「7. 기타투어」 선택 칸에 나오는 목록입니다. 투어 제목과 1인 금액(밧)을 적고 💾 저장을 누르세요. '
-    +'금액은 손님에게 받는 값 그대로 × 참가 인원으로 계산됩니다. 목록이 비어 있으면 견적 화면에 7번 칸이 나타나지 않습니다.');
+  const c=card('🎫 기타투어 (실시간 견적 7번)','실시간 견적의 「7. 기타투어」 선택 칸에 나오는 목록입니다. 지역 · 투어 종류 · 1인 금액(밧)을 적고 💾 저장을 누르세요. '
+    +'견적에서는 2번에서 고른 지역의 투어만 나옵니다(방콕+파타야면 둘 다, 「전 지역」은 늘). 선택 목록에는 1인 금액이 원화로 보이고, '
+    +'총액에는 1인 금액 × 인원 × 횟수로 들어갑니다(인원·횟수는 견적할 때 정합니다).');
   const box=el('div');
   const IN='font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
   const draw=()=>{
     box.innerHTML='';
     if(!Array.isArray(G.quoteTours)) G.quoteTours=[];
     const head=el('div'); head.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:11px;font-weight:800;color:#8b948e;';
-    head.innerHTML='<span style="width:44px;text-align:center">보이기</span><span style="flex:1">투어 제목</span><span style="width:130px">금액 (밧 · 1인)</span><span style="width:22px"></span>';
+    head.innerHTML='<span style="width:44px;text-align:center">보이기</span><span style="width:110px">지역</span><span style="width:300px">투어 종류</span><span style="width:130px">금액 (밧 · 1인)</span><span style="width:22px"></span>';
     if(G.quoteTours.length) box.appendChild(head);
     G.quoteTours.forEach((t,i)=>{
       const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;'+(t.on===false?'opacity:.5;':'');
       const on=document.createElement('input'); on.type='checkbox'; on.checked=t.on!==false; on.style.cssText='width:44px;margin:0;';
       on.title='끄면 이 줄만 견적 선택 칸에서 빠집니다';
       on.onchange=()=>{ t.on=on.checked; _touch(); draw(); };
-      const n=document.createElement('input'); n.type='text'; n.value=t.n||''; n.placeholder='예: 알카자쇼'; n.style.cssText='flex:1;min-width:0;'+IN;
+      /* 지역(사장님 2026-09-19) — 견적 2번에서 고른 지역의 투어만 7번에 나온다(방콕+파타야면 둘 다, 파타야만이면 파타야만).
+         「전 지역」으로 두면 어느 일정에서나 나온다. 목록은 코드관리의 지역을 그대로 쓴다. 저장 자리 t.r */
+      const rg=document.createElement('select'); rg.style.cssText='width:110px;'+IN;
+      const regs=regionOpts(); if(t.r&&regs.indexOf(t.r)<0) regs.push(t.r);      // 코드에서 빠진 옛 지역 이름도 그대로 보이게
+      rg.innerHTML='<option value="">전 지역</option>'+regs.map(r=>'<option>'+String(r).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))+'</option>').join('');
+      rg.value=t.r||'';
+      rg.onchange=()=>{ t.r=rg.value; _touch(); };
+      const n=document.createElement('input'); n.type='text'; n.value=t.n||''; n.placeholder='예: 알카자쇼'; n.style.cssText='width:300px;flex:0 1 300px;min-width:0;'+IN;   // 제목 칸은 길 필요가 없다(사장님 2026-09-19)
       n.oninput=()=>{ t.n=n.value; _touch(); };
       const p=document.createElement('input'); p.type='number'; p.inputMode='numeric'; p.min='0'; p.placeholder='밧';   // 0을 미리 넣지 않는다
       p.value=(t.p==null||t.p==='')?'':t.p; p.style.cssText='width:130px;text-align:right;'+IN;
@@ -843,7 +851,7 @@ function toursCard(){
       const x=el('button',null,'✕'); x.style.cssText='width:22px;border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
       x.title='이 줄 지우기';
       x.onclick=()=>{ if((t.n||t.p)&&!confirm('「'+(t.n||'이 줄')+'」을(를) 지웁니다.\n(저장을 눌러야 실제로 반영됩니다)')) return; G.quoteTours.splice(i,1); _touch(); draw(); };
-      row.appendChild(on); row.appendChild(n); row.appendChild(p); row.appendChild(x); box.appendChild(row);
+      row.appendChild(on); row.appendChild(rg); row.appendChild(n); row.appendChild(p); row.appendChild(x); box.appendChild(row);
     });
     const add=el('button','btn ghost sm','＋ 투어 추가');
     add.onclick=()=>{ G.quoteTours.push({n:'',p:''}); _touch(); draw(); const ins=box.querySelectorAll('input[type=text]'); if(ins.length) ins[ins.length-1].focus(); };
