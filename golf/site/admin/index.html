@@ -147,14 +147,20 @@ tr.subrow td{padding:0 6px 11px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
 /* 한 기간 = 왼쪽(날짜 + 구분) · 가운데(요금표: 주중·주말 두 줄 × 다섯 칸) · ✕ (사장님 2026-09-19) */
 .rmhd,.rmrate{display:grid;grid-template-columns:258px auto 22px;gap:8px;align-items:center;justify-content:start}
-.rmrate{padding:4px 0;border-top:1px dashed var(--line)}
+/* 기본요금 줄은 초록, 써차지 줄은 빨강 — 줄 바탕·왼쪽 띠·「구분」 칸 색을 다르게(사장님 2026-09-19 「입력을 많이 하다 보니 헷갈려」) */
+.rmrate{padding:5px 6px 5px 8px;border-left:5px solid #2E7D4F;border-radius:7px;background:#EAF5EE}
+.rmrate select[data-rmf=sur]{background:#2E7D4F;border-color:#2E7D4F;color:#fff;font-weight:800}
+.rmrate select[data-rmf=sur] option{background:#fff;color:#222;font-weight:400}
+.rmrate .rmgrid>span{color:#1F5C39}
 .rmgrid{display:grid;grid-template-columns:54px repeat(5,84px);gap:4px 5px;align-items:center}
 .rmgrid>span{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 .rmhd .rmgrid>span{text-align:center}
 /* 써차지(특별일 추가요금) 줄은 눈에 띄게 — 기본요금과 헷갈리면 값이 두 배로 나간다 */
-.rmrate.sur{background:#FFF6E6;border-radius:7px;padding:3px;margin:-3px}
-.rmrate.sur input[type=number]{border-color:var(--marigold)}
-.rmhd{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
+.rmrate.sur{background:#FDE3E1;border-left-color:#D32F2F}
+.rmrate.sur select[data-rmf=sur]{background:#D32F2F;border-color:#D32F2F}
+.rmrate.sur .rmgrid>span{color:#B71C1C}
+.rmrate.sur input[type=number]{border-color:#E57373;color:#B71C1C;font-weight:700}
+.rmhd{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 6px 0 13px}
 .rmrate input,.rmrate select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
 .rmrate input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
