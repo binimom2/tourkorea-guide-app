@@ -21,8 +21,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);l
 .hidden{display:none!important}
 button{font:inherit;cursor:pointer}
 /* 적어 넣은 글자는 검정(굵기는 보통 — 굵게 했더니 너무 진하다고 하심), 예시 글(placeholder)은 옅은 회색 — 둘이 비슷해 보여 헷갈린다고 하심(사장님 2026-09-19) */
-input,select,textarea{font:inherit;color:#000}
-input::placeholder,textarea::placeholder{color:#B4BDB8;font-weight:400;opacity:1}
+/* 이 PC 글꼴(맑은 고딕)은 굵기가 보통·굵게 둘뿐이라 그 사이가 없다 — 보통 굵기에 아주 가는 검정 테두리(0.3px)를 둘러
+   「보통과 굵게의 중간」으로 보이게 한다. 보통은 회색처럼 보이고 굵게는 너무 진하다고 하심(사장님 2026-09-19) */
+input,select,textarea{font:inherit;color:#000;-webkit-text-stroke:.3px #000}
+input::placeholder,textarea::placeholder{color:#B4BDB8;font-weight:400;opacity:1;-webkit-text-stroke:0}
+select[data-rmf=sur]{-webkit-text-stroke:0}
 
 /* ── 로그인 ── */
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
@@ -2179,7 +2182,7 @@ function roomCell(x,i){
     +'<div class="rminc"><label>아동 요금 적용 나이</label>'
       +'<select data-p="hotels.'+i+'.childMax" style="flex:none;width:auto;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px">'
       +[11,12].map(a=>'<option value="'+a+'"'+((Number(x.childMax)||11)===a?' selected':'')+'>만 '+a+'세까지 ('+(a+1)+'세 미만)</option>').join('')
-      +'</select><span class="rhint">이 나이를 넘으면 손님 화면에서 성인으로 선택하게 안내합니다</span></div>'
+      +'</select><span class="rhint" style="font-size:11px">이 나이를 넘으면 손님 화면에서 성인으로 선택하게 안내합니다</span></div>'
     +(rooms.length
       ? '<div class="rmlist">'+rooms.map((rm,j)=>roomRowHTML(x,i,rm,j,findRoom(prs,rm.t))).join('')+'</div>'
       : '<div class="rnone">아직 객실이 없습니다 — 아래 「＋ 객실 추가」로 넣어 주세요</div>')
