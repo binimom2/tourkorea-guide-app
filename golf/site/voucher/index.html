@@ -57,6 +57,19 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .err p{color:var(--muted);font-size:14px}
 .total{display:flex;justify-content:space-between;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:6px;font-size:14px;font-weight:800;margin-bottom:22px}
 .total i{font-style:normal;color:var(--muted);font-weight:600;font-size:12px;margin-left:6px}
+/* 인보이스(여행사 수배 건) */
+.itin{width:100%;border-collapse:collapse;font-size:13.5px}
+.itin th{text-align:left;padding:7px 8px;background:var(--paper);font-size:12px;color:var(--muted);letter-spacing:.06em}
+.itin td{padding:7px 8px;border-bottom:1px solid var(--line);font-weight:700}
+.itin .nw{white-space:nowrap}
+.itin .mut{color:var(--muted);font-weight:600}
+.amt{background:var(--navy);color:#fff;border-radius:6px;padding:14px 18px;margin-bottom:22px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.amt div{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:13.5px}
+.amt div span{opacity:.85}
+.amt div b{font-size:17px;font-weight:800}
+.amt .sum{border-top:2px solid #E8A33D;margin-top:8px;padding-top:10px}
+.amt .sum span{font-size:15px;font-weight:800;opacity:1}
+.amt .sum b{font-size:26px;font-weight:900;color:#E8A33D}
 @media print{ .act{display:none} .sheet{padding:0} body{background:#fff} .head{-webkit-print-color-adjust:exact;print-color-adjust:exact} .body,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 </style>
 </head>
@@ -148,6 +161,54 @@ function render(v){
   document.title = "예약 확정서 " + v.no + " · " + (c.name || "");
   $("#act").style.display = "";
 }
+/* ── 인보이스(사장님 2026-09-21) — 실시간 견적으로 들어온 여행사 수배 건은 컨펌하면 바우처 대신 이 화면이 나간다.
+   서버가 v.type==='invoice' 로 견적 내용(v.quote)과 총액만 준다 — 항목별 원가는 오지 않는다 ── */
+function dshort(s){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!m) return s || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return m[2] + "/" + m[3] + " (" + ["일","월","화","수","목","금","토"][d.getDay()] + ")";
+}
+function renderInvoice(v){
+  const c = v.company || {}, q = v.quote || {}, to = v.to || {};
+  const days = (q.days || []).map(d => '<tr><td class="nw">' + esc(dshort(d.date)) + '</td><td class="nw">' + esc(d.region) + '</td><td>' + esc(d.hotel || "")
+    + '</td><td>' + (d.round && d.course ? esc(d.course) + ' <b>' + esc(d.holes || "18") + '홀</b>' : '<span class="mut">라운딩 없음</span>') + '</td></tr>').join("");
+  const none = [q.noHotel ? "호텔" : "", q.noGuide ? "가이드" : "", q.noVeh ? "차량" : ""].filter(Boolean);
+  const reqs = (q.requests || []).filter(Boolean);
+  const issued = String(v.confirmedAt || "").slice(0, 10);
+  $("#app").innerHTML = '<div class="sheet inv">'
+    + '<div class="brand">' + esc(c.name || "") + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>'
+    + '<h1>Invoice<small>인보이스</small></h1>'
+    + '<p class="tip">※ 요청하신 수배가 확정되었습니다. 아래 금액을 확인하시고 입금해 주세요.</p>'
+    + '<div class="head"><div class="bn">Invoice No. <b>' + esc(v.cno) + '</b></div>'
+      + '<h2>' + esc(to.company || v.guest || "") + (to.contact ? ' <span style="font-weight:600;font-size:14px">' + esc(to.contact) + ' 님</span>' : '') + '</h2>'
+      + '<p>· 견적번호 ' + esc(q.quoteNo || "") + '<br>· 발행일 ' + esc(issued) + '</p></div>'
+    + '<div class="body"><h3>Booking Summary</h3>'
+      + '<div class="tbl">'
+      + '<div><span>팀명 (Team)</span><b>' + esc(q.team || "-") + '</b></div>'
+      + '<div><span>일정 (Period)</span><b>' + esc(q.start || "") + ' ~ ' + esc(q.end || "") + (q.nights ? ' (' + q.nights + '박 ' + (q.tripDays || q.nights + 1) + '일)' : '') + '</b></div>'
+      + '<div><span>인원 (Pax)</span><b>' + (q.pax || 0) + '명</b></div>'
+      + (q.route ? '<div><span>동선 (Route)</span><b>' + esc(q.route) + '</b></div>' : '')
+      + (q.flight ? '<div><span>항공 (Flight)</span><b>' + esc(q.flight) + '</b></div>' : '')
+      + '</div></div>'
+    + (days ? '<div class="sec"><h3>일정표</h3><table class="itin"><thead><tr><th>날짜</th><th>지역</th><th>호텔</th><th>골프장</th></tr></thead><tbody>' + days + '</tbody></table></div>' : '')
+    + ((q.includes || []).length ? '<div class="sec"><h3>포함 사항</h3><p>' + q.includes.map(t => '· ' + esc(t)).join("\n") + '</p>'
+        + (none.length ? '<p style="margin-top:6px;color:#D9412B;font-weight:700">· 불포함(선택하지 않음): ' + esc(none.join(", ")) + '</p>' : '') + '</div>' : '')
+    + (reqs.length ? '<div class="sec"><h3>요청 사항</h3><p>' + reqs.map(t => '· ' + esc(t)).join("\n") + '</p></div>' : '')
+    + '<div class="amt">'
+      + (q.perKrw ? '<div><span>1인 요금</span><b>' + won(q.perKrw) + '</b></div><div><span>인원수</span><b>× ' + (q.pax || 0) + '명</b></div>' : '')
+      + '<div class="sum"><span>Total (청구 금액)</span><b>' + (q.totalKrw ? won(q.totalKrw) : '-') + '</b></div></div>'
+    + (c.bank ? '<div class="box"><h3>입금 안내</h3><p>' + esc(c.bank) + '</p></div>' : '')
+    + (v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
+    + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
+    + '<div class="sec"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
+      + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
+      + (c.tel2 ? '<p class="small">- Tel : ' + esc(c.tel2) + '</p>' : '')
+      + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '')
+      + (c.issuer ? '<p class="small">- 담당 : ' + esc(c.issuer) + '</p>' : '') + '</div>'
+    + '</div>';
+  document.title = "인보이스 " + (q.quoteNo || v.no) + " · " + (c.name || "");
+  $("#act").style.display = "";
+}
 function fail(msg){
   $("#app").innerHTML = '<div class="err"><h2>예약 확정서를 열 수 없습니다</h2><p>' + esc(msg) + '</p></div>';
 }
@@ -160,7 +221,7 @@ function fail(msg){
       body: JSON.stringify({ action: "voucher", no, t }) });
     const j = await r.json().catch(() => ({}));
     if(!j || !j.ok) return fail((j && j.error) || "서버 응답이 없습니다. 잠시 뒤 다시 열어 주세요.");
-    render(j.v);
+    if(j.v && j.v.type === "invoice") renderInvoice(j.v); else render(j.v);
   }catch(e){ fail("서버 연결에 실패했습니다. 잠시 뒤 다시 열어 주세요."); }
 })();
 </script>

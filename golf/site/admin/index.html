@@ -224,6 +224,41 @@ tr.subrow td{padding:0 6px 11px}
 .bkfoot input{flex:1;min-width:160px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13px}
 .bkby{font-size:11.5px;color:var(--muted);font-weight:700}
 /* 바우처 줄 — 컨펌 전엔 단추 하나, 발급 뒤엔 확정번호·열기·보내기 */
+/* 여행사 수배 건 — 📄 수배요청서 단추 줄 · 접어 둔 원가 내역 · 수배요청서 창(사장님 2026-09-21) */
+.bkdocrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:2px 0 8px}
+.bkcost{margin:0 0 9px}
+.bkcost summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);padding:4px 0}
+#bkDocOv{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.bkdoc-box{background:#fff;border-radius:12px;max-width:860px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.bkdoc-scroll{flex:1;overflow:auto;padding:22px 24px}
+.bkdoc-act{display:flex;gap:8px;justify-content:flex-end;padding:11px 24px;border-top:1px solid #e7e3d8;background:#faf8f2}
+.bkdoc{color:#15211C;line-height:1.5}
+.bkdoc-hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px}
+.bkdoc-hd small{font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700}
+.bkdoc-hd h2{margin:2px 0 0;font-size:23px;font-weight:800;letter-spacing:-.03em}
+.bkdoc-hd .r{text-align:right;font-size:11.5px;color:#5E6F66}
+.bkdoc-hd .r b{display:block;font-size:13px;color:#15211C}
+.bkdoc-info{display:grid;grid-template-columns:52px 1fr 52px 1fr;gap:7px 10px;margin:13px 0 16px;font-size:13px;align-items:baseline}
+.bkdoc-info span{color:#5E6F66;font-weight:700}
+.bkdoc-info b{font-weight:700}
+.bkdoc-info i{font-style:normal;font-weight:600;color:#5E6F66}
+.bkdoc-row{display:grid;grid-template-columns:128px minmax(0,1fr) minmax(0,1.15fr);gap:8px;padding:7px 8px;font-size:13.5px;font-weight:700}
+.bkdoc-row.first{border-top:1px solid #e7e3d8}
+.bkdoc-row.hd{background:#F7F3E9;font-size:12px;letter-spacing:.06em;color:#5E6F66}
+.bkdoc-row .h{white-space:nowrap}
+.bkdoc-row em{font-style:normal;display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;background:#eef3ea;color:#2e5a43;font-size:11.5px;font-weight:800}
+.bkdoc-row .nt{color:#B23B3B;white-space:pre-wrap}
+.bkdoc-etc{margin-top:14px;font-size:13px}
+.bkdoc-etc b{display:block;font-size:12px;font-weight:800;color:#123A2B;margin-bottom:4px}
+.bkdoc-etc p{margin:0;white-space:pre-wrap;font-weight:600}
+@media print{
+  body.bkdoc-open>*:not(#bkDocOv){display:none!important}
+  body.bkdoc-open #bkDocOv{position:static;background:none;padding:0;display:block}
+  body.bkdoc-open .bkdoc-box{box-shadow:none;max-width:none;max-height:none;overflow:visible;display:block}
+  body.bkdoc-open .bkdoc-scroll{overflow:visible;padding:0}
+  body.bkdoc-open .bkdoc-act{display:none}
+  .bkdoc-row.hd,.bkdoc-row em{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 .bkvc{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:9px;padding:9px 10px;border-radius:9px;background:rgba(232,163,61,.10)}
 .bkvc.on{background:rgba(46,125,79,.10)}
 .bkvc .ghost{padding:6px 11px;font-size:12.5px}
@@ -1024,7 +1059,7 @@ function drawAgencies(){
    금액은 «손님 화면에 그때 보이던 값»이다 — 확정가가 아니라 요금표로 다시 확인해야 한다. */
 const BOOK_STATUS=[
   {k:'new',   t:'접수',   c:'#E8A33D'},
-  {k:'confirmed', t:'컨펌 (바우처 발급)', c:'#2E7D4F'},   /* 「컨펌」 단추를 누르면 서버가 이 상태로 바꾼다 */
+  {k:'confirmed', t:'컨펌 (바우처·인보이스 발급)', c:'#2E7D4F'},   /* 「컨펌」 단추를 누르면 서버가 이 상태로 바꾼다 */
   {k:'doing', t:'진행중', c:'#1C5B42'},
   {k:'done',  t:'완료',   c:'#3C6E71'},
   {k:'cancel',t:'취소',   c:'#9AA5A0'}
@@ -1109,8 +1144,15 @@ function bookCardHtml(b){
       +'<span class="bktot">'+Number(b.total||0).toLocaleString('ko-KR')+'원</span>'
     +'</div>'
     +'<div class="bkwho"><b>'+esc(c.name||'')+'</b> <span>'+esc(who)+'</span></div>'
-    +(c.memo?'<div class="bkmemo">“'+esc(c.memo)+'”</div>':'')
-    +'<ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul>'
+    /* 여행사 수배 건(실시간 견적) — 줄줄이 펼치지 않고 「📄 수배요청서」 한 장으로 본다(사장님 2026-09-21 "수배서 파일을 꽂아주세요").
+       원가 줄은 직원 확인용이라 접어 둔다. b.quote 가 없는 옛 건은 전처럼 메모·줄을 그대로 보여 준다 */
+    +((b.agency&&b.quote)
+      ? '<div class="bkdocrow"><button class="add" data-bkdoc="'+esc(b.no)+'">📄 수배요청서 보기</button>'
+          +'<span class="bkvhint">견적 '+esc(b.quote.quoteNo||'')+' · '+esc(b.quote.start||'')+' ~ '+esc(b.quote.end||'')+' · '+(b.quote.pax||0)+'명 · '+esc(b.quote.route||'')
+          +((b.quote.requests||[]).length?' · <b style="color:#B23B3B">요청사항 '+(b.quote.requests||[]).length+'건</b>':'')+'</span></div>'
+        +'<details class="bkcost"><summary>원가 내역 (직원 확인용)</summary><ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul></details>'
+      : (c.memo?'<div class="bkmemo">“'+esc(c.memo)+'”</div>':'')
+        +'<ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul>')
     +voucherRowHtml(b)
     +'<div class="bkfoot">'
       +'<select data-st="'+esc(b.no)+'">'
@@ -1127,27 +1169,41 @@ function bookCardHtml(b){
 function voucherUrlOf(b){
   return location.origin+'/golf/site/voucher/?no='+encodeURIComponent(b.no)+'&t='+encodeURIComponent(b.voucher.token);
 }
+/* 실시간 견적으로 들어온 여행사 수배 건(b.agency)은 바우처 대신 «인보이스»가 나간다(사장님 2026-09-21).
+   같은 링크(/golf/site/voucher/)인데 서버가 인보이스 내용(견적 일정·총액·입금 안내)으로 돌려준다 — 원가 줄은 안 나간다 */
+function isInvoiceBook(b){ return !!(b&&b.agency&&b.agency.quoteNo); }
+function docNameOf(b){ return isInvoiceBook(b)?'인보이스':'바우처'; }
 function voucherRowHtml(b){
-  const v=b.voucher;
+  const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
     if(b.status==='cancel') return '';
-    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ 컨펌 · 바우처 발급</button>'
-      +'<span class="bkvhint">컨펌하면 예약 확정서(바우처)가 만들어지고 카톡·이메일로 보낼 수 있습니다</span></div>';
+    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ 컨펌 · '+dn+' 발급</button>'
+      +'<span class="bkvhint">'+(inv?'컨펌하면 인보이스(청구서)가 만들어지고 여행사에 카톡·이메일로 보낼 수 있습니다'
+        :'컨펌하면 예약 확정서(바우처)가 만들어지고 카톡·이메일로 보낼 수 있습니다')+'</span></div>';
   }
   const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
   return '<div class="bkvc on">'
-    +'<span class="bkvno">확정번호 <b>'+esc(v.cno)+'</b></span>'
-    +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">바우처 열기 ↗</a>'
+    +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
+    +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">'+dn+' 열기 ↗</a>'
     +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
     +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
-    +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="바우처에 실리는 Agent Memo(호텔 컨펌번호 등)">✎ 바우처 메모</button>'
+    +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="'+(inv?'인보이스에 실리는 Memo(입금 기한 등)':'바우처에 실리는 Agent Memo(호텔 컨펌번호 등)')+'">✎ '+dn+' 메모</button>'
     +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
     +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
     +'</div>';
 }
 function kakaoTextOf(b){
   const co=(S.voucher&&S.voucher.name)||'투어코리아';
+  if(isInvoiceBook(b)){
+    const q=b.quote||{};
+    return '['+co+'] '+((b.agency&&b.agency.company)||'')+' 담당자님, 요청하신 수배가 확정되었습니다.\n'
+      +'견적번호 '+(b.agency.quoteNo||'')+' · Invoice No. '+b.voucher.cno+'\n'
+      +(q.start?('일정 '+q.start+' ~ '+(q.end||'')+' · '+(q.pax||0)+'명'+(q.team?' · '+q.team:'')+'\n'):'')
+      +(q.totalKrw?('청구 금액 '+Number(q.totalKrw).toLocaleString('ko-KR')+'원\n'):'')
+      +'▶ 인보이스: '+voucherUrlOf(b)+'\n'
+      +'금액과 입금 안내를 확인해 주세요.';
+  }
   const lines=(b.items||[]).map(it=>'· '+it.name+(it.option?' '+it.option:'')+' — '+(it.date||'')
     +(it.dateEnd&&it.dateEnd!==it.date?' ~ '+it.dateEnd:''));
   return '['+co+'] '+((b.customer&&b.customer.name)||'')+' 님, 예약이 확정되었습니다.\n'
@@ -1162,13 +1218,69 @@ async function copyText(t){
     const ok=document.execCommand('copy'); ta.remove(); return ok; }catch(e){ return false; }
 }
 function bookOf(no){ return (BOOKS.list||[]).find(x=>x.no===no); }
-function bookReplace(rec){ const i=(BOOKS.list||[]).findIndex(x=>x.no===rec.no); if(i>=0) BOOKS.list[i]=rec; }
+function bookReplace(rec){ const i=(BOOKS.list||[]).findIndex(x=>x.no===rec.no); if(i<0) return;
+  if(!rec.quote&&BOOKS.list[i].quote) rec.quote=BOOKS.list[i].quote;   // 옛 여행사 건은 목록 받을 때만 견적 내용이 붙어 온다 — 저장 응답으로 바꿔 끼울 때 잃지 않게
+  BOOKS.list[i]=rec; }
+/* ══ 📄 수배요청서(사장님 2026-09-21) — 여행사가 「확정 · 수배 요청」 때 적어 보낸 그 서류를 그대로 본다.
+   내용은 b.quote(일정·포함 사항·총액)와 b.quote.notes(줄마다 비고: h:날짜 호텔 · g:날짜 골프 · d:날짜 · veh · guide · tour · etc).
+   「🖨 인쇄 / PDF 저장」은 이 창만 인쇄한다(body.bkdoc-open 인쇄 CSS) ══ */
+function bookDocHtml(b){
+  const q=b.quote||{}, n=q.notes||{}, c=b.customer||{};
+  const wd=['일','월','화','수','목','금','토'];
+  const dshort=s=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||''); if(!m) return s||''; return m[2]+'/'+m[3]+' ('+wd[new Date(+m[1],+m[2]-1,+m[3]).getDay()]+')'; };
+  const rows=[];
+  (q.days||[]).forEach(d=>{
+    const head=(dshort(d.date)+' '+(d.region||'')).trim(), mine=[];
+    if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel});
+    if(d.round&&d.course) mine.push({k:'g:'+d.date,kind:'골프',txt:d.course+' '+(d.holes||'18')+'홀'});
+    if(!mine.length) mine.push({k:'d:'+d.date,kind:'',txt:'라운딩 없음'});
+    mine.forEach((m,i)=>rows.push(Object.assign(m,{head:i?'':head})));
+  });
+  [['차량','veh'],['가이드','guide'],['기타투어','tour']].forEach(x=>{
+    const hit=(q.includes||[]).find(t=>new RegExp('^'+x[0]+'\\s*-').test(String(t||''))); if(!hit) return;
+    rows.push({k:x[1],head:x[0],kind:'',txt:String(hit).replace(/^[^-]+-\s*/,'').replace(/\s*\(확정 시[^)]*\)\s*$/,'')});
+  });
+  return '<div class="bkdoc">'
+    +'<div class="bkdoc-hd"><div><small>THAILAND GOLF</small><h2>수배요청서</h2></div>'
+      +'<div class="r"><b>'+esc(q.quoteNo||'')+'</b>접수 '+esc(bookWhen(b.at))+'<br>'+esc(b.no)+'</div></div>'
+    +'<div class="bkdoc-info">'
+      +'<span>여행사</span><b>'+esc((b.agency&&b.agency.company)||c.name||'')+((b.agency&&b.agency.contact)?' · '+esc(b.agency.contact):'')+'</b>'
+      +'<span>연락처</span><b>'+esc([c.tel,c.email].filter(Boolean).join(' · ')||'-')+'</b>'
+      +'<span>팀명</span><b>'+esc(q.team||'-')+'</b><span>인원</span><b>'+(q.pax||0)+'명</b>'
+      +'<span>일정</span><b>'+esc(q.start||'')+' ~ '+esc(q.end||'')+(q.nights?' ('+q.nights+'박 '+(q.tripDays||q.nights+1)+'일)':'')+'</b>'
+      +'<span>항공</span><b>'+esc(q.flight||'-')+'</b>'
+      +'<span>동선</span><b>'+esc(q.route||'-')+'</b>'
+      +'<span>총액</span><b>'+(q.totalKrw?Number(q.totalKrw).toLocaleString('ko-KR')+' 원':'-')+(q.perKrw?' <i>(1인 '+Number(q.perKrw).toLocaleString('ko-KR')+'원)</i>':'')+'</b>'
+    +'</div>'
+    +'<div class="bkdoc-row hd"><span>날짜 · 구분</span><span>내용</span><span>비고 (요청사항)</span></div>'
+    +rows.map(r=>'<div class="bkdoc-row'+(r.head?' first':'')+'"><span class="h">'+esc(r.head)+'</span>'
+      +'<span>'+(r.kind?'<em>'+esc(r.kind)+'</em>':'')+esc(r.txt)+'</span>'
+      +'<span class="nt">'+esc(n[r.k]||'')+'</span></div>').join('')
+    +'<div class="bkdoc-etc"><b>기타 요청사항</b><p>'+esc(n.etc||'-')+'</p></div>'
+    +((q.includes||[]).length?'<div class="bkdoc-etc"><b>포함 사항</b><p>'+(q.includes||[]).map(t=>'· '+esc(t)).join('\n')+'</p></div>':'')
+    +'</div>';
+}
+function openBookDoc(no){
+  const b=bookOf(no); if(!b||!b.quote) return;
+  closeBookDoc();
+  const ov=document.createElement('div'); ov.id='bkDocOv';
+  ov.innerHTML='<div class="bkdoc-box"><div class="bkdoc-scroll">'+bookDocHtml(b)+'</div>'
+    +'<div class="bkdoc-act"><button class="ghost" id="bkDocPrint">🖨 인쇄 / PDF 저장</button><button class="add" id="bkDocClose">닫기</button></div></div>';
+  document.body.appendChild(ov); document.body.classList.add('bkdoc-open');
+  ov.querySelector('#bkDocClose').onclick=closeBookDoc;
+  ov.querySelector('#bkDocPrint').onclick=()=>window.print();
+}
+function closeBookDoc(){ const ov=document.getElementById('bkDocOv'); if(ov) ov.remove(); document.body.classList.remove('bkdoc-open'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('bkDocOv')) closeBookDoc(); });
 function bindVoucherBtns(p){
+  p.querySelectorAll('[data-bkdoc]').forEach(btn=>btn.onclick=()=>openBookDoc(btn.dataset.bkdoc));
   p.querySelectorAll('[data-confirm]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.confirm); if(!b) return;
     const had=!!(b.voucher&&b.voucher.token);
-    const memo=prompt((had?'바우처 메모를 고칩니다.':'컨펌합니다 — 바우처(예약 확정서)를 발급합니다.')
-      +'\n바우처에 실을 메모(호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.',
+    const inv=isInvoiceBook(b), dn=docNameOf(b);
+    const memo=prompt(inv
+      ? (had?'인보이스 메모를 고칩니다.':'컨펌합니다 — 인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한 등)가 있으면 적어 주세요. 없으면 그냥 확인.'
+      : (had?'바우처 메모를 고칩니다.':'컨펌합니다 — 바우처(예약 확정서)를 발급합니다.')+'\n바우처에 실을 메모(호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.',
       (b.voucher&&b.voucher.memo)||'');
     if(memo===null) return;
     btn.disabled=true; btn.textContent='처리 중…';
@@ -1176,12 +1288,12 @@ function bindVoucherBtns(p){
     btn.disabled=false;
     if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'컨펌 실패')); drawBooks(); return; }
     bookReplace(j.rec);
-    toast(had?'바우처 메모를 고쳤습니다':'✅ 컨펌 — 바우처가 발급되었습니다');
+    toast(had?dn+' 메모를 고쳤습니다':'✅ 컨펌 — '+dn+'가 발급되었습니다');
     drawBooks();
   });
   p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vlink); if(!b) return;
-    toast((await copyText(voucherUrlOf(b)))?'🔗 바우처 링크를 복사했습니다':'복사 실패 — 「바우처 열기」로 주소를 복사해 주세요');
+    toast((await copyText(voucherUrlOf(b)))?'🔗 '+docNameOf(b)+' 링크를 복사했습니다':'복사 실패 — 「'+docNameOf(b)+' 열기」로 주소를 복사해 주세요');
   });
   p.querySelectorAll('[data-vkakao]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vkakao); if(!b) return;
@@ -1194,7 +1306,7 @@ function bindVoucherBtns(p){
   });
   p.querySelectorAll('[data-vmail]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vmail); if(!b) return;
-    const to=prompt('바우처를 보낼 이메일 주소', (b.customer&&b.customer.email)||'');
+    const to=prompt(docNameOf(b)+'를 보낼 이메일 주소', (b.customer&&b.customer.email)||'');
     if(to===null) return;
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to.trim())){ toast('⚠ 이메일 주소를 확인해 주세요'); return; }
     btn.disabled=true; btn.textContent='보내는 중…';
@@ -1202,7 +1314,7 @@ function bindVoucherBtns(p){
     btn.disabled=false; btn.textContent='📧 이메일 보내기';
     if(j&&j.setup){
       /* 서버에 메일 열쇠(RESEND_API_KEY)가 아직 없다 — 내 메일 앱을 열어 대신 보낸다 */
-      const subj='['+((S.voucher&&S.voucher.name)||'투어코리아')+'] 예약 확정서 (Voucher) · '+b.no;
+      const subj='['+((S.voucher&&S.voucher.name)||'투어코리아')+'] '+(isInvoiceBook(b)?'인보이스 (Invoice) · '+b.agency.quoteNo:'예약 확정서 (Voucher) · '+b.no);
       location.href='mailto:'+encodeURIComponent(to.trim())+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(kakaoTextOf(b));
       toast('서버 자동 발송이 아직 설정되지 않아 메일 앱을 열었습니다');
       return;
@@ -2830,6 +2942,9 @@ function voucherInfoCard(){
     +'</div>'
     +'<div class="f" style="margin-top:10px"><label>중요 안내 (비워 두면 이 칸이 안 나갑니다 — 아동·간이침대·보증금 안내 등)</label>'+ta('voucher.notes',v.notes||'','예) 숙소 도착 시 1박당 THB 1,000 의 보증금이 필요합니다.\n보증금은 체크아웃 시 전액 환불됩니다.')+'</div>'
     +'<div class="f" style="margin-top:10px"><label>유의 사항 — 한 줄에 하나 (비워 두면 기본 문구가 나갑니다)</label>'+ta('voucher.terms',v.terms||'','호텔 체크인 시 프론트 데스크에 여권과 함께 예약확정서(바우처)를 제시해 주세요.\n객실 요금은 모두 지불되었으며 …')+'</div>'
+    /* 인보이스(사장님 2026-09-21) — 실시간 견적으로 들어온 여행사 수배 건은 컨펌하면 바우처 대신 인보이스가 나간다. 회사 정보는 위 칸을 같이 쓴다 */
+    +'<div class="f" style="margin-top:14px"><label>🧾 인보이스 — 입금 안내 (여행사 수배 건 인보이스에 나갑니다. 비워 두면 이 칸이 안 나갑니다)</label>'+ta('voucher.bank',v.bank||'','예) 국민은행 000000-00-000000 (예금주 ○○○)\n출발 14일 전까지 입금 부탁드립니다.')+'</div>'
+    +'<div class="f" style="margin-top:10px"><label>🧾 인보이스 — 안내 문구 (취소 규정 등. 비워 두면 안 나갑니다)</label>'+ta('voucher.invoiceNote',v.invoiceNote||'','예) 출발 7일 전 취소 시 골프장·호텔 규정에 따라 위약금이 발생합니다.')+'</div>'
     +'</div>';
 }
 

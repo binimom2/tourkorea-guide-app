@@ -148,6 +148,7 @@ function voucherToken() {
 const VOUCHER_DEFAULT = {
   name: '투어코리아 (TOURKOREA)', en: 'We\'ve Tour Thailand', regNo: '', tel: '', tel2: '', email: '',
   issuer: '', emergency: '',
+  bank: '', invoiceNote: '',   // 인보이스(여행사 건) — 입금 계좌 · 안내 문구(사장님 2026-09-21)
   notes: '',
   terms: [
     '호텔 체크인 시 프론트 데스크에 여권과 함께 예약확정서(바우처)를 제시해 주세요.',
@@ -184,8 +185,48 @@ function venueOf(site, it) {
 function companyOf(site) {
   const v = Object.assign({}, VOUCHER_DEFAULT, (site && site.voucher) || {});
   const o = {};
-  for (const k of Object.keys(VOUCHER_DEFAULT)) o[k] = s(v[k], k === 'notes' || k === 'terms' ? 4000 : 200);
+  for (const k of Object.keys(VOUCHER_DEFAULT)) o[k] = s(v[k], k === 'notes' || k === 'terms' || k === 'invoiceNote' ? 4000 : k === 'bank' ? 600 : 200);
   return o;
+}
+/* ── 인보이스(사장님 2026-09-21) — 실시간 견적으로 들어온 여행사 수배 건(rec.agency)은 컨펌하면 바우처 대신 인보이스가 나간다.
+   rec.items 는 원가 줄(핸들링 차지·항목별 원가)이라 여행사에게 보이면 안 된다 → 인보이스에는 견적 내용(rec.quote)과 총액만 싣는다.
+   rec.quote 는 /api/agency quoteBook 이 담아 둔다. 그 전에 들어온 건은 여행사 보관함(golf_aquotes_<아이디>)에서 찾아 쓴다 ── */
+const isAgencyRec = (rec) => !!(rec && rec.agency && rec.agency.quoteNo);
+async function quoteOfRec(key, rec) {
+  if (rec.quote && typeof rec.quote === 'object') return rec.quote;
+  let Q = null;
+  try {
+    const rows = await srSelect(key, 'data_key=eq.' + encodeURIComponent('golf_aquotes_' + rec.agency.id) + '&select=data');
+    const list = (Array.isArray(rows) && rows[0] && Array.isArray(rows[0].data)) ? rows[0].data : [];
+    Q = list.find(x => x && x.quoteNo === rec.agency.quoteNo) || null;
+  } catch (e) {}
+  const pax = Q ? num(Q.pax) : num(((rec.items || [])[0] || {}).pax);
+  const fx = Q ? (+Q.fx || 0) : 0;
+  const perKrw = (Q && fx > 0) ? Math.ceil((+Q.per || 0) * fx / 1000) * 1000 : 0;
+  return {
+    quoteNo: rec.agency.quoteNo, team: s(Q && Q.team, 60), start: s(Q && Q.start, 10), end: s(Q && Q.end, 10), pax,
+    nights: num(Q && Q.nights), tripDays: num(Q && Q.tripDays), route: s(Q && Q.route, 120), flight: s(Q && Q.flight, 80),
+    days: ((Q && Array.isArray(Q.days)) ? Q.days : []).slice(0, 40).map(d => ({
+      date: s(d.date, 10), region: s(d.region, 40), hotel: s(d.hotel, 120), course: s(d.course, 120), holes: s(d.holes, 4), round: !!d.round })),
+    includes: ((Q && Q.includes && Array.isArray(Q.includes.customer)) ? Q.includes.customer : []).slice(0, 30).map(x => s(x, 300)).filter(Boolean),
+    noHotel: !!(Q && Q.noHotel), noGuide: !!(Q && Q.noGuide), noVeh: !!(Q && Q.noVeh),
+    perKrw, totalKrw: perKrw ? perKrw * pax : num(rec.total),
+    requests: (Q && Q.book && Q.book.memo) ? String(Q.book.memo).split('\n').map(x => s(x, 500)).filter(Boolean).slice(0, 80) : [],
+    notes: (Q && Q.book && Q.book.notes && typeof Q.book.notes === 'object') ? Q.book.notes : {},
+  };
+}
+async function invoiceView(request, rec, site, key) {
+  return {
+    type: 'invoice',
+    no: rec.no, at: rec.at, status: rec.status,
+    cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
+    to: { company: s(rec.agency.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: s(rec.agency.contact, 30) },
+    guest: (rec.customer && rec.customer.name) || '',
+    quote: await quoteOfRec(key, rec),
+    items: [],                                   // 원가 줄은 싣지 않는다
+    company: companyOf(site),
+    url: voucherUrl(request, rec),
+  };
 }
 /* 바우처 링크 — 손님 사이트가 나중에 딴 도메인으로 가면 골프 사이트 쪽 주소로 바꾼다 */
 function voucherUrl(request, rec) {
@@ -223,6 +264,23 @@ function mailHtml(v) {
     + '<tr><td style="padding:6px 8px">확정번호 (Confirm No.)</td><td style="padding:6px 8px"><b>' + e(v.cno) + '</b></td></tr></table>'
     + '<table style="border-collapse:collapse;width:100%;margin-bottom:18px">' + rows + '</table>'
     + '<p style="margin:0 0 22px"><a href="' + e(v.url) + '" style="display:inline-block;background:#123A2B;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">바우처 열기 / Open Voucher</a></p>'
+    + '<p style="font-size:12px;color:#777;line-height:1.6">링크: ' + e(v.url) + '<br>'
+    + e(v.company.name) + (v.company.tel ? ' · ' + e(v.company.tel) : '') + (v.company.email ? ' · ' + e(v.company.email) : '') + '</p></div>';
+}
+/* 인보이스 메일 — 원가 줄 없이 일정·총액만 */
+function invoiceMailHtml(v) {
+  const e = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const q = v.quote || {};
+  const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
+  const row = (k, val, bg) => '<tr><td style="padding:6px 8px;' + (bg ? 'background:#f3f3f3;' : '') + 'white-space:nowrap">' + k + '</td><td style="padding:6px 8px;' + (bg ? 'background:#f3f3f3' : '') + '"><b>' + e(val) + '</b></td></tr>';
+  return '<div style="font-family:-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;max-width:560px;margin:0 auto;color:#222">'
+    + '<h2 style="margin:18px 0 4px">' + e(v.company.name) + ' 인보이스 (Invoice)</h2>'
+    + '<p style="margin:0 0 14px;color:#555">' + e(v.to.company) + ' 담당자님, 요청하신 수배가 확정되었습니다. 아래 단추를 눌러 인보이스를 확인해 주세요.</p>'
+    + '<table style="border-collapse:collapse;width:100%;margin-bottom:18px">'
+    + row('Invoice No.', v.cno, true) + row('견적번호', q.quoteNo || '')
+    + row('팀명', q.team || '-', true) + row('일정', (q.start || '') + ' ~ ' + (q.end || '') + ' · ' + (q.pax || 0) + '명')
+    + row('총액 (Total)', q.totalKrw ? won(q.totalKrw) : '-', true) + '</table>'
+    + '<p style="margin:0 0 22px"><a href="' + e(v.url) + '" style="display:inline-block;background:#123A2B;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">인보이스 열기 / Open Invoice</a></p>'
     + '<p style="font-size:12px;color:#777;line-height:1.6">링크: ' + e(v.url) + '<br>'
     + e(v.company.name) + (v.company.tel ? ' · ' + e(v.company.tel) : '') + (v.company.email ? ' · ' + e(v.company.email) : '') + '</p></div>';
 }
@@ -340,7 +398,7 @@ export async function onRequest(context) {
         return json({ error: '바우처를 찾지 못했습니다. 주소를 다시 확인해 주세요.' }, 404);
       if (rec.status === 'cancel') return json({ error: '취소된 예약입니다. 문의는 아래 연락처로 주세요.', cancelled: true }, 410);
       const site = await readSite(KEY);
-      return json({ ok: true, v: voucherView(request, rec, site) });
+      return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY) : voucherView(request, rec, site) });
     }
 
     /* ══ 여기부터는 직원만 ══ */
@@ -355,6 +413,10 @@ export async function onRequest(context) {
         .map(r => r && r.data)
         .filter(x => x && x.no)
         .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+      /* 여행사 수배 건 중 견적 내용(quote)이 안 담긴 옛 건 — 보관함에서 찾아 붙여 준다(관리 화면 「📄 수배요청서」용, 저장은 안 한다) */
+      for (const rec of list) {
+        if (isAgencyRec(rec) && !rec.quote) { try { rec.quote = await quoteOfRec(KEY, rec); } catch (e) {} }
+      }
       return json({ ok: true, list });
     }
 
@@ -400,8 +462,11 @@ export async function onRequest(context) {
       const to = s(body.to, 120) || (rec.customer && rec.customer.email) || '';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json({ error: '보낼 이메일 주소가 없습니다.' }, 400);
       const site = await readSite(KEY);
-      const v = voucherView(request, rec, site);
-      const r = await sendMail(env, to, '[' + v.company.name + '] 예약 확정서 (Voucher) · ' + v.no, mailHtml(v));
+      const inv = isAgencyRec(rec);                 // 여행사 수배 건은 인보이스로 나간다(사장님 2026-09-21)
+      const v = inv ? await invoiceView(request, rec, site, KEY) : voucherView(request, rec, site);
+      const r = inv
+        ? await sendMail(env, to, '[' + v.company.name + '] 인보이스 (Invoice) · ' + (v.quote.quoteNo || v.no), invoiceMailHtml(v))
+        : await sendMail(env, to, '[' + v.company.name + '] 예약 확정서 (Voucher) · ' + v.no, mailHtml(v));
       if (r.setup) return json({ ok: false, setup: true, url: v.url, error: '서버에 RESEND_API_KEY 가 없어 자동 발송을 못 합니다.' });
       if (r.error) return json({ error: r.error }, 502);
       rec.voucher.sent = (rec.voucher.sent || []).concat([{ via: 'email', to, at: new Date().toISOString(), by: loginIdOf(user) }]).slice(-20);
