@@ -2056,13 +2056,17 @@ function renderQuoteHistory(){
         <div style="font-weight:800;font-size:13px;">${esc(r.quoteNo)} <span style="font-weight:600;color:#5E6F66;">${esc(r.team||'-')}</span>${r.via==='site'?' <span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:#E8A33D;border-radius:999px;padding:1px 7px;vertical-align:middle">사이트 견적</span>':''}</div>
         <div style="font-size:11.5px;color:#5E6F66;margin-top:2px;">${esc(r.start)} · ${esc(r.route)} · ${r.pax}명 · ${r.nights}박</div>
         <div style="font-size:12px;font-weight:700;margin-top:3px;">${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}</div>
+        ${(GROLE==='agency'&&r.book)?bookStepsHtml(r.book):''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
         ${GROLE==='agency'
           /* 확정된 견적을 어드민으로 넘긴다(사장님 2026-09-19 「확정 시 수배하기로 전달, 어드민으로」) — 이미 넘긴 건은 초록 표시 + 요청사항 고치기 */
+          /* 접수된 수배는 고칠 수 없다(사장님 2026-09-21) — 수배요청서는 보기만, 더 전할 말은 「추가 요청 보내기」(메시지). 인보이스가 나왔으면 바로 연다 */
           ? (r.book
               ? `<span style="font-size:10.5px;font-weight:800;color:#1f6b3f;background:#e3f3e8;border-radius:6px;padding:4px 8px;text-align:center;white-space:nowrap;">✅ 수배 요청함 · ${esc(String(r.book.at||'').slice(5,10).replace('-','/'))}</span>
-                 <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">요청사항 고치기</button>`
+                 <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📄 수배요청서 보기</button>
+                 <button type="button" onclick="openBookMsg(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">💬 추가 요청 보내기${(r.book.msgs||[]).length?` (${r.book.msgs.length})`:''}</button>
+                 ${(r.book.live&&r.book.live.url)?`<a href="${esc(r.book.live.url)}" target="_blank" rel="noopener" style="border:none;background:#0b3d91;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-align:center;text-decoration:none;white-space:nowrap;">🧾 인보이스 보기</a>`:''}`
               : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
           : ''}
         <button type="button" onclick="editQuote(${idx})" style="border:1px solid #0b3d91;background:#fff;color:#0b3d91;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;" title="이 견적을 화면에 다시 불러와 고칩니다 — 저장하면 번호 뒤에 -1, -2 …가 붙은 수정본으로 담깁니다">✏ 불러와서 수정</button>
@@ -2224,8 +2228,9 @@ function bookAgencyQuote(idx){
       <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px;">
         <div><div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700;">THAILAND GOLF</div>
           <div style="font-size:23px;font-weight:800;letter-spacing:-.03em;margin-top:2px;">수배요청서</div></div>
-        <div style="text-align:right;font-size:11.5px;color:#5E6F66;"><div style="font-size:13px;font-weight:800;color:#15211C;">${esc(Q.quoteNo)}</div>요청일 ${esc(iso(new Date()))}</div>
+        <div style="text-align:right;font-size:11.5px;color:#5E6F66;"><div style="font-size:13px;font-weight:800;color:#15211C;">${esc(Q.quoteNo)}</div>요청일 ${esc(again?String(Q.book.at||'').slice(0,10):iso(new Date()))}</div>
       </div>
+      ${again?`<div style="margin-top:10px;padding:8px 11px;border-radius:8px;background:#e3f3e8;color:#1f6b3f;font-size:12.5px;font-weight:700;">✅ 접수된 수배요청서입니다 — 내용은 고칠 수 없습니다. 더 전하실 말씀은 보관함의 「💬 추가 요청 보내기」로 보내 주세요.${bookStepsHtml(Q.book)}</div>`:''}
       <div class="bkinfo">
         <span>팀명</span><b>${esc(Q.team||'-')}</b><span>인원</span><b>${Q.pax}명</b>
         <span>일정</span><b>${esc(Q.start)} ~ ${esc(Q.end||'')} <i>(${Q.nights}박 ${Q.tripDays||(Q.nights+1)}일)</i></b><span>항공</span><b>${esc(Q.flight||'-')}</b>
@@ -2236,20 +2241,83 @@ function bookAgencyQuote(idx){
       ${rows.map(r=>`<div class="bkrow${r.head?' first':''}">
         <span class="bkh">${esc(r.head)}</span>
         <span class="bkt">${r.kind?`<em>${esc(r.kind)}</em>`:''}${esc(r.txt)}</span>
-        <input type="text" data-bk="${esc(r.k)}" maxlength="300" placeholder="${esc(r.ph)}" value="${esc(had[r.k]||'')}" style="${IN}">
+        <input type="text" data-bk="${esc(r.k)}" maxlength="300" placeholder="${again?'':esc(r.ph)}" value="${esc(had[r.k]||'')}"${again?' readonly':''} style="${IN}${again?'background:#f6f4ee;':''}">
       </div>`).join('')}
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin:16px 0 6px;">기타 요청사항 <span style="font-weight:600;color:#5E6F66;">— 항공편, 명단, 그 밖에 전하실 말씀</span></div>
-      <textarea data-bk="etc" maxlength="1000" rows="3" style="${IN}resize:vertical;line-height:1.5;">${esc(etc0)}</textarea>
+      <textarea data-bk="etc" maxlength="1000" rows="3"${again?' readonly':''} style="${IN}resize:vertical;line-height:1.5;${again?'background:#f6f4ee;':''}">${esc(etc0)}</textarea>
+      ${(again&&(Q.book.msgs||[]).length)?`<div style="font-size:12px;font-weight:800;color:#123A2B;margin:16px 0 6px;">추가 요청 (접수 뒤 보낸 메시지)</div>${bookMsgListHtml(Q.book)}`:''}
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 24px;border-top:1px solid #e7e3d8;background:#faf8f2;">
       <span id="bkErr" style="flex:1;font-size:12.5px;font-weight:700;color:#c0492f;"></span>
-      <button type="button" id="bkCancel" style="border:1px solid #d8d2c4;background:#fff;color:#15211C;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;">취소</button>
-      <button type="button" id="bkSend" style="border:none;background:#E91E63;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">${again?'요청사항 고치기':'✅ 확정 · 수배 요청 보내기'}</button>
+      <button type="button" id="bkCancel" style="border:1px solid #d8d2c4;background:#fff;color:#15211C;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;">${again?'닫기':'취소'}</button>
+      ${again
+        ? `<button type="button" id="bkMsg" style="border:none;background:#1f6b3f;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">💬 추가 요청 보내기</button>`
+        : `<button type="button" id="bkSend" style="border:none;background:#E91E63;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">✅ 확정 · 수배 요청 보내기</button>`}
     </div></div>`;
   document.body.appendChild(m);
   m.querySelector('#bkCancel').onclick=closeBookForm;
-  m.querySelector('#bkSend').onclick=()=>sendBookForm(idx,rows);
+  if(again){ m.querySelector('#bkMsg').onclick=()=>{ closeBookForm(); openBookMsg(idx); }; return; }
+  m.querySelector('#bkSend').onclick=()=>{
+    if(!confirm('수배 요청을 보냅니다.\n\n접수된 뒤에는 요청사항을 고칠 수 없습니다(추가 요청은 메시지로 보낼 수 있습니다).\n이대로 보낼까요?')) return;
+    sendBookForm(idx,rows);
+  };
   const first=m.querySelector('[data-bk]'); if(first) first.focus();
+}
+/* 진행 상태(사장님 2026-09-21) — 접수 → 진행중 → 컨펌 · 인보이스 발행 → 입금완료. 상태는 직원이 관리 화면에서 바꾸고, 보관함을 열 때 서버가 붙여 준다(book.live) */
+function bookStepsHtml(book){
+  const lv=(book&&book.live)||{}, st=lv.status||'new';
+  if(st==='cancel') return `<div style="margin-top:5px;font-size:11.5px;font-weight:800;color:#c0492f;">수배 상태 : 취소됨</div>`;
+  let cur={new:0,doing:1,confirmed:2,paid:3,done:3}[st]; if(cur==null) cur=0;
+  if(lv.url&&cur<2) cur=2;                                   // 인보이스가 이미 나갔으면 컨펌 단계로 본다
+  const steps=['접수','진행중','컨펌 · 인보이스 발행',st==='done'?'입금완료 · 완료':'입금완료'];
+  return `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px;">`
+    +steps.map((t,i)=>`<span style="font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;${i<cur?'background:#e3f3e8;color:#1f6b3f;':i===cur?'background:#1f6b3f;color:#fff;':'background:#efece4;color:#9a9f98;'}">${i<cur?'✓ ':''}${t}</span>`
+      +(i<steps.length-1?`<span style="color:#b9bdb6;font-size:10px;">›</span>`:'')).join('')
+    +`</div>`;
+}
+/* 💬 추가 요청 메시지(사장님 2026-09-21) — 접수된 수배 아래로 메시지를 보낸다(수정·삭제 없음). 어드민 예약요청 카드에 빨갛게 뜬다 */
+function bookMsgListHtml(book){
+  const ms=(book&&Array.isArray(book.msgs))?book.msgs:[];
+  return ms.map(x=>`<div style="display:flex;gap:8px;padding:5px 0;border-top:1px dashed #e7e3d8;font-size:12.5px;">
+      <span style="flex:none;color:#5E6F66;font-weight:700;white-space:nowrap;">${esc(String(x.at||'').slice(5,16).replace('-','/').replace('T',' '))}</span>
+      <span style="white-space:pre-wrap;font-weight:600;">${esc(x.text||'')}</span></div>`).join('');
+}
+function openBookMsg(idx){
+  const Q=QH_LIST[idx]; if(!Q||!Q.book||GROLE!=='agency') return;
+  closeBookForm();
+  const IN='width:100%;box-sizing:border-box;border:1.5px solid #d8d2c4;border-radius:7px;padding:8px 10px;font:inherit;font-size:13.5px;font-weight:600;background:#fff;color:#15211C;resize:vertical;line-height:1.5;';
+  const m=document.createElement('div'); m.id='bkModal';
+  m.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;';
+  m.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);">
+    <div style="flex:1;overflow:auto;padding:20px 22px 10px;">
+      <div style="font-size:18px;font-weight:800;">💬 추가 요청 보내기</div>
+      <div style="font-size:12.5px;color:#5E6F66;font-weight:700;margin-top:3px;">${esc(Q.quoteNo)}${Q.team?' · '+esc(Q.team):''} · ${esc(Q.start)} ~ ${esc(Q.end||'')}</div>
+      ${bookStepsHtml(Q.book)}
+      <div id="bkMsgList" style="margin-top:12px;">${bookMsgListHtml(Q.book)}</div>
+      <textarea id="bkMsgText" maxlength="1000" rows="4" placeholder="담당자에게 전할 추가 요청을 적어 주세요. 보낸 메시지는 고치거나 지울 수 없습니다." style="${IN}margin-top:10px;"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 22px;border-top:1px solid #e7e3d8;background:#faf8f2;">
+      <span id="bkErr" style="flex:1;font-size:12.5px;font-weight:700;color:#c0492f;"></span>
+      <button type="button" id="bkCancel" style="border:1px solid #d8d2c4;background:#fff;color:#15211C;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;">닫기</button>
+      <button type="button" id="bkSend" style="border:none;background:#1f6b3f;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">보내기</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#bkCancel').onclick=closeBookForm;
+  m.querySelector('#bkSend').onclick=async()=>{
+    const ta=m.querySelector('#bkMsgText'), btn=m.querySelector('#bkSend'), err=m.querySelector('#bkErr');
+    const text=String(ta.value||'').trim(); err.style.color='#c0492f';
+    if(!text){ err.textContent='보낼 내용을 적어 주세요.'; ta.focus(); return; }
+    btn.disabled=true; err.textContent='';
+    let j;
+    try{ j=await agencyApi({action:'quoteBookMsg',quoteNo:Q.quoteNo,text}); }
+    catch(e){ btn.disabled=false; err.textContent='보내지 못했습니다. '+((e&&e.message)||'인터넷 연결을 확인해 주세요.'); return; }
+    Q.book.msgs=(Array.isArray(Q.book.msgs)?Q.book.msgs:[]).concat([j.msg||{at:new Date().toISOString(),text}]);
+    m.querySelector('#bkMsgList').innerHTML=bookMsgListHtml(Q.book);
+    ta.value=''; btn.disabled=false;
+    err.style.color='#1f6b3f'; err.textContent='보냈습니다. 담당자가 확인합니다.';
+    renderQuoteHistory();
+  };
+  m.querySelector('#bkMsgText').focus();
 }
 async function sendBookForm(idx,rows){
   const Q=QH_LIST[idx], m=$('#bkModal'); if(!Q||!m) return;

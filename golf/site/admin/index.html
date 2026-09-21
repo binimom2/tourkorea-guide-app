@@ -227,6 +227,14 @@ tr.subrow td{padding:0 6px 11px}
 /* 여행사 수배 건 — 📄 수배요청서 단추 줄 · 접어 둔 원가 내역 · 수배요청서 창(사장님 2026-09-21) */
 .bkdocrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:2px 0 8px}
 .bkcost{margin:0 0 9px}
+.bkmsgs{margin:0 0 9px;padding:8px 10px;border-radius:9px;background:#f3f6fb;border:1px solid #d9e2f1;font-size:12.5px}
+.bkmsgs.new{background:#fdecec;border-color:#f0b9b9}
+.bkmsgs .hd{display:flex;gap:8px;align-items:center;font-weight:800;margin-bottom:4px}
+.bkmsgs .hd b{color:#B23B3B}
+.bkmsgs .m{display:flex;gap:8px;padding:3px 0;border-top:1px dashed rgba(0,0,0,.08)}
+.bkmsgs .m span{flex:none;color:var(--muted);font-weight:700;white-space:nowrap}
+.bkmsgs .m p{margin:0;white-space:pre-wrap;font-weight:600}
+.bkmsgs .m.un p{color:#B23B3B;font-weight:800}
 .bkcost summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);padding:4px 0}
 #bkDocOv{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
 .bkdoc-box{background:#fff;border-radius:12px;max-width:860px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)}
@@ -1061,6 +1069,7 @@ const BOOK_STATUS=[
   {k:'new',   t:'접수',   c:'#E8A33D'},
   {k:'confirmed', t:'컨펌 (바우처·인보이스 발급)', c:'#2E7D4F'},   /* 「컨펌」 단추를 누르면 서버가 이 상태로 바꾼다 */
   {k:'doing', t:'진행중', c:'#1C5B42'},
+  {k:'paid',  t:'입금완료', c:'#0b3d91'},   /* 사장님 2026-09-21 — 여행사 보관함에도 이 상태가 그대로 보인다(접수 → 진행중 → 컨펌·인보이스 → 입금완료) */
   {k:'done',  t:'완료',   c:'#3C6E71'},
   {k:'cancel',t:'취소',   c:'#9AA5A0'}
 ];
@@ -1112,14 +1121,16 @@ function drawBooks(){
     return;
   }
   const all=BOOKS.list||[];
-  const list=bookFilter==='all'?all:all.filter(b=>b.status==='new'||b.status==='doing');
+  /* 처리할 것 = 접수·진행중 + 여행사가 보낸 «추가 요청 메시지»를 아직 확인 안 한 건(컨펌 뒤에 온 메시지도 놓치지 않게, 사장님 2026-09-21) */
+  const bookLive=b=>b.status==='new'||b.status==='doing'||(+b.msgUnread>0);
+  const list=bookFilter==='all'?all:all.filter(bookLive);
   const nNew=all.filter(b=>b.status==='new').length;
   p.innerHTML='<div class="card">'
     +'<h2>📋 예약요청 <span class="bkcnt">'+nNew+'건 새로 들어옴</span></h2>'
     +'<p class="desc">손님이 사이트 장바구니에서 보낸 예약 요청입니다. '
     +'<b>금액은 손님 화면에 그때 보이던 값</b>이라 확정가가 아닙니다 — 요금표로 다시 확인해 안내하세요.</p>'
     +'<div class="subtabs">'
-      +'<button class="'+(bookFilter==='live'?'on':'')+'" data-f="live">처리할 것 ('+all.filter(b=>b.status==='new'||b.status==='doing').length+')</button>'
+      +'<button class="'+(bookFilter==='live'?'on':'')+'" data-f="live">처리할 것 ('+all.filter(bookLive).length+')</button>'
       +'<button class="'+(bookFilter==='all'?'on':'')+'" data-f="all">전체 ('+all.length+')</button>'
       +'<button data-f="reload">↻ 새로고침</button>'
     +'</div>'
@@ -1150,6 +1161,7 @@ function bookCardHtml(b){
       ? '<div class="bkdocrow"><button class="add" data-bkdoc="'+esc(b.no)+'">📄 수배요청서 보기</button>'
           +'<span class="bkvhint">견적 '+esc(b.quote.quoteNo||'')+' · '+esc(b.quote.start||'')+' ~ '+esc(b.quote.end||'')+' · '+(b.quote.pax||0)+'명 · '+esc(b.quote.route||'')
           +((b.quote.requests||[]).length?' · <b style="color:#B23B3B">요청사항 '+(b.quote.requests||[]).length+'건</b>':'')+'</span></div>'
+        +bookMsgsHtml(b)
         +'<details class="bkcost"><summary>원가 내역 (직원 확인용)</summary><ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul></details>'
       : (c.memo?'<div class="bkmemo">“'+esc(c.memo)+'”</div>':'')
         +'<ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul>')
@@ -1257,7 +1269,18 @@ function bookDocHtml(b){
       +'<span>'+(r.kind?'<em>'+esc(r.kind)+'</em>':'')+esc(r.txt)+'</span>'
       +'<span class="nt">'+esc(n[r.k]||'')+'</span></div>').join('')
     +'<div class="bkdoc-etc"><b>기타 요청사항</b><p>'+esc(n.etc||'-')+'</p></div>'
+    +((b.msgs||[]).length?'<div class="bkdoc-etc"><b>추가 요청 (접수 뒤 메시지)</b><p>'+(b.msgs||[]).map(m=>'['+esc(bookWhen(m.at))+'] '+esc(m.text||'')).join('\n')+'</p></div>':'')
     +((q.includes||[]).length?'<div class="bkdoc-etc"><b>포함 사항</b><p>'+(q.includes||[]).map(t=>'· '+esc(t)).join('\n')+'</p></div>':'')
+    +'</div>';
+}
+/* 💬 추가 요청 메시지(사장님 2026-09-21) — 접수된 수배요청서는 여행사가 못 고친다. 더 전할 말은 같은 접수번호 아래 메시지로 쌓인다(b.msgs).
+   안 읽은 건(b.msgUnread)이 있으면 빨간 표시 + 「확인함」 — 누르면 서버가 0으로 돌린다(상태·직원 메모는 그대로) */
+function bookMsgsHtml(b){
+  const ms=Array.isArray(b.msgs)?b.msgs:[]; if(!ms.length) return '';
+  const un=Math.max(0,+b.msgUnread||0);
+  return '<div class="bkmsgs'+(un?' new':'')+'"><div class="hd">💬 추가 요청 '+ms.length+'건'
+    +(un?' <b>새 메시지 '+un+'</b><button class="ghost" data-msgread="'+esc(b.no)+'">확인함</button>':'')+'</div>'
+    +ms.map((m,i)=>'<div class="m'+(i>=ms.length-un?' un':'')+'"><span>'+esc(bookWhen(m.at))+'</span><p>'+esc(m.text||'')+'</p></div>').join('')
     +'</div>';
 }
 function openBookDoc(no){
@@ -1274,6 +1297,13 @@ function closeBookDoc(){ const ov=document.getElementById('bkDocOv'); if(ov) ov.
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('bkDocOv')) closeBookDoc(); });
 function bindVoucherBtns(p){
   p.querySelectorAll('[data-bkdoc]').forEach(btn=>btn.onclick=()=>openBookDoc(btn.dataset.bkdoc));
+  p.querySelectorAll('[data-msgread]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.msgread); if(!b) return;
+    btn.disabled=true;
+    const j=await bookApi('status',{no:b.no,msgRead:true});
+    if(!j||!j.ok){ btn.disabled=false; toast('❌ '+((j&&j.error)||'처리 실패')); return; }
+    bookReplace(j.rec); drawBooks();
+  });
   p.querySelectorAll('[data-confirm]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.confirm); if(!b) return;
     const had=!!(b.voucher&&b.voucher.token);

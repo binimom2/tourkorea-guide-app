@@ -428,7 +428,8 @@ export async function onRequest(context) {
       const rec = Array.isArray(rows) && rows[0] && rows[0].data;
       if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
       const st = s(body.status, 12);
-      if (['new', 'confirmed', 'doing', 'done', 'cancel'].includes(st)) rec.status = st;
+      if (['new', 'confirmed', 'doing', 'paid', 'done', 'cancel'].includes(st)) rec.status = st;   // paid = 입금완료(사장님 2026-09-21, 여행사 보관함에도 이 상태가 보인다)
+      if (body.msgRead === true) rec.msgUnread = 0;                // 여행사 「추가 요청 메시지」를 직원이 확인함
       if (body.memo != null) rec.staff = { memo: s(body.memo, MAX_TEXT), by: loginIdOf(user), at: new Date().toISOString() };
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: new Date().toISOString() });
       return json({ ok: true, rec });
