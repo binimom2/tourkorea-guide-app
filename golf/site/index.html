@@ -3349,6 +3349,17 @@ function agSet(user){
   }
   agSet._who = who;
   loadBoxCount();
+  /* 승인된 여행사로 들어와 있으면 견적 화면을 미리 받아 둔다 — 「실시간 견적」을 누르면 기다림 없이 바로 뜬다
+     (사장님 2026-09-21 "화면 넘어오는 시간이 너무 오래 걸림"). 사이트 첫 화면이 먼저 뜨도록 잠깐 뒤에 시작한다 */
+  if(agency && agency.approved){ clearTimeout(agSet._pre); agSet._pre = setTimeout(preloadQuote, 1200); }
+}
+function preloadQuote(){
+  try{
+    const go = quoteHref(), f = $("#qFrame");
+    if(!f || go.charAt(0) === "#" || f.getAttribute("src")) return;
+    if(new URL(go, location.href).origin !== location.origin) return;
+    f.setAttribute("src", go);
+  }catch(e){}
 }
 function agPaint(){
   const b = $("#loginBtn");

@@ -230,6 +230,8 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 </style>
 </head>
 <body>
+<!-- 자료를 받아오는 동안 빈 화면 대신 보이는 글(사장님 2026-09-21 "화면 넘어오는 시간이 오래 걸림") — startApp·로그인 화면이 뜨면 지운다 -->
+<div id="bootMsg" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#5E6F66;pointer-events:none;">견적 화면을 불러오는 중입니다…</div>
 <div id="golfLogin"><div class="box">
   <h1>⛳ 골프 견적</h1><p>기존 앱과 동일한 계정으로 로그인</p>
   <label>아이디</label><input id="glid" autocomplete="off" onkeydown="if(event.key==='Enter')gLogin()">
@@ -615,10 +617,15 @@ let SITE_CLOSED={};
 let SITE_TOURS=[];        // 7번 기타투어 목록 [{n:투어 제목, p:1인 밧}] — buildTourSelOptions가 요금표(P.quoteTours)에서 채운다
 let TOUR_PICKS=[];        // 7번에서 담은 투어 [{n,p,cnt}] — cnt는 참가 인원(기본 = 전체 인원)
 const _cname=n=>String(n||'').replace(/\s+/g,'').toLowerCase();
+/* golf_site(60KB쯤)는 한 번만 받아 휴장 요일·노출 거르기가 같이 쓴다 — 전에는 두 번 받았다(사장님 2026-09-21 속도) */
+let _siteRowP=null;
+function siteRow(){
+  if(!_siteRowP) _siteRowP=(async()=>{ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_site').maybeSingle(); return (row&&row.data)||null; }catch(e){ return null; } })();
+  return _siteRowP;
+}
 async function loadSiteClosed(){
   try{
-    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_site').maybeSingle();
-    const d=row&&row.data; if(!d) return;
+    const d=await siteRow(); if(!d) return;
     const m={};
     (Array.isArray(d.courses)?d.courses:[]).forEach(c=>{ if(c&&c.n&&Array.isArray(c.closed)&&c.closed.length) m[_cname(c.n)]=c.closed.map(Number); });
     SITE_CLOSED=m;
@@ -630,8 +637,7 @@ function courseClosedOn(name,ds){
 }
 async function applySiteExposure(){
   try{
-    const {data:row}=await sb.from('guide_data').select('data').eq('data_key','golf_site').maybeSingle();
-    const d=row&&row.data; if(!d) return;
+    const d=await siteRow(); if(!d) return;
     const names=arr=>new Set((Array.isArray(arr)?arr:[]).filter(x=>x&&x.on!==false&&x.n).map(x=>x.n));
     const cs=names(d.courses), hs=names(d.hotels);
     if(cs.size) Object.keys(COURSES).forEach(reg=>{ COURSES[reg]=(COURSES[reg]||[]).filter(c=>cs.has(c.n)); });
@@ -2623,6 +2629,7 @@ function buildGuideOptions(){
   if(cur && Array.prototype.some.call(sel.options,o=>o.value===cur)) sel.value=cur;
 }
 async function startApp(user){
+  { const bm=$('#bootMsg'); if(bm) bm.remove(); }
   GROLE=GUEST?'guest':golfRoleOf(user);   // 손님 모드는 권한 명단과 무관(계산기만 쓴다)
   const wb=document.getElementById('whoBadge');
   // 골프 명단에 없는 사람 — 로그인은 됐지만 이 사이트는 쓸 수 없다
@@ -2688,16 +2695,19 @@ function tellBoxCount(n){
 }
 async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single(); if(row&&row.data){const k=(typed||'').toLowerCase(); if(row.data[k])return row.data[k];} }catch(e){} /* 매핑표에 없으면 @wevetour.app 규칙으로 시도 */ return (typed||'').trim().toLowerCase()+'@wevetour.app'; }
 async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
-  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await loadPricing(); await loadRegionCodes(); await loadGolfRoles(); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
+  try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await Promise.all([loadPricing(), loadRegionCodes(), loadGolfRoles()]); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
 async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
 (async function boot(){
   try{
     const {data:{session}}=await sb.auth.getSession();
-    if(session&&session.user){ await loadPricing(); await loadRegionCodes(); await loadFxAuto(); await loadSiteClosed(); await loadGolfRoles(); startApp(session.user); return; }
+    /* 자료 다섯 가지를 한 번에 하나씩 기다리지 않고 동시에 받는다(사장님 2026-09-21 "화면 넘어오는 시간이 오래 걸림").
+       환율 자동(loadFxAuto)만은 코드관리 환율을 덮어써야 해서 loadRegionCodes 뒤에 잇는다 */
+    if(session&&session.user){ await Promise.all([loadPricing(), loadRegionCodes().then(loadFxAuto), loadSiteClosed(), loadGolfRoles()]); startApp(session.user); return; }
     /* 손님 사이트 팝업 + 로그인 없음 → 요금표가 읽히면(테스트용 anon 읽기 정책이 열려 있으면) 손님 모드로 연다.
        정책이 닫혀 있으면 요금표가 안 읽혀 아래 로그인 화면으로 간다(사장님 2026-09-17 「로그인 없이 완전 개방」, 테스트 뒤 다시 잠금). */
-    if(EMBED && await loadPricing()){ GUEST=true; await loadRegionCodes(); await loadFxAuto(); await loadSiteClosed(); startApp(null); return; }
+    if(EMBED && await loadPricing()){ GUEST=true; await Promise.all([loadRegionCodes().then(loadFxAuto), loadSiteClosed()]); startApp(null); return; }
   }catch(e){}
+  { const bm=$('#bootMsg'); if(bm) bm.remove(); }
   $('#golfLogin').style.display='flex'; const f=$('#glid'); if(f)f.focus();
 })();
 </script>
