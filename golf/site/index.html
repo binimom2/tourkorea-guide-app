@@ -1552,10 +1552,15 @@ function openQuoteModal(go){
   let sameOrigin = true;
   try{ sameOrigin = new URL(go, location.href).origin === location.origin; }catch(e){}
   if(!sameOrigin){ window.open(go, "_blank", "noopener"); return; }
-  if(f.getAttribute("src") !== go) f.setAttribute("src", go);   /* 처음 한 번만 — 닫았다 열어도 입력이 남는다 */
+  if(f.getAttribute("src") !== go) f.setAttribute("src", go);   /* 주소는 처음 한 번만 넣는다(다시 열 때 또 받아오지 않게) */
   m.hidden = false; document.body.classList.add("qopen");
 }
-function closeQuoteModal(){ $("#qModal").hidden = true; document.body.classList.remove("qopen"); }
+/* 닫으면 견적기를 새 화면으로 돌려 둔다(사장님 2026-09-21: 저장 없이 닫고 다시 열면 내던 화면이 아니라 새 화면이어야 한다).
+   견적기(/golf/)가 「tk-quote-fresh」를 받아 열린 창을 닫고 입력을 비운다 — 보관함에 저장한 견적은 그대로 */
+function closeQuoteModal(){
+  $("#qModal").hidden = true; document.body.classList.remove("qopen");
+  try{ $("#qFrame").contentWindow.postMessage({ type:"tk-quote-fresh" }, location.origin); }catch(e){}
+}
 $("#qClose").onclick = closeQuoteModal;
 $("#qModal").addEventListener("click", e => { if(e.target === e.currentTarget) closeQuoteModal(); });
 document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#qModal").hidden) closeQuoteModal(); });

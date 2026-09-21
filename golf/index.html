@@ -35,6 +35,15 @@ html.embed .wrap{padding-top:6px}
 .f label{font-size:12.5px;font-weight:700;color:var(--muted)}   /* 작은 글은 「오전 출발 시 체크」 라벨과 같은 글꼴·색(12.5px·700·muted)으로 통일(사장님 2026-09-15) */
 .f input,.f select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
 .f input:focus,.f select:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
+/* 5번 차량 — 직접 그린 드롭다운(「추천」 글자만 빨갛게 하려고, 사장님 2026-09-21). 모양은 위 .f select 와 같게 */
+#vehChoiceBtn{display:flex;align-items:center;gap:8px;width:100%;font:inherit;font-size:14px;font-weight:700;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);cursor:pointer;text-align:left}
+#vehChoiceBtn:focus{outline:2px solid var(--marigold);outline-offset:1px;background:#fff}
+#vehChoiceBtn .vcface{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#vehChoiceBtn .vcarrow{flex:none;color:var(--ink)}
+#vehChoiceList{position:fixed;z-index:9000;box-sizing:border-box;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:min(320px,calc(100vh - 16px));overflow-y:auto;padding:4px 0;font-size:14px;font-weight:700;color:var(--ink)}
+#vehChoiceList .vcopt{padding:8px 11px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#vehChoiceList .vcopt.on{background:#f1ebdb}
+#vehChoiceList .vcopt.hi{background:rgba(18,58,43,.12)}
 /* 기본 정보는 가장 자주 만지는 칸이라 크게. 대신 날짜·인원·박수는 좁혀서
    팀명이 남는 폭을 다 쓰게 하고, 5칸이 한 줄에 여유 있게 들어가도록 했다. */
 #pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
@@ -182,7 +191,11 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .qv-box{background:#fff;border-radius:12px;max-width:820px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .qv-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .qv-hd b{font-size:15px}
-.qv-btns{display:flex;gap:8px}
+.qv-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+/* 보관함에서 펼친 견적서 위의 「수정」·「확정 · 수배 요청」(사장님 2026-09-19) */
+.qv-btns button#qvEdit{border-color:#0b3d91;color:#0b3d91}
+.qv-btns button#qvBook{border-color:#E91E63;background:#E91E63;color:#fff}
+.qv-btns button#qvBook.done{border-color:#1f6b3f;background:#e3f3e8;color:#1f6b3f}
 .qv-btns button{font:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:7px 14px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink)}
 #qvDl{background:var(--fairway);color:#fff;border-color:var(--fairway)}
 .qv-body{overflow:auto;padding:12px;background:#e9e9e6}
@@ -962,6 +975,7 @@ function isBusChoice(v){ return /^bus/.test(String(v==null?vehChoice:v)); }
 function setVehChoice(v){ vehChoice=v; if(isBusChoice(v)){ const n=+String(v).split(':')[1]; if(Number.isFinite(n)) busIdx=n; } }
 let _vehRuleIdx=-2;    // 인원 구간이 바뀌면 추천 구성으로 되돌리기 위한 표시
 let _vehRecV='';       // 직전 추천 선택지 값(같은 구간 안에서 추천 버스가 바뀌었는지 보기 위해)
+let _vehOpts=[];       // 차량 목록(#vehChoiceList)에 그릴 줄들 [{v,html}] — renderVehChoices가 채운다
 /* 지금 고른 최종 구성 — {kind:'van'|'bus'|'none', vans:밴 대수, lug:짐밴 포함, rule} (추가 선택까지 합산) */
 function vehPlan(){
   if(!useVehOn()) return {kind:'none',vans:0,lug:false,rule:null};
@@ -1019,15 +1033,15 @@ function renderVehChoices(){
   const codeTxt=v=>'';
   /* 「추천」 글자만 빨갛고 나머지는 검게(사장님 2026-09-15). 드롭다운(select)은 글자 일부만 색을 못 주므로
      select 글자는 투명하게 하고, 그 위에 같은 글자를 그린 겉면(#vehChoiceFace)을 얹는다(누르는 건 아래 select가 받음). 펼친 목록은 전부 검정 */
-  const optText=o=>`${o.rec?'추천 · ':''}${o.t}${codeTxt(o.v)}`;
+  /* 펼친 목록에서도 「추천」 글자만 빨갛게(사장님 2026-09-21) — 기본 드롭다운(option)은 줄 전체 색만 줄 수 있어서
+     단추(#vehChoiceBtn) + 직접 그린 목록(#vehChoiceList, openVehList)으로 바꿨다. 고르면 예전처럼 onVehChoiceChange */
+  const optHtml=o=>(o.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(o.t+codeTxt(o.v));
   const cur=opts.find(o=>o.v===vehChoice)||opts[0];
-  const face=cur?((cur.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(cur.t+codeTxt(cur.v))):'';
-  box.innerHTML=`<div style="position:relative;">`
-    +`<select id="vehChoiceSel" name="vehChoice" style="font-size:14px;font-weight:700;width:100%;color:var(--ink);-webkit-text-fill-color:transparent;">`   /* 글자만 투명(text-fill), color는 남겨야 끝의 ˅ 화살표가 보인다(사장님 2026-09-15 저녁) */
-    +opts.map(o=>`<option value="${o.v}"${o.v===vehChoice?' selected':''} style="color:${o.rec?'#c62828':'var(--ink)'};-webkit-text-fill-color:${o.rec?'#c62828':'var(--ink)'};${o.rec?'font-weight:800;':''}">${esc(optText(o))}</option>`).join('')   /* 펼친 목록에서 추천 줄은 빨갛게(사장님 2026-09-16) */
-    +`</select>`
-    +`<div id="vehChoiceFace" style="position:absolute;left:0;top:0;right:30px;bottom:0;display:flex;align-items:center;padding:0 9px;font-size:14px;font-weight:700;color:var(--ink);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${face}</div>`
-    +`</div>`
+  closeVehList();
+  _vehOpts=opts.map(o=>({v:o.v,html:optHtml(o)}));
+  box.innerHTML=`<button type="button" id="vehChoiceBtn" aria-haspopup="listbox" aria-expanded="false">`
+    +`<span class="vcface">${cur?optHtml(cur):''}</span><svg class="vcarrow" aria-hidden="true" viewBox="0 0 12 12" width="12" height="12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+    +`</button>`
     /* 아직 안 골랐으면 인원수에 맞는 추천을 드롭다운 아래 빨간 한 줄로(사장님 2026-09-16 "인원수에 따라 추천 띄워 주세요 빨간색으로") */
     +((vehChoice===''&&opts.some(o=>o.rec)&&(+(($('#pax')||{}).value)>0))?`<div id="vehRecHint" style="margin-top:5px;font-size:12.5px;font-weight:700;color:#c62828;">${curPax()}명 추천 · ${esc(opts.find(o=>o.rec).t)}</div>`:'');
   const pb=$('#vehPhotoBtn');
@@ -1038,6 +1052,65 @@ function renderVehChoices(){
   if(elw) elw.style.display=(!hasLugTable||(vehChoice==='van'&&r&&r.lug))?'none':'';
   const c=$('#extraLugCnt'); if(c){ const n=lugLegsOfRoute().length; c.textContent=n?`(${n}회)`:''; }
 }
+/* ── 차량 목록(직접 그린 드롭다운, 사장님 2026-09-21 "추천 글자만 빨간색") — 카드(.cbody)가 overflow:hidden 이라
+   목록은 body에 붙여 화면 좌표(fixed)로 띄운다. 아래 자리가 모자라면 위로. 키보드: ↑↓ 이동 · Enter 선택 · Esc 닫기 ── */
+function closeVehList(){
+  const l=document.getElementById('vehChoiceList'); if(l) l.remove();
+  const b=document.getElementById('vehChoiceBtn'); if(b) b.setAttribute('aria-expanded','false');
+}
+function hiVehOpt(o){
+  const l=document.getElementById('vehChoiceList'); if(!l||!o) return;
+  l.querySelectorAll('.vcopt.hi').forEach(x=>x.classList.remove('hi'));
+  o.classList.add('hi');
+}
+function pickVehOpt(v){
+  closeVehList();
+  if(v!==vehChoice) onVehChoiceChange(v);   // 같은 걸 다시 누르면 아무 일도 없다(기본 드롭다운과 같게)
+  const b=$('#vehChoiceBtn'); if(b) b.focus();
+}
+function openVehList(){
+  const btn=$('#vehChoiceBtn'); if(!btn||!_vehOpts.length) return;
+  closeVehList();
+  const l=document.createElement('div'); l.id='vehChoiceList'; l.setAttribute('role','listbox');
+  l.innerHTML=_vehOpts.map(o=>`<div class="vcopt${o.v===vehChoice?' on hi':''}" role="option" data-v="${o.v}" aria-selected="${o.v===vehChoice}">${o.html}</div>`).join('');
+  document.body.appendChild(l);
+  const r=btn.getBoundingClientRect(), h=l.offsetHeight, below=innerHeight-r.bottom;
+  l.style.left=r.left+'px'; l.style.width=r.width+'px';
+  l.style.top=((below<h+8&&r.top>below)?Math.max(4,r.top-h-2):r.bottom+2)+'px';
+  btn.setAttribute('aria-expanded','true');
+  l.addEventListener('mousedown',e=>e.preventDefault());   // 단추의 포커스를 지킨다(포커스가 빠지면 5번 칸이 접힌다)
+  l.addEventListener('mousemove',e=>{ const o=e.target.closest('.vcopt'); if(o&&!o.classList.contains('hi')) hiVehOpt(o); });
+  l.addEventListener('click',e=>{ const o=e.target.closest('.vcopt'); if(o) pickVehOpt(o.dataset.v); });
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest&&e.target.closest('#vehChoiceBtn')){ document.getElementById('vehChoiceList')?closeVehList():openVehList(); }
+});
+document.addEventListener('mousedown',e=>{
+  if(!document.getElementById('vehChoiceList')) return;
+  if(e.target.closest&&(e.target.closest('#vehChoiceList')||e.target.closest('#vehChoiceBtn'))) return;
+  closeVehList();
+});
+document.addEventListener('keydown',e=>{
+  if(!e.target||e.target.id!=='vehChoiceBtn') return;
+  const l=document.getElementById('vehChoiceList');
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    if(!l){ openVehList(); return; }
+    const a=[...l.querySelectorAll('.vcopt')]; let i=a.findIndex(x=>x.classList.contains('hi'));
+    i=Math.max(0,Math.min(a.length-1,i+(e.key==='ArrowDown'?1:-1)));
+    hiVehOpt(a[i]); a[i].scrollIntoView({block:'nearest'});
+  }else if(l&&e.key==='Enter'){
+    e.preventDefault();
+    const o=l.querySelector('.vcopt.hi'); if(o) pickVehOpt(o.dataset.v); else closeVehList();
+  }else if(l&&(e.key==='Escape'||e.key==='Tab')){
+    if(e.key==='Escape') e.preventDefault();
+    closeVehList();
+  }
+});
+document.addEventListener('focusout',e=>{ if(e.target&&e.target.id==='vehChoiceBtn') closeVehList(); });
+window.addEventListener('scroll',e=>{ const l=document.getElementById('vehChoiceList'); if(l&&!(e.target instanceof Node&&l.contains(e.target))) closeVehList(); },true);
+window.addEventListener('resize',closeVehList);
+
 /* ── 차량 사진 창(사장님 2026-09-15) — 관리 차량 열의 사진(imgs 최대 3장, 옛 img 한 장도 포함) ── */
 function vehImgs(g){ if(!g) return []; const a=Array.isArray(g.imgs)?g.imgs:[]; const first=String(g.img||'').trim(); return [...new Set((first?[first]:[]).concat(a.map(u=>String(u||'').trim())))].filter(Boolean).slice(0,3); }
 function openVehPhotos(kind){
@@ -2138,13 +2211,15 @@ function showNotice(msg){
 /* 견적서 미리보기 창 — 그림을 화면에 보여 주고, 원하면 「다운로드」로 파일을 받는다 */
 /* saveQ — 여행사가 방금 낸 견적(아직 보관함에 안 담긴 것). 주면 단추가 「💾 저장하기」가 되어 **내려받기와 보관함 담기를 한 번에** 한다
    (사장님 2026-09-18: 보기만 한 견적까지 쌓이지 않게, 저장을 누른 것만 담는다). 안 주면 전처럼 「⬇ 다운로드」만 */
-function showQuotePreview(url,name,saveQ){
+/* boxIdx — 보관함(QH_LIST)에서 「견적서 다시 보기」로 펼친 경우 그 줄 번호. 이때만 위쪽에 「✏ 수정」과(여행사면) 「✅ 확정 · 수배 요청」이 나온다
+   (사장님 2026-09-19: 목록에 한꺼번에 늘어놓지 말고, 견적서를 펼쳐 본 뒤에 수정하거나 확정 수배를 하게) */
+function showQuotePreview(url,name,saveQ,boxIdx){
   let m=$('#qvModal');
   if(!m){
     m=document.createElement('div'); m.id='qvModal'; m.hidden=true;
     m.innerHTML=`<div class="qv-box">
       <div class="qv-hd"><b>견적서</b>
-        <span class="qv-btns"><button type="button" id="qvPrint">🖨 인쇄</button><button type="button" id="qvDl">⬇ 다운로드</button><button type="button" id="qvClose">✕ 닫기</button></span>
+        <span class="qv-btns"><button type="button" id="qvBook" hidden>✅ 확정 · 수배 요청</button><button type="button" id="qvEdit" hidden>✏ 수정</button><button type="button" id="qvPrint">🖨 인쇄</button><button type="button" id="qvDl">⬇ 다운로드</button><button type="button" id="qvClose">✕ 닫기</button></span>
       </div>
       <div class="qv-body"><img id="qvImg" alt="견적서"></div>
     </div>`;
@@ -2588,6 +2663,19 @@ var APP_READY=false, WANT_BOX=false;   // var — startApp이 이 줄보다 먼�
 window.addEventListener('message',e=>{
   if(e.origin!==location.origin||!e.data||e.data.type!=='tk-open-quote-box') return;
   if(APP_READY){ if(GROLE==='agency') openQuoteHistory(); } else WANT_BOX=true;
+});
+/* 사이트에서 견적 창을 닫으면 「tk-quote-fresh」가 온다(사장님 2026-09-21: 저장 없이 닫고 다시 열면 새 화면이어야 한다) —
+   열려 있던 창(견적서 미리보기·보관함·안내·차량 사진·차량 목록)을 닫고 입력을 전부 비운다. 보관함에 저장해 둔 견적은 그대로 */
+window.addEventListener('message',e=>{
+  if(e.origin!==location.origin||!e.data||e.data.type!=='tk-quote-fresh'||!EMBED||!APP_READY) return;
+  try{
+    const qv=$('#qvModal'); if(qv) qv.hidden=true; document.body.classList.remove('qv-open');
+    const nt=$('#ntModal'); if(nt) nt.hidden=true;
+    const qh=$('#qhModal'); if(qh) qh.style.display='none';
+    closeVehPhotos(); closeVehList();
+    resetQuote();
+    window.scrollTo(0,0);
+  }catch(err){}
 });
 function tellBoxCount(n){
   try{ if(EMBED&&window.parent&&window.parent!==window) window.parent.postMessage({type:'tk-quote-box-count',count:n},location.origin); }catch(e){}
