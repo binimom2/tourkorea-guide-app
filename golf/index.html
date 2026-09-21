@@ -1237,8 +1237,9 @@ function buildTourSelOptions(){
   }
   const e=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   /* 이 화면은 손님에게 그대로 보여 주는 면이라 밧을 적지 않는다 — 환율이 있으면 1인 원화 값을 옆에 적는다.
-     (한때 「금액은 노출 X」로 뺐다가, 실제 화면을 보시고 「금액 노출합시다」로 되돌림 — 사장님 2026-09-19) */
-  const price=p=>(FX_RATE>0)?` — 1인 ${won(krwUp(p*FX_RATE))}원`:'';
+     (한때 「금액은 노출 X」로 뺐다가, 실제 화면을 보시고 「금액 노출합시다」로 되돌림 — 사장님 2026-09-19)
+     → 다시 「금액노출 삭제」(사장님 2026-09-21): 선택 목록에는 제목(내용)만 나온다. 금액은 아래 견적 결과 총액에만 반영 */
+  const price=p=>'';
   sel.innerHTML='<option value="">기타투어 선택</option>'
     /* 두 지역 이상을 도는 일정이면(또는 아직 지역을 안 골랐으면) 어느 지역 투어인지 앞에 붙인다 — 「[파타야] 알카자쇼」 */
     +SITE_TOURS.map((it,i)=>`<option value="${i}">${e((it.r&&new Set(regs).size!==1)?`[${it.r}] `:'')}${e(it.n)}${e(it.d?` (${it.d})`:'')}${e(price(it.p))}</option>`).join('');
