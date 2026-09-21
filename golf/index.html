@@ -44,6 +44,24 @@ html.embed .wrap{padding-top:6px}
 #vehChoiceList .vcopt{padding:8px 11px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #vehChoiceList .vcopt.on{background:#f1ebdb}
 #vehChoiceList .vcopt.hi{background:rgba(18,58,43,.12)}
+/* 「수배요청서」 창(#bkModal, 사장님 2026-09-21) — 견적 내용 + 항목마다 비고란. 좁은 화면에서는 한 줄씩 아래로 쌓는다 */
+#bkModal .bkinfo{display:grid;grid-template-columns:52px 1fr 52px 1fr;gap:7px 10px;margin-top:13px;font-size:13px;align-items:baseline}
+#bkModal .bkinfo span{color:#5E6F66;font-weight:700}
+#bkModal .bkinfo b{font-weight:700;color:#15211C}
+#bkModal .bkinfo i{font-style:normal;font-weight:600;color:#5E6F66}
+#bkModal .bkrow{display:grid;grid-template-columns:128px minmax(0,1fr) minmax(0,1.15fr);gap:8px;align-items:center;padding:6px 8px;font-size:13.5px;font-weight:700;color:#15211C}
+#bkModal .bkrow.first{border-top:1px solid #e7e3d8}
+#bkModal .bkhead{background:#F7F3E9;font-size:12px;letter-spacing:.06em;color:#5E6F66;padding:6px 8px}
+#bkModal .bkh{white-space:nowrap}
+#bkModal .bkt em{font-style:normal;display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;background:#eef3ea;color:#2e5a43;font-size:11.5px;font-weight:800}
+#bkModal input:focus,#bkModal textarea:focus{outline:2px solid var(--marigold);outline-offset:1px}
+@media(max-width:640px){
+  #bkModal .bkinfo{grid-template-columns:52px 1fr}
+  #bkModal .bkrow{grid-template-columns:1fr;gap:4px}
+  #bkModal .bkhead{display:none}
+  #bkModal .bkh:empty{display:none}
+  #bkModal .bkh{color:#123A2B;font-weight:800}
+}
 /* 기본 정보는 가장 자주 만지는 칸이라 크게. 대신 날짜·인원·박수는 좁혀서
    팀명이 남는 폭을 다 쓰게 하고, 5칸이 한 줄에 여유 있게 들어가도록 했다. */
 #pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
@@ -2169,19 +2187,83 @@ async function editQuote(idx){
 /* ── 확정 · 수배 요청(사장님 2026-09-19) ──
    보관함의 견적을 어드민 「📋 예약요청」으로 넘긴다. 금액·일정은 서버가 보관함에 담긴 값을 그대로 쓰고, 여기서는
    견적번호와 요청사항(티타임·기타투어 날짜와 시간대·명단 등)만 보낸다. 같은 견적을 다시 누르면 요청사항만 고쳐진다. */
-async function bookAgencyQuote(idx){
+/* 「수배요청서」 창(사장님 2026-09-21) — 예전엔 브라우저 입력창(prompt) 한 줄이었다. 이제 견적 내용을 그대로 띄우고
+   항목마다(날짜별 호텔·골프, 차량·가이드·기타투어) 비고란을 달아 요청사항을 적게 한다. 맨 아래는 기타 요청사항.
+   비고 열쇠: h:날짜(호텔) · g:날짜(골프) · d:날짜(일정 없는 날) · veh · guide · tour · etc */
+function bookRows(Q){
+  const rows=[];
+  (Q.days||[]).forEach(d=>{
+    const head=`${fmtDay(d.date)} ${d.region||''}`.trim();
+    const mine=[];
+    if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel,ph:'객실·침대 타입, 체크인 시간 등'});
+    if(d.round&&d.course) mine.push({k:'g:'+d.date,kind:'골프',txt:`${d.course} ${d.holes||'18'}홀`,ph:'희망 티타임 (예: 오전 7시대)'});
+    if(!mine.length) mine.push({k:'d:'+d.date,kind:'',txt:'라운딩 없음',ph:'이날 요청사항'});
+    mine.forEach((m,i)=>rows.push(Object.assign(m,{head:i?'':head})));
+  });
+  const inc=(Q.includes&&Array.isArray(Q.includes.customer))?Q.includes.customer:[];
+  [['차량','veh','픽업 시간·장소 등'],['가이드','guide','가이드 요청사항'],['기타투어','tour','원하는 날짜와 시간대']].forEach(([name,k,ph])=>{
+    const hit=inc.find(x=>new RegExp('^'+name+'\\s*-').test(String(x||''))); if(!hit) return;
+    rows.push({k,head:name,kind:'',txt:String(hit).replace(/^[^-]+-\s*/,'').replace(/\s*\(확정 시[^)]*\)\s*$/,''),ph});
+  });
+  return rows;
+}
+function closeBookForm(){ const m=$('#bkModal'); if(m) m.remove(); }
+function bookAgencyQuote(idx){
   const Q=QH_LIST[idx]; if(!Q||GROLE!=='agency') return;
-  const again=!!Q.book;
-  const memo=prompt(
-    (again?`견적 ${Q.quoteNo} 의 요청사항을 고칩니다.`:`견적 ${Q.quoteNo}${Q.team?' ('+Q.team+')':''} 을(를) 확정하고 수배를 요청합니다.`)
-    +`\n${Q.start} ~ ${Q.end||''} · ${Q.pax}명 · ${Q.route||''}`
-    +'\n\n요청사항을 적어 주세요 (희망 티타임, 기타투어 날짜·시간대, 항공편 등 — 없으면 비워 두셔도 됩니다)',
-    (Q.book&&Q.book.memo)||'');
-  if(memo===null) return;                                  // 취소
+  closeBookForm();
+  const again=!!Q.book, had=(Q.book&&Q.book.notes&&typeof Q.book.notes==='object')?Q.book.notes:{};
+  const etc0=had.etc||((Q.book&&!Q.book.notes&&Q.book.memo)||'');   // 예전(한 줄 입력) 요청사항은 기타 칸으로
+  const krw=(Q.fx>0)?krwUp(Q.per*Q.fx)*Q.pax:0;
+  const rows=bookRows(Q);
+  const IN='width:100%;box-sizing:border-box;border:1.5px solid #d8d2c4;border-radius:7px;padding:7px 9px;font:inherit;font-size:13px;font-weight:600;background:#fff;color:#15211C;';
+  const m=document.createElement('div'); m.id='bkModal';
+  m.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;';
+  m.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:860px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);">
+    <div style="flex:1;overflow:auto;padding:22px 24px 8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px;">
+        <div><div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700;">THAILAND GOLF</div>
+          <div style="font-size:23px;font-weight:800;letter-spacing:-.03em;margin-top:2px;">수배요청서</div></div>
+        <div style="text-align:right;font-size:11.5px;color:#5E6F66;"><div style="font-size:13px;font-weight:800;color:#15211C;">${esc(Q.quoteNo)}</div>요청일 ${esc(iso(new Date()))}</div>
+      </div>
+      <div class="bkinfo">
+        <span>팀명</span><b>${esc(Q.team||'-')}</b><span>인원</span><b>${Q.pax}명</b>
+        <span>일정</span><b>${esc(Q.start)} ~ ${esc(Q.end||'')} <i>(${Q.nights}박 ${Q.tripDays||(Q.nights+1)}일)</i></b><span>항공</span><b>${esc(Q.flight||'-')}</b>
+        <span>동선</span><b>${esc(Q.route||'-')}</b><span>총액</span><b>${krw?won(krw)+' 원':'-'}</b>
+      </div>
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin:16px 0 6px;">수배 내용 · 비고 <span style="font-weight:600;color:#5E6F66;">— 항목마다 요청사항을 적어 주세요. 없으면 비워 두셔도 됩니다.</span></div>
+      <div class="bkrow bkhead"><span>날짜 · 구분</span><span>내용</span><span>비고 (요청사항)</span></div>
+      ${rows.map(r=>`<div class="bkrow${r.head?' first':''}">
+        <span class="bkh">${esc(r.head)}</span>
+        <span class="bkt">${r.kind?`<em>${esc(r.kind)}</em>`:''}${esc(r.txt)}</span>
+        <input type="text" data-bk="${esc(r.k)}" maxlength="300" placeholder="${esc(r.ph)}" value="${esc(had[r.k]||'')}" style="${IN}">
+      </div>`).join('')}
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin:16px 0 6px;">기타 요청사항 <span style="font-weight:600;color:#5E6F66;">— 항공편, 명단, 그 밖에 전하실 말씀</span></div>
+      <textarea data-bk="etc" maxlength="1000" rows="3" style="${IN}resize:vertical;line-height:1.5;">${esc(etc0)}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 24px;border-top:1px solid #e7e3d8;background:#faf8f2;">
+      <span id="bkErr" style="flex:1;font-size:12.5px;font-weight:700;color:#c0492f;"></span>
+      <button type="button" id="bkCancel" style="border:1px solid #d8d2c4;background:#fff;color:#15211C;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;">취소</button>
+      <button type="button" id="bkSend" style="border:none;background:#E91E63;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">${again?'요청사항 고치기':'✅ 확정 · 수배 요청 보내기'}</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#bkCancel').onclick=closeBookForm;
+  m.querySelector('#bkSend').onclick=()=>sendBookForm(idx,rows);
+  const first=m.querySelector('[data-bk]'); if(first) first.focus();
+}
+async function sendBookForm(idx,rows){
+  const Q=QH_LIST[idx], m=$('#bkModal'); if(!Q||!m) return;
+  const again=!!Q.book, notes={}, memoLines=[];
+  m.querySelectorAll('[data-bk]').forEach(el=>{ const v=String(el.value||'').trim(); if(v) notes[el.dataset.bk]=v; });
+  /* 어드민 「📋 예약요청」 메모 칸에 그대로 보일 글 — 「11/01(일) 파타야 · 골프 시암CC 18홀 → 오전 7시대」 */
+  let head='';
+  rows.forEach(r=>{ if(r.head) head=r.head; if(notes[r.k]) memoLines.push(`${head}${r.kind?' · '+r.kind:''} ${r.txt} → ${notes[r.k]}`); });
+  if(notes.etc) String(notes.etc).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).forEach((x,i)=>memoLines.push((i?'   ':'기타 → ')+x));
+  const btn=m.querySelector('#bkSend'), err=m.querySelector('#bkErr'); btn.disabled=true; err.textContent='';
   let j;
-  try{ j=await agencyApi({action:'quoteBook',quoteNo:Q.quoteNo,memo:String(memo).trim()}); }
-  catch(e){ alert('수배 요청을 보내지 못했습니다.\n'+((e&&e.message)||'인터넷 연결을 확인해 주세요.')); return; }
-  Q.book={no:j.no,at:new Date().toISOString(),memo:String(memo).trim()};
+  try{ j=await agencyApi({action:'quoteBook',quoteNo:Q.quoteNo,notes,memoLines,memo:memoLines.join(' / ')}); }   // memo = 옛 서버용(한 줄)
+  catch(e){ btn.disabled=false; err.textContent='수배 요청을 보내지 못했습니다. '+((e&&e.message)||'인터넷 연결을 확인해 주세요.'); return; }
+  Q.book={no:j.no,at:new Date().toISOString(),memo:memoLines.join('\n'),notes};
+  closeBookForm();
   renderQuoteHistory();
   alert(again?'요청사항을 고쳤습니다.':`수배 요청을 보냈습니다.\n접수번호: ${j.no}\n\n담당자가 확인하고 연락드리겠습니다.`);
 }
@@ -2685,7 +2767,7 @@ window.addEventListener('message',e=>{
     const qv=$('#qvModal'); if(qv) qv.hidden=true; document.body.classList.remove('qv-open');
     const nt=$('#ntModal'); if(nt) nt.hidden=true;
     const qh=$('#qhModal'); if(qh) qh.style.display='none';
-    closeVehPhotos(); closeVehList();
+    closeVehPhotos(); closeVehList(); closeBookForm();
     resetQuote();
     window.scrollTo(0,0);
   }catch(err){}
