@@ -821,15 +821,15 @@ function notesEditor(key,title){   // key: G의 문구 배열 이름(vehicleNote
    손님 사이트의 「기타투어」 묶음(사이트 내용 탭)과는 따로다 — 거기는 종류가 많아 견적 칸에 다 내걸면 곤란하다고 하심. */
 function toursCard(){
   const c=card('🎫 기타투어 (실시간 견적 7번)','실시간 견적의 「7. 기타투어」 선택 칸에 나오는 목록입니다. 지역 · 투어 종류 · 1인 금액(밧)을 적고 💾 저장을 누르세요. '
-    +'견적에서는 2번에서 고른 지역의 투어만 나옵니다(방콕+파타야면 둘 다, 「전 지역」은 늘). 선택 목록에는 1인 금액이 원화로 보이고, '
-    +'총액에는 1인 금액 × 인원 × 횟수로 들어갑니다(인원·횟수는 견적할 때 정합니다).');
+    +'견적에서는 2번에서 고른 지역의 투어만 나옵니다(방콕+파타야면 둘 다, 「전 지역」은 늘). 선택 목록에는 금액이 보이지 않고, '
+    +'총액에만 1인 금액 × 인원 × 횟수로 들어갑니다(인원·횟수는 견적할 때 정합니다). 목록은 이 표의 위아래 차례대로 나옵니다 — ▲▼로 바꾸세요.');
   const box=el('div');
   const IN='font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
   const draw=()=>{
     box.innerHTML='';
     if(!Array.isArray(G.quoteTours)) G.quoteTours=[];
     const head=el('div'); head.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:11px;font-weight:800;color:#8b948e;';
-    head.innerHTML='<span style="width:44px;text-align:center">보이기</span><span style="width:110px">지역</span><span style="width:210px">투어 제목 <i style="font-style:normal;font-weight:700">(견적서에 나감)</i></span><span style="flex:1">내용 <i style="font-style:normal;font-weight:700">(선택 목록에만 보임)</i></span><span style="width:130px">금액 (밧 · 1인)</span><span style="width:22px"></span>';
+    head.innerHTML='<span style="width:44px;text-align:center">보이기</span><span style="width:110px">지역</span><span style="width:210px">투어 제목 <i style="font-style:normal;font-weight:700">(견적서에 나감)</i></span><span style="flex:1">내용 <i style="font-style:normal;font-weight:700">(선택 목록에만 보임)</i></span><span style="width:130px">금액 (밧 · 1인)</span><span style="width:52px;text-align:center">순서</span><span style="width:22px"></span>';
     if(G.quoteTours.length) box.appendChild(head);
     G.quoteTours.forEach((t,i)=>{
       const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;'+(t.on===false?'opacity:.5;':'');
@@ -855,7 +855,15 @@ function toursCard(){
       const x=el('button',null,'✕'); x.style.cssText='width:22px;border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
       x.title='이 줄 지우기';
       x.onclick=()=>{ if((t.n||t.p)&&!confirm('「'+(t.n||'이 줄')+'」을(를) 지웁니다.\n(저장을 눌러야 실제로 반영됩니다)')) return; G.quoteTours.splice(i,1); _touch(); draw(); };
-      row.appendChild(on); row.appendChild(rg); row.appendChild(n); row.appendChild(dsc); row.appendChild(p); row.appendChild(x); box.appendChild(row);
+      /* 노출 순서 ▲▼(사장님 2026-09-21) — 견적 7번 선택 목록은 이 표의 위아래 차례 그대로 나온다. 저장을 눌러야 반영 */
+      const mv=(dir,label,tip)=>{ const b=el('button',null,label); const j=i+dir, off=(j<0||j>=G.quoteTours.length);
+        b.type='button'; b.title=tip; b.disabled=off;
+        b.style.cssText='width:24px;height:24px;padding:0;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font-size:11px;font-weight:800;cursor:pointer;'+(off?'opacity:.3;cursor:default;':'');
+        b.onclick=()=>{ if(off) return; const a=G.quoteTours; [a[i],a[j]]=[a[j],a[i]]; _touch(); draw(); };
+        return b; };
+      const ord=el('span'); ord.style.cssText='display:flex;gap:3px;width:52px;flex:none;';
+      ord.appendChild(mv(-1,'▲','한 칸 위로')); ord.appendChild(mv(1,'▼','한 칸 아래로'));
+      row.appendChild(on); row.appendChild(rg); row.appendChild(n); row.appendChild(dsc); row.appendChild(p); row.appendChild(ord); row.appendChild(x); box.appendChild(row);
     });
     const add=el('button','btn ghost sm','＋ 투어 추가');
     add.onclick=()=>{ G.quoteTours.push({n:'',p:''}); _touch(); draw(); const ins=box.querySelectorAll('input[type=text]'); if(ins.length) ins[ins.length-1].focus(); };
