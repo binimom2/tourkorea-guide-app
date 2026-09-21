@@ -2195,13 +2195,14 @@ function bookRows(Q){
   (Q.days||[]).forEach(d=>{
     const head=`${fmtDay(d.date)} ${d.region||''}`.trim();
     const mine=[];
-    if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel,ph:'객실·침대 타입, 체크인 시간 등'});
-    if(d.round&&d.course) mine.push({k:'g:'+d.date,kind:'골프',txt:`${d.course} ${d.holes||'18'}홀`,ph:'희망 티타임 (예: 오전 7시대)'});
+    /* 칸 안 예시 글(사장님 2026-09-21): 호텔·차량·가이드는 비움, 골프는 희망 티타임, 기타투어는 날짜·시간대 */
+    if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel,ph:''});
+    if(d.round&&d.course) mine.push({k:'g:'+d.date,kind:'골프',txt:`${d.course} ${d.holes||'18'}홀`,ph:'희망 티타임 (예: 9시 이전, 11시 이후 등)'});
     if(!mine.length) mine.push({k:'d:'+d.date,kind:'',txt:'라운딩 없음',ph:'이날 요청사항'});
     mine.forEach((m,i)=>rows.push(Object.assign(m,{head:i?'':head})));
   });
   const inc=(Q.includes&&Array.isArray(Q.includes.customer))?Q.includes.customer:[];
-  [['차량','veh','픽업 시간·장소 등'],['가이드','guide','가이드 요청사항'],['기타투어','tour','원하는 날짜와 시간대']].forEach(([name,k,ph])=>{
+  [['차량','veh',''],['가이드','guide',''],['기타투어','tour','원하는 날짜와 시간대']].forEach(([name,k,ph])=>{
     const hit=inc.find(x=>new RegExp('^'+name+'\\s*-').test(String(x||''))); if(!hit) return;
     rows.push({k,head:name,kind:'',txt:String(hit).replace(/^[^-]+-\s*/,'').replace(/\s*\(확정 시[^)]*\)\s*$/,''),ph});
   });
