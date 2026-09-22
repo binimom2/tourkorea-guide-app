@@ -129,17 +129,20 @@ table.rlist tr{cursor:pointer;}
 #costView .list-wrap{max-height:calc(100vh - 190px);overflow:auto;}
 #costTable thead th{position:sticky;top:0;z-index:3;}
 /* 원가서 표: 칸 사이 연한 세로 점선 + 금액칸 가운데 정렬 */
-#costTable th,#costTable td{border-right:1px dotted #dde3ec;}
-#costTable th:last-child,#costTable td:last-child{border-right:none;}
+#costTable th,#costTable td,.costtbl th,.costtbl td{border-right:1px dotted #dde3ec;}
+#costTable th:last-child,#costTable td:last-child,.costtbl th:last-child,.costtbl td:last-child{border-right:none;}
 /* 가로선: 기본색(#f0f2f6)이 너무 연해 배색/성수기 초록 위에서 안 보임 → 조금 진하게 */
-#costTable td{border-bottom:1px solid #dfe4ec;}
-#costTable .num{text-align:center;}
+#costTable td,.costtbl td{border-bottom:1px solid #dfe4ec;}
+#costTable .num,.costtbl .num{text-align:center;}
 /* 가운데정렬 칸(기간·금액 등)은 좌우 여백을 줄여 폭을 좁게 */
-#costTable th.num,#costTable td.num{padding-left:6px;padding-right:6px;}
-#costTable .remark-col{white-space:pre-wrap;min-width:180px;}
+#costTable th.num,#costTable td.num,.costtbl th.num,.costtbl td.num{padding-left:6px;padding-right:6px;}
+#costTable .remark-col,.costtbl .remark-col{white-space:pre-wrap;min-width:180px;}
 /* 최종수정 — 별도 칸 대신 수정/상세보기/삭제 아래에 작게(날짜·시각·아이디) */
-#costTable .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.4;text-align:right;margin-top:5px;}
-#costTable .cost-upd .cost-upd-by{color:#6b7484;font-weight:700;}
+#costTable .cost-upd,.costtbl .cost-upd{font-size:10px;color:#9aa1af;white-space:nowrap;line-height:1.4;text-align:right;margin-top:5px;}
+#costTable .cost-upd .cost-upd-by,.costtbl .cost-upd .cost-upd-by{color:#6b7484;font-weight:700;}
+/* 전체 검색 결과: 탭별 표를 제목 달아 위아래로 쌓는다(.costtbl은 위 #costTable 꾸밈을 같이 쓴다) */
+.cost-all-sec{margin-bottom:16px;}
+.cost-all-title{font-size:13px;font-weight:800;color:#161f38;padding:8px 6px 5px;border-bottom:2px solid #4fd1a5;}
 .rlist tr.golf-grp-1 td:not(.cost-sum-col):not(.name-col){background:#f4f7fc;}   /* 관광·식당 등 시즌 없는 표: 항목별 줄무늬 */
 /* 원가서 골프장·호텔: 시즌별 고정색 — 성수기 분홍(강조) / 비수기 연그린 / 평수기 연파랑. 합계칸(노랑)은 그대로 유지 */
 .rlist tr.season-peak td:not(.cost-sum-col):not(.name-col){background:#fce8ef;}
@@ -497,7 +500,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
       <option value="평수기">평수기</option>
       <option value="성수기">성수기</option>
     </select>
-    <input type="text" class="search" id="cf-search" placeholder="이름 검색 — 여러 개는 쉼표로 (예: 알파인, 반얀트리)" style="min-width:230px;" oninput="renderCostTable()"/>
+    <input type="text" class="search" id="cf-search" placeholder="전체 검색(골프장·호텔·관광) — 여러 개는 쉼표로 (예: 알파인, 반얀트리)" style="min-width:230px;" oninput="renderCostTable()"/>
     <div class="viewToggle">
       <button id="vtCal2" onclick="setView('cal')">📅 캘린더</button>
       <button id="vtList2" onclick="setView('list')">📋 목록</button>
@@ -539,6 +542,8 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
           <thead><tr id="costTableHead"></tr></thead>
           <tbody id="costTableBody"></tbody>
         </table>
+        <!-- 검색어가 있으면 골프장·호텔·관광을 한 번에 찾아 여기 쌓아 보인다(사장님 2026-09-22) — 수정·삭제 링크는 그 표의 탭으로 바꾼 뒤 동작 -->
+        <div id="costAllHost" style="display:none;" onmousedown="costAllPick(event)"></div>
       </div>
       <div id="costUpdated" style="text-align:right;font-size:11.5px;color:#9aa1af;padding:8px 4px 2px;"></div>
     </div>
@@ -829,7 +834,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-09-22-idle';
+const APP_VERSION='2026-09-22-costsearch';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1230,7 +1235,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 21;   // 배포마다 +1 (구버전 탭 저장차단 기준). v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 22;   // 배포마다 +1 (구버전 탭 저장차단 기준). v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2923,7 +2928,37 @@ function downloadCostExcel(){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
   showToast(`📥 ${cat.label} 원가서 전체(${flat.length}행)를 엑셀로 내려받았습니다`);
 }
+/* ── 전체 검색(사장님 2026-09-22): 검색어가 있으면 어느 탭에 있든 골프장·호텔·관광,식당외를 한 번에 찾는다.
+   세 표는 칸 구성이 달라 한 표에 못 담으므로, 탭별 표를 차례로 그려 결과가 있는 것만 제목을 달아 쌓는다.
+   수정·삭제 링크는 각 탭 전용 함수를 부르지만 저장(saveCostRowEditor)이 costTab을 보므로,
+   그 표 안을 누르는 순간(mousedown) costTab을 그 표의 탭으로 맞춘다(costAllPick). */
+function renderCostAll(){
+  const host=document.getElementById('costAllHost'), tbl=document.getElementById('costTable');
+  const saved=costTab; let html='', found=0;
+  COST_CATEGORIES.forEach(c=>{
+    costTab=c.key;
+    if(c.key==='golf') renderGolfTable(); else if(c.key==='hotel') renderHotelTable(); else if(c.key==='attraction') renderAttrTable(); else return;
+    const body=document.getElementById('costTableBody');
+    if(body.querySelector('.empty-row')) return;
+    found++;
+    html+=`<div class="cost-all-sec" data-cat="${c.key}"><div class="cost-all-title">${escapeHtml(c.label)}</div>`
+        +`<table class="rlist costtbl"><thead><tr>${document.getElementById('costTableHead').innerHTML}</tr></thead><tbody>${body.innerHTML}</tbody></table></div>`;
+  });
+  costTab=saved;
+  host.innerHTML=found?html:'<div style="padding:18px;color:#8a90a0;font-size:12.5px;">찾는 항목이 없습니다</div>';
+  host.style.display=''; tbl.style.display='none';
+}
+function costAllPick(e){
+  const sec=e.target.closest('[data-cat]'); if(!sec||!e.target.closest('a')) return;
+  costTab=sec.dataset.cat;
+  document.querySelectorAll('#costTabs button').forEach(b=>b.classList.toggle('active',b.textContent===(COST_CATEGORIES.find(c=>c.key===costTab)||{}).label));
+  updateCostFilterVisibility();
+}
 function renderCostTable(){
+  { const q=(document.getElementById('cf-search').value||'').trim();
+    const host=document.getElementById('costAllHost'), tbl=document.getElementById('costTable');
+    if(q){ renderCostAll(); return; }
+    if(host) host.style.display='none'; if(tbl) tbl.style.display=''; }
   if(costTab==='golf'){ renderGolfTable(); return; }   // 골프장은 전용 표(골프장명 병합 + 시즌 여러개)
   if(costTab==='hotel'){ renderHotelTable(); return; } // 호텔도 동일 패턴(호텔명 병합 + 기간 여러개)
   if(costTab==='attraction'){ renderAttrTable(); return; } // 관광·식당외도 동일 패턴
