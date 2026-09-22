@@ -1705,7 +1705,9 @@ function shrinkImage(file){
     img.onerror=()=>resolve(file);
     img.onload=()=>{
       const s=Math.min(1,PIC_MAX_EDGE/Math.max(img.width,img.height));
-      if(s>=1&&file.size<1200000){ resolve(file); return; }   // 이미 작으면 그대로
+      /* AVIF·WebP는 작아도 JPEG로 다시 만든다 — 그대로 올리면 .jpg 이름에 AVIF 내용이 들어가고, 못 여는 기기가 있다(사장님 2026-09-22) */
+      const reencode=/^image\/(avif|webp|heic|heif)$/.test(file.type||'');
+      if(s>=1&&file.size<1200000&&!reencode){ resolve(file); return; }   // 이미 작으면 그대로
       const c=document.createElement('canvas');
       c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
