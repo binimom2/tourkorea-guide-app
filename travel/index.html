@@ -829,7 +829,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-09-22-draft';
+const APP_VERSION='2026-09-22-idle';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -864,10 +864,10 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkApp
 setInterval(()=>checkAppVersion(),600000);   // 열어둔 채로도 10분마다
 
 /* ══════════════════════════ 자동 로그아웃 ══════════════════════════
-   아무 작업 없이 1시간이 지나면 로그아웃한다. 자리를 비운 사이 남이 쓰는 걸 막고,
+   아무 작업 없이 4시간이 지나면 로그아웃한다. 자리를 비운 사이 남이 쓰는 걸 막고,
    덤으로 방치된 낡은 탭이 오래 살아남지 못하게 한다.
    창을 닫아둔 시간도 포함해서 센다(마지막 조작 시각을 저장해 둠). */
-const IDLE_LIMIT=60*60*1000;   // 1시간
+const IDLE_LIMIT=4*60*60*1000;   // 4시간 (사장님 2026-09-22: 1시간은 너무 자주 끊긴다)
 const IDLE_WARN=60*1000;       // 1분 전부터 예고
 const IDLE_KEY='trv_last_act';
 let _idleAt=Date.now(), _idleWarnEl=null;
@@ -891,19 +891,19 @@ let _loggingOut=false;
 async function idleLogout(){
   if(_loggingOut) return;          // 이미 로그아웃 처리 중이면 재실행 금지(안내창 중복 방지)
   _loggingOut=true;
-  const editing=_isEditingRes();   // 입력창을 열어둔 채 시간이 지난 경우 — 내용을 잃게 하면 안 된다
-  try{ saveDraftNow(); }catch(e){} // 로그아웃 전에 초안부터 확보(currentUser를 지우기 전에)
+  /* 시간 초과 로그아웃 = 4시간 동안 아무 조작이 없었다는 뜻이다. 그때 열려 있던 입력창 내용은
+     「저장하지 않은 것」이므로 되살리지도, 나중에 자동 저장하지도 않는다(사장님 2026-09-22).
+     예전엔 초안으로 보관해 뒀다가 다시 로그인하면 이어서 저장하게 했는데, 그 초안이 몇 시간 뒤
+     올라가면서 그 사이 남이 적은 내용을 덮는 일이 있었다. */
+  const editing=_isEditingRes();
   currentUser=null;                // 1초 검사기가 다시 idleLogout을 못 부르게 즉시 해제
+  _pendingSave=null;               // 실패해 미뤄 둔 저장도 버린다
+  try{ clearDraft(); }catch(e){}   // 보관 중이던 초안 삭제
   try{ await sb.auth.signOut(); }catch(e){}
   try{ localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY); }catch(e){}
-  if(editing){
-    /* 새로고침하면 입력창의 내용이 통째로 날아간다 → 화면은 그대로 두고 빨간 띠로 알린다.
-       [다시 로그인]으로 세션만 되살리면 그 자리에서 이어서 저장할 수 있다. */
-    showSessDead('⛔ 1시간 동안 사용이 없어 로그아웃되었습니다 — <b>입력한 내용은 그대로 있습니다.</b> 다시 로그인하면 이어서 저장합니다.');
-    alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n입력하던 내용은 그대로 남겨두었습니다.\n\n화면 위의 [다시 로그인]을 눌러 로그인한 뒤 [Save]를 누르세요.\n\n(Signed out after 1 hour of inactivity. Your input is kept — log in again, then Save.)');
-    return;
-  }
-  alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.\n\n(Signed out after 1 hour of inactivity. Please sign in again.)');
+  alert(editing
+    ? '4시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n입력 중이던 내용은 저장되지 않았습니다 — 다시 로그인한 뒤 새로 입력해 주세요.\n\n(Signed out after 4 hours of inactivity. Unsaved input was discarded — please sign in and enter it again.)'
+    : '4시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.\n\n(Signed out after 4 hours of inactivity. Please sign in again.)');
   location.reload();
 }
 setInterval(()=>{
@@ -1230,7 +1230,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 20;   // 배포마다 +1 (구버전 탭 저장차단 기준). v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 21;   // 배포마다 +1 (구버전 탭 저장차단 기준). v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -1460,7 +1460,7 @@ async function doLogin(){
   }
 }
 async function enterApp(){
-  touchIdle();   // 들어온 시점부터 무작업 1시간을 다시 센다
+  touchIdle();   // 들어온 시점부터 무작업 4시간을 다시 센다
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   try{ localStorage.setItem('trv_session',JSON.stringify(currentUser)); }catch(e){} // 새로고침해도 로그인 유지
@@ -5848,11 +5848,12 @@ setInterval(()=>{ if(_isEditingRes()) saveDraftNow(); },3000);
 // 세션 유지: 새로고침해도 저장된 로그인 세션이 있으면 로그인 화면을 건너뛰고 복원(로그아웃 시에만 해제됨)
 (async function restoreSession(){
   try{
-    // 창을 닫아둔 사이에 1시간이 지났으면 세션을 끊는다(자동 로그아웃과 같은 기준)
+    // 창을 닫아둔 사이에 4시간이 지났으면 세션을 끊는다(자동 로그아웃과 같은 기준)
     const last=+(localStorage.getItem(IDLE_KEY)||0);
     if(last && Date.now()-last>IDLE_LIMIT){
       try{ await sb.auth.signOut(); }catch(e){}
       localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY);
+      try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}   // 시간 초과로 끊긴 세션의 초안은 저장하지 않은 것 — 버린다
       return;
     }
     const { data: { session } } = await sb.auth.getSession();
