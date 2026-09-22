@@ -238,6 +238,11 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .dlbtn:disabled{opacity:.55;cursor:default}
 .warn{color:#a8410f}
 /* 로그인 */
+/* 보관함만 보기(사장님 2026-09-22) — 사이트 상단 아이콘으로 열면 뒤의 견적기 화면은 감추고 보관함만 조금 크게 띄운다.
+   수배요청서·견적서 미리보기도 이 상태 위에 뜨므로 바탕이 어수선하지 않다. 「불러와서 수정」을 누르면 견적기가 다시 보인다 */
+body.boxonly #golfApp{visibility:hidden}
+body.boxonly #qhModal{background:#F7F3E9!important}          /* 인라인 스타일보다 앞서야 해서 !important */
+body.boxonly #qhModal>div{max-width:820px!important;max-height:92vh!important}
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
 #golfLogin h1{margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)}
@@ -464,7 +469,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <div style="background:#fff;border-radius:14px;width:100%;max-width:620px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25);">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#123A2B;color:#fff;">
         <b style="font-size:14px;">🗂 견적 이력</b>
-        <button type="button" onclick="document.getElementById('qhModal').style.display='none'"
+        <button type="button" onclick="closeQuoteHistory()"
                 style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
       </div>
       <div id="qhBody" style="overflow:auto;"></div>
@@ -2045,6 +2050,13 @@ async function openQuoteHistory(){
   renderQuoteHistory();
 }
 let QH_LIST=[];
+/* 보관함 닫기 — 「보관함만 보기」로 열렸으면(사이트 상단 아이콘) 뒤에 견적기를 드러내지 않고 팝업째 닫는다(사장님 2026-09-22) */
+function closeQuoteHistory(){
+  $('#qhModal').style.display='none';
+  if(!document.body.classList.contains('boxonly')) return;
+  document.body.classList.remove('boxonly');
+  try{ if(EMBED&&window.parent&&window.parent!==window) window.parent.postMessage({type:'tk-close-quote'},location.origin); }catch(e){}
+}
 function renderQuoteHistory(){
   const q=(($('#qhSearch')||{}).value||'').trim().toLowerCase();
   const rows=QH_LIST.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route].join(' ').toLowerCase().includes(q));
@@ -2069,13 +2081,18 @@ function renderQuoteHistory(){
                  ${(r.book.live&&r.book.live.url)?`<a href="${esc(r.book.live.url)}" target="_blank" rel="noopener" style="border:none;background:#0b3d91;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-align:center;text-decoration:none;white-space:nowrap;">🧾 인보이스 보기</a>`:''}`
               : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
           : ''}
-        <button type="button" onclick="editQuote(${idx})" style="border:1px solid #0b3d91;background:#fff;color:#0b3d91;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;" title="이 견적을 화면에 다시 불러와 고칩니다 — 저장하면 번호 뒤에 -1, -2 …가 붙은 수정본으로 담깁니다">✏ 불러와서 수정</button>
-        <button type="button" onclick="reissueQuote(${idx},'customer')" style="border:none;background:#123A2B;color:#fff;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">${GROLE==='agency'?'견적서 다시 보기':'손님용 다시받기'}</button>
-        ${GROLE==='agency'
-          /* 여행사는 내부용(원가 내역)이 없다 — 대신 보관함에서 빼기 */
-          ? `<button type="button" onclick="removeAgencyQuote(${idx})" style="border:1px solid #d8d2c4;background:#fff;color:#8a5a4a;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">보관함에서 빼기</button>`
+        ${(GROLE==='agency'&&r.book) ? '' /* 수배 요청한 건은 고칠 수 없고 내용은 수배요청서로 본다 — 수정·다시 보기 단추를 뺀다(사장님 2026-09-22) */
+          : `<button type="button" onclick="editQuote(${idx})" style="border:1px solid #0b3d91;background:#fff;color:#0b3d91;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;" title="이 견적을 화면에 다시 불러와 고칩니다 — 저장하면 번호 뒤에 -1, -2 …가 붙은 수정본으로 담깁니다">✏ 불러와서 수정</button>
+        <button type="button" onclick="reissueQuote(${idx},'customer')" style="border:none;background:#123A2B;color:#fff;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">${GROLE==='agency'?'견적서 다시 보기':'손님용 다시받기'}</button>`}
+        ${GROLE==='agency' ? ''
           : `<button type="button" onclick="reissueQuote(${idx},'internal')" style="border:1px solid #123A2B;background:#fff;color:#123A2B;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">내부용 다시받기</button>`}
       </div>
+      ${GROLE==='agency'
+        /* 여행사는 내부용(원가 내역)이 없다 — 대신 오른쪽 칸에 「삭제」(보관함에서 빼기, 사장님 2026-09-22) */
+        ? `<div style="flex-shrink:0;align-self:stretch;display:flex;align-items:center;padding-left:8px;border-left:1px solid #efeada;">
+             <button type="button" onclick="removeAgencyQuote(${idx})" title="보관함에서 뺍니다" style="border:1px solid #d8d2c4;background:#fff;color:#8a5a4a;border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">삭제</button>
+           </div>`
+        : ''}
     </div>`;
   }).join('') : '<div style="padding:18px;color:#5E6F66">찾는 견적이 없습니다.</div>';
 }
@@ -2113,6 +2130,7 @@ async function editQuote(idx){
   const S=(Q.state&&Q.state.v)?Q.state:stateFromOldQuote(Q);
   const missing=[];                                   // 요금표에서 없어져 되살리지 못한 것들
   $('#qhModal').style.display='none';
+  document.body.classList.remove('boxonly');          // 고치려면 견적기가 보여야 한다
   resetQuote();
   /* 1) 기본 정보 */
   $('#teamName').value=S.team||''; $('#pax').value=S.pax>0?String(S.pax):'';
@@ -2384,7 +2402,8 @@ function showQuotePreview(url,name,saveQ,boxIdx){
     </div>`;
     document.body.appendChild(m);
     /* 창이 열려 있는 동안 body.qv-open — 인쇄 CSS가 견적서 그림만 A4에 맞춰 찍는다(사장님 2026-09-16) */
-    const close=()=>{ m.hidden=true; document.body.classList.remove('qv-open'); };
+    const close=()=>{ m.hidden=true; document.body.classList.remove('qv-open');
+      if(document.body.classList.contains('boxonly')&&QH_LIST.length) $('#qhModal').style.display='flex'; };   // 보관함만 보기 중이면 보관함으로 돌아간다
     m.addEventListener('click',e=>{ if(e.target===m) close(); });
     m.querySelector('#qvClose').onclick=close;
     m.querySelector('#qvPrint').onclick=()=>{ window.print(); };
@@ -2826,6 +2845,7 @@ async function startApp(user){
 var APP_READY=false, WANT_BOX=false;   // var — startApp이 이 줄보다 먼저 불려도(끌어올림) 오류가 안 나게
 window.addEventListener('message',e=>{
   if(e.origin!==location.origin||!e.data||e.data.type!=='tk-open-quote-box') return;
+  if(EMBED) document.body.classList.add('boxonly');   // 견적기 화면은 감추고 보관함만(사장님 2026-09-22)
   if(APP_READY){ if(GROLE==='agency') openQuoteHistory(); } else WANT_BOX=true;
 });
 /* 사이트에서 견적 창을 닫으면 「tk-quote-fresh」가 온다(사장님 2026-09-21: 저장 없이 닫고 다시 열면 새 화면이어야 한다) —
@@ -2836,6 +2856,7 @@ window.addEventListener('message',e=>{
     const qv=$('#qvModal'); if(qv) qv.hidden=true; document.body.classList.remove('qv-open');
     const nt=$('#ntModal'); if(nt) nt.hidden=true;
     const qh=$('#qhModal'); if(qh) qh.style.display='none';
+    document.body.classList.remove('boxonly');
     closeVehPhotos(); closeVehList(); closeBookForm();
     resetQuote();
     window.scrollTo(0,0);

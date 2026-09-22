@@ -2763,6 +2763,11 @@ window.addEventListener("message", e => {
   if(e.origin !== location.origin || !e.data || e.data.type !== "tk-quote-box-count") return;
   BOXN = Math.max(0, +e.data.count || 0); drawBoxBtn();
 });
+/* 보관함만 띄운 상태에서 닫으면 견적기가 「tk-close-quote」를 보낸다 — 뒤의 견적기 화면을 드러내지 않고 팝업째 닫는다(사장님 2026-09-22) */
+window.addEventListener("message", e => {
+  if(e.origin !== location.origin || !e.data || e.data.type !== "tk-close-quote") return;
+  closeQuoteModal();
+});
 function drawTools(){
   const f = $("#navFav"), c = $("#navCart");
   f.innerHTML = ICON_HEART + (FAV.length  ? '<b>' + FAV.length  + '</b>' : '');
