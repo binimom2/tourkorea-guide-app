@@ -50,6 +50,12 @@ a{color:inherit}
 .qclose{position:absolute;top:10px;right:10px;z-index:2;width:38px;height:38px;border-radius:999px;border:0;background:var(--fairway);color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .qclose:hover{background:var(--fairway-mid)}
 @media(max-width:640px){ .qmodal{padding:0} .qbox{width:100%;height:100%;border-radius:0} }
+/* 보관함만 보기(사장님 2026-09-22) — 팝업 틀(베이지 창)은 안 보이게 하고 보관함 창만 사이트 위에 뜬다.
+   틀·그림자·닫기 단추를 없애고 iframe을 투명하게 — 어둡게 가리는 막은 견적기 쪽 보관함 창이 맡는다 */
+.qmodal.boxmode{padding:0;background:transparent}
+.qmodal.boxmode .qbox{width:100%;height:100%;background:transparent;border-radius:0;box-shadow:none}
+.qmodal.boxmode .qbox iframe{background:transparent}
+.qmodal.boxmode .qclose{display:none}
 body.qopen{overflow:hidden}
 /* 메뉴 링크(골프장·호텔…·실시간 견적)는 감춘다 — 섹터 띠가 대신한다(사장님 2026-09-10) */
 .navlinks{display:none}
@@ -1553,12 +1559,13 @@ function openQuoteModal(go){
   try{ sameOrigin = new URL(go, location.href).origin === location.origin; }catch(e){}
   if(!sameOrigin){ window.open(go, "_blank", "noopener"); return; }
   if(f.getAttribute("src") !== go) f.setAttribute("src", go);   /* 주소는 처음 한 번만 넣는다(다시 열 때 또 받아오지 않게) */
+  m.classList.remove("boxmode");   /* 보통 열기는 견적기 틀이 보인다 — 보관함 열기(openQuoteBox)만 이 뒤에 boxmode를 켠다 */
   m.hidden = false; document.body.classList.add("qopen");
 }
 /* 닫으면 견적기를 새 화면으로 돌려 둔다(사장님 2026-09-21: 저장 없이 닫고 다시 열면 내던 화면이 아니라 새 화면이어야 한다).
    견적기(/golf/)가 「tk-quote-fresh」를 받아 열린 창을 닫고 입력을 비운다 — 보관함에 저장한 견적은 그대로 */
 function closeQuoteModal(){
-  $("#qModal").hidden = true; document.body.classList.remove("qopen");
+  $("#qModal").hidden = true; $("#qModal").classList.remove("boxmode"); document.body.classList.remove("qopen");
   try{ $("#qFrame").contentWindow.postMessage({ type:"tk-quote-fresh" }, location.origin); }catch(e){}
 }
 $("#qClose").onclick = closeQuoteModal;
@@ -2753,6 +2760,7 @@ function openQuoteBox(){
   const go = quoteHref();
   if(go.charAt(0) === "#"){ goQuote(); return; }          // 견적이 창이 아니라 화면 안 자리로 잡혀 있는 설정이면 거기로
   openQuoteModal(go);
+  $("#qModal").classList.add("boxmode");   /* 팝업 틀 없이 보관함 창만(사장님 2026-09-22) */
   const f = $("#qFrame");
   const post = () => { try{ f.contentWindow.postMessage({ type:"tk-open-quote-box" }, location.origin); }catch(e){} };
   if(f.dataset.loaded === "1") post(); else f.addEventListener("load", post, { once:true });
@@ -2767,6 +2775,11 @@ window.addEventListener("message", e => {
 window.addEventListener("message", e => {
   if(e.origin !== location.origin || !e.data || e.data.type !== "tk-close-quote") return;
   closeQuoteModal();
+});
+/* 보관함에서 「불러와서 수정」을 누르면 견적기가 보여야 한다 — 견적기가 「tk-box-mode」 off를 보내면 팝업 틀을 되살린다 */
+window.addEventListener("message", e => {
+  if(e.origin !== location.origin || !e.data || e.data.type !== "tk-box-mode") return;
+  $("#qModal").classList.toggle("boxmode", !!e.data.on);
 });
 function drawTools(){
   const f = $("#navFav"), c = $("#navCart");
