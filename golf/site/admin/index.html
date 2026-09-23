@@ -176,13 +176,17 @@ tr.subrow td{padding:0 6px 11px}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
 /* 한 기간 = 왼쪽(날짜 + 구분) · 가운데(요금표: 주중·주말 두 줄 × 다섯 칸) · ✕ (사장님 2026-09-19) */
-.rmhd,.rmrate{display:grid;grid-template-columns:258px auto 22px;gap:8px;align-items:center;justify-content:start}
+.rmhd,.rmrate{display:grid;grid-template-columns:396px auto 22px;gap:8px;align-items:center;justify-content:start}
+/* 구분 · 기간을 한 줄로 나란히(사장님 2026-09-23) — 줄 높이를 줄인다 */
+.rmrate .rper{flex-direction:row;align-items:center;gap:6px}
+.rmrate .rper select{flex:none;width:128px}
+.rmrate .rper .rdate{flex:1}
 /* 기본요금 줄은 초록, 써차지 줄은 빨강 — 줄 바탕·왼쪽 띠·「구분」 칸 색을 다르게(사장님 2026-09-19 「입력을 많이 하다 보니 헷갈려」) */
 .rmrate{padding:5px 6px 5px 8px;border-left:5px solid #2E7D4F;border-radius:7px;background:#EAF5EE}
 .rmrate select[data-rmf=sur]{background:#2E7D4F;border-color:#2E7D4F;color:#fff;font-weight:800}
 .rmrate select[data-rmf=sur] option{background:#fff;color:#222;font-weight:400}
 .rmrate .rmgrid>span{color:#1F5C39}
-.rmgrid{display:grid;grid-template-columns:54px repeat(5,84px);gap:4px 5px;align-items:center}
+.rmgrid{display:grid;grid-template-columns:44px repeat(5,80px);gap:4px 5px;align-items:center}
 .rmgrid>span{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 .rmhd .rmgrid>span{text-align:center}
 /* 써차지(특별일 추가요금) 줄은 눈에 띄게 — 기본요금과 헷갈리면 값이 두 배로 나간다 */
@@ -2341,16 +2345,16 @@ function roomRateHTML(r,j,pr,weOn){
     }).join('');
   return '<div class="rmrate'+(sur?' sur':'')+'" data-ri="'+j+'">'
     +'<div class="rper">'+periodSelHTML(r)
-      +'<div class="rdate">'
-      +'<input type="date" data-rmf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
-      +'<span class="rtil">~</span>'
-      +'<input type="date" data-rmf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
-      +'</div>'
       /* 연박 요금(2026-09-23) — 「N박 이상」 줄은 그 박수 이상 묵을 때만 쓰인다(r.minN). 서버 golf-price.js nightsOk와 같다 */
       +'<select data-rmf="sur" title="써차지로 두면 기본요금에 더해집니다 · N박 이상은 연박할 때만 쓰입니다">'
         +'<option value=""'+(sur||minN>1?'':' selected')+'>기본요금</option>'
         +[2,3,4,5,6,7].map(k=>'<option value="n'+k+'"'+(!sur&&minN===k?' selected':'')+'>연박 '+k+'박 이상</option>').join('')
         +'<option value="1"'+(sur?' selected':'')+'>＋추가(써차지)</option></select>'
+      +'<div class="rdate">'
+      +'<input type="date" data-rmf="from" value="'+esc(n(r.from))+'" title="기간 시작">'
+      +'<span class="rtil">~</span>'
+      +'<input type="date" data-rmf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
+      +'</div>'
       +'</div>'
     +'<div class="rmgrid">'+line(false)+(two?line(true):'')+'</div>'
     +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button>'
@@ -2361,7 +2365,7 @@ function roomRateHTML(r,j,pr,weOn){
    위 이름칸에서 탭으로 옮겨 가던 손가락이 갈 곳을 잃는다. */
 function roomRatesHTML(rates,rm,pr,weOn){
   return (rates.length
-      ? '<div class="rmhd"><span>기간 · 구분</span><div class="rmgrid"><span></span>'
+      ? '<div class="rmhd"><span>구분 · 기간</span><div class="rmgrid"><span></span>'
           +ROOM_COLS.map(c=>'<span title="'+esc(c[2])+'">'+esc(c[1])+'</span>').join('')+'</div><span></span></div>'
         +rates.map((r,q)=>roomRateHTML(r,q,pr,weOn)).join('')
       : '<div class="rnone">아직 요금이 없습니다 — 아래 「＋ 기간 추가」를 누르세요'
