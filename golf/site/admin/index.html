@@ -1239,6 +1239,8 @@ function bookCardHtml(b){
       +'<input type="text" data-memo="'+esc(b.no)+'" placeholder="직원 메모" value="'+esc((b.staff&&b.staff.memo)||'')+'">'
       +'<button class="add" data-save="'+esc(b.no)+'">저장</button>'
       +((b.staff&&b.staff.by)?'<span class="bkby">'+esc(b.staff.by)+' · '+esc(bookWhen(b.staff.at))+'</span>':'')
+      /* 테스트 기간용 삭제(사장님 2026-09-23 — 나중에 막는다). 서버가 golf_booktrash_<번호>로 옮겨 둔다 */
+      +'<button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button>'
     +'</div></div>';
 }
 /* ══ 바우처(예약 확정서) — 직원이 「컨펌」을 누르면 서버가 확정번호·링크를 만든다(사장님 2026-09-10).
@@ -1477,6 +1479,16 @@ function bindVoucherBtns(p){
     /* 인보이스 초안이면 바로 확인 화면을 띄운다 — 확인하고 「발행」해야 여행사에 나간다 */
     if(j.rec.voucher&&j.rec.voucher.released===false){ openInvPreview(j.rec); return; }
     toast(had?dn+' 메모를 고쳤습니다':'✅ 컨펌 — '+dn+'가 발급되었습니다');
+  });
+  p.querySelectorAll('[data-bdel]').forEach(btn=>btn.onclick=async()=>{
+    const no=btn.dataset.bdel, b=bookOf(no); if(!b) return;
+    const who=(b.agency&&b.agency.company)||(b.customer&&b.customer.name)||'';
+    if(!confirm('예약요청 「'+no+'」'+(who?' ('+who+')':'')+'을(를) 삭제합니다.\n발급된 바우처·인보이스 링크도 더 이상 열리지 않습니다.\n\n계속할까요?')) return;
+    btn.disabled=true; btn.textContent='삭제 중…';
+    const j=await bookApi('delete',{no});
+    if(!j||!j.ok){ btn.disabled=false; btn.textContent='🗑 삭제'; toast('❌ '+((j&&j.error)||'삭제 실패')); return; }
+    BOOKS.list=(BOOKS.list||[]).filter(x=>x.no!==no);
+    drawBooks(); toast('🗑 「'+no+'」 예약요청을 삭제했습니다');
   });
   p.querySelectorAll('[data-vprev]').forEach(btn=>btn.onclick=()=>{ const b=bookOf(btn.dataset.vprev); if(b) openInvPreview(b); });
   p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{

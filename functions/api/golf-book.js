@@ -118,6 +118,12 @@ async function srUpsert(key, row) {
   });
   if (!r.ok) throw new Error('DB 저장 실패 (HTTP ' + r.status + ')');
 }
+async function srDelete(key, dataKey) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.' + encodeURIComponent(dataKey), {
+    method: 'DELETE', headers: srHeaders(key, { Prefer: 'return=minimal' }),
+  });
+  if (!r.ok) throw new Error('DB 삭제 실패 (HTTP ' + r.status + ')');
+}
 
 /* ── 접수번호 — WT + 날짜(태국 시각) + 네 글자.
       헷갈리는 글자(0·O·1·I)는 빼서 전화로 불러 주기 좋게 한다. ── */
@@ -498,6 +504,20 @@ export async function onRequest(context) {
       if ((rec.status === 'new' || rec.status === 'doing') && rec.voucher.released !== false) rec.status = 'confirmed';
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
       return json({ ok: true, rec, url: voucherUrl(request, rec) });
+    }
+
+    /* ══ 예약요청 삭제 — 테스트 기간용(사장님 2026-09-23: 나중에 막는다). 지우기 전 golf_booktrash_<번호> 로 옮겨 둔다
+          (목록은 golf_book_* 만 읽으므로 여기 옮긴 것은 안 보인다 — 되살릴 때 키만 바꿔 넣으면 된다) ══ */
+    if (action === 'delete') {
+      const no = s(body.no, 40);
+      if (!no) return json({ error: '접수번호가 없습니다.' }, 400);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      const now = new Date().toISOString();
+      await srUpsert(KEY, { data_key: 'golf_booktrash_' + no, data: Object.assign({}, rec, { deletedAt: now, deletedBy: loginIdOf(user) }), updated_at: now });
+      await srDelete(KEY, PREFIX + no);
+      return json({ ok: true, no });
     }
 
     /* ══ 인보이스 고쳐 쓰기 — 칸마다 고친 값(inv)과 메모를 담는다. 링크·번호는 그대로 ══ */
