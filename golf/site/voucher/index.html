@@ -174,12 +174,21 @@ function renderInvoice(v){
     + '</td><td>' + (d.round && d.course ? esc(d.course) + ' <b>' + esc(d.holes || "18") + '홀</b>' : '<span class="mut">라운딩 없음</span>') + '</td></tr>').join("");
   const none = [q.noHotel ? "호텔" : "", q.noGuide ? "가이드" : "", q.noVeh ? "차량" : ""].filter(Boolean);
   const reqs = (q.requests || []).filter(Boolean);
-  const issued = String(v.confirmedAt || "").slice(0, 10);
+  /* 두 장(사장님 2026-09-23): ① 디파짓 인보이스 ② 디파짓 입금 뒤 «잔금 인보이스 & 확정서». v.doc 이 지금 보는 쪽 */
+  const bal = v.doc === "balance", pay = v.pay || {};
+  const issued = String((bal ? v.balAt : v.confirmedAt) || "").slice(0, 10);
+  const other = v.stage === "balance"
+    ? '<p class="tip" style="margin-top:-8px">' + (bal ? '<a href="' + esc(location.pathname + location.search.replace(/&d=\w+/, "") + "&d=deposit") + '">디파짓 인보이스 다시 보기</a>'
+        : '<a href="' + esc(location.pathname + location.search.replace(/&d=\w+/, "") + "&d=balance") + '">잔금 인보이스 &amp; 확정서 보기 →</a>') + '</p>' : '';
   $("#app").innerHTML = '<div class="sheet inv">'
     + '<div class="brand">' + esc(c.name || "") + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>'
-    + '<h1>Invoice<small>인보이스</small></h1>'
-    + '<p class="tip">※ 요청하신 수배가 확정되었습니다. 아래 금액을 확인하시고 입금해 주세요.</p>'
-    + '<div class="head"><div class="bn">Invoice No. <b>' + esc(v.cno) + '</b></div>'
+    + (bal ? '<h1>Balance Invoice<small>잔금 인보이스 · 확정서</small></h1>'
+           + '<p class="tip">※ <b>디파짓 입금이 확인되어 예약이 확정되었습니다.</b> 아래 잔금을 기한까지 입금해 주세요. 이 문서는 예약 확정서(Confirmation)를 겸합니다.</p>'
+           : '<h1>Deposit Invoice<small>디파짓 인보이스</small></h1>'
+           + '<p class="tip">※ 요청하신 수배의 디파짓 인보이스입니다. 기한까지 디파짓을 입금해 주시면 예약을 확정하고 잔금 인보이스 · 확정서를 보내 드립니다.</p>')
+    + other
+    + '<div class="head"><div class="bn">Invoice No. <b>' + esc(v.cno) + (bal ? '-B' : '-D') + '</b>'
+      + (bal ? ' <span style="background:#2E7D4F;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:900;margin-left:6px">CONFIRMED · 확정</span>' : '') + '</div>'
       + '<h2>' + esc(to.company || v.guest || "") + (to.contact ? ' <span style="font-weight:600;font-size:14px">' + esc(to.contact) + ' 님</span>' : '') + '</h2>'
       + '<p>· 견적번호 ' + esc(q.quoteNo || "") + '<br>· 발행일 ' + esc(issued) + '</p></div>'
     + '<div class="body"><h3>Booking Summary</h3>'
@@ -196,11 +205,21 @@ function renderInvoice(v){
     + (reqs.length ? '<div class="sec"><h3>요청 사항</h3><p>' + reqs.map(t => '· ' + esc(t)).join("\n") + '</p></div>' : '')
     + '<div class="amt">'
       + (q.perKrw ? '<div><span>1인 요금</span><b>' + won(q.perKrw) + '</b></div><div><span>인원수</span><b>× ' + (q.pax || 0) + '명</b></div>' : '')
-      + '<div class="sum"><span>Total (청구 금액)</span><b>' + (q.totalKrw ? won(q.totalKrw) : '-') + '</b></div></div>'
+      /* 디파짓 인보이스: 총액 아래 디파짓이 청구액. 잔금 인보이스: 총액 − 디파짓(입금 완료) = 잔금이 청구액. 디파짓을 안 정했으면 총액 그대로 */
+      + (bal && pay.dep
+          ? '<div><span>총액 (Total)</span><b>' + won(q.totalKrw) + '</b></div><div><span>디파짓 입금 완료</span><b>− ' + won(pay.dep.total) + '</b></div>'
+            + '<div class="sum"><span>잔금 청구 (Balance Due)</span><b>' + won(pay.bal ? pay.bal.total : Math.max(0, (q.totalKrw || 0) - pay.dep.total)) + '</b></div>'
+          : !bal && pay.dep
+          ? '<div><span>총액 (Total)</span><b>' + won(q.totalKrw) + '</b></div>'
+            + '<div class="sum"><span>디파짓 청구 (Deposit Due)</span><b>' + won(pay.dep.total) + '</b></div>'
+          : '<div class="sum"><span>Total (청구 금액)</span><b>' + (q.totalKrw ? won(q.totalKrw) : '-') + '</b></div>')
+      + '</div>'
     /* 입금 일정(사장님 2026-09-23) — 디파짓·잔금 1인 금액 × 인원, 기한 */
     + (v.pay ? '<div class="sec"><h3>입금 일정 (Payment)</h3><table class="itin"><thead><tr><th>구분</th><th>1인</th><th>인원</th><th>금액</th><th>입금 기한</th></tr></thead><tbody>'
         + [["디파짓 (Deposit)", v.pay.dep], ["잔금 (Balance)", v.pay.bal]].filter(x => x[1]).map(x => '<tr><td class="nw">' + x[0] + '</td><td class="nw">' + won(x[1].per)
-          + '</td><td class="nw">× ' + (q.pax || 0) + '명</td><td class="nw">' + won(x[1].total) + '</td><td class="nw">' + (x[1].due ? esc(dshort(x[1].due)) + '까지' : '-') + '</td></tr>').join("")
+          + '</td><td class="nw">× ' + (q.pax || 0) + '명</td><td class="nw">' + won(x[1].total) + '</td>'
+          /* 입금 기한은 빨간색(사장님 2026-09-23). 잔금 인보이스에서는 디파짓 줄을 「입금 완료」로 */
+          + '<td class="nw" style="color:#D32F2F">' + (bal && x[1] === v.pay.dep ? '<span style="color:#2E7D4F">✓ 입금 완료</span>' : x[1].due ? esc(dshort(x[1].due)) + '까지' : '-') + '</td></tr>').join("")
         + '</tbody></table></div>' : '')
     + (c.bank ? '<div class="box"><h3>입금 안내 (계좌)</h3><p>' + esc(c.bank) + '</p></div>' : '')
     + (v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
@@ -211,7 +230,7 @@ function renderInvoice(v){
       + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '')
       + (c.issuer ? '<p class="small">- 담당 : ' + esc(c.issuer) + '</p>' : '') + '</div>'
     + '</div>';
-  document.title = "인보이스 " + (q.quoteNo || v.no) + " · " + (c.name || "");
+  document.title = (bal ? "잔금 인보이스·확정서 " : "디파짓 인보이스 ") + (q.quoteNo || v.no) + " · " + (c.name || "");
   $("#act").style.display = "";
 }
 function fail(msg){
@@ -223,7 +242,7 @@ function fail(msg){
   if(!no || !t) return fail("바우처 주소가 올바르지 않습니다. 받으신 링크를 그대로 열어 주세요.");
   try{
     const r = await fetch("/api/golf-book", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "voucher", no, t }) });
+      body: JSON.stringify({ action: "voucher", no, t, d: q.get("d") || "" }) });
     const j = await r.json().catch(() => ({}));
     if(!j || !j.ok) return fail((j && j.error) || "서버 응답이 없습니다. 잠시 뒤 다시 열어 주세요.");
     if(j.v && j.v.type === "invoice") renderInvoice(j.v); else render(j.v);

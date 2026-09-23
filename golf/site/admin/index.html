@@ -1252,7 +1252,8 @@ function voucherUrlOf(b){
 /* 실시간 견적으로 들어온 여행사 수배 건(b.agency)은 바우처 대신 «인보이스»가 나간다(사장님 2026-09-21).
    같은 링크(/golf/site/voucher/)인데 서버가 인보이스 내용(견적 일정·총액·입금 안내)으로 돌려준다 — 원가 줄은 안 나간다 */
 function isInvoiceBook(b){ return !!(b&&b.agency&&b.agency.quoteNo); }
-function docNameOf(b){ return isInvoiceBook(b)?'인보이스':'바우처'; }
+/* 여행사 건 인보이스는 두 장(2026-09-23) — 디파짓 인보이스 → 디파짓 입금 확인 뒤 잔금 인보이스·확정서 */
+function docNameOf(b){ return isInvoiceBook(b)?((b.voucher&&b.voucher.stage==='balance')?'잔금 인보이스·확정서':'디파짓 인보이스'):'바우처'; }
 function voucherRowHtml(b){
   const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
@@ -1272,6 +1273,7 @@ function voucherRowHtml(b){
   return '<div class="bkvc on">'
     +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
     +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">'+dn+' 열기 ↗</a>'
+    +(inv&&v.stage!=='balance'?'<button class="add" data-vbal="'+esc(b.no)+'" title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행</button>':'')'
     +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
     +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
@@ -1365,12 +1367,13 @@ function kakaoTextOf(b){
   const co=(S.voucher&&S.voucher.name)||'투어코리아';
   if(isInvoiceBook(b)){
     const q=b.quote||{};
-    return '['+co+'] '+((b.agency&&b.agency.company)||'')+' 담당자님, 요청하신 수배가 확정되었습니다.\n'
-      +'견적번호 '+(b.agency.quoteNo||'')+' · Invoice No. '+b.voucher.cno+'\n'
+    const bal=b.voucher.stage==='balance';
+    return '['+co+'] '+((b.agency&&b.agency.company)||'')+' 담당자님, '
+      +(bal?'디파짓 입금이 확인되어 예약이 확정되었습니다.\n':'요청하신 수배의 디파짓 인보이스입니다.\n')
+      +'견적번호 '+(b.agency.quoteNo||'')+' · Invoice No. '+b.voucher.cno+(bal?'-B':'-D')+'\n'
       +(q.start?('일정 '+q.start+' ~ '+(q.end||'')+' · '+(q.pax||0)+'명'+(q.team?' · '+q.team:'')+'\n'):'')
-      +(q.totalKrw?('청구 금액 '+Number(q.totalKrw).toLocaleString('ko-KR')+'원\n'):'')
-      +'▶ 인보이스: '+voucherUrlOf(b)+'\n'
-      +'금액과 입금 안내를 확인해 주세요.';
+      +'▶ '+docNameOf(b)+': '+voucherUrlOf(b)+'\n'
+      +(bal?'잔금 금액과 기한, 확정 내용을 확인해 주세요.':'디파짓 금액과 입금 기한을 확인해 주세요.');
   }
   const lines=(b.items||[]).map(it=>'· '+it.name+(it.option?' '+it.option:'')+' — '+(it.date||'')
     +(it.dateEnd&&it.dateEnd!==it.date?' ~ '+it.dateEnd:''));
@@ -1479,6 +1482,15 @@ function bindVoucherBtns(p){
     /* 인보이스 초안이면 바로 확인 화면을 띄운다 — 확인하고 「발행」해야 여행사에 나간다 */
     if(j.rec.voucher&&j.rec.voucher.released===false){ openInvPreview(j.rec); return; }
     toast(had?dn+' 메모를 고쳤습니다':'✅ 컨펌 — '+dn+'가 발급되었습니다');
+  });
+  p.querySelectorAll('[data-vbal]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.vbal); if(!b) return;
+    if(!confirm('['+((b.agency&&b.agency.company)||b.no)+'] 디파짓 입금을 확인했습니까?\n\n확인하면 잔금 인보이스 · 확정서가 발행되고, 여행사 보관함의 인보이스 링크가 잔금 쪽으로 바뀝니다.')) return;
+    btn.disabled=true; btn.textContent='발행 중…';
+    const j=await bookApi('balance',{no:b.no});
+    if(!j||!j.ok){ btn.disabled=false; btn.textContent='💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행'; toast('❌ '+((j&&j.error)||'발행 실패')); return; }
+    bookReplace(j.rec); drawBooks();
+    toast('✅ 잔금 인보이스·확정서를 발행했습니다 — 카톡·이메일로 보내 주세요');
   });
   p.querySelectorAll('[data-bdel]').forEach(btn=>btn.onclick=async()=>{
     const no=btn.dataset.bdel, b=bookOf(no); if(!b) return;

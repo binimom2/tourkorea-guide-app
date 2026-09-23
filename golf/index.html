@@ -2063,7 +2063,12 @@ let QH_LIST=[];
 /* 여행사 보관함 칸 나누기(사장님 2026-09-23) — 견적(아직 요청 전) · 수배 진행(요청했고 인보이스 전) · 인보이스(확정되어 돌아온 것).
    장바구니(사이트 단품목)와는 원래 따로다. 인보이스가 나오면 그 칸으로 저절로 옮겨 간다 */
 let QH_TAB='quote';
-const qhTabOf=r=>!r.book?'quote':(r.book.live&&r.book.live.url)?'inv':'book';
+/* 수배 진행 = 수배 요청한 것 전부(인보이스가 나온 것 포함 — 「인보이스가 있다는 건 수배 진행 건이 있다는 말」, 사장님 2026-09-23).
+   인보이스 = 그 가운데 인보이스가 나온 것. 두 칸에 같이 보일 수 있다 */
+/* 행사 종료일(귀국일)이 지난 건·취소된 건은 수배 진행에서 빠진다(사장님 2026-09-23) */
+const qhToday=()=>{ const t=new Date(); t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); return t.toISOString().slice(0,10); };
+const qhLive=r=>!!r.book&&!(r.end&&r.end<qhToday())&&!(r.book.live&&r.book.live.status==='cancel');
+const qhIn=(r,t)=>t==='quote'?!r.book:t==='book'?qhLive(r):!!(r.book&&r.book.live&&r.book.live.url);
 function setQhTab(t){ QH_TAB=t; renderQuoteHistory(); }
 /* 보관함 닫기 — 「보관함만 보기」로 열렸으면(사이트 상단 아이콘) 뒤에 견적기를 드러내지 않고 팝업째 닫는다(사장님 2026-09-22) */
 function closeQuoteHistory(){
@@ -2077,10 +2082,10 @@ function renderQuoteHistory(){
   let rows=QH_LIST.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route].join(' ').toLowerCase().includes(q));
   const tb=$('#qhTabs');
   if(tb){
-    const n=k=>rows.filter(r=>qhTabOf(r)===k).length;
+    const n=k=>rows.filter(r=>qhIn(r,k)).length;
     tb.innerHTML=[['quote','📝 견적'],['book','📤 수배 진행'],['inv','🧾 인보이스']].map(([k,t])=>
       `<button type="button" onclick="setQhTab('${k}')" style="border:1px solid ${QH_TAB===k?'#123A2B':'#d8d2c4'};background:${QH_TAB===k?'#123A2B':'#fff'};color:${QH_TAB===k?'#fff':'#123A2B'};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer">${t} ${n(k)}</button>`).join('');
-    rows=rows.filter(r=>qhTabOf(r)===QH_TAB);
+    rows=rows.filter(r=>qhIn(r,QH_TAB));
   }
   $('#qhList').innerHTML = rows.length ? rows.map((r,i)=>{
     const idx=QH_LIST.indexOf(r);
@@ -2100,7 +2105,7 @@ function renderQuoteHistory(){
               ? `<span style="font-size:10.5px;font-weight:800;color:#1f6b3f;background:#e3f3e8;border-radius:6px;padding:4px 8px;text-align:center;white-space:nowrap;">✅ 수배 요청함 · ${esc(String(r.book.at||'').slice(5,10).replace('-','/'))}</span>
                  <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📄 수배요청서 보기</button>
                  <button type="button" onclick="openBookMsg(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">💬 추가 요청 보내기${(r.book.msgs||[]).length?` (${r.book.msgs.length})`:''}</button>
-                 ${(r.book.live&&r.book.live.url)?`<a href="${esc(r.book.live.url)}" target="_blank" rel="noopener" style="border:none;background:#0b3d91;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-align:center;text-decoration:none;white-space:nowrap;">🧾 인보이스 보기</a>`:''}`
+                 ${(r.book.live&&r.book.live.url)?`<a href="${esc(r.book.live.url)}" target="_blank" rel="noopener" style="border:none;background:#0b3d91;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-align:center;text-decoration:none;white-space:nowrap;">🧾 ${r.book.live.stage==='balance'?'잔금 인보이스 · 확정서':'디파짓 인보이스'}</a>`:''}`
               : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
           : ''}
         ${(GROLE==='agency'&&r.book) ? '' /* 수배 요청한 건은 고칠 수 없고 내용은 수배요청서로 본다 — 수정·다시 보기 단추를 뺀다(사장님 2026-09-22) */

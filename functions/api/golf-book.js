@@ -243,7 +243,7 @@ function cleanInv(x) {
     bal: { per: amt(x.bal && x.bal.per), due: day(x.bal && x.bal.due) },
   };
 }
-async function invoiceView(request, rec, site, key) {
+async function invoiceView(request, rec, site, key, want) {
   const inv = rec.voucher.inv || null;
   const quote = Object.assign({}, await quoteOfRec(key, rec));
   const company = companyOf(site);
@@ -262,8 +262,12 @@ async function invoiceView(request, rec, site, key) {
     const dep = part(inv.dep), bal = part(inv.bal);
     if (dep || bal) pay = { dep, bal };
   }
+  /* 두 번 나간다(사장님 2026-09-23) — ① 디파짓 인보이스 → 디파짓 입금 확인되면 ② 잔금 인보이스 & 확정서.
+     stage 'balance' 가 되면 같은 링크가 잔금 쪽을 연다. doc 로 예전 디파짓 인보이스도 다시 볼 수 있다 */
+  const stage = rec.voucher.stage === 'balance' ? 'balance' : 'deposit';
+  const doc = (want === 'deposit' || want === 'balance') ? (want === 'balance' && stage !== 'balance' ? 'deposit' : want) : stage;
   return {
-    type: 'invoice',
+    type: 'invoice', stage, doc, depPaidAt: rec.voucher.depPaidAt || '', balAt: rec.voucher.balAt || '',
     no: rec.no, at: rec.at, status: rec.status,
     cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
     to,
@@ -320,8 +324,9 @@ function invoiceMailHtml(v) {
   const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
   const row = (k, val, bg) => '<tr><td style="padding:6px 8px;' + (bg ? 'background:#f3f3f3;' : '') + 'white-space:nowrap">' + k + '</td><td style="padding:6px 8px;' + (bg ? 'background:#f3f3f3' : '') + '"><b>' + e(val) + '</b></td></tr>';
   return '<div style="font-family:-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;max-width:560px;margin:0 auto;color:#222">'
-    + '<h2 style="margin:18px 0 4px">' + e(v.company.name) + ' 인보이스 (Invoice)</h2>'
-    + '<p style="margin:0 0 14px;color:#555">' + e(v.to.company) + ' 담당자님, 요청하신 수배가 확정되었습니다. 아래 단추를 눌러 인보이스를 확인해 주세요.</p>'
+    + '<h2 style="margin:18px 0 4px">' + e(v.company.name) + ' ' + (v.doc === 'balance' ? '잔금 인보이스 & 확정서' : '디파짓 인보이스') + ' (Invoice)</h2>'
+    + '<p style="margin:0 0 14px;color:#555">' + e(v.to.company) + ' 담당자님, '
+    + (v.doc === 'balance' ? '디파짓 입금이 확인되어 예약이 확정되었습니다. 잔금 인보이스와 확정서를 확인해 주세요.' : '요청하신 수배의 디파짓 인보이스입니다. 기한까지 디파짓을 입금해 주세요.') + '</p>'
     + '<table style="border-collapse:collapse;width:100%;margin-bottom:18px">'
     + row('Invoice No.', v.cno, true) + row('견적번호', q.quoteNo || '')
     + row('팀명', q.team || '-', true) + row('일정', (q.start || '') + ' ~ ' + (q.end || '') + ' · ' + (q.pax || 0) + '명')
@@ -447,7 +452,7 @@ export async function onRequest(context) {
         return json({ error: '바우처를 찾지 못했습니다. 주소를 다시 확인해 주세요.' }, 404);
       if (rec.status === 'cancel') return json({ error: '취소된 예약입니다. 문의는 아래 연락처로 주세요.', cancelled: true }, 410);
       const site = await readSite(KEY);
-      return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY) : voucherView(request, rec, site) });
+      return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY, s(body.d, 10)) : voucherView(request, rec, site) });
     }
 
     /* ══ 여기부터는 직원만 ══ */
@@ -534,6 +539,22 @@ export async function onRequest(context) {
       return json({ ok: true, rec });
     }
 
+    /* ══ 디파짓 입금 확인 → 잔금 인보이스 & 확정서 발행(사장님 2026-09-23). 같은 링크가 잔금 쪽으로 바뀐다 ══ */
+    if (action === 'balance') {
+      const no = s(body.no, 40);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      if (!rec.voucher || !rec.voucher.token || rec.voucher.released === false)
+        return json({ error: '디파짓 인보이스를 먼저 발행해 주세요.' }, 400);
+      const now = new Date().toISOString();
+      rec.voucher.stage = 'balance'; rec.voucher.depPaidAt = rec.voucher.depPaidAt || now;
+      rec.voucher.balAt = now; rec.voucher.balBy = loginIdOf(user);
+      if (rec.status === 'new' || rec.status === 'doing') rec.status = 'confirmed';
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
+      return json({ ok: true, rec });
+    }
+
     /* ══ 인보이스 발행 — 어드민이 초안을 화면으로 확인한 뒤 누른다 ══ */
     if (action === 'release') {
       const no = s(body.no, 40);
@@ -562,7 +583,7 @@ export async function onRequest(context) {
       const inv = isAgencyRec(rec);                 // 여행사 수배 건은 인보이스로 나간다(사장님 2026-09-21)
       const v = inv ? await invoiceView(request, rec, site, KEY) : voucherView(request, rec, site);
       const r = inv
-        ? await sendMail(env, to, '[' + v.company.name + '] 인보이스 (Invoice) · ' + (v.quote.quoteNo || v.no), invoiceMailHtml(v))
+        ? await sendMail(env, to, '[' + v.company.name + '] ' + (v.doc === 'balance' ? '잔금 인보이스 & 확정서' : '디파짓 인보이스') + ' (Invoice) · ' + (v.quote.quoteNo || v.no), invoiceMailHtml(v))
         : await sendMail(env, to, '[' + v.company.name + '] 예약 확정서 (Voucher) · ' + v.no, mailHtml(v));
       if (r.setup) return json({ ok: false, setup: true, url: v.url, error: '서버에 RESEND_API_KEY 가 없어 자동 발송을 못 합니다.' });
       if (r.error) return json({ error: r.error }, 502);
