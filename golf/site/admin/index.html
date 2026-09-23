@@ -1608,12 +1608,30 @@ function showDirtyNote(){
   const what=[dirty['site']&&'사이트 내용',dirty['rates']&&'요금'].filter(Boolean);
   n.textContent = what.length ? '● 저장 안 한 변경이 있습니다 ('+what.join('·')+')' : '';
 }
+/* 이름은 관리 화면 이름칸 하나가 정본이다(사장님 2026-09-23 「이름 입력하는 곳이 여기 하나뿐이니 이대로」).
+   요금표 쪽 이름표가 띄어쓰기·대소문자만 다르게 남아 있으면(예: 「미트호텔파타야」) 저장할 때 사이트 이름으로 맞춘다.
+   요금 자리를 찾는 규칙(priceHomeOf)이 띄어쓰기를 무시하므로 요금은 그대로 이어진다. 바꾼 개수를 돌려준다 */
+function syncPriceNames(){
+  if(!P||!P.regions||!S) return 0;
+  let n=0;
+  const kinds=['courses','hotels'].concat(Object.keys(S.items||{}));
+  kinds.forEach(k=>{
+    const list=k==='courses'?S.courses:k==='hotels'?S.hotels:(S.items||{})[k];
+    (Array.isArray(list)?list:[]).forEach(x=>{
+      const nm=String(x&&x.n||'').trim(); if(!nm) return;
+      const h=priceHomeOf(k,x);
+      if(h&&h.name!==nm){ h.name=nm; n++; }
+    });
+  });
+  return n;
+}
 async function saveSite(){
   const b=document.getElementById('saveSite');
   if(b&&b.disabled) return;              // 두 번 눌러 두 번 저장되는 것을 막는다
   if(b){ b.disabled=true; b.textContent='저장 중…'; }
   try{
     let ok=true, msg=[];
+    if(syncPriceNames()) markDirty('rates');
     if(dirty['site']){
       if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); msg.push('사이트 내용'); } else ok=false;
     }
