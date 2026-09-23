@@ -444,10 +444,28 @@ export async function onRequest(context) {
       const rec = Array.isArray(rows) && rows[0] && rows[0].data;
       if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
       const now = new Date().toISOString();
+      /* 여행사 건 인보이스는 «초안»으로 만든다(사장님 2026-09-23) — 어드민이 화면으로 확인하고 「발행」(release)을 눌러야
+         여행사 보관함에 링크가 뜨고 상태가 컨펌이 된다. released 가 없는 옛 건은 이미 발행된 것으로 본다. */
+      const draft = isAgencyRec(rec);
       if (!rec.voucher || !rec.voucher.token) {
         rec.voucher = { cno: String(Math.floor(Date.now() / 1000)), token: voucherToken(), at: now, by: loginIdOf(user), memo: '', sent: [] };
+        if (draft) rec.voucher.released = false;
       }
       if (body.memo != null) rec.voucher.memo = s(body.memo, MAX_TEXT);
+      if ((rec.status === 'new' || rec.status === 'doing') && rec.voucher.released !== false) rec.status = 'confirmed';
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
+      return json({ ok: true, rec, url: voucherUrl(request, rec) });
+    }
+
+    /* ══ 인보이스 발행 — 어드민이 초안을 화면으로 확인한 뒤 누른다 ══ */
+    if (action === 'release') {
+      const no = s(body.no, 40);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      if (!rec.voucher || !rec.voucher.token) return json({ error: '먼저 컨펌해서 인보이스를 만들어 주세요.' }, 400);
+      const now = new Date().toISOString();
+      rec.voucher.released = now; rec.voucher.relBy = loginIdOf(user);
       if (rec.status === 'new' || rec.status === 'doing') rec.status = 'confirmed';
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
       return json({ ok: true, rec, url: voucherUrl(request, rec) });
@@ -460,6 +478,7 @@ export async function onRequest(context) {
       const rec = Array.isArray(rows) && rows[0] && rows[0].data;
       if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
       if (!rec.voucher || !rec.voucher.token) return json({ error: '먼저 컨펌해서 바우처를 발급해 주세요.' }, 400);
+      if (rec.voucher.released === false) return json({ error: '인보이스를 먼저 확인하고 「발행」을 눌러 주세요.' }, 400);
       const to = s(body.to, 120) || (rec.customer && rec.customer.email) || '';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json({ error: '보낼 이메일 주소가 없습니다.' }, 400);
       const site = await readSite(KEY);

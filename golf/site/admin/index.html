@@ -1227,6 +1227,14 @@ function voucherRowHtml(b){
       +'<span class="bkvhint">'+(inv?'컨펌하면 인보이스(청구서)가 만들어지고 여행사에 카톡·이메일로 보낼 수 있습니다'
         :'컨펌하면 예약 확정서(바우처)가 만들어지고 카톡·이메일로 보낼 수 있습니다')+'</span></div>';
   }
+  /* 인보이스 초안(사장님 2026-09-23) — 어드민이 화면으로 확인하고 「발행」을 눌러야 여행사에 보인다. 그 전엔 보내기 단추를 안 준다 */
+  if(v.released===false){
+    return '<div class="bkvc">'
+      +'<span class="bkvno">Invoice No. <b>'+esc(v.cno)+'</b> <span style="color:#D9412B;font-weight:800">· 초안(여행사에 안 보임)</span></span>'
+      +'<button class="add" data-vprev="'+esc(b.no)+'">🔍 인보이스 확인 · 발행</button>'
+      +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="인보이스에 실리는 Memo(입금 기한 등)">✎ 인보이스 메모</button>'
+      +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span></div>';
+  }
   const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
   return '<div class="bkvc on">'
     +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
@@ -1238,6 +1246,30 @@ function voucherRowHtml(b){
     +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
     +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
     +'</div>';
+}
+/* 인보이스 확인 창 — 여행사가 받을 화면을 그대로(iframe) 보여 주고, 「발행」을 누르면 그때 여행사 보관함에 뜬다 */
+function openInvPreview(b){
+  const old=document.getElementById('invPrev'); if(old) old.remove();
+  const m=document.createElement('div');
+  m.id='invPrev';
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div style="background:#fff;border-radius:10px;width:min(860px,100%);height:min(92vh,1100px);display:flex;flex-direction:column;overflow:hidden">'
+    +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)">'
+      +'<b style="flex:1">🔍 인보이스 확인 — '+esc((b.agency&&b.agency.company)||'')+' · '+esc((b.agency&&b.agency.quoteNo)||b.no)+'</b>'
+      +'<button class="ghost" data-x="1">닫기</button>'
+      +'<button class="add" data-rel="1">✅ 확인 · 여행사에 발행</button></div>'
+    +'<iframe src="'+esc(voucherUrlOf(b))+'" style="flex:1;border:0;width:100%"></iframe>'
+    +'<div style="padding:8px 14px;font-size:12px;color:var(--muted)">금액·일정·메모를 확인하세요. 고칠 게 있으면 닫고 「✎ 인보이스 메모」나 견적을 고친 뒤 다시 여세요. 발행 전에는 여행사에 보이지 않습니다.</div>'
+    +'</div>';
+  document.body.appendChild(m);
+  m.querySelector('[data-x]').onclick=()=>m.remove();
+  m.querySelector('[data-rel]').onclick=async e=>{
+    const bt=e.currentTarget; bt.disabled=true; bt.textContent='발행 중…';
+    const j=await bookApi('release',{no:b.no});
+    if(!j||!j.ok){ bt.disabled=false; bt.textContent='✅ 확인 · 여행사에 발행'; toast('❌ '+((j&&j.error)||'발행 실패')); return; }
+    m.remove(); bookReplace(j.rec); drawBooks();
+    toast('✅ 인보이스를 발행했습니다 — 여행사 보관함에 보입니다. 카톡·이메일로도 보낼 수 있습니다');
+  };
 }
 function kakaoTextOf(b){
   const co=(S.voucher&&S.voucher.name)||'투어코리아';
@@ -1352,9 +1384,12 @@ function bindVoucherBtns(p){
     btn.disabled=false;
     if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'컨펌 실패')); drawBooks(); return; }
     bookReplace(j.rec);
-    toast(had?dn+' 메모를 고쳤습니다':'✅ 컨펌 — '+dn+'가 발급되었습니다');
     drawBooks();
+    /* 인보이스 초안이면 바로 확인 화면을 띄운다 — 확인하고 「발행」해야 여행사에 나간다 */
+    if(j.rec.voucher&&j.rec.voucher.released===false){ openInvPreview(j.rec); return; }
+    toast(had?dn+' 메모를 고쳤습니다':'✅ 컨펌 — '+dn+'가 발급되었습니다');
   });
+  p.querySelectorAll('[data-vprev]').forEach(btn=>btn.onclick=()=>{ const b=bookOf(btn.dataset.vprev); if(b) openInvPreview(b); });
   p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vlink); if(!b) return;
     toast((await copyText(voucherUrlOf(b)))?'🔗 '+docNameOf(b)+' 링크를 복사했습니다':'복사 실패 — 「'+docNameOf(b)+' 열기」로 주소를 복사해 주세요');
