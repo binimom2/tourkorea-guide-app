@@ -244,8 +244,9 @@ body.boxonly #golfApp>*:not(#qhModal){visibility:hidden}   /* 보관함(#qhModal
 body.boxonly #qhModal{visibility:visible}
 body.boxonly{background:transparent}                          /* 사이트 팝업 틀도 투명(boxmode) — 보관함 창만 사이트 위에 뜬다 */
 body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important}   /* 인라인 스타일보다 앞서야 해서 !important */
-/* 보관함 글자·단추 한 단계 크게(사장님 2026-09-23 「사이즈 키워줘」) — 줄마다 인라인 크기라 통째로 키운다 */
-@media (min-width:900px){ body.boxonly #qhModal>div{zoom:1.18} }
+/* 보관함 창 크게(사장님 2026-09-23 「사이즈 키워줘」) — 견적기 안 「내 견적 보관함」 단추로 열어도 같게. 줄마다 인라인 크기라 통째로 키운다 */
+#qhModal>div{max-width:860px!important;max-height:88vh!important}
+@media (min-width:900px){ #qhModal>div{zoom:1.18} }
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
 #golfLogin h1{margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)}
