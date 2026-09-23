@@ -1139,7 +1139,7 @@ const BOOK_STATUS=[
   {k:'done',  t:'완료',   c:'#3C6E71'},
   {k:'cancel',t:'취소',   c:'#9AA5A0'}
 ];
-let BOOKS=null, bookFilter='live';       // live = 접수+진행중만, all = 전부
+let BOOKS=null, bookFilter='live', bookQ='';       // live = 접수+진행중만, all = 전부
 async function bookApi(action,payload){
   try{
     const {data:{session}}=await sb.auth.getSession();
@@ -1189,7 +1189,14 @@ function drawBooks(){
   const all=BOOKS.list||[];
   /* 처리할 것 = 접수·진행중 + 여행사가 보낸 «추가 요청 메시지»를 아직 확인 안 한 건(컨펌 뒤에 온 메시지도 놓치지 않게, 사장님 2026-09-21) */
   const bookLive=b=>b.status==='new'||b.status==='doing'||(+b.msgUnread>0);
-  const list=bookFilter==='all'?all:all.filter(bookLive);
+  /* 찾기(사장님 2026-09-23) — 접수번호·견적번호·확정번호, 여행사·손님 이름·연락처, 팀명, 날짜(접수일·이용일·일정), 골프장·호텔 이름.
+     찾는 말이 있으면 「처리할 것/전체」와 상관없이 전부에서 찾는다 */
+  const q=bookQ.trim().toLowerCase().replace(/\s+/g,'');
+  const hay=b=>{ const c=b.customer||{}, a=b.agency||{}, qt=b.quote||{}, v=b.voucher||{};
+    return [b.no,a.quoteNo,a.company,a.contact,v.cno,c.name,c.tel,c.email,qt.team,qt.start,qt.end,String(b.at||'').slice(0,10),
+      ...(b.items||[]).flatMap(it=>[it.name,it.option,it.date,it.dateEnd,it.region]),
+      ...((qt.days||[]).flatMap(d=>[d.date,d.hotel,d.course]))].join(' ').toLowerCase().replace(/\s+/g,''); };
+  const list=q?all.filter(b=>hay(b).includes(q)):(bookFilter==='all'?all:all.filter(bookLive));
   const nNew=all.filter(b=>b.status==='new').length;
   p.innerHTML='<div class="card">'
     +'<h2>📋 예약요청 <span class="bkcnt">'+nNew+'건 새로 들어옴</span></h2>'
@@ -1199,10 +1206,17 @@ function drawBooks(){
       +'<button class="'+(bookFilter==='live'?'on':'')+'" data-f="live">처리할 것 ('+all.filter(bookLive).length+')</button>'
       +'<button class="'+(bookFilter==='all'?'on':'')+'" data-f="all">전체 ('+all.length+')</button>'
       +'<button data-f="reload">↻ 새로고침</button>'
+      +'<input id="bkSearch" placeholder="접수번호 · 견적번호 · 여행사 · 이름 · 날짜(2026-11-01) · 골프장/호텔로 찾기" value="'+esc(bookQ)+'" style="flex:1;min-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px">'
     +'</div>'
+    +(q?'<p class="desc" style="margin:4px 0 8px">「'+esc(bookQ)+'」 찾은 결과 '+list.length+'건 (전체에서)</p>':'')
     +(list.length?'<div class="bklist">'+list.map(bookCardHtml).join('')+'</div>'
-      :'<p class="desc" style="padding:18px 0">해당하는 예약 요청이 없습니다.</p>')
+      :'<p class="desc" style="padding:18px 0">'+(q?'찾는 예약 요청이 없습니다.':'해당하는 예약 요청이 없습니다.')+'</p>')
     +'</div>';
+  const sx=document.getElementById('bkSearch');
+  /* 한글은 조합 중에 다시 그리면 글자가 끊긴다 — 조합이 끝났을 때만 다시 그린다 */
+  const redo=()=>{ bookQ=sx.value; const pos=sx.selectionStart; drawBooks(); const s2=document.getElementById('bkSearch'); s2.focus(); s2.setSelectionRange(pos,pos); };
+  sx.oninput=e=>{ if(e.isComposing) return; redo(); };
+  sx.addEventListener('compositionend',redo);
   p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{
     if(b.dataset.f==='reload'){ BOOKS=null; drawBooks(); return; }
     bookFilter=b.dataset.f; drawBooks();
@@ -1273,7 +1287,7 @@ function voucherRowHtml(b){
   return '<div class="bkvc on">'
     +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
     +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">'+dn+' 열기 ↗</a>'
-    +(inv&&v.stage!=='balance'?'<button class="add" data-vbal="'+esc(b.no)+'" title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행</button>':'')'
+    +(inv&&v.stage!=='balance'?'<button class="add" data-vbal="'+esc(b.no)+'" title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행</button>':'')
     +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
     +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
