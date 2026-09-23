@@ -2327,10 +2327,12 @@ function materializeExtras(pr){
   });
   ['extraChild','extraAdult','extraPax','extraBed'].forEach(k=>{ delete pr[k]; });
 }
-function roomRateHTML(r,j,pr){
+function roomRateHTML(r,j,pr,weOn){
   const n=v=>(v===''||v==null)?'':v;
   const sur=isSurRate(r), minN=Math.max(1,Math.round(+r.minN||1));
-  const line=we=>'<span>'+(sur?'＋':'')+(we?'주말·휴일':'주중')+'</span>'
+  /* 주말·휴일 줄은 호텔에 주말 요일을 고른 때만, 써차지 줄은 기간 요금이라 늘 한 줄(사장님 2026-09-23 · 서버도 써차지는 주중 값만 본다) */
+  const two=weOn&&!sur;
+  const line=we=>'<span>'+(sur?'＋추가':!two?'1박':(we?'주말·휴일':'주중'))+'</span>'
     +ROOM_COLS.map(c=>{
       const f=rmField(c[0],we);
       let v=n(r[f]);
@@ -2350,18 +2352,18 @@ function roomRateHTML(r,j,pr){
         +[2,3,4,5,6,7].map(k=>'<option value="n'+k+'"'+(!sur&&minN===k?' selected':'')+'>연박 '+k+'박 이상</option>').join('')
         +'<option value="1"'+(sur?' selected':'')+'>＋추가(써차지)</option></select>'
       +'</div>'
-    +'<div class="rmgrid">'+line(false)+line(true)+'</div>'
+    +'<div class="rmgrid">'+line(false)+(two?line(true):'')+'</div>'
     +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button>'
     +'</div>';
 }
 /* 요금줄 묶음만 따로 그린다 — 이름을 적거나 줄을 더할 때 이 칸만 갈아 끼운다.
    객실칸 전체를 다시 그리면 옆 사진칸이 새로 만들어져 「올렸습니다」 알림이 사라지고,
    위 이름칸에서 탭으로 옮겨 가던 손가락이 갈 곳을 잃는다. */
-function roomRatesHTML(rates,rm,pr){
+function roomRatesHTML(rates,rm,pr,weOn){
   return (rates.length
       ? '<div class="rmhd"><span>기간 · 구분</span><div class="rmgrid"><span></span>'
           +ROOM_COLS.map(c=>'<span title="'+esc(c[2])+'">'+esc(c[1])+'</span>').join('')+'</div><span></span></div>'
-        +rates.map((r,q)=>roomRateHTML(r,q,pr)).join('')
+        +rates.map((r,q)=>roomRateHTML(r,q,pr,weOn)).join('')
       : '<div class="rnone">아직 요금이 없습니다 — 아래 「＋ 기간 추가」를 누르세요'
         +(String(rm&&rm.t||'').trim()?'':' (객실 타입 이름을 먼저 적어 주세요)')+'</div>')
     +'<button type="button" class="radd rmradd">＋ 기간 추가</button>';
@@ -2371,7 +2373,7 @@ function redrawRoomRates(row,x){
   const rm=siteRoomsOf(x)[Number(row.dataset.mi)]; if(!rm) return;
   const box=row.querySelector('.rmrates'); if(!box) return;
   const pr=findRoom(priceRoomsRO(x),rm.t);
-  box.innerHTML=roomRatesHTML((pr&&Array.isArray(pr.rates))?pr.rates:[],rm,pr);
+  box.innerHTML=roomRatesHTML((pr&&Array.isArray(pr.rates))?pr.rates:[],rm,pr,weDaysOf(x).length>0);
   const cnt=document.getElementById('iCnt');
   if(cnt) cnt.innerHTML=itemCntHTML(cnt.dataset.k);
 }
@@ -2404,7 +2406,7 @@ function roomRowHTML(x,i,rm,j,pr){
        ※ 예전에 객실마다 한 개씩 적어 둔 값(extraChild = 엑스트라 베드, extraAdult = 조식 쿠폰)은
          기간 줄의 빈 자리에 그대로 보이고, 요금을 고치는 순간 기간 줄로 옮겨 적힌다(materializeExtras). */
     +'<div class="rmbody">'
-      +'<div class="rmrates">'+roomRatesHTML(rates,rm,pr)+'</div>'
+      +'<div class="rmrates">'+roomRatesHTML(rates,rm,pr,weDaysOf(x).length>0)+'</div>'
       +'<div class="rmpic"><label>이 객실 사진</label>'+picsTa(picPath,picShim)+'</div>'
     +'</div>'
     +'</div>';
@@ -2477,10 +2479,19 @@ document.getElementById('pane').addEventListener('click',e=>{
   markDirty('rates');
   redrawRoomCell(cell);
 });
+/* 기본은 빈칸(주중·주말 같은 값 — 호텔 80% 이상, 사장님 2026-09-23). 요일을 누른 호텔만 주말·휴일 줄이 나온다.
+   weDays를 아직 안 정한 옛 호텔은 주말 값이 주중과 다르게 적힌 줄이 있으면 토·일로 본다(서버 기본값과 같아 금액이 안 바뀐다). */
 function weDaysOf(x){
   const h=priceHomeOf('hotels',x);
-  return (h&&Array.isArray(h.weDays))?h.weDays.map(Number):[6,0];
+  if(h&&Array.isArray(h.weDays)) return h.weDays.map(Number);
+  const has=v=>v!==''&&v!=null;
+  const diff=(h&&Array.isArray(h.rooms)?h.rooms:[]).some(rm=>(rm.rates||[]).some(r=>!isSurRate(r)&&
+    ROOM_COLS.some(c=>{ const a=r[rmField(c[0],false)], b=r[rmField(c[0],true)]; return has(a)&&has(b)&&Number(a)!==Number(b); })));
+  return diff?[6,0]:[];
 }
+/* 요금을 고치기 전에 지금 보이는 요일을 적어 둔다 — 주말 줄이 감춰진 채 주중 값만 고치면
+   옛 주말 값(서버는 weDays 없으면 토·일)이 남아 다른 값이 나가게 된다 */
+function pinWeDays(x){ const h=ensureRateHome('hotels',x); if(!Array.isArray(h.weDays)) h.weDays=weDaysOf(x); }
 document.getElementById('pane').addEventListener('click',e=>{
   const b=e.target.closest('[data-wed]'); if(!b) return;
   const cell=b.closest('.rcell'); if(!cell) return;
@@ -2489,6 +2500,7 @@ document.getElementById('pane').addEventListener('click',e=>{
   ensureRateHome('hotels',x).weDays=cur.includes(d)?cur.filter(v=>v!==d):cur.concat(d);
   markDirty('rates');
   b.classList.toggle('on');
+  cell.querySelectorAll('.rmrow').forEach(row=>redrawRoomRates(row,x));   // 주말·휴일 줄을 보이거나 감춘다
 });
 function redrawRoomCell(cell){
   const x=hotelByName(cell.dataset.rn); if(!x) return;
@@ -2545,6 +2557,7 @@ document.getElementById('pane').addEventListener('input',e=>{
   const pr=priceRoomOf(x,rm.t), r=pr.rates[Number(rr.dataset.ri)]; if(!r) return;
   /* 객실에 한 개씩 적어 둔 옛 추가요금을 먼저 기간 줄로 옮긴다 — 화면에 보이던 값 그대로라 다시 그릴 것은 없다.
      고친 값을 넣기 «전에» 해야 한다(방금 비운 칸이 옛 값으로 되살아나지 않게). */
+  pinWeDays(x);
   const wasBlank=Object.keys(RM_OLD).filter(p=>rmBlank(r,p));
   materializeExtras(pr);
   /* 이 줄을 써차지로 돌리는 참이면 방금 옮겨 적힌 값은 도로 비운다 — 써차지 줄에 들어가면 기본값 위에 또 더해진다 */

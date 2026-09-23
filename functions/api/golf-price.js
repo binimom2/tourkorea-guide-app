@@ -192,8 +192,9 @@ function roomOn(rm, h, date, we, single, nights) {
   let base = null, add = 0, sur = false;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
     if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
-    let v = single ? kindBaht(r, 'sg', we) : null;
-    if (v == null) v = roomBaht(r, we);
+    const w = isSur(r) ? false : we;         // 써차지는 기간 요금 — 주중·주말 구분 없음(2026-09-23)
+    let v = single ? kindBaht(r, 'sg', w) : null;
+    if (v == null) v = roomBaht(r, w);
     if (v == null) return;
     if (isSur(r)) { add += v; sur = true; }
     else if (base == null || v < base) base = v;
@@ -212,7 +213,7 @@ function extraOn(rm, date, we, p, nights) {
     let base = null, add = 0;
     (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
       if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
-      const v = kindBaht(r, q, we);
+      const v = kindBaht(r, q, isSur(r) ? false : we);
       if (v == null) return;
       if (isSur(r)) add += v;
       else if (base == null || v < base) base = v;
@@ -518,12 +519,14 @@ async function hotelPost(B, env) {
         + '최소 ' + ms.n + '박 이상 예약하실 수 있습니다.' }, 200);
   }
   const holidays = Array.isArray(P.holidays) ? P.holidays : [];
-  /* 주말요금 받는 밤 — 호텔마다 다르다(사장님 2026-09-23). 관리 화면에서 고른 요일(0=일…6=토), 안 고르면 토·일 */
+  /* 주말요금 받는 밤 — 호텔마다 다르다(사장님 2026-09-23). 관리 화면에서 고른 요일(0=일…6=토), 아직 안 정한 옛 호텔은 토·일.
+     빈 목록이면 주말 구분이 없는 호텔 — 태국휴일도 주중 값 */
   const weDays = Array.isArray(hotel.weDays) ? hotel.weDays.map(Number) : [6, 0];
+  const weOn = weDays.length > 0;
   let sumBaht = 0, sumKrw = 0, exBaht = 0, exKrw = 0, same = true, first = null, anySur = false, sglDiff = false;
   for (let i = 0; i < nights; i++) {
     const d = addDays(date, i);
-    const we = weDays.includes(new Date(d + 'T00:00:00Z').getUTCDay()) || holidays.includes(d);
+    const we = weOn && (weDays.includes(new Date(d + 'T00:00:00Z').getUTCDay()) || holidays.includes(d));
     const got = roomOn(room, hotel, d, we, false, nights);
     if (got == null) {
       return json({ ok: false, needAsk: true,
