@@ -897,7 +897,7 @@ function draw(){
 /* ══════ 📑 견적 기록 (사장님 2026-09-16) ══════
    실시간 견적(/golf/)에서 「견적서 보기」를 눌러 견적서가 만들어지면 guide_data/golf_quotes 에 그때 금액이 통째로 남는다
    (요금표를 나중에 고쳐도 지난 견적은 안 바뀐다). 여기서는 그 기록을 표로 보여 원가(항목별 금액)가 제대로 잡혔는지 확인한다.
-   읽기만 한다 — 고치거나 지우지 않는다. */
+   고치지는 않는다. 줄 끝 ✕로 지울 수만 있다(2026-09-23, delQuote). */
 let QUOTES=null, quoteQ='', quoteOpen='';
 const qKrwUp=n=>Math.ceil(n/1000)*1000;   // /golf/ 의 krwUp 과 같은 규칙(1인 요금 천원 단위 올림)
 const qNum=n=>Number(n||0).toLocaleString('ko-KR');
@@ -943,6 +943,7 @@ function drawQuotes(){
       +td(perK?qNum(perK):'-',R)
       +td(totK?'<b>'+qNum(totK)+'</b>':'-',R)
       +td(open?'▲':'▼','text-align:center;color:var(--muted)')
+      +td('<button type="button" data-qdel="'+esc(r.quoteNo)+'" title="이 견적 기록 삭제" style="border:0;background:none;color:#B23B3B;font-size:14px;font-weight:900;cursor:pointer;padding:0 4px">✕</button>','text-align:center')
       +'</tr>';
     if(!open) return main;
     /* 펼친 줄 — 항목별 금액(원가 항목) + 일정표 + 포함/불포함 */
@@ -954,7 +955,7 @@ function drawQuotes(){
       +'<td style="padding:4px 8px">'+(d.round&&d.course?esc(d.course)+' '+esc(d.holes||'')+'홀':'<span style="color:var(--muted)">라운딩 없음</span>')+'</td></tr>').join('');
     const inc=((r.includes||{}).internal||(r.includes||{}).customer||[]).map(t=>'· '+esc(t)).join('<br>');
     const miss=[r.noHotel?'호텔':'',r.noGuide?'가이드':'',r.noVeh?'차량':''].filter(Boolean).join(', ');
-    const sub='<tr><td colspan="12" style="padding:10px 14px 14px;background:#FBF7EC;border-bottom:1px solid var(--line)">'
+    const sub='<tr><td colspan="13" style="padding:10px 14px 14px;background:#FBF7EC;border-bottom:1px solid var(--line)">'
       +'<div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start">'
         +'<div><div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:4px">항목별 금액 (THB · 원가+마진 그때 값)</div>'
           +'<table style="min-width:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:12.5px">'+lines
@@ -978,7 +979,7 @@ function drawQuotes(){
     +'<div class="subtabs"><input id="qtSearch" placeholder="견적번호 · 팀명 · 날짜 · 지역으로 찾기" value="'+esc(quoteQ)+'" style="flex:1;min-width:220px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px">'
       +'<button data-f="reload">↻ 새로고침</button></div>'
     +(list.length?'<div style="overflow:auto"><table style="min-width:980px"><thead><tr>'
-      +th('견적번호')+th('발행일')+th('출처')+th('팀명')+th('일정 · 동선')+th('인원',R)+th('총액 THB',R)+th('1인 THB',R)+th('환율',R)+th('1인 원화',R)+th('총 원화',R)+th('')
+      +th('견적번호')+th('발행일')+th('출처')+th('팀명')+th('일정 · 동선')+th('인원',R)+th('총액 THB',R)+th('1인 THB',R)+th('환율',R)+th('1인 원화',R)+th('총 원화',R)+th('')+th('')
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
       :'<p class="desc" style="padding:18px 0">'+(all.length?'찾는 견적이 없습니다.':'아직 보관된 견적이 없습니다.')+'</p>')
     +'</div>';
@@ -986,6 +987,21 @@ function drawQuotes(){
   s.oninput=()=>{ quoteQ=s.value; const pos=s.selectionStart; drawQuotes(); const s2=document.getElementById('qtSearch'); s2.focus(); s2.setSelectionRange(pos,pos); };
   p.querySelector('.subtabs button[data-f="reload"]').onclick=()=>{ QUOTES=null; drawQuotes(); };
   p.querySelectorAll('tr[data-q]').forEach(tr=>tr.onclick=()=>{ quoteOpen=(quoteOpen===tr.dataset.q)?'':tr.dataset.q; drawQuotes(); });
+  p.querySelectorAll('[data-qdel]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); delQuote(b.dataset.qdel); });
+}
+/* 견적 기록 삭제(사장님 2026-09-23) — 실시간 견적이 그 사이 새 견적을 붙였을 수 있어 서버 최신본을 다시 읽어 그 번호만 빼고,
+   지우기 전 통째를 백업 칸(golf_bak_golf_quotes_*)에 남긴다 */
+async function delQuote(no){
+  if(!confirm('견적 기록 「'+no+'」을(를) 삭제합니다.\n(여행사 보관함·예약요청에는 영향이 없습니다)\n\n계속할까요?')) return;
+  let list;
+  try{ list=await loadRaw('golf_quotes'); }catch(e){ toast('⚠ 서버 연결 실패 — 삭제하지 않았습니다'); return; }
+  if(!Array.isArray(list)){ toast('⚠ 견적 기록을 읽지 못했습니다'); return; }
+  const next=list.filter(r=>r&&r.quoteNo!==no);
+  if(next.length===list.length){ toast('이미 없는 견적입니다'); QUOTES={list}; drawQuotes(); return; }
+  try{ await pushBackup('golf_quotes',list); }catch(e){}
+  if(!await saveRaw('golf_quotes',next)){ toast('❌ 삭제 실패'); return; }
+  QUOTES={list:next}; if(quoteOpen===no) quoteOpen='';
+  drawQuotes(); toast('🗑 「'+no+'」 견적 기록을 삭제했습니다');
 }
 
 /* ══════ 🏢 여행사 회원 (B2B, 사장님 2026-09-17) ══════
