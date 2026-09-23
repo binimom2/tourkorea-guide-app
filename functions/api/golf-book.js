@@ -215,16 +215,56 @@ async function quoteOfRec(key, rec) {
     notes: (Q && Q.book && Q.book.notes && typeof Q.book.notes === 'object') ? Q.book.notes : {},
   };
 }
+/* ── 인보이스 고쳐 쓰기(사장님 2026-09-23) — 발행 전에 어드민이 칸을 고친다. rec.voucher.inv 에 고친 값만 담고,
+   화면을 만들 때 견적 내용 위에 덮어쓴다. 계좌·디파짓(1인·기한)·잔금(1인·기한)도 여기 ── */
+function cleanInv(x) {
+  if (!x || typeof x !== 'object') return null;
+  const lines = (v, n) => (Array.isArray(v) ? v : String(v || '').split('\n')).map(t => s(t, 300)).filter(Boolean).slice(0, n);
+  const amt = (v) => (v === '' || v == null) ? '' : Math.max(0, Math.round(+v || 0));
+  const day = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : '';
+  const q = x.q || {};
+  return {
+    to: { company: s(x.to && x.to.company, 80), contact: s(x.to && x.to.contact, 60) },
+    q: {
+      team: s(q.team, 60), start: day(q.start), end: day(q.end), pax: amt(q.pax),
+      perKrw: amt(q.perKrw), totalKrw: amt(q.totalKrw),
+      includes: lines(q.includes, 30), requests: lines(q.requests, 80),
+      days: (Array.isArray(q.days) ? q.days : []).slice(0, 40).map(d => ({
+        date: day(d && d.date), region: s(d && d.region, 40), hotel: s(d && d.hotel, 120), course: s(d && d.course, 120), holes: s(d && d.holes, 4), round: !!(d && d.course) })),
+    },
+    bank: s(x.bank, 600),
+    dep: { per: amt(x.dep && x.dep.per), due: day(x.dep && x.dep.due) },
+    bal: { per: amt(x.bal && x.bal.per), due: day(x.bal && x.bal.due) },
+  };
+}
 async function invoiceView(request, rec, site, key) {
+  const inv = rec.voucher.inv || null;
+  const quote = Object.assign({}, await quoteOfRec(key, rec));
+  const company = companyOf(site);
+  const to = { company: s(rec.agency.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: s(rec.agency.contact, 30) };
+  let pay = null;
+  if (inv) {
+    const q = inv.q || {};
+    ['team', 'start', 'end'].forEach(k => { if (q[k]) quote[k] = q[k]; });
+    ['pax', 'perKrw', 'totalKrw'].forEach(k => { if (q[k] !== '' && q[k] != null) quote[k] = q[k]; });
+    ['includes', 'requests', 'days'].forEach(k => { if (Array.isArray(q[k]) && q[k].length) quote[k] = q[k]; });
+    if (inv.to && inv.to.company) to.company = inv.to.company;
+    if (inv.to && inv.to.contact) to.contact = inv.to.contact;
+    if (inv.bank) company.bank = inv.bank;
+    const pax = +quote.pax || 0;
+    const part = (p) => (p && p.per !== '' && p.per != null) ? { per: p.per, due: p.due || '', total: p.per * pax } : null;
+    const dep = part(inv.dep), bal = part(inv.bal);
+    if (dep || bal) pay = { dep, bal };
+  }
   return {
     type: 'invoice',
     no: rec.no, at: rec.at, status: rec.status,
     cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
-    to: { company: s(rec.agency.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: s(rec.agency.contact, 30) },
+    to,
     guest: (rec.customer && rec.customer.name) || '',
-    quote: await quoteOfRec(key, rec),
+    quote, pay,
     items: [],                                   // 원가 줄은 싣지 않는다
-    company: companyOf(site),
+    company,
     url: voucherUrl(request, rec),
   };
 }
@@ -279,7 +319,10 @@ function invoiceMailHtml(v) {
     + '<table style="border-collapse:collapse;width:100%;margin-bottom:18px">'
     + row('Invoice No.', v.cno, true) + row('견적번호', q.quoteNo || '')
     + row('팀명', q.team || '-', true) + row('일정', (q.start || '') + ' ~ ' + (q.end || '') + ' · ' + (q.pax || 0) + '명')
-    + row('총액 (Total)', q.totalKrw ? won(q.totalKrw) : '-', true) + '</table>'
+    + row('총액 (Total)', q.totalKrw ? won(q.totalKrw) : '-', true)
+    + (v.pay && v.pay.dep ? row('디파짓', won(v.pay.dep.total) + (v.pay.dep.due ? ' · ' + v.pay.dep.due + '까지' : '')) : '')
+    + (v.pay && v.pay.bal ? row('잔금', won(v.pay.bal.total) + (v.pay.bal.due ? ' · ' + v.pay.bal.due + '까지' : ''), true) : '')
+    + '</table>'
     + '<p style="margin:0 0 22px"><a href="' + e(v.url) + '" style="display:inline-block;background:#123A2B;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">인보이스 열기 / Open Invoice</a></p>'
     + '<p style="font-size:12px;color:#777;line-height:1.6">링크: ' + e(v.url) + '<br>'
     + e(v.company.name) + (v.company.tel ? ' · ' + e(v.company.tel) : '') + (v.company.email ? ' · ' + e(v.company.email) : '') + '</p></div>';
@@ -455,6 +498,20 @@ export async function onRequest(context) {
       if ((rec.status === 'new' || rec.status === 'doing') && rec.voucher.released !== false) rec.status = 'confirmed';
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
       return json({ ok: true, rec, url: voucherUrl(request, rec) });
+    }
+
+    /* ══ 인보이스 고쳐 쓰기 — 칸마다 고친 값(inv)과 메모를 담는다. 링크·번호는 그대로 ══ */
+    if (action === 'invEdit') {
+      const no = s(body.no, 40);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      if (!rec.voucher || !rec.voucher.token) return json({ error: '먼저 컨펌해서 인보이스를 만들어 주세요.' }, 400);
+      rec.voucher.inv = cleanInv(body.inv);
+      if (body.memo != null) rec.voucher.memo = s(body.memo, MAX_TEXT);
+      rec.voucher.editBy = loginIdOf(user); rec.voucher.editAt = new Date().toISOString();
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: rec.voucher.editAt });
+      return json({ ok: true, rec });
     }
 
     /* ══ 인보이스 발행 — 어드민이 초안을 화면으로 확인한 뒤 누른다 ══ */

@@ -171,6 +171,22 @@ tr.subrow td{padding:0 6px 11px}
 .rcell .rminc .rhint{font-size:12px!important;color:#222}
 .rcell .hrow{font-size:13px;color:#222}
 .rminc.hrule{margin-top:4px}
+/* 인보이스 확인·수정 창 */
+#invPrev{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.ivbox{background:#fff;border-radius:10px;width:min(1320px,100%);height:min(94vh,1200px);display:flex;flex-direction:column;overflow:hidden}
+.ivtop{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.ivmain{flex:1;display:grid;grid-template-columns:minmax(360px,470px) 1fr;min-height:0}
+.ivmain iframe{width:100%;height:100%;border:0;border-left:1px solid var(--line)}
+.ivform{overflow:auto;padding:6px 14px 20px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;align-content:start}
+.ivform h4{grid-column:1/-1;margin:12px 0 0;font-size:13px;border-bottom:1px solid var(--line);padding-bottom:3px}
+.ivf{display:flex;flex-direction:column;gap:2px;font-size:11.5px;font-weight:700;color:#222}
+.ivf.wide{grid-column:1/-1}
+.ivf input,.ivf textarea,.ivday input{padding:5px 7px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px;font-weight:600}
+.ivdays{grid-column:1/-1;display:flex;flex-direction:column;gap:3px}
+.ivday{display:flex;gap:4px;align-items:center;font-size:11.5px}
+.ivday b{width:78px;flex:none}
+.ivday input{min-width:0;flex:1;padding:3px 5px;font-size:12px}
+@media (max-width:900px){ .ivmain{grid-template-columns:1fr;grid-template-rows:auto 60vh} .ivmain iframe{border-left:0;border-top:1px solid var(--line)} }
 .rminc.hrule>label{min-width:78px}
 .hlist{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .hrow{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);white-space:nowrap}
@@ -1231,8 +1247,7 @@ function voucherRowHtml(b){
   if(v.released===false){
     return '<div class="bkvc">'
       +'<span class="bkvno">Invoice No. <b>'+esc(v.cno)+'</b> <span style="color:#D9412B;font-weight:800">· 초안(여행사에 안 보임)</span></span>'
-      +'<button class="add" data-vprev="'+esc(b.no)+'">🔍 인보이스 확인 · 발행</button>'
-      +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="인보이스에 실리는 Memo(입금 기한 등)">✎ 인보이스 메모</button>'
+      +'<button class="add" data-vprev="'+esc(b.no)+'">🧾 인보이스 확인 · 수정 · 발행</button>'
       +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span></div>';
   }
   const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
@@ -1242,31 +1257,88 @@ function voucherRowHtml(b){
     +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
     +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
-    +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="'+(inv?'인보이스에 실리는 Memo(입금 기한 등)':'바우처에 실리는 Agent Memo(호텔 컨펌번호 등)')+'">✎ '+dn+' 메모</button>'
+    +(inv?'<button class="ghost" data-vprev="'+esc(b.no)+'">✎ 인보이스 수정</button>'
+      :'<button class="ghost" data-confirm="'+esc(b.no)+'" title="바우처에 실리는 Agent Memo(호텔 컨펌번호 등)">✎ 바우처 메모</button>')
     +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
     +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
     +'</div>';
 }
-/* 인보이스 확인 창 — 여행사가 받을 화면을 그대로(iframe) 보여 주고, 「발행」을 누르면 그때 여행사 보관함에 뜬다 */
-function openInvPreview(b){
+/* 인보이스 확인·수정 창(사장님 2026-09-23) — 왼쪽은 고칠 칸, 오른쪽은 여행사가 받을 화면(iframe).
+   「저장」하면 서버(invEdit)가 rec.voucher.inv 에 담고 오른쪽이 새로 그려진다. 「발행」을 누르면 그때 여행사 보관함에 뜬다.
+   칸 처음 값은 지금 인보이스 화면에 나가는 값(견적 + 전에 고친 값)을 서버에서 받아 채운다. */
+async function openInvPreview(b){
   const old=document.getElementById('invPrev'); if(old) old.remove();
+  let v=null;
+  try{
+    const r=await fetch('/api/golf-book',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'voucher',no:b.no,t:b.voucher.token})});
+    const j=await r.json(); if(j&&j.ok) v=j.v;
+  }catch(e){}
+  if(!v){ toast('❌ 인보이스를 불러오지 못했습니다'); return; }
+  const q=v.quote||{}, inv=b.voucher.inv||{}, dep=inv.dep||{}, bal=inv.bal||{};
+  const draft=b.voucher.released===false;
+  const I=(k,val,ph,type)=>'<input data-iv="'+k+'" type="'+(type||'text')+'" value="'+esc(val==null?'':val)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+'>';
+  const F=(lab,html)=>'<label class="ivf"><span>'+lab+'</span>'+html+'</label>';
+  const days=(q.days||[]).map((d,i)=>'<div class="ivday" data-di="'+i+'"><b>'+esc(d.date||'')+'</b>'
+    +'<input data-dk="region" value="'+esc(d.region||'')+'" placeholder="지역">'
+    +'<input data-dk="hotel" value="'+esc(d.hotel||'')+'" placeholder="호텔">'
+    +'<input data-dk="course" value="'+esc(d.course||'')+'" placeholder="골프장(없으면 비움)">'
+    +'<input data-dk="holes" value="'+esc(d.holes||'')+'" placeholder="홀" style="width:44px">'
+    +'<input type="hidden" data-dk="date" value="'+esc(d.date||'')+'"></div>').join('');
   const m=document.createElement('div');
   m.id='invPrev';
-  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
-  m.innerHTML='<div style="background:#fff;border-radius:10px;width:min(860px,100%);height:min(92vh,1100px);display:flex;flex-direction:column;overflow:hidden">'
-    +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)">'
-      +'<b style="flex:1">🔍 인보이스 확인 — '+esc((b.agency&&b.agency.company)||'')+' · '+esc((b.agency&&b.agency.quoteNo)||b.no)+'</b>'
+  m.innerHTML='<div class="ivbox">'
+    +'<div class="ivtop"><b style="flex:1">🧾 인보이스 '+(draft?'확인 · 수정':'수정')+' — '+esc((b.agency&&b.agency.company)||'')+' · '+esc((b.agency&&b.agency.quoteNo)||b.no)
+      +(draft?' <span style="color:#D9412B">(초안 · 여행사에 안 보임)</span>':' <span style="color:#2E7D4F">(발행됨 · 저장하면 여행사 화면에 바로 반영)</span>')+'</b>'
       +'<button class="ghost" data-x="1">닫기</button>'
-      +'<button class="add" data-rel="1">✅ 확인 · 여행사에 발행</button></div>'
-    +'<iframe src="'+esc(voucherUrlOf(b))+'" style="flex:1;border:0;width:100%"></iframe>'
-    +'<div style="padding:8px 14px;font-size:12px;color:var(--muted)">금액·일정·메모를 확인하세요. 고칠 게 있으면 닫고 「✎ 인보이스 메모」나 견적을 고친 뒤 다시 여세요. 발행 전에는 여행사에 보이지 않습니다.</div>'
-    +'</div>';
+      +'<button class="ghost" data-save="1">💾 저장 · 미리보기</button>'
+      +(draft?'<button class="add" data-rel="1">✅ 저장 · 여행사에 발행</button>':'')+'</div>'
+    +'<div class="ivmain"><div class="ivform">'
+      +'<h4>받는 분</h4>'+F('여행사',I('to.company',v.to&&v.to.company))+F('담당자',I('to.contact',v.to&&v.to.contact))
+      +'<h4>일정</h4>'+F('팀명',I('q.team',q.team))+F('출발',I('q.start',q.start,'','date'))+F('귀국',I('q.end',q.end,'','date'))+F('인원',I('q.pax',q.pax,'','number'))
+      +(days?'<div class="ivdays">'+days+'</div>':'')
+      +'<h4>금액 (원)</h4>'+F('1인 요금',I('q.perKrw',q.perKrw,'','number'))+F('총액',I('q.totalKrw',q.totalKrw,'1인 × 인원','number'))
+      +'<h4>입금</h4>'
+      +F('디파짓 1인',I('dep.per',dep.per,'','number'))+F('디파짓 기한',I('dep.due',dep.due,'','date'))
+      +F('잔금 1인',I('bal.per',bal.per,'1인 요금 − 디파짓','number'))+F('잔금 기한',I('bal.due',bal.due,'','date'))
+      +'<label class="ivf wide"><span>입금 계좌</span><textarea data-iv="bank" rows="3" placeholder="은행 · 계좌번호 · 예금주">'+esc(inv.bank||(v.company&&v.company.bank)||'')+'</textarea></label>'
+      +'<h4>내용</h4>'
+      +'<label class="ivf wide"><span>포함 사항 (한 줄에 하나)</span><textarea data-iv="q.includes" rows="4">'+esc((q.includes||[]).join('\n'))+'</textarea></label>'
+      +'<label class="ivf wide"><span>요청 사항 (한 줄에 하나)</span><textarea data-iv="q.requests" rows="3">'+esc((q.requests||[]).join('\n'))+'</textarea></label>'
+      +'<label class="ivf wide"><span>메모</span><textarea data-iv="memo" rows="2">'+esc(b.voucher.memo||'')+'</textarea></label>'
+    +'</div><iframe src="'+esc(voucherUrlOf(b))+'"></iframe></div></div>';
   document.body.appendChild(m);
-  m.querySelector('[data-x]').onclick=()=>m.remove();
-  m.querySelector('[data-rel]').onclick=async e=>{
+  const val=k=>{ const el=m.querySelector('[data-iv="'+k+'"]'); return el?el.value:''; };
+  /* 총액·잔금이 비어 있으면 1인 요금 × 인원, 1인 요금 − 디파짓으로 채워 준다(적어 넣으면 그 값) */
+  const autoFill=()=>{
+    const per=+val('q.perKrw')||0, pax=+val('q.pax')||0, dp=val('dep.per');
+    const tot=m.querySelector('[data-iv="q.totalKrw"]'), bl=m.querySelector('[data-iv="bal.per"]');
+    if(tot.dataset.auto!=='0') tot.value=per&&pax?per*pax:tot.value;
+    if(bl.dataset.auto!=='0'&&dp!=='') bl.value=Math.max(0,per-(+dp||0));
+  };
+  m.addEventListener('input',e=>{ const k=e.target.dataset.iv; if(k==='q.totalKrw'||k==='bal.per') e.target.dataset.auto='0';
+    if(k==='q.perKrw'||k==='q.pax'||k==='dep.per') autoFill(); });
+  const collect=()=>({
+    to:{company:val('to.company'),contact:val('to.contact')},
+    q:{team:val('q.team'),start:val('q.start'),end:val('q.end'),pax:val('q.pax'),perKrw:val('q.perKrw'),totalKrw:val('q.totalKrw'),
+       includes:val('q.includes'),requests:val('q.requests'),
+       days:[...m.querySelectorAll('.ivday')].map(r=>{ const o={}; r.querySelectorAll('[data-dk]').forEach(x=>o[x.dataset.dk]=x.value); return o; })},
+    bank:val('bank'), dep:{per:val('dep.per'),due:val('dep.due')}, bal:{per:val('bal.per'),due:val('bal.due')}
+  });
+  const save=async()=>{
+    const j=await bookApi('invEdit',{no:b.no,inv:collect(),memo:val('memo')});
+    if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'저장 실패')); return null; }
+    bookReplace(j.rec); b=j.rec;
+    const fr=m.querySelector('iframe'); fr.src=voucherUrlOf(b)+'&r='+Date.now();
+    return j;
+  };
+  m.querySelector('[data-x]').onclick=()=>{ m.remove(); drawBooks(); };
+  m.querySelector('[data-save]').onclick=async e=>{ const bt=e.currentTarget; bt.disabled=true; if(await save()) toast('💾 저장했습니다 — 오른쪽이 새 인보이스입니다'); bt.disabled=false; };
+  const rb=m.querySelector('[data-rel]');
+  if(rb) rb.onclick=async e=>{
     const bt=e.currentTarget; bt.disabled=true; bt.textContent='발행 중…';
+    if(!await save()){ bt.disabled=false; bt.textContent='✅ 저장 · 여행사에 발행'; return; }
     const j=await bookApi('release',{no:b.no});
-    if(!j||!j.ok){ bt.disabled=false; bt.textContent='✅ 확인 · 여행사에 발행'; toast('❌ '+((j&&j.error)||'발행 실패')); return; }
+    if(!j||!j.ok){ bt.disabled=false; bt.textContent='✅ 저장 · 여행사에 발행'; toast('❌ '+((j&&j.error)||'발행 실패')); return; }
     m.remove(); bookReplace(j.rec); drawBooks();
     toast('✅ 인보이스를 발행했습니다 — 여행사 보관함에 보입니다. 카톡·이메일로도 보낼 수 있습니다');
   };
@@ -1374,7 +1446,8 @@ function bindVoucherBtns(p){
     const b=bookOf(btn.dataset.confirm); if(!b) return;
     const had=!!(b.voucher&&b.voucher.token);
     const inv=isInvoiceBook(b), dn=docNameOf(b);
-    const memo=prompt(inv
+    /* 인보이스는 메모도 확인·수정 창에서 적는다 — 묻지 않고 바로 초안을 만든다 */
+    const memo=inv?((b.voucher&&b.voucher.memo)||''):prompt(inv
       ? (had?'인보이스 메모를 고칩니다.':'컨펌합니다 — 인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한 등)가 있으면 적어 주세요. 없으면 그냥 확인.'
       : (had?'바우처 메모를 고칩니다.':'컨펌합니다 — 바우처(예약 확정서)를 발급합니다.')+'\n바우처에 실을 메모(호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.',
       (b.voucher&&b.voucher.memo)||'');
