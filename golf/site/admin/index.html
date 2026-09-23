@@ -176,10 +176,10 @@ tr.subrow td{padding:0 6px 11px}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
 /* 한 기간 = 왼쪽(날짜 + 구분) · 가운데(요금표: 주중·주말 두 줄 × 다섯 칸) · ✕ (사장님 2026-09-19) */
-.rmhd,.rmrate{display:grid;grid-template-columns:348px auto 22px;gap:8px;align-items:center;justify-content:start}
+.rmhd,.rmrate{display:grid;grid-template-columns:330px auto 22px;gap:6px;align-items:center;justify-content:start}
 /* 구분 · 기간을 한 줄로 나란히(사장님 2026-09-23) — 줄 높이를 줄인다. 달력 칸은 날짜가 딱 들어갈 만큼만 */
 .rmrate .rper{flex-direction:row;align-items:center;gap:5px}
-.rmrate .rper select{flex:none;width:112px}
+.rmrate .rper select{flex:none;width:100px;padding-left:4px;padding-right:2px}
 .rmrate .rper input[type=date]{padding:5px 2px 5px 4px}
 .rmrate .rper .rdate{grid-template-columns:1fr 8px 1fr;gap:2px}
 .rmrate .rper .rdate{flex:1}
@@ -188,7 +188,8 @@ tr.subrow td{padding:0 6px 11px}
 .rmrate select[data-rmf=sur]{background:#2E7D4F;border-color:#2E7D4F;color:#fff;font-weight:800}
 .rmrate select[data-rmf=sur] option{background:#fff;color:#222;font-weight:400}
 .rmrate .rmgrid>span{color:#1F5C39}
-.rmgrid{display:grid;grid-template-columns:44px repeat(5,80px);gap:4px 5px;align-items:center}
+.rmgrid{display:grid;grid-template-columns:44px repeat(5,72px);gap:4px 5px;align-items:center}
+.rmgrid.nolbl{grid-template-columns:repeat(5,72px)}
 .rmgrid>span{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 .rmhd .rmgrid>span{text-align:center}
 /* 써차지(특별일 추가요금) 줄은 눈에 띄게 — 기본요금과 헷갈리면 값이 두 배로 나간다 */
@@ -2338,7 +2339,8 @@ function roomRateHTML(r,j,pr,weOn){
   const sur=isSurRate(r), minN=Math.max(1,Math.round(+r.minN||1));
   /* 주말·휴일 줄은 호텔에 주말 요일을 고른 때만, 써차지 줄은 기간 요금이라 늘 한 줄(사장님 2026-09-23 · 서버도 써차지는 주중 값만 본다) */
   const two=weOn&&!sur;
-  const line=we=>'<span>'+(sur?'＋추가':!two?'1박':(we?'주말·휴일':'주중'))+'</span>'
+  /* 주말 요일을 안 고른 호텔은 「주중/주말」 글자 칸 자체를 뺀다(폭 절약, 사장님 2026-09-23) — 써차지 줄도 그 호텔 칸 모양을 따른다 */
+  const line=we=>(weOn?'<span>'+(sur?'＋추가':(we?'주말·휴일':'주중'))+'</span>':'')
     +ROOM_COLS.map(c=>{
       const f=rmField(c[0],we);
       let v=n(r[f]);
@@ -2358,7 +2360,7 @@ function roomRateHTML(r,j,pr,weOn){
       +'<input type="date" data-rmf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
       +'</div>'
       +'</div>'
-    +'<div class="rmgrid">'+line(false)+(two?line(true):'')+'</div>'
+    +'<div class="rmgrid'+(weOn?'':' nolbl')+'">'+line(false)+(two?line(true):'')+'</div>'
     +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button>'
     +'</div>';
 }
@@ -2367,7 +2369,7 @@ function roomRateHTML(r,j,pr,weOn){
    위 이름칸에서 탭으로 옮겨 가던 손가락이 갈 곳을 잃는다. */
 function roomRatesHTML(rates,rm,pr,weOn){
   return (rates.length
-      ? '<div class="rmhd"><span>구분 · 기간</span><div class="rmgrid"><span></span>'
+      ? '<div class="rmhd"><span>구분 · 기간</span><div class="rmgrid'+(weOn?'':' nolbl')+'">'+(weOn?'<span></span>':'')
           +ROOM_COLS.map(c=>'<span title="'+esc(c[2])+'">'+esc(c[1])+'</span>').join('')+'</div><span></span></div>'
         +rates.map((r,q)=>roomRateHTML(r,q,pr,weOn)).join('')
       : '<div class="rnone">아직 요금이 없습니다 — 아래 「＋ 기간 추가」를 누르세요'
