@@ -165,17 +165,18 @@ tr.subrow td{padding:0 6px 11px}
 .rmdel:hover,.rmrdel:hover{background:rgba(192,73,47,.1);border-radius:5px}
 .rminc{display:flex;align-items:center;gap:7px;margin-top:6px}
 .rminc>label{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
-.rminc.hrule{align-items:flex-start}
-.rminc.hrule>label{padding-top:7px;min-width:78px}
-.hlist{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
-.hrow{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
-.rminc .hrow input{flex:none;width:auto}
+/* 최소 숙박·갈라디너 — 한 줄에 이어서, 「＋」 단추는 줄 끝에(사장님 2026-09-23) */
+.rminc.hrule{margin-top:4px}
+.rminc.hrule>label{min-width:78px}
+.hlist{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.hrow{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);white-space:nowrap}
+.rminc .hrow input{flex:none;width:auto;padding:3px 5px}
 .rminc .hrow input.hnum{width:70px}
 .rminc .hrow input.hname{width:110px}
 .hdel{border:none;background:none;color:#D32F2F;cursor:pointer;font-size:13px}
 .hadd{padding:3px 9px;font-size:11.5px;border:1px dashed var(--line);border-radius:6px;background:#fff;cursor:pointer}
 .wedays{display:flex;gap:4px}
-.wedays button{padding:4px 9px;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--muted);cursor:pointer}
+.wedays button{padding:2px 8px;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--muted);cursor:pointer}
 .wedays button.on{background:#D32F2F;border-color:#D32F2F;color:#fff}
 .rminc input{flex:1;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;min-width:0}
 /* 요금줄은 내용 폭만큼만(끝쪽 색 여분 없이), 남는 폭은 사진칸이 쓴다(사장님 2026-09-23) */
@@ -2468,14 +2469,14 @@ function hotelRulesHTML(x){
         +'<input type="date" data-hf="from" value="'+v(m.from)+'"><span>~</span><input type="date" data-hf="to" value="'+v(m.to)+'">'
         +'<input type="number" data-hf="n" min="2" value="'+v(m.n)+'" class="hnum"><span>박 이상</span>'
         +'<button type="button" class="hdel" title="지우기">✕</button></div>').join('')
-      +'<button type="button" class="hadd" data-hk="minStay">＋ 최소 숙박 기간</button></div></div>'
+      +'<button type="button" class="hadd" data-hk="minStay" title="최소 숙박 기간 추가">＋</button></div></div>'
     +'<div class="rminc hrule"><label>갈라디너 (1인)</label><div class="hlist">'
       +gs.map((g,q)=>'<div class="hrow" data-hk="galas" data-hq="'+q+'">'
         +'<input type="date" data-hf="date" value="'+v(g.date)+'" title="이 날 밤을 묵으면 의무 포함">'
         +'<span>성인</span><input type="number" data-hf="ad" min="0" value="'+v(g.ad)+'" class="hnum">'
         +'<span>아동</span><input type="number" data-hf="ch" min="0" value="'+v(g.ch)+'" class="hnum"><span>밧</span>'
         +'<button type="button" class="hdel" title="지우기">✕</button></div>').join('')
-      +'<button type="button" class="hadd" data-hk="galas">＋ 갈라디너</button></div></div>';
+      +'<button type="button" class="hadd" data-hk="galas" title="갈라디너 날짜 추가">＋</button></div></div>';
 }
 document.getElementById('pane').addEventListener('input',e=>{
   const f=e.target.dataset&&e.target.dataset.hf; if(!f) return;
