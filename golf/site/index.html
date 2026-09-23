@@ -684,6 +684,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   background:linear-gradient(150deg,var(--fairway-mid),var(--fairway-deep))}
 .crow .cthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .crow .cmid{flex:1;min-width:0}
+.crow .cchk{flex:none;align-self:center;display:flex;cursor:pointer}
+.crow .cchk input{width:20px;height:20px;accent-color:var(--fairway);cursor:pointer;margin:0}
+.crow.coff .cthumb,.crow.coff .cmid,.crow.coff .cprice,.crow.coff .cask{opacity:.45}
 .crow .ckind{font-size:11px;font-weight:900;letter-spacing:.06em;color:var(--marigold)}
 .crow .cname{margin:1px 0 3px;font-size:15px;font-weight:800;letter-spacing:-.03em;line-height:1.3}
 .crow .cdesc{font-size:12.5px;color:var(--muted);line-height:1.5}
@@ -2932,7 +2935,9 @@ function rowHtml(it, mode, i){
   const found = findItem(it.kind, it.name);
   const img = it.img || (found ? picsOf(found)[0] : "");
   const head = (it.kindT || (catOf(it.kind) || {}).t || "") + (it.region ? " · " + it.region : "");
-  return '<div class="crow">'
+  /* 장바구니는 줄마다 체크 — 담아 둔 것 가운데 체크한 것만 예약 요청으로 나간다(사장님 2026-09-23). 기본은 체크, 끈 줄은 it.off */
+  return '<div class="crow' + (mode === "cart" && it.off ? " coff" : "") + '">'
+    + (mode === "cart" ? '<label class="cchk"><input type="checkbox" data-chk="' + i + '"' + (it.off ? '' : ' checked') + ' aria-label="예약 요청에 넣기"></label>' : '')
     + '<div class="cthumb">'
       + (img ? '<img alt="" src="' + esc(img) + '" onerror="this.remove()">' : '') + '</div>'
     + '<div class="cmid">'
@@ -2963,6 +2968,11 @@ function bindRows(box, list, mode){
     if(!x) return;
     closeFav(); closeCart();
     openDetail(x, it.kind);
+  });
+  box.querySelectorAll("[data-chk]").forEach(b => b.onchange = () => {
+    const c = CART[Number(b.dataset.chk)]; if(!c) return;
+    if(b.checked) delete c.off; else c.off = true;
+    lsPut(CART_KEY, CART); drawCartBody();
   });
   box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
     const i = Number(b.dataset.del);
@@ -3031,10 +3041,11 @@ function drawCartBody(){
     return;
   }
   sub.textContent = "담아 두신 일정입니다. 그대로 예약을 요청하시면 담당자가 확인하고 연락드립니다.";
-  const askN = CART.filter(c => c.asked || !c.krw).length;
-  const sum  = CART.reduce((a, c) => a + ((c.asked || !c.krw) ? 0 : c.krw), 0);
+  const on   = CART.filter(c => !c.off);
+  const askN = on.filter(c => c.asked || !c.krw).length;
+  const sum  = on.reduce((a, c) => a + ((c.asked || !c.krw) ? 0 : c.krw), 0);
   const rows = '<div class="crows">' + CART.map((c, i) => rowHtml(c, "cart", i)).join("") + '</div>'
-    + '<div class="ctotal"><span>합계' + (askN ? " (요금 문의 " + askN + "건 빼고)" : "") + '</span>'
+    + '<div class="ctotal"><span>합계 · 체크한 ' + on.length + '건' + (askN ? " (요금 문의 " + askN + "건 빼고)" : "") + '</span>'
       + '<b>' + sum.toLocaleString("ko-KR") + '<em>원</em></b></div>'
     /* 요금은 신뢰의 문제라 「확정」으로 말한다(사장님 2026-09-08).
        그래서 창을 열 때마다 서버에 다시 물어 최신 요금으로 갈아 끼운다(repriceCart) —
@@ -3050,7 +3061,10 @@ function drawCartBody(){
     $("#bkBack").onclick = () => { cartView = "list"; drawCartBody(); };
     $("#bkSend").onclick = sendBooking;
   }else{
-    $("#cartGo").onclick = () => { cartView = "form"; drawCartBody(); };
+    $("#cartGo").onclick = () => {
+      if(!CART.some(c => !c.off)){ alert("예약 요청하실 일정을 체크해 주세요."); return; }
+      cartView = "form"; drawCartBody();
+    };
     $("#cartClear").onclick = () => {
       if(!confirm("장바구니를 비울까요?")) return;
       CART = []; lsPut(CART_KEY, CART); drawTools(); drawCartBody();
@@ -3074,7 +3088,7 @@ async function sendBooking(){
   try{
     const r = await fetch(API + "/api/golf-book", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "create", items: CART, customer })
+      body: JSON.stringify({ action: "create", items: CART.filter(c => !c.off), customer })
     });
     const j = await r.json();
     if(!j || !j.ok) throw new Error((j && j.error) || "보내지 못했습니다.");
@@ -3082,7 +3096,8 @@ async function sendBooking(){
     try{ localStorage.setItem(GUEST_KEY, JSON.stringify({
       name: customer.name, tel: customer.tel, email: customer.email })); }catch(e){}
     lastNo = j.no;
-    CART = []; lsPut(CART_KEY, CART); drawTools();
+    CART = CART.filter(c => c.off);            // 보낸 것만 빼고, 체크 안 한 것은 장바구니에 남긴다
+    lsPut(CART_KEY, CART); drawTools();
     cartView = "done"; drawCartBody();
   }catch(e){
     btn.disabled = false; btn.textContent = "예약 요청 보내기";
