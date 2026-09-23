@@ -2608,7 +2608,6 @@ function autoFold(activeId){
      접힌 제목에 빨간 「호텔을 선택하지 않았습니다」가 뜬다(사장님 2026-09-15). 다시 호텔을 고르면 체크는 풀린다 */
   /* 자동 「필요 없음」 체크는 뺐다(사장님 2026-09-16) — 안 고른 채 「견적서 보기」를 누르면 「호텔을 선택해주세요.」 안내창이 대신 뜬다(downloadQuote). 차량·가이드도 같은 규칙 */
   renderStepSummaries();
-  const h0=document.documentElement.scrollHeight;
   STEPS.forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     el.classList.toggle('folded', id!==activeId && touched.has(id) && stepDone(id));
@@ -2616,11 +2615,15 @@ function autoFold(activeId){
   renderStepSummaries();   // 접힘 여부에 따라 문구가 달라지는 칸(호텔·차량 「선택하지 않았습니다」)을 다시 적는다
   /* 위 칸이 접혀 화면이 줄면 브라우저가 스크롤을 붙잡아 「골프 견적 내기」 머리가 위로 사라진다(사장님 2026-09-23).
      지금 만지는 칸이 맨 위에서부터 한 화면 안에 들어오면 맨 위로 올려 머리까지 보이게 한다 */
-  if(document.documentElement.scrollHeight<h0&&window.scrollY>0){
+  /* 높이가 안 줄어도(5·6번처럼 나란한 칸) 스크롤이 내려가 있는 경우가 있어 조건에서 뺐다 — 만지는 칸이 첫 화면 안이면 늘 맨 위로 */
+  /* 브라우저가 칸을 접은 «뒤에» 스크롤을 옮기기도 해서 한 박자 늦게 한 번 더 본다 */
+  const toTop=()=>{
+    if(window.scrollY<=0) return;
     const a=(activeId&&document.getElementById(activeId))||document.activeElement;
     const bottom=(a&&a!==document.body)?a.getBoundingClientRect().bottom+window.scrollY:Infinity;
     if(bottom<=window.innerHeight) window.scrollTo({top:0});
-  }
+  };
+  toTop(); requestAnimationFrame(()=>setTimeout(toTop,30));
 }
 document.addEventListener('focusin',e=>{
   const st=e.target.closest('.step');
