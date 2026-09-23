@@ -1625,13 +1625,43 @@ function syncPriceNames(){
   });
   return n;
 }
+/* 옛 요금 치우기(사장님 2026-09-23 「옛 요금은 전부 삭제, 지금 입력하는 방식만 요금으로」).
+   · 처음 엑셀(원가서)로 올린 호텔 1박 단가(perNight)·호텔 골프식 요금줄(rates)·옛 시즌줄(seasons)을 지운다
+   · 이 화면 목록(사이트 내용)에 없는 이름의 요금 자리를 지운다 — 칸타리호텔·타나사티·견본방콕 같은 옛 시드·오타·중복
+   저장할 때 한 번 돌고, 지우기 전 서버본은 saveSafe가 백업 칸에 남긴다. 지운 개수를 돌려준다 */
+function pruneOldPricing(){
+  if(!P||!P.regions||!S) return 0;
+  let n=0;
+  const k=s=>String(s||'').replace(/\s+/g,'').toLowerCase();
+  const kinds=['courses','hotels'].concat(Object.keys(S.items||{}));
+  const live={};
+  kinds.forEach(kd=>{
+    const list=kd==='courses'?S.courses:kd==='hotels'?S.hotels:(S.items||{})[kd];
+    live[kd]=new Set((Array.isArray(list)?list:[]).map(x=>k(x&&x.n)).filter(Boolean));
+  });
+  Object.values(P.regions).forEach(rv=>{
+    if(!rv||typeof rv!=='object') return;
+    Object.keys(rv).forEach(kd=>{
+      if(!Array.isArray(rv[kd])||!live[kd]) return;
+      const before=rv[kd].length;
+      rv[kd]=rv[kd].filter(o=>o&&live[kd].has(k(o.name)));
+      n+=before-rv[kd].length;
+      rv[kd].forEach(o=>{
+        if(kd==='hotels'){ ['perNight','rates','seasons'].forEach(f=>{ if(o[f]!=null){ delete o[f]; n++; } }); }
+        else if(kd==='courses'&&o.seasons!=null){ delete o.seasons; n++; }
+      });
+    });
+  });
+  if(n) buildPriceIndex();
+  return n;
+}
 async function saveSite(){
   const b=document.getElementById('saveSite');
   if(b&&b.disabled) return;              // 두 번 눌러 두 번 저장되는 것을 막는다
   if(b){ b.disabled=true; b.textContent='저장 중…'; }
   try{
     let ok=true, msg=[];
-    if(syncPriceNames()) markDirty('rates');
+    if(syncPriceNames()+pruneOldPricing()) markDirty('rates');
     if(dirty['site']){
       if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); msg.push('사이트 내용'); } else ok=false;
     }

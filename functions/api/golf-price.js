@@ -282,15 +282,9 @@ export async function onRequestGet({ env }) {
   const hotels = [];
   Object.entries(P.regions || {}).forEach(([region, rv]) => {
     (rv.hotels || []).forEach((h) => {
-      /* 호텔도 새 요금줄(rates[])을 쓰면 그 최저가를, 없으면 옛 1박 단가를 쓴다 */
-      /* 옛 1박 단가가 없으면 v는 null로 둔다 — 0에 마진만 얹어 「100밧짜리 호텔」이 되면 안 된다 */
-      const per = +h.perNight || 0;
-      let v = per > 0 ? per + marginOf(h.margin) : null;
-      if (Array.isArray(h.rates) && h.rates.length) {
-        const lo = lowestOf(h.rates, h);
-        const cand = lo.u18 != null ? lo.u18 : lo.u9;
-        if (cand != null && (v == null || cand < v)) v = cand;
-      }
+      /* 호텔 요금은 «객실 타입별 요금»(rooms[].rates)만 인정한다(사장님 2026-09-23 — 처음 엑셀로 올린 옛 1박 단가(perNight)·
+         골프식 요금줄(h.rates)은 요금으로 안 본다. 칸타리호텔 등 엑셀 시드가 카드·견적기에 남아 있던 사고) */
+      let v = null;
       /* 객실 타입별 요금 — 손님 상세의 「객실 안내」 표에 한 줄씩 붙는다.
          내려보내는 것은 «손님가»(마진 얹은 값)뿐이다. 원가·마진 액수는 여기서 나가지 않는다. */
       const rooms = [];

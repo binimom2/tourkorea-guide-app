@@ -664,10 +664,12 @@ function courseClosedOn(name,ds){
 async function applySiteExposure(){
   try{
     const d=await siteRow(); if(!d) return;
-    const names=arr=>new Set((Array.isArray(arr)?arr:[]).filter(x=>x&&x.on!==false&&x.n).map(x=>x.n));
+    /* 이름은 띄어쓰기·대소문자 무시로 잇는다(사이트 「미트 호텔 파타야」↔요금표 「미트호텔파타야」, 2026-09-23) */
+    const nk=s=>String(s||'').replace(/\s+/g,'').toLowerCase();
+    const names=arr=>new Set((Array.isArray(arr)?arr:[]).filter(x=>x&&x.on!==false&&x.n).map(x=>nk(x.n)));
     const cs=names(d.courses), hs=names(d.hotels);
-    if(cs.size) Object.keys(COURSES).forEach(reg=>{ COURSES[reg]=(COURSES[reg]||[]).filter(c=>cs.has(c.n)); });
-    if(hs.size&&P.hotels) Object.keys(P.hotels).forEach(reg=>{ P.hotels[reg]=(P.hotels[reg]||[]).filter(h=>hs.has(h.name)); });
+    if(cs.size) Object.keys(COURSES).forEach(reg=>{ COURSES[reg]=(COURSES[reg]||[]).filter(c=>cs.has(nk(c.n))); });
+    if(hs.size&&P.hotels) Object.keys(P.hotels).forEach(reg=>{ P.hotels[reg]=(P.hotels[reg]||[]).filter(h=>hs.has(nk(h.name))); });
   }catch(e){}
 }
 function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
@@ -2764,7 +2766,9 @@ async function loadPricing(){
           conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'',
             /* 옛 시즌줄(seasons[], 엑셀 요금표)은 2026-09-11부터 안 읽는다 — 사이트 관리에서 넣는 새 요금줄(rates[])만(사장님) */
             s:ratesToSeasons(c) }));
-          if(rv.hotels&&rv.hotels.length) hot[reg]=rv.hotels;
+          /* 호텔은 객실 타입별 요금이 있는 것만(사장님 2026-09-23) — 처음 엑셀로 올린 옛 1박 단가(perNight)만 있는 줄은 요금으로 안 본다 */
+          const hs=(rv.hotels||[]).filter(h=>roomsWithRates(h).length);
+          if(hs.length) hot[reg]=hs;
         });
         Object.keys(COURSES).forEach(k=>delete COURSES[k]); Object.assign(COURSES,conv);
         if(Object.keys(hot).length) P.hotels=hot;
