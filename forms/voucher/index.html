@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>바우처 (Voucher)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../forms.css">
+</head>
+<body>
+<!-- ══════════════════════════════════════════════════════════════════
+     수배 공용 바우처(예약 확정서) 양식(사장님 2026-09-23) — 호텔·골프·풀빌라·차량·투어 어디에나.
+     칸을 채우고 「인쇄 / PDF」. 서버에 저장하지 않는다(이 브라우저에만 남는다).
+     손님 사이트 단품목 주문은 컨펌하면 /golf/site/voucher/ 바우처가 자동으로 나간다 — 이 양식은 그 밖의 수배용.
+     「종류」를 바꾸면 상세 칸이 비어 있을 때만 그 종류에 맞는 칸 이름을 깔아 준다.
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="bar">
+  <b>바우처</b>
+  <label>종류 <select data-f="kind" id="kind">
+    <option value="hotel">호텔</option><option value="golf">골프</option><option value="villa">풀빌라</option>
+    <option value="car">차량</option><option value="tour">투어 · 관광</option><option value="etc">기타</option></select></label>
+  <button type="button" id="bNew">새로 쓰기</button>
+  <a href="../invoice/">인보이스 양식 →</a>
+  <button type="button" class="pri" onclick="window.print()">🖨 인쇄 / PDF</button>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="brand">
+    <div><input data-co="name" class="coname" placeholder="회사명"><input data-co="en" class="coen" placeholder="영문 회사명"></div>
+    <div class="coinfo">
+      <input data-co="tel" placeholder="전화"><input data-co="email" placeholder="이메일"><input data-co="regNo" placeholder="사업자번호">
+    </div>
+  </div>
+
+  <h1>Voucher<small>예약 확정서</small></h1>
+  <p class="tip">※ 이용 시 이 확정서를 제시해 주세요 (휴대폰 캡처 화면도 됩니다). Confirm No. <input data-f="cno" class="inl" placeholder="확정번호"></p>
+
+  <div class="vhead">
+    <div class="bn">Booking No. <input data-f="no" class="inl w" placeholder="예약번호"></div>
+    <input data-f="venue" class="vname" placeholder="업체명 (호텔 · 골프장 · 풀빌라 · 차량 회사 …)">
+    <input data-f="venueEn" class="vsub" placeholder="영문 업체명">
+    <input data-f="addr" class="vsub" placeholder="주소">
+    <input data-f="vtel" class="vsub" placeholder="전화">
+  </div>
+  <div class="vbody">
+    <h3>Booking Details</h3>
+    <div class="kv two">
+      <label><span>Guest Name (이용자명)</span><input data-f="guest" placeholder="대표자 영문 이름"></label>
+      <label><span>Date (이용일)</span><span class="dd"><input data-f="date" type="date"><i>~</i><input data-f="dateEnd" type="date"></span></label>
+      <label><span>Adult (성인)</span><input data-f="adult" type="number" inputmode="numeric"></label>
+      <label><span>Child (아동)</span><input data-f="child" placeholder="예: 2 (7세 · 4세)"></label>
+    </div>
+    <table class="items det"><tbody id="rows"></tbody></table>
+    <button type="button" class="add noprint" id="bAdd">＋ 줄 추가</button>
+  </div>
+
+  <div class="box"><h3>Agent Memo</h3><textarea data-f="memo" rows="2" placeholder="특이사항 · 요청사항"></textarea></div>
+  <div class="sign">Booked and payable by <b id="payBy"></b></div>
+  <div class="box"><h3>유의 사항</h3><textarea data-f="terms" rows="5"></textarea>
+    <div class="emg">비상연락망 <input data-co="emergency" placeholder="현지 비상 연락처"></div></div>
+</div>
+
+<script src="../forms.js"></script>
+<script>
+/* 종류별 상세 칸 이름 — 바우처 관례(영문 · 한글) */
+const KIND_ROWS = {
+  hotel: ["Room Type (객실 타입)", "Room(s) (객실 수)", "Nights (박수)", "Bed Type (침대)", "Meal Plan (식사)"],
+  golf:  ["Tee Time (티타임)", "Round (라운드)", "Players (인원)", "Caddy · Cart (캐디 · 카트)"],
+  villa: ["Villa (빌라 · 동)", "Bedrooms (침실)", "Nights (박수)", "Check-in / out (입실 · 퇴실)"],
+  car:   ["Vehicle (차종)", "Pick-up (미팅 장소 · 시간)", "Drop-off (도착지)", "Flight (항공편)"],
+  tour:  ["Program (프로그램)", "Meeting (미팅 장소 · 시간)", "Included (포함)"],
+  etc:   ["Item (내용)", "Qty (수량)"]
+};
+const TERMS = "이용 시 이 확정서를 제시해 주세요. 휴대폰 캡처 화면으로도 제시할 수 있습니다.\n"
+  + "확정서에 적힌 인원 외 추가 인원은 이용이 어려울 수 있습니다.\n"
+  + "침대 타입 · 층 · 시간 등 요청 사항은 현지 사정에 따라 보장되지 않을 수 있습니다.\n"
+  + "예약일에 이용하지 못하면 현지 규정에 따라 위약금이 부과될 수 있습니다.";
+const kindRows = k => (KIND_ROWS[k] || KIND_ROWS.etc).map(l => ({ label: l, val: "" }));
+FORM.init({
+  key: "tk_form_voucher",
+  blankRow: { label: "", val: "" },
+  fresh: () => ({ kind: "hotel", terms: TERMS, rows: kindRows("hotel") }),
+  startRows: 0,
+  row(r, i){
+    return '<tr data-i="' + i + '">'
+      + '<td class="c-lab"><input data-r="label" value="' + FORM.esc(r.label) + '" placeholder="항목"></td>'
+      + '<td><textarea data-r="val" rows="1" placeholder="내용">' + FORM.esc(r.val) + '</textarea></td>'
+      + '<td class="noprint"><button type="button" class="del" data-del="' + i + '" title="이 줄 지우기">✕</button></td></tr>';
+  },
+  after(d){
+    const n = document.querySelector('[data-co="name"]');
+    document.getElementById("payBy").textContent = n ? n.value : "";
+    document.title = "바우처 " + (d.no || "") + (d.guest ? " · " + d.guest : "");
+  }
+});
+/* 종류를 바꾸면 — 상세 칸에 아무것도 안 적었을 때만 그 종류의 칸 이름으로 바꿔 깐다(적은 내용은 안 지운다) */
+document.getElementById("kind").addEventListener("change", e => {
+  const d = FORM.d;
+  if (d.rows.every(r => !String(r.val || "").trim())) {
+    d.rows = kindRows(e.target.value);
+    FORM.save(); FORM.redraw();
+  }
+});
+</script>
+</body>
+</html>

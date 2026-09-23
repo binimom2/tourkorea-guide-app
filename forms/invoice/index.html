@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>인보이스 (Invoice)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../forms.css">
+</head>
+<body>
+<!-- ══════════════════════════════════════════════════════════════════
+     수배 공용 인보이스 양식(사장님 2026-09-23) — 호텔·골프·풀빌라·차량·투어 어디에나.
+     칸을 채우고 「인쇄 / PDF」. 서버에 저장하지 않는다 — 쓰던 내용과 회사 정보는 이 브라우저에만 남는다.
+     실시간 견적(여행사) 건은 컨펌하면 /golf/site/voucher/ 인보이스가 자동으로 나간다 — 이 양식은 그 밖의 수배용.
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="bar">
+  <b>인보이스</b>
+  <label>통화 <select id="cur"><option value="KRW">원 (KRW)</option><option value="THB">바트 (THB)</option><option value="USD">달러 (USD)</option></select></label>
+  <button type="button" id="bNew">새로 쓰기</button>
+  <a href="../voucher/">바우처 양식 →</a>
+  <button type="button" class="pri" onclick="window.print()">🖨 인쇄 / PDF</button>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="brand">
+    <div><input data-co="name" class="coname" placeholder="회사명"><input data-co="en" class="coen" placeholder="영문 회사명"></div>
+    <div class="coinfo">
+      <input data-co="tel" placeholder="전화"><input data-co="email" placeholder="이메일"><input data-co="regNo" placeholder="사업자번호">
+    </div>
+  </div>
+
+  <h1>Invoice<small>인보이스</small></h1>
+
+  <div class="meta">
+    <div class="to">
+      <span class="lab">Bill To (받는 분)</span>
+      <input data-f="toName" class="big" placeholder="여행사 / 손님 이름">
+      <input data-f="toContact" placeholder="담당자 · 연락처">
+    </div>
+    <div class="kv">
+      <label><span>Invoice No.</span><input data-f="no" placeholder="예: INV-260923-01"></label>
+      <label><span>발행일 (Date)</span><input data-f="date" type="date"></label>
+      <label><span>입금 기한 (Due)</span><input data-f="due" type="date"></label>
+      <label><span>팀명 · 예약번호</span><input data-f="team" placeholder="팀명 / 예약번호"></label>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead><tr><th class="c-date">날짜</th><th>내용 (Description)</th><th class="c-qty">수량</th><th class="c-num">단가</th><th class="c-num">금액</th><th class="noprint"></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <button type="button" class="add noprint" id="bAdd">＋ 줄 추가</button>
+
+  <div class="sums">
+    <div><span>합계 (Subtotal)</span><b id="sSub">0</b></div>
+    <div><span>할인 (Discount)</span><input data-f="disc" type="number" inputmode="numeric"></div>
+    <div><span>기 입금 (Paid)</span><input data-f="paid" type="number" inputmode="numeric"></div>
+    <div class="grand"><span>청구 금액 (Balance Due)</span><b id="sDue">0</b></div>
+  </div>
+
+  <div class="box"><h3>입금 안내 (Bank)</h3><textarea data-co="bank" rows="3" placeholder="은행 · 계좌번호 · 예금주"></textarea></div>
+  <div class="box"><h3>메모 (Memo)</h3><textarea data-f="memo" rows="3" placeholder="포함·불포함, 취소 규정 등"></textarea></div>
+  <div class="sign">Issued by <input data-co="issuer" placeholder="담당자"></div>
+</div>
+
+<script src="../forms.js"></script>
+<script>
+FORM.init({
+  key: "tk_form_invoice",
+  blankRow: { date:"", desc:"", qty:"", unit:"" },
+  row(r, i){
+    return '<tr data-i="' + i + '">'
+      + '<td class="c-date"><input data-r="date" value="' + FORM.esc(r.date) + '" placeholder="09/23"></td>'
+      + '<td><textarea data-r="desc" rows="1" placeholder="호텔 · 골프 · 차량 · 투어 …">' + FORM.esc(r.desc) + '</textarea></td>'
+      + '<td class="c-qty"><input data-r="qty" type="number" inputmode="numeric" value="' + FORM.esc(r.qty) + '"></td>'
+      + '<td class="c-num"><input data-r="unit" type="number" inputmode="numeric" value="' + FORM.esc(r.unit) + '"></td>'
+      + '<td class="c-num amt"></td>'
+      + '<td class="noprint"><button type="button" class="del" data-del="' + i + '" title="이 줄 지우기">✕</button></td></tr>';
+  },
+  after(d){
+    const sub = (d.rows || []).reduce((a, r) => a + FORM.lineAmt(r), 0);
+    document.querySelectorAll("#rows tr").forEach((tr, i) => { const r = d.rows[i] || {}; tr.querySelector(".amt").textContent = r.unit === "" || r.unit == null ? "" : FORM.money(FORM.lineAmt(r)); });
+    document.getElementById("sSub").textContent = FORM.money(sub);
+    document.getElementById("sDue").textContent = FORM.money(sub - (+d.disc || 0) - (+d.paid || 0));
+    document.title = "인보이스 " + (d.no || "") + (d.toName ? " · " + d.toName : "");
+  }
+});
+</script>
+</body>
+</html>
