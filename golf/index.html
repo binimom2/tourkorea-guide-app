@@ -1082,7 +1082,7 @@ function renderVehChoices(){
     /* 아직 안 골랐으면 인원수에 맞는 추천을 드롭다운 아래 빨간 한 줄로(사장님 2026-09-16 "인원수에 따라 추천 띄워 주세요 빨간색으로") */
     +((vehChoice===''&&opts.some(o=>o.rec)&&(+(($('#pax')||{}).value)>0))?`<div id="vehRecHint" style="margin-top:5px;font-size:12.5px;font-weight:700;color:#c62828;">${curPax()}명 추천 · ${esc(opts.find(o=>o.rec).t)}</div>`:'');
   const pb=$('#vehPhotoBtn');
-  if(pb){ const k=isBusChoice()?'bus':((vehChoice==='none'||vehChoice==='')?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:12px;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;">📷 사진 보기</a>`:''; }
+  if(pb){ const k=isBusChoice()?'bus':((vehChoice==='none'||vehChoice==='')?'':'van'); const has=k&&vehImgs(vehColOf(k)).length; pb.innerHTML=has?`<a class="vphoto" data-kind="${k}" style="font-size:13.5px;font-weight:700;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;"><span style="font-size:18px;vertical-align:-2px;text-decoration:none;display:inline-block;margin-right:3px">📷</span>사진 보기</a>`:''; }
   const ex=$('#vehExtra'); if(ex) ex.style.display=(vehChoice==='none'||vehChoice==='')?'none':'flex';   // 글자·체크 높이 맞춤용 flex(사장님 2026-09-15)
   // 이미 짐밴이 든 구성이거나 짐밴 표가 없으면 「짐밴 추가」는 감춘다
   const el=$('#extraLug'), elw=el&&el.parentElement;
