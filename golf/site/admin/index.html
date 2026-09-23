@@ -173,8 +173,13 @@ tr.subrow td{padding:0 6px 11px}
 .wedays button{padding:4px 9px;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--muted);cursor:pointer}
 .wedays button.on{background:#D32F2F;border-color:#D32F2F;color:#fff}
 .rminc input{flex:1;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;min-width:0}
-.rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
-.rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
+/* 요금줄은 내용 폭만큼만(끝쪽 색 여분 없이), 남는 폭은 사진칸이 쓴다(사장님 2026-09-23) */
+.rmbody{display:grid;grid-template-columns:max-content minmax(200px,1fr);gap:10px;margin-top:7px}
+.rmrates{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.rmhd .hdsplit{display:flex;gap:5px}
+.rmhd .hdsplit>span{text-align:center}
+.rmhd .hdsplit>span:first-child{width:100px}
+.rmhd .hdsplit>span:last-child{flex:1}
 /* 한 기간 = 왼쪽(날짜 + 구분) · 가운데(요금표: 주중·주말 두 줄 × 다섯 칸) · ✕ (사장님 2026-09-19) */
 .rmhd,.rmrate{display:grid;grid-template-columns:330px auto 22px;gap:6px;align-items:center;justify-content:start}
 /* 구분 · 기간을 한 줄로 나란히(사장님 2026-09-23) — 줄 높이를 줄인다. 달력 칸은 날짜가 딱 들어갈 만큼만 */
@@ -2369,7 +2374,7 @@ function roomRateHTML(r,j,pr,weOn){
    위 이름칸에서 탭으로 옮겨 가던 손가락이 갈 곳을 잃는다. */
 function roomRatesHTML(rates,rm,pr,weOn){
   return (rates.length
-      ? '<div class="rmhd"><span>구분 · 기간</span><div class="rmgrid'+(weOn?'':' nolbl')+'">'+(weOn?'<span></span>':'')
+      ? '<div class="rmhd"><span class="hdsplit"><span>구분</span><span>기간</span></span><div class="rmgrid'+(weOn?'':' nolbl')+'">'+(weOn?'<span></span>':'')
           +ROOM_COLS.map(c=>'<span title="'+esc(c[2])+'">'+esc(c[1])+'</span>').join('')+'</div><span></span></div>'
         +rates.map((r,q)=>roomRateHTML(r,q,pr,weOn)).join('')
       : '<div class="rnone">아직 요금이 없습니다 — 아래 「＋ 기간 추가」를 누르세요'
