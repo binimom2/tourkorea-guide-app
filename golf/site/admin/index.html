@@ -166,6 +166,10 @@ tr.subrow td{padding:0 6px 11px}
 .rminc{display:flex;align-items:center;gap:7px;margin-top:6px}
 .rminc>label{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 /* 최소 숙박·갈라디너 — 한 줄에 이어서, 「＋」 단추는 줄 끝에(사장님 2026-09-23) */
+/* 호텔 규칙 줄 안내 글자 — 검정, 한 단계 크게(사장님 2026-09-23) */
+.rcell .rminc>label{font-size:11.5px;color:#222}
+.rcell .rminc .rhint{font-size:12px!important;color:#222}
+.rcell .hrow{font-size:13px;color:#222}
 .rminc.hrule{margin-top:4px}
 .rminc.hrule>label{min-width:78px}
 .hlist{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
@@ -2436,8 +2440,6 @@ function roomCell(x,i){
   /* 옛 호텔 요금(1박 단가·골프식 요금줄)이 들어 있으면 알려 준다 — 모르고 또 넣으면 안 된다 */
   const old=home?((Array.isArray(home.rates)?home.rates.length:0)+oldSeasonCount(home)+((+home.perNight>0)?1:0)):0;
   return '<div class="iecell rcell" data-rn="'+esc(x.n||'')+'" data-rix="'+i+'">'
-    +'<b>🛏 객실 타입별 요금 <span class="rhint">1박 · 밧 · 주중·주말 한쪽만 적으면 같은 값으로 봅니다 · 싱글을 비우면 더블·트윈 값으로 봅니다 · '
-      +'「＋추가(써차지)」 줄은 그 기간에 걸린 날짜에 기본요금 위로 더해집니다</span></b>'
     /* 아동으로 보는 나이 — 호텔마다 다르다(만 11세까지인 곳, 만 12세까지인 곳 · 사장님 2026-09-19).
        golf_site의 그 호텔에 childMax로 들어가고, 손님 화면이 이 나이까지만 아동 요금(엑스트라 아동·아동 조식)을 준다. 안 고르면 11 */
     +'<div class="rminc"><label>아동 요금 적용 나이</label>'
