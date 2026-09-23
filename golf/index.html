@@ -243,7 +243,9 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 body.boxonly #golfApp>*:not(#qhModal){visibility:hidden}   /* 보관함(#qhModal)은 #golfApp 안에 있어 같이 감추면 안 된다 */
 body.boxonly #qhModal{visibility:visible}
 body.boxonly{background:transparent}                          /* 사이트 팝업 틀도 투명(boxmode) — 보관함 창만 사이트 위에 뜬다 */
-body.boxonly #qhModal>div{max-width:820px!important;max-height:92vh!important}   /* 인라인 스타일보다 앞서야 해서 !important */
+body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important}   /* 인라인 스타일보다 앞서야 해서 !important */
+/* 보관함 글자·단추 한 단계 크게(사장님 2026-09-23 「사이즈 키워줘」) — 줄마다 인라인 크기라 통째로 키운다 */
+@media (min-width:900px){ body.boxonly #qhModal>div{zoom:1.18} }
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
 #golfLogin h1{margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)}
@@ -2047,10 +2049,16 @@ async function openQuoteHistory(){
       <input id="qhSearch" placeholder="견적번호 · 팀명 · 날짜로 찾기" oninput="renderQuoteHistory()"
              style="width:100%;box-sizing:border-box;border:1.5px solid #d8d2c4;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;">
     </div>
+    ${GROLE==='agency'?'<div id="qhTabs" style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #e7e3d8;background:#faf8f2"></div>':''}
     <div id="qhList"></div>`;
   renderQuoteHistory();
 }
 let QH_LIST=[];
+/* 여행사 보관함 칸 나누기(사장님 2026-09-23) — 견적(아직 요청 전) · 수배 진행(요청했고 인보이스 전) · 인보이스(확정되어 돌아온 것).
+   장바구니(사이트 단품목)와는 원래 따로다. 인보이스가 나오면 그 칸으로 저절로 옮겨 간다 */
+let QH_TAB='quote';
+const qhTabOf=r=>!r.book?'quote':(r.book.live&&r.book.live.url)?'inv':'book';
+function setQhTab(t){ QH_TAB=t; renderQuoteHistory(); }
 /* 보관함 닫기 — 「보관함만 보기」로 열렸으면(사이트 상단 아이콘) 뒤에 견적기를 드러내지 않고 팝업째 닫는다(사장님 2026-09-22) */
 function closeQuoteHistory(){
   $('#qhModal').style.display='none';
@@ -2060,7 +2068,14 @@ function closeQuoteHistory(){
 }
 function renderQuoteHistory(){
   const q=(($('#qhSearch')||{}).value||'').trim().toLowerCase();
-  const rows=QH_LIST.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route].join(' ').toLowerCase().includes(q));
+  let rows=QH_LIST.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route].join(' ').toLowerCase().includes(q));
+  const tb=$('#qhTabs');
+  if(tb){
+    const n=k=>rows.filter(r=>qhTabOf(r)===k).length;
+    tb.innerHTML=[['quote','📝 견적'],['book','📤 수배 진행'],['inv','🧾 인보이스']].map(([k,t])=>
+      `<button type="button" onclick="setQhTab('${k}')" style="border:1px solid ${QH_TAB===k?'#123A2B':'#d8d2c4'};background:${QH_TAB===k?'#123A2B':'#fff'};color:${QH_TAB===k?'#fff':'#123A2B'};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer">${t} ${n(k)}</button>`).join('');
+    rows=rows.filter(r=>qhTabOf(r)===QH_TAB);
+  }
   $('#qhList').innerHTML = rows.length ? rows.map((r,i)=>{
     const idx=QH_LIST.indexOf(r);
     const krw=(r.fx>0)?krwUp(r.per*r.fx)*r.pax:0;
@@ -2096,7 +2111,7 @@ function renderQuoteHistory(){
            </div>`
         : ''}
     </div>`;
-  }).join('') : '<div style="padding:18px;color:#5E6F66">찾는 견적이 없습니다.</div>';
+  }).join('') : '<div style="padding:18px;color:#5E6F66">'+(tb?({quote:'요청 전 견적이 없습니다.',book:'진행 중인 수배 요청이 없습니다.',inv:'아직 발행된 인보이스가 없습니다.'}[QH_TAB]):'찾는 견적이 없습니다.')+'</div>';
 }
 
 /* 보관된 견적을 그때 금액 그대로 다시 PNG로 뽑는다. 계산을 다시 하지 않는다. */

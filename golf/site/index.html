@@ -608,6 +608,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-price .fx{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45}
 .dpanel .mbtn{margin-top:4px}
 .qp-kakao{display:block;margin-top:8px;text-align:center;background:#FAE100;color:#3B1E1E;border-radius:11px;padding:12px;font-size:14.5px;font-weight:800;text-decoration:none}
+/* 상세 창 세로로 크게 + 오른쪽 패널은 따로 스크롤, 달력을 열어도 이름(호텔명)은 위에 붙어 있게(사장님 2026-09-23) */
+@media(min-width:821px){
+  #detailMask{padding:8px 18px}
+  .modal.detail{max-height:calc(100vh - 16px)}
+  .dpanel{max-height:calc(100vh - 16px - 96px);overflow:auto;overscroll-behavior:contain}
+  .dpanel .qp-name{position:sticky;top:-16px;z-index:3;background:#fff;margin-top:-4px;padding:4px 0 6px}
+}
 @media(max-width:820px){ .dgrid{grid-template-columns:1fr} .dpanel{position:static} }
 
 /* ── 찜(♡) · 장바구니(🛒) ──────────────────────────────────
