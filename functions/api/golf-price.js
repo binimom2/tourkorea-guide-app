@@ -408,14 +408,7 @@ export async function onRequestPost({ request, env }) {
   if (!P) return json({ ok: false, error: '요금표가 아직 등록되지 않았습니다' }, 503);
 
   /* 지역이 안 맞아도 이름으로 찾는다 — 사이트의 지역 표기와 요금표가 조금 달라도 견적이 나와야 한다 */
-  let course = null;
-  const inReg = ((P.regions || {})[region] || {}).courses || [];
-  course = inReg.find((c) => c.name === name) || null;
-  if (!course) {
-    Object.values(P.regions || {}).forEach((rv) => {
-      if (!course) course = (rv.courses || []).find((c) => c.name === name) || null;
-    });
-  }
+  const course = findByName(P, region, 'courses', name);
   if (!course) return json({ ok: false, error: '이 골프장은 요금이 등록되어 있지 않습니다' }, 404);
 
   const holidays = Array.isArray(P.holidays) ? P.holidays : [];
@@ -461,6 +454,16 @@ export async function onRequestPost({ request, env }) {
 /* ── POST(호텔): 체크인 날짜 · 박수 · 객실 수 ──
    밤마다 따로 셈한다 — 금·토가 끼거나 성수기에 걸치면 밤마다 값이 다르다.
    한 밤이라도 요금이 없으면 금액을 내지 않는다(어림값을 보여 주면 나중에 말이 달라진다). */
+/* 요금표에서 이름으로 찾기 — 똑같은 이름 먼저, 없으면 띄어쓰기·대소문자 무시(관리 화면 priceHomeOf·손님 화면 nkey와 같은 규칙).
+   (2026-09-23 사고: 사이트 이름 「미트 호텔 파타야」 ↔ 요금표 「미트호텔파타야」 — 관리 화면엔 요금이 보이는데 견적은 「요금 미등록」) */
+function findByName(P, region, arr, name) {
+  const regs = [((P.regions || {})[region] || {})].concat(Object.values(P.regions || {}));
+  const k = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+  for (const eq of [(x) => x.name === name, (x) => k(x.name) === k(name)]) {
+    for (const rv of regs) { const hit = (rv[arr] || []).find((x) => x && eq(x)); if (hit) return hit; }
+  }
+  return null;
+}
 const addDays = (ds, n) => {
   const d = new Date(ds + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + n);
@@ -492,12 +495,7 @@ async function hotelPost(B, env) {
   if (!P) return json({ ok: false, error: '요금표가 아직 등록되지 않았습니다' }, 503);
 
   /* 지역이 안 맞아도 이름으로 찾는다 — 사이트 표기와 요금표가 조금 달라도 견적이 나와야 한다 */
-  let hotel = (((P.regions || {})[region] || {}).hotels || []).find((h) => h.name === name) || null;
-  if (!hotel) {
-    Object.values(P.regions || {}).forEach((rv) => {
-      if (!hotel) hotel = (rv.hotels || []).find((h) => h.name === name) || null;
-    });
-  }
+  const hotel = findByName(P, region, 'hotels', name);
   if (!hotel) return json({ ok: false, error: '이 호텔은 요금이 등록되어 있지 않습니다' }, 404);
 
   const key = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
