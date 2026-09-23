@@ -160,6 +160,18 @@ tr.subrow td{padding:0 6px 11px}
 .rmdel:hover,.rmrdel:hover{background:rgba(192,73,47,.1);border-radius:5px}
 .rminc{display:flex;align-items:center;gap:7px;margin-top:6px}
 .rminc>label{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
+.rminc.hrule{align-items:flex-start}
+.rminc.hrule>label{padding-top:7px;min-width:78px}
+.hlist{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.hrow{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.rminc .hrow input{flex:none;width:auto}
+.rminc .hrow input.hnum{width:70px}
+.rminc .hrow input.hname{width:110px}
+.hdel{border:none;background:none;color:#D32F2F;cursor:pointer;font-size:13px}
+.hadd{padding:3px 9px;font-size:11.5px;border:1px dashed var(--line);border-radius:6px;background:#fff;cursor:pointer}
+.wedays{display:flex;gap:4px}
+.wedays button{padding:4px 9px;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--muted);cursor:pointer}
+.wedays button.on{background:#D32F2F;border-color:#D32F2F;color:#fff}
 .rminc input{flex:1;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;min-width:0}
 .rmbody{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-top:7px}
 .rmrates{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -2317,7 +2329,7 @@ function materializeExtras(pr){
 }
 function roomRateHTML(r,j,pr){
   const n=v=>(v===''||v==null)?'':v;
-  const sur=isSurRate(r);
+  const sur=isSurRate(r), minN=Math.max(1,Math.round(+r.minN||1));
   const line=we=>'<span>'+(sur?'＋':'')+(we?'주말·휴일':'주중')+'</span>'
     +ROOM_COLS.map(c=>{
       const f=rmField(c[0],we);
@@ -2332,8 +2344,10 @@ function roomRateHTML(r,j,pr){
       +'<span class="rtil">~</span>'
       +'<input type="date" data-rmf="to" value="'+esc(n(r.to))+'" title="기간 끝">'
       +'</div>'
-      +'<select data-rmf="sur" title="써차지로 두면 기본요금에 더해집니다">'
-        +'<option value=""'+(sur?'':' selected')+'>기본요금</option>'
+      /* 연박 요금(2026-09-23) — 「N박 이상」 줄은 그 박수 이상 묵을 때만 쓰인다(r.minN). 서버 golf-price.js nightsOk와 같다 */
+      +'<select data-rmf="sur" title="써차지로 두면 기본요금에 더해집니다 · N박 이상은 연박할 때만 쓰입니다">'
+        +'<option value=""'+(sur||minN>1?'':' selected')+'>기본요금</option>'
+        +[2,3,4,5,6,7].map(k=>'<option value="n'+k+'"'+(!sur&&minN===k?' selected':'')+'>연박 '+k+'박 이상</option>').join('')
         +'<option value="1"'+(sur?' selected':'')+'>＋추가(써차지)</option></select>'
       +'</div>'
     +'<div class="rmgrid">'+line(false)+line(true)+'</div>'
@@ -2409,6 +2423,12 @@ function roomCell(x,i){
       +'<select data-p="hotels.'+i+'.childMax" style="flex:none;width:auto;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px">'
       +[11,12].map(a=>'<option value="'+a+'"'+((Number(x.childMax)||11)===a?' selected':'')+'>만 '+a+'세까지 ('+(a+1)+'세 미만)</option>').join('')
       +'</select><span class="rhint" style="font-size:11px">이 나이를 넘으면 손님 화면에서 성인으로 선택하게 안내합니다</span></div>'
+    /* 주말요금 받는 밤 — 호텔마다 다르다(사장님 2026-09-23). 요금표(golf_pricing) 그 호텔의 weDays(0=일…6=토), 안 고르면 토·일.
+       서버 golf-price.js가 밤 날짜 요일로 본다. 태국휴일 목록의 날짜는 요일과 상관없이 주말요금 */
+    +'<div class="rminc"><label>주말요금 적용 (투숙하는 밤)</label><span class="wedays">'
+      +[1,2,3,4,5,6,0].map(d=>'<button type="button" data-wed="'+d+'"'+(weDaysOf(x).includes(d)?' class="on"':'')+'>'+'일월화수목금토'[d]+'</button>').join('')
+      +'</span></div>'
+    +hotelRulesHTML(x)
     +(rooms.length
       ? '<div class="rmlist">'+rooms.map((rm,j)=>roomRowHTML(x,i,rm,j,findRoom(prs,rm.t))).join('')+'</div>'
       : '<div class="rnone">아직 객실이 없습니다 — 아래 「＋ 객실 추가」로 넣어 주세요</div>')
@@ -2416,6 +2436,60 @@ function roomCell(x,i){
     +(old?'<p class="rmnote">※ 옛 호텔 요금 '+old+'줄이 요금표에 남아 있습니다 — 객실별 요금을 다 넣으신 뒤 「💰 요금표」 탭에서 지우시면 됩니다.</p>':'')
     +'</div>';
 }
+/* 최소 숙박·갈라디너 (사장님 2026-09-23) — 호텔 단위, 요금표(golf_pricing) 그 호텔의
+     minStay:[{from,to,n}]  그 기간에 걸린 밤이 있으면 n박 이상만 예약(서버 minStayHit)
+     galas:[{date,n,ad,ch}] 묵는 밤에 그 날짜가 있으면 1인당 성인 ad·아동 ch 밧을 더함(마진 없음) */
+function hotelListOf(x,k){ const h=priceHomeOf('hotels',x); return (h&&Array.isArray(h[k]))?h[k]:[]; }
+function hotelRulesHTML(x){
+  const v=s=>esc(s==null?'':s);
+  const ms=hotelListOf(x,'minStay'), gs=hotelListOf(x,'galas');
+  return '<div class="rminc hrule"><label>최소 숙박</label><div class="hlist">'
+      +ms.map((m,q)=>'<div class="hrow" data-hk="minStay" data-hq="'+q+'">'
+        +'<input type="date" data-hf="from" value="'+v(m.from)+'"><span>~</span><input type="date" data-hf="to" value="'+v(m.to)+'">'
+        +'<input type="number" data-hf="n" min="2" value="'+v(m.n)+'" class="hnum"><span>박 이상</span>'
+        +'<button type="button" class="hdel" title="지우기">✕</button></div>').join('')
+      +'<button type="button" class="hadd" data-hk="minStay">＋ 최소 숙박 기간</button></div></div>'
+    +'<div class="rminc hrule"><label>갈라디너 (1인)</label><div class="hlist">'
+      +gs.map((g,q)=>'<div class="hrow" data-hk="galas" data-hq="'+q+'">'
+        +'<input type="date" data-hf="date" value="'+v(g.date)+'" title="이 날 밤을 묵으면 의무 포함">'
+        +'<input type="text" data-hf="n" value="'+v(g.n)+'" placeholder="갈라디너" class="hname">'
+        +'<span>성인</span><input type="number" data-hf="ad" min="0" value="'+v(g.ad)+'" class="hnum">'
+        +'<span>아동</span><input type="number" data-hf="ch" min="0" value="'+v(g.ch)+'" class="hnum"><span>밧</span>'
+        +'<button type="button" class="hdel" title="지우기">✕</button></div>').join('')
+      +'<button type="button" class="hadd" data-hk="galas">＋ 갈라디너</button></div></div>';
+}
+document.getElementById('pane').addEventListener('input',e=>{
+  const f=e.target.dataset&&e.target.dataset.hf; if(!f) return;
+  const cell=e.target.closest('.rcell'), row=e.target.closest('.hrow'); if(!cell||!row) return;
+  const x=hotelByName(cell.dataset.rn); if(!x) return;
+  const it=(ensureRateHome('hotels',x)[row.dataset.hk]||[])[Number(row.dataset.hq)]; if(!it) return;
+  it[f]=e.target.type==='number'?(e.target.value===''?'':Number(e.target.value)):e.target.value;
+  markDirty('rates');
+});
+document.getElementById('pane').addEventListener('click',e=>{
+  const add=e.target.closest('.hadd'), del=e.target.closest('.hdel');
+  if(!add&&!del) return;
+  const cell=e.target.closest('.rcell'); if(!cell) return;
+  const x=hotelByName(cell.dataset.rn); if(!x) return;
+  const h=ensureRateHome('hotels',x);
+  if(add){ const k=add.dataset.hk; if(!Array.isArray(h[k])) h[k]=[]; h[k].push(k==='galas'?{date:'',n:'',ad:'',ch:''}:{from:'',to:'',n:''}); }
+  else{ const row=del.closest('.hrow'); (h[row.dataset.hk]||[]).splice(Number(row.dataset.hq),1); }
+  markDirty('rates');
+  redrawRoomCell(cell);
+});
+function weDaysOf(x){
+  const h=priceHomeOf('hotels',x);
+  return (h&&Array.isArray(h.weDays))?h.weDays.map(Number):[6,0];
+}
+document.getElementById('pane').addEventListener('click',e=>{
+  const b=e.target.closest('[data-wed]'); if(!b) return;
+  const cell=b.closest('.rcell'); if(!cell) return;
+  const x=hotelByName(cell.dataset.rn); if(!x) return;
+  const d=Number(b.dataset.wed), cur=weDaysOf(x);
+  ensureRateHome('hotels',x).weDays=cur.includes(d)?cur.filter(v=>v!==d):cur.concat(d);
+  markDirty('rates');
+  b.classList.toggle('on');
+});
 function redrawRoomCell(cell){
   const x=hotelByName(cell.dataset.rn); if(!x) return;
   const box=document.createElement('div');
@@ -2478,6 +2552,7 @@ document.getElementById('pane').addEventListener('input',e=>{
   r[f]=RM_NUM[f] ? (e.target.value===''?'':Number(e.target.value))
      : (f==='sur')          ? (e.target.value==='1')
      : e.target.value;
+  if(f==='sur'){ const m=/^n(\d+)$/.exec(e.target.value); if(m) r.minN=Number(m[1]); else delete r.minN; }
   if(f==='from'||f==='to') rememberPeriod(r.from,r.to);
   markDirty('rates');
   /* 기본요금 ⇄ 써차지를 바꾸면 줄 색과 안내 글자가 같이 바뀌어야 한다 */

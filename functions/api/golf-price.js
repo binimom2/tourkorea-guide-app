@@ -123,6 +123,24 @@ function lowestOf(list, c) {
 const roomsOf = (h) => (Array.isArray(h && h.rooms) ? h.rooms : [])
   .filter((r) => r && String(r.t || '').trim());
 const isSur = (r) => r && (r.sur === true || r.sur === 1 || r.sur === '1');
+/* ── 연박 요금 (2026-09-23 사장님 요청) ──
+   기본요금 줄에 minN(2·3·…)을 두면 «그 박수 이상 묵을 때만» 쓰는 줄이다. 같은 기간에 1박 줄과 같이 두면
+   기본요금은 겹칠 때 싼 쪽을 고르므로, 박수가 차면 연박 값이 저절로 잡힌다. 써차지 줄은 박수와 상관없다.
+   최저가(「~」)는 1박 줄만 본다. */
+const minNOf = (r) => Math.max(1, Math.round(+(r && r.minN) || 1));
+const nightsOk = (r, nights) => isSur(r) || minNOf(r) <= (nights || 1);
+/* ── 최소 숙박 (2026-09-23) ── 호텔마다 minStay:[{from,to,n}] — 그 기간에 걸린 밤이 하나라도 있으면 n박 이상만 받는다 */
+function minStayHit(h, date, nights) {
+  let hit = null;
+  (Array.isArray(h && h.minStay) ? h.minStay : []).forEach((m) => {
+    const n = Math.round(+m.n || 0);
+    if (n <= nights) return;
+    for (let i = 0; i < nights; i++) {
+      if (rateCovers(m, addDays(date, i))) { if (!hit || n > hit.n) hit = { n, from: m.from || '', to: m.to || '' }; break; }
+    }
+  });
+  return hit;
+}
 /* 그 줄에 적힌 밧 — 마진은 아직 안 얹는다(써차지를 더한 뒤 한 번만 얹어야 한다).
    we=true면 주말·휴일 값. 한쪽이 비면 다른 쪽 값을 쓴다. */
 function roomBaht(r, we) {
@@ -160,7 +178,7 @@ function extraOf(rm, k) {
 function roomLowest(rm, h) {
   let lo = null;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-    if (isSur(r)) return;
+    if (isSur(r) || minNOf(r) > 1) return;
     [false, true].forEach((we) => {
       const v = roomBaht(r, we);
       if (v != null && (lo == null || v < lo)) lo = v;
@@ -170,10 +188,10 @@ function roomLowest(rm, h) {
 }
 /* 그 날짜의 값 — 기본요금은 겹치면 싼 쪽, 써차지는 걸리는 것을 모두 더한다 */
 /* single=true면 1인 사용(싱글) 값 — 그 줄에 싱글 값이 없으면 더블·트윈 값으로 본다 */
-function roomOn(rm, h, date, we, single) {
+function roomOn(rm, h, date, we, single, nights) {
   let base = null, add = 0, sur = false;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-    if (!rateCovers(r, date)) return;
+    if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
     let v = single ? kindBaht(r, 'sg', we) : null;
     if (v == null) v = roomBaht(r, we);
     if (v == null) return;
@@ -189,11 +207,11 @@ function roomOn(rm, h, date, we, single) {
 /* 엑스트라 베드는 성인·아동 가운데 한쪽만 적어 둔 호텔이 있다 — 비어 있는 쪽은 적힌 쪽 값으로 본다
    (비었다고 0원으로 나가면 베드를 공짜로 드리게 된다). */
 const BED_TWIN = { ea: 'ec', ec: 'ea' };
-function extraOn(rm, date, we, p) {
+function extraOn(rm, date, we, p, nights) {
   const scan = (q) => {
     let base = null, add = 0;
     (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-      if (!rateCovers(r, date)) return;
+      if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
       const v = kindBaht(r, q, we);
       if (v == null) return;
       if (isSur(r)) add += v;
@@ -214,7 +232,7 @@ function extraLowest(rm, p) {
   const scan = (q) => {
     let lo = null;
     (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-      if (isSur(r)) return;
+      if (isSur(r) || minNOf(r) > 1) return;
       [false, true].forEach((we) => {
         const v = kindBaht(r, q, we);
         if (v != null && (lo == null || v < lo)) lo = v;
@@ -493,17 +511,25 @@ async function hotelPost(B, env) {
   const bedChild = Math.max(0, Math.min(exChild, child - exAdult));
   const bedAdult = exChild - bedChild;
 
+  const ms = minStayHit(hotel, date, nights);
+  if (ms) {
+    return json({ ok: false, minStay: ms.n,
+      error: (ms.from || ms.to ? ms.from.slice(5).replace('-', '/') + '~' + ms.to.slice(5).replace('-', '/') + ' 기간은 ' : '')
+        + '최소 ' + ms.n + '박 이상 예약하실 수 있습니다.' }, 200);
+  }
   const holidays = Array.isArray(P.holidays) ? P.holidays : [];
+  /* 주말요금 받는 밤 — 호텔마다 다르다(사장님 2026-09-23). 관리 화면에서 고른 요일(0=일…6=토), 안 고르면 토·일 */
+  const weDays = Array.isArray(hotel.weDays) ? hotel.weDays.map(Number) : [6, 0];
   let sumBaht = 0, sumKrw = 0, exBaht = 0, exKrw = 0, same = true, first = null, anySur = false, sglDiff = false;
   for (let i = 0; i < nights; i++) {
     const d = addDays(date, i);
-    const we = isWeekendDate(d) || holidays.includes(d);
-    const got = roomOn(room, hotel, d, we, false);
+    const we = weDays.includes(new Date(d + 'T00:00:00Z').getUTCDay()) || holidays.includes(d);
+    const got = roomOn(room, hotel, d, we, false, nights);
     if (got == null) {
       return json({ ok: false, needAsk: true,
         error: (nights > 1 ? d + ' 밤의 ' : '') + '요금이 아직 등록되어 있지 않습니다' }, 200);
     }
-    const sgl = singles ? (roomOn(room, hotel, d, we, true) || got) : got;
+    const sgl = singles ? (roomOn(room, hotel, d, we, true, nights) || got) : got;
     const v = got.baht;
     if (sgl.baht !== v) sglDiff = true;      // 싱글 값이 따로 적힌 호텔 — 손님 화면이 「싱글 ○실」을 알린다
     if (got.sur) anySur = true;              // 특별일 추가요금이 붙은 밤이 있다
@@ -515,15 +541,30 @@ async function hotelPost(B, env) {
     /* 추가 인원 — 한 밤에 한 사람씩 붙는다. 그 밤의 기간·주중주말 값으로 셈한다. 마진은 안 얹는다(위 설명). */
     [['ea', bedAdult], ['ec', bedChild], ['cb', exAdult]].forEach(([p, cnt]) => {
       if (!cnt) return;
-      const b = extraOn(room, d, we, p);
+      const b = extraOn(room, d, we, p, nights);
       exBaht += b * cnt;
       exKrw += krwUp(b * fx.rate) * cnt;
     });
   }
 
+  /* ── 갈라디너(의무 식사) (2026-09-23) ── 호텔마다 galas:[{date,n,ad,ch}] — 묵는 밤에 그 날짜가 있으면
+     1인당 성인 ad · 아동 ch (밧)을 한 번 더한다. 마진 없음(추가 인원 값과 같은 규칙). */
+  const adults = Math.max(0, Math.round(B.adult != null ? +B.adult : pax - child));
+  let galaBaht = 0, galaKrw = 0;
+  const galaNames = [];
+  (Array.isArray(hotel.galas) ? hotel.galas : []).forEach((g) => {
+    if (!g || !g.date || g.date < date || g.date >= addDays(date, nights)) return;
+    const a = posNum(g.ad) || 0, c = posNum(g.ch) || 0;
+    if (!a && !c) return;
+    galaBaht += a * adults + c * child;
+    galaKrw += krwUp(a * fx.rate) * adults + krwUp(c * fx.rate) * child;
+    galaNames.push((g.n || '갈라디너') + '(' + g.date.slice(5).replace('-', '/') + ')');
+  });
+
   return json({
     ok: true,
     hotel: hotel.name, region, room: room.t, date, nights, rooms,
+    galaKrw, galaBaht, gala: galaNames.join(', '),
     checkout: addDays(date, nights),
     /* 1실 1박 평균 — 밤마다(또는 싱글·2인방이 섞여) 값이 다르면 합계를 «방 수 × 박수»로 나눈 값이다(합계가 정본). 객실 값만이다. */
     perKrw: Math.round(sumKrw / (rooms * nights)), perBaht: Math.round(sumBaht / (rooms * nights)),
@@ -531,7 +572,7 @@ async function hotelPost(B, env) {
     singles: sglDiff ? singles : 0, bedAdult, bedChild,
     extraAdult: exAdult, extraChild: exChild, extraKrw: exKrw, extraBaht: exBaht,
     roomsKrw: sumKrw, roomsBaht: sumBaht,
-    totalKrw: sumKrw + exKrw, totalBaht: sumBaht + exBaht,
+    totalKrw: sumKrw + exKrw + galaKrw, totalBaht: sumBaht + exBaht + galaBaht,
     sur: anySur,
     note: (anySur ? '고르신 날짜에 특별일 추가요금이 붙어 있습니다. ' : '')
       + (same ? '' : '성수기·주말이 섞여 밤마다 요금이 다릅니다 — 합계가 정확한 금액입니다.'),

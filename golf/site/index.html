@@ -2509,6 +2509,12 @@ async function qpCalc(){
     });
     const j = await r.json();
     if(my !== qpSeq) return;
+    /* 최소 숙박(호텔별·기간별) — 박수를 늘려야 하므로 장바구니에 안 담는다 */
+    if(!j.ok && j.minStay){
+      qpResult = { minStay: j.minStay };
+      qpBox('<div class="ask">' + esc(j.error) + '</div>');
+      return;
+    }
     if(!j.ok){
       qpResult = { asked: true };
       qpBox('<div class="ask">' + esc(j.error || "요금을 확인하지 못했습니다.") + '<br>장바구니에 담아 주시면 바로 안내드리겠습니다.</div>');
@@ -2542,6 +2548,7 @@ async function qpCalc(){
         /* 섞였을 때만 따로 적는다 — 위 큰 숫자에 이미 들어간 경우에는 두 번 세게 된다 */
         + ((j.extraKrw && !allTri) ? '<div class="exline">' + exLbl + ' × '
             + j.nights + '박: ' + j.extraKrw.toLocaleString("ko-KR") + '원</div>' : '')
+        + (j.galaKrw ? '<div class="exline">' + esc(j.gala) + ' 의무 포함: ' + j.galaKrw.toLocaleString("ko-KR") + '원</div>' : '')
         + ((sglN && !allSgl) ? '<div class="exline">1인 사용(싱글) ' + sglN + '실 · 2인 사용 ' + (j.rooms - sglN) + '실</div>' : '')
         + '<div class="sum">' + esc(paxLabel()) + ' · ' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
           + BT(j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
@@ -2880,6 +2887,7 @@ function addToCart(){
     if(mp && (mp.menu || []).length && qpMenu < 0) return qpTell("<b>메뉴</b>를 선택해 주세요."); }
   if(qpResult && qpResult.loading)     return qpTell("요금을 확인하고 있습니다. 잠시만 기다려 주세요.");
   if(!qpResult)                        return qpTell("날짜와 인원을 선택하시면 담으실 수 있습니다.");
+  if(qpResult.minStay)                 return qpTell("이 기간은 <b>최소 " + qpResult.minStay + "박</b> 이상 선택해 주세요.");
   const it = cartItem();
   /* 같은 곳·같은 날·같은 조건이면 겹쳐 담지 않고 새 내용으로 바꾼다 */
   const i = CART.findIndex(c => cartKeyOf(c) === cartKeyOf(it));
