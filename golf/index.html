@@ -408,12 +408,12 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         </label><span id="noVehWarn" style="display:none;font-size:13px;font-weight:800;color:#c62828;"></span></div>
         <!-- 차량 사진 창(사장님 2026-09-15): 차종 이름 + 사진 최대 3장. 배경 클릭·닫기로 닫힘(ovguard가 창 안 드래그는 막아 줌) -->
         <div id="vehPhotoOv" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:center;justify-content:center;padding:16px;">
-          <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+          <div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
               <b id="vehPhotoTitle" style="font-size:17px;"></b>
               <button type="button" id="vehPhotoClose" style="border:1px solid #d8d2c4;background:#fff;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;">닫기</button>
             </div>
-            <div id="vehPhotoList" style="display:flex;flex-direction:column;gap:10px;"></div>
+            <div id="vehPhotoList" style="display:flex;gap:8px;"></div>
           </div>
         </div>
       </div>
@@ -1155,7 +1155,8 @@ function openVehPhotos(kind){
   const ov=$('#vehPhotoOv'); if(!ov) return;
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   $('#vehPhotoTitle').textContent=vehName(g);
-  $('#vehPhotoList').innerHTML=pics.map(u=>`<img src="${esc(u)}" alt="" style="width:100%;max-height:60vh;object-fit:contain;border-radius:10px;background:#f4f1ea;" onerror="this.style.display='none'">`).join('');
+  /* 사진은 가로로 나란히, 작게 한 번에(사장님 2026-09-23 「세로로 크게 펼쳐져 → 가로로, 작은 사이즈로 한 번에」) */
+  $('#vehPhotoList').innerHTML=pics.map(u=>`<img src="${esc(u)}" alt="" style="flex:1 1 0;min-width:0;aspect-ratio:3/2;object-fit:cover;border-radius:8px;background:#f4f1ea;" onerror="this.style.display='none'">`).join('');
   ov.style.display='flex';
 }
 function closeVehPhotos(){ const ov=$('#vehPhotoOv'); if(ov) ov.style.display='none'; }
