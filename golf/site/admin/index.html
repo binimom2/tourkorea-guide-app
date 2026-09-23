@@ -2467,7 +2467,6 @@ function hotelRulesHTML(x){
     +'<div class="rminc hrule"><label>갈라디너 (1인)</label><div class="hlist">'
       +gs.map((g,q)=>'<div class="hrow" data-hk="galas" data-hq="'+q+'">'
         +'<input type="date" data-hf="date" value="'+v(g.date)+'" title="이 날 밤을 묵으면 의무 포함">'
-        +'<input type="text" data-hf="n" value="'+v(g.n)+'" placeholder="갈라디너" class="hname">'
         +'<span>성인</span><input type="number" data-hf="ad" min="0" value="'+v(g.ad)+'" class="hnum">'
         +'<span>아동</span><input type="number" data-hf="ch" min="0" value="'+v(g.ch)+'" class="hnum"><span>밧</span>'
         +'<button type="button" class="hdel" title="지우기">✕</button></div>').join('')

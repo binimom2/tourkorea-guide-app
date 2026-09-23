@@ -314,6 +314,11 @@ export async function onRequestGet({ env }) {
         fromKrw: v > 0 ? krwUp(v * fx.rate) : null,
         fromBaht: v > 0 ? v : null,
         rooms,
+        /* 손님 패널 안내용(2026-09-23) — 날짜·박수만, 금액은 안 내보낸다 */
+        minStay: (Array.isArray(h.minStay) ? h.minStay : []).filter((m) => +m.n > 1)
+          .map((m) => ({ from: m.from || '', to: m.to || '', n: Math.round(+m.n) })),
+        galas: (Array.isArray(h.galas) ? h.galas : []).filter((g) => g && g.date && (posNum(g.ad) || posNum(g.ch)))
+          .map((g) => g.date),
       });
     });
   });

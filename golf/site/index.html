@@ -593,6 +593,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-calgrid button.edge{background:var(--fairway);color:#fff}
 .qp-calgrid span{padding:7px 0}
 .qp-calfoot{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;line-height:1.4}
+.qp-note{margin-top:12px;background:#FFF5F5;border:1px solid rgba(224,70,75,.35);color:#A8302F;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.55}
+.qp-note[hidden]{display:none}
+.qp-note+.qp-price{margin-top:8px}
 .qp-price{margin:14px 0 12px;background:var(--paper);border-radius:12px;padding:13px 14px;min-height:86px}
 .qp-price .k{font-size:12px;color:var(--muted);font-weight:600}
 .qp-price .v{font-size:27px;font-weight:900;letter-spacing:-.05em;line-height:1.15;margin-top:2px}
@@ -964,6 +967,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
           <!-- 인원수와 룸 갯수로 3인 방이 생기면 여기에 알려 준다 -->
           <div id="qpTriple" class="qp-triple" style="display:none"></div>
         </div>
+        <!-- 호텔 최소 숙박·갈라디너 안내(고른 날짜에 걸릴 때만) -->
+        <div class="qp-note" id="qpNote" hidden></div>
         <div class="qp-price" id="qpPrice"></div>
         <button class="mbtn" id="dCart" type="button">🛒 장바구니에 담기</button>
         <div class="qp-warn" id="qpWarn" hidden></div>
@@ -2397,8 +2402,29 @@ function extraSum(){
 /* 환율 안내줄(「… 현찰 살때(하나은행 고시) 1밧 = 42.79원 기준」)은 손님에게 안 보인다(사장님 2026-09-08).
    환산은 그대로 그 환율로 하고, 문구만 감춘다. 다시 보이게 하려면 이 함수만 되돌리면 된다. */
 function fxNote(){ return ""; }
+/* 호텔 최소 숙박·갈라디너 안내(사장님 2026-09-23) — 고른 체크인~박수 안에 그 기간·날짜가 걸리면 띄운다.
+   자료는 서버 GET이 호텔마다 내려 주는 minStay[{from,to,n}]·galas[날짜] (금액은 안 온다) */
+function drawStayNote(){
+  const el = $("#qpNote"); if(!el) return;
+  const p = qpKind === "hotels" ? priceOf(qpItem, "hotels") : null;
+  const date = $("#qpDate") ? $("#qpDate").value : "";
+  const out = [];
+  if(p && /^\d{4}-\d{2}-\d{2}$/.test(date)){
+    const nights = [];
+    for(let i = 0; i < Math.max(1, qpNights); i++){ const d = new Date(date + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + i); nights.push(d.toISOString().slice(0, 10)); }
+    const md = s => s ? s.slice(5).replace("-", "/") : "";
+    const inR = (m, d) => (!m.from || d >= m.from) && (!m.to || d <= m.to);
+    let ms = null;
+    (p.minStay || []).forEach(m => { if(nights.some(d => inR(m, d)) && (!ms || m.n > ms.n)) ms = m; });
+    if(ms) out.push("이 기간" + (ms.from || ms.to ? "(" + md(ms.from) + "~" + md(ms.to) + ")" : "") + "은 <b>최소 " + ms.n + "박 이상</b> 숙박하셔야 합니다.");
+    (p.galas || []).filter(g => nights.includes(g)).forEach(g => out.push(md(g) + "은 <b>갈라디너</b>가 의무로 포함됩니다(1인 요금 추가)."));
+  }
+  el.innerHTML = out.map(s => "<div>※ " + s + "</div>").join("");
+  el.hidden = !out.length;
+}
 async function qpCalc(){
   if(!qpItem) return;
+  drawStayNote();
   /* 날짜·박수가 바뀌면 투숙 종료일 기준 만나이도 달라질 수 있다 — 생년월일로 다시 맞추고 되읽기도 고친다 */
   if(qpKind === "hotels" && qpChild){
     syncAges();
@@ -2512,7 +2538,7 @@ async function qpCalc(){
     /* 최소 숙박(호텔별·기간별) — 박수를 늘려야 하므로 장바구니에 안 담는다 */
     if(!j.ok && j.minStay){
       qpResult = { minStay: j.minStay };
-      qpBox('<div class="ask">' + esc(j.error) + '</div>');
+      qpBox('<div class="ask">박수를 <b>' + j.minStay + '박 이상</b>으로 선택하시면 요금이 나옵니다.</div>');
       return;
     }
     if(!j.ok){
