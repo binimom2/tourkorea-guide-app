@@ -976,6 +976,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
           <div id="qpHoleWrap">
             <div class="qp-lab" id="qpHoleLab">라운드 선택</div>
             <div class="qp-holes" id="qpHoles"></div>
+            <!-- 호텔만 — 베드 타입(트윈/더블/싱글), 모든 객실 한 번에. 섞이면 장바구니에 따로 담는다(사장님 2026-09-29) -->
+            <div class="qp-bedpick" id="qpBedType" hidden><span>베드 타입</span>
+              <button type="button" data-bed="트윈">트윈</button><button type="button" data-bed="더블">더블</button><button type="button" data-bed="싱글">싱글</button></div>
           </div>
           <!-- 인원수와 룸 갯수로 3인 방이 생기면 여기에 알려 준다 -->
           <div id="qpTriple" class="qp-triple" style="display:none"></div>
@@ -1987,6 +1990,7 @@ let qpResult = null;
 /* 호텔용 — 고른 룸타입 · 박수 · 룸 갯수 · 성인 · 아동(나이). 골프장은 쓰지 않는다.
    추가 인원을 따로 세지 않는다 — 인원수와 룸 갯수로 3인 방이 몇 개인지 저절로 나온다.
    qpPax는 «성인+아동»으로 늘 맞춰 둔다 — 3인 방 셈과 합계 표시가 이 값을 쓴다. */
+let qpBed = "";   // 베드 타입 「트윈」·「더블」·「싱글」 — 요금과 상관없고 예약요청 문구에만 실린다
 let qpRoom = "", qpNights = 2, qpRooms = 1, qpAdult = 4, qpChild = 0, qpAges = [], qpBirth = [];
 
 /* ══════════ 달력판 ══════════
@@ -2150,6 +2154,10 @@ function openPanel(x, kind){
   }
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
+  qpBed = "";
+  { const bt = $("#qpBedType"); bt.hidden = !(isH && roomsOf(x).length);
+    bt.querySelectorAll("button").forEach(b => { b.classList.remove("on");
+      b.onclick = () => { qpBed = b.dataset.bed; bt.querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b)); qpTell("", true); }; }); }
   $("#qpHoleLab").textContent = isH ? "룸 타입" : isMenuKind(kind) ? "메뉴 선택" : "라운드 선택";
   $("#qpDateLab").textContent = isH ? "체크인 - 체크아웃 날짜를 선택해주세요" : "날짜를 선택해주세요";
   $("#qpRoomsWrap").style.display  = isH ? "" : "none";   // 객실 수·성인·아동 묶음
@@ -2892,6 +2900,7 @@ function cartItem(){
   const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];
   if(isH)    parts.push(qpNights + "박 " + qpRooms + "실");
   if(option) parts.push(option);
+  if(isH && qpBed) parts.push(qpBed);
   parts.push(paxLabel());
   /* 아동 엑스트라 베드를 고를 수 있는 구성이면 고른 쪽을 적는다 — 예약요청에 그대로 실려 직원이 호텔에 그대로 넣는다 */
   if(isH && optBeds() > 0) parts.push(qpNoBed ? "아동 엑스트라 베드 없음(조식만)" : "아동 엑스트라 베드 추가");
@@ -2903,7 +2912,7 @@ function cartItem(){
   if(riders) parts.push("탑승 " + riders + "명");
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
-    option, date, dateEnd: end, time, riders,
+    option, bed: isH ? qpBed : "", date, dateEnd: end, time, riders,
     nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
@@ -2916,11 +2925,12 @@ function cartItem(){
     img: picsOf(dCur)[0] || ""
   };
 }
-const cartKeyOf = c => [c.kind, c.name, c.option, c.date, c.time || ""].join("|");
+const cartKeyOf = c => [c.kind, c.name, c.option, c.date, c.time || "", c.bed || ""].join("|");
 function addToCart(direct){
   if(!dCur) return;
   if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
   if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 선택해 주세요.");
+  if(qpKind === "hotels" && !qpBed)    return qpTell("<b>베드 타입</b>(트윈/더블/싱글)을 선택해 주세요.");
   /* 아동이 있으면 생년월일을 꼭 받는다(사장님 2026-09-19) — 아동 요금(엑스트라 아동·아동 조식)은 그 호텔의 아동 나이(childMax, 11 또는 12)까지만 적용된다 */
   if(qpKind === "hotels" && qpChild){
     syncAges();
