@@ -463,7 +463,9 @@ export async function onRequest(context) {
     if (action === 'list') {
       const rows = await srSelect(KEY,
         'data_key=like.' + PREFIX + '*&select=data_key,data,updated_at&limit=1000');
+      /* like 의 「_」는 아무 글자 하나라 golf_booktrash_(삭제한 것)까지 걸린다 — 정확히 golf_book_ 로 시작하는 것만(2026-09-29 삭제 안 됨 사고) */
       const list = (Array.isArray(rows) ? rows : [])
+        .filter(r => r && String(r.data_key || '').startsWith(PREFIX))
         .map(r => r && r.data)
         .filter(x => x && x.no)
         .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
