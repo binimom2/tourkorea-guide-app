@@ -520,7 +520,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-occrow>span{font-size:13.5px;font-weight:800;line-height:1.3}
 .qp-occrow>span i{display:block;font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
 .qp-perroom{margin:-2px 0 10px;padding:7px 10px;border-radius:9px;background:#f4faf6;border:1px solid #cfe3d6;font-size:12.5px;font-weight:800;color:var(--fairway);line-height:1.45}
-.qp-perroom[hidden]{display:none}
+.qp-perroom[hidden],.qp-bedpick[hidden]{display:none}
+#qpBedType{margin-top:10px}
 .qp-occrow .qp-pax{grid-template-columns:32px 56px 32px;flex:none}
 .qp-occrow .qp-pax button{padding:5px 0;font-size:15px}
 .qp-occrow .qp-pax span{font-size:14px}
@@ -953,7 +954,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
                 </div>
               </div>
               <div class="qp-occrow">
-                <span>성인<i>전체 인원수</i></span>
+                <span>성인<i>객실당</i></span>
                 <div class="qp-pax">
                   <button type="button" id="qpAMinus" aria-label="성인 줄이기">−</button>
                   <span id="qpAdultN">2명</span>
@@ -961,7 +962,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
                 </div>
               </div>
               <div class="qp-occrow">
-                <span>아동<i id="qpChildAge">만 11세까지</i></span>
+                <span>아동<i>객실당 · <em id="qpChildAge" style="font-style:normal">만 11세까지</em></i></span>
                 <div class="qp-pax">
                   <button type="button" id="qpCMinus" aria-label="아동 줄이기">−</button>
                   <span id="qpChildN">0명</span>
@@ -977,7 +978,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
             <div class="qp-lab" id="qpHoleLab">라운드 선택</div>
             <div class="qp-holes" id="qpHoles"></div>
             <!-- 호텔만 — 베드 타입(트윈/더블/싱글), 모든 객실 한 번에. 섞이면 장바구니에 따로 담는다(사장님 2026-09-29) -->
-            <div class="qp-bedpick" id="qpBedType" hidden><span>베드 타입</span>
+            <div class="qp-bedpick" id="qpBedType" hidden><span>침대 타입</span>
               <button type="button" data-bed="트윈">트윈</button><button type="button" data-bed="더블">더블</button><button type="button" data-bed="싱글">싱글</button></div>
           </div>
           <!-- 인원수와 룸 갯수로 3인 방이 생기면 여기에 알려 준다 -->
@@ -2139,6 +2140,7 @@ function openPanel(x, kind){
     $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
       qpRoom = b.dataset.room;
       $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
+      $("#qpBedType").hidden = false;   // 룸 타입을 고르면 침대 타입 선택이 나온다
       drawTriple();         // 객실마다 3인 추가요금이 다르다
       qpCalc();
     });
@@ -2155,7 +2157,7 @@ function openPanel(x, kind){
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
   qpBed = "";
-  { const bt = $("#qpBedType"); bt.hidden = !(isH && roomsOf(x).length);
+  { const bt = $("#qpBedType"); bt.hidden = true;   // 룸 타입을 클릭하면 그 아래에 펼쳐진다(사장님 2026-09-29)
     bt.querySelectorAll("button").forEach(b => { b.classList.remove("on");
       b.onclick = () => { qpBed = b.dataset.bed; bt.querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b)); qpTell("", true); }; }); }
   $("#qpHoleLab").textContent = isH ? "룸 타입" : isMenuKind(kind) ? "메뉴 선택" : "라운드 선택";
@@ -2183,7 +2185,7 @@ function openPanel(x, kind){
      손님이 8명으로 고쳐 두었으면 다른 골프장을 열어도 8명 그대로다.
      둘이 같은 칸(qpPax)을 쓰고 있어, 이렇게 갈라 두지 않으면 호텔의 2명이 골프장으로 넘어온다. */
   if(isH){
-    qpAdult = 2; qpChild = 0; qpAges = []; qpBirth = []; qpPax = 2; qpNoBed = false;
+    qpAdult = 2; qpChild = 0; qpAdultPer = 2; qpChildPer = 0; qpAges = []; qpBirth = []; qpPax = 2; qpNoBed = false;
     qpNights = 1; qpRooms = 1;
     closeOcc();          // 다른 곳을 열 때 펼쳐진 채로 남지 않게
     drawAges();
@@ -2275,29 +2277,19 @@ function drawTriple(){
 /* 골프는 「인원」 한 칸, 호텔은 「객실 선택」 묶음 안의 객실·성인·아동을 센다 */
 function drawCnt(){
   $("#qpPaxN").textContent   = qpPax + cntUnit(qpKind);   // 골프장·스파는 「명」, 차량은 「대」
-  $("#qpAdultN").textContent = qpAdult + "명";
-  $("#qpChildN").textContent = qpChild + "명";
+  $("#qpAdultN").textContent = qpAdultPer + "명";   // 객실당
+  $("#qpChildN").textContent = qpChildPer + "명";
   $("#qpChildAge").textContent = "만 " + childMax() + "세까지";   // 호텔마다 다르다(11 또는 12)
   $("#qpRoomN").textContent  = qpRooms + "실";
   drawRoomsBtn();
 }
 /* 접었을 때 보이는 한 줄 — 「객실 1실 · 성인 2명 · 아동 1명」 */
 function drawRoomsBtn(){
-  const per = perRoomText();
+  /* 「객실 2실 · 객실당 성인 2명 · 아동 1명」 — 2실 이상이면 전체 인원도 한 줄 더 */
   $("#qpRoomsBtn").textContent =
-    "객실 " + qpRooms + "실 · 성인 " + qpAdult + "명" + (qpChild ? " · 아동 " + qpChild + "명" : "") + (per ? " (" + per + ")" : "");
+    "객실 " + qpRooms + "실 · 객실당 성인 " + qpAdultPer + "명" + (qpChildPer ? " · 아동 " + qpChildPer + "명" : "");
   const box = $("#qpPerRoom");
-  if(box){ box.hidden = !per; box.textContent = per; }
-}
-/* 객실 2실 이상이면 룸당 인원을 적어 준다(사장님 2026-09-29 「성인 인원수가 헷갈린다」) — 인원은 전체 인원, 방마다 고르게 나눈다.
-   고르게 나뉘면 「룸당 성인 2명」, 안 나뉘면 「1실 성인 2명 / 2실 성인 1명」 */
-function perRoomText(){
-  if(qpKind !== "hotels" || qpRooms < 2) return "";
-  const r = qpRooms, cut = n => Array.from({ length: r }, (_, i) => Math.floor(n / r) + (i < n % r ? 1 : 0));
-  const a = cut(qpAdult), c = cut(qpChild);
-  const one = i => "성인 " + a[i] + "명" + (c[i] ? " · 아동 " + c[i] + "명" : "");
-  const even = a.every(v => v === a[0]) && c.every(v => v === c[0]);
-  return even ? "룸당 " + one(0) : a.map((_, i) => (i + 1) + "실 " + one(i)).join(" / ");
+  if(box){ box.hidden = qpRooms < 2; box.textContent = "전체 성인 " + qpAdult + "명" + (qpChild ? " · 아동 " + qpChild + "명" : ""); }
 }
 function openOcc(){ $("#qpOcc").hidden = false; }
 function closeOcc(){ $("#qpOcc").hidden = true; }
@@ -2382,12 +2374,11 @@ function setCnt(n){
   drawCnt(); qpCalc();
 }
 function curCnt(){ return qpPax; }
-function setAdult(n){
-  qpAdult = Math.max(1, Math.min(40, n));
-  syncPax(); drawCnt(); drawTriple(); qpCalc();
-}
-function setChild(n){
-  qpChild = Math.max(0, Math.min(10, n));
+/* 호텔 성인·아동은 «객실당»으로 고른다(사장님 2026-09-29) — 전체 인원(qpAdult·qpChild) = 객실당 × 객실 수.
+   요금·예약요청은 전과 같이 전체 인원으로 센다. 방마다 인원이 다르면 장바구니에 따로 담는다 */
+let qpAdultPer = 2, qpChildPer = 0;
+function applyPer(){
+  qpAdult = qpAdultPer * qpRooms; qpChild = qpChildPer * qpRooms;
   qpAges.length = qpChild; qpBirth.length = qpChild;          // 줄이면 뒤에서 지워지고
   for(let i = 0; i < qpChild; i++){                           // 늘리면 빈 칸으로 생긴다
     if(qpAges[i] == null)  qpAges[i]  = "";
@@ -2395,10 +2386,9 @@ function setChild(n){
   }
   syncPax(); drawCnt(); drawAges(); drawTriple(); qpCalc();
 }
-function setRooms(n){
-  qpRooms = Math.max(1, Math.min(20, n));
-  drawCnt(); drawTriple(); qpCalc();
-}
+function setAdult(n){ qpAdultPer = Math.max(1, Math.min(4, n)); applyPer(); }
+function setChild(n){ qpChildPer = Math.max(0, Math.min(3, n)); applyPer(); }
+function setRooms(n){ qpRooms = Math.max(1, Math.min(20, n)); applyPer(); }
 function qpBox(html){ $("#qpPrice").innerHTML = html; }
 /* 「성인 4명 · 아동 2명(7세·4세)」 — 나이를 안 적은 아동은 나이 없이 센다 */
 function paxLabel(){
@@ -2930,7 +2920,7 @@ function addToCart(direct){
   if(!dCur) return;
   if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
   if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 선택해 주세요.");
-  if(qpKind === "hotels" && !qpBed)    return qpTell("<b>베드 타입</b>(트윈/더블/싱글)을 선택해 주세요.");
+  if(qpKind === "hotels" && !qpBed)    return qpTell("<b>침대 타입</b>(트윈/더블/싱글)을 선택해 주세요.");
   /* 아동이 있으면 생년월일을 꼭 받는다(사장님 2026-09-19) — 아동 요금(엑스트라 아동·아동 조식)은 그 호텔의 아동 나이(childMax, 11 또는 12)까지만 적용된다 */
   if(qpKind === "hotels" && qpChild){
     syncAges();
