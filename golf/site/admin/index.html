@@ -1242,7 +1242,7 @@ function bookCardHtml(b){
       +(b.assign&&b.assign.by
         ? '<span class="bkasg">담당 '+esc(b.assign.by)+'</span>'
           +(b.assign.by!==String(currentUser&&currentUser.id||'').toLowerCase()&&b.status!=='cancel'?'<button class="ghost bkasgbtn" data-asg="'+esc(b.no)+'">내가 맡기</button>':'')
-        : (b.status!=='cancel'?'<button class="add bkasgbtn" data-asg="'+esc(b.no)+'">🙋 담당하기 ('+esc(currentUser&&currentUser.id||'')+')</button>':''))
+        : (b.status!=='cancel'?'<span class="bkasg" style="background:#FFF1EE;color:#B3261E">담당자 없음</span>':''))
       +'<span class="bktot">'+Number(b.total||0).toLocaleString('ko-KR')+'원</span>'
     +'</div>'
     /* 로그인한 여행사가 사이트에서 보낸 건은 이름 앞에 여행사명(사장님 2026-09-29) */
@@ -1257,7 +1257,12 @@ function bookCardHtml(b){
         +'<details class="bkcost"><summary>원가 내역 (직원 확인용)</summary><ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul></details>'
       : (c.memo?'<div class="bkmemo">“'+esc(c.memo)+'”</div>':'')
         +'<ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul>')
-    +voucherRowHtml(b)
+    /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
+    +((!b.assign||!b.assign.by)&&b.status!=='cancel'
+      ? '<div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기 ('+esc(currentUser&&currentUser.id||'')+')</button>'
+        +'<span class="bkvhint">이 건을 맡아 진행할 직원이 누르세요 — 담당자로 이름이 붙고 「② 호텔수배 중」이 됩니다. 누른 뒤에 컨펌·인보이스 단추가 나옵니다</span></div>'
+        +'<div class="bkfoot"><button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button></div></div>'
+      : voucherRowHtml(b)
     +'<div class="bkfoot">'
       +'<select data-st="'+esc(b.no)+'">'
       +BOOK_STATUS.map(s=>'<option value="'+s.k+'"'+(s.k===b.status?' selected':'')+'>'+s.t+'</option>').join('')
@@ -1267,7 +1272,7 @@ function bookCardHtml(b){
       +((b.staff&&b.staff.by)?'<span class="bkby">'+esc(b.staff.by)+' · '+esc(bookWhen(b.staff.at))+'</span>':'')
       /* 테스트 기간용 삭제(사장님 2026-09-23 — 나중에 막는다). 서버가 golf_booktrash_<번호>로 옮겨 둔다 */
       +'<button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button>'
-    +'</div></div>';
+    +'</div></div>');
 }
 /* ══ 바우처(예약 확정서) — 직원이 「컨펌」을 누르면 서버가 확정번호·링크를 만든다(사장님 2026-09-10).
    손님에게는 링크를 카톡(문구 복사해서 붙여넣기)이나 이메일(서버 자동 발송)로 보낸다.
