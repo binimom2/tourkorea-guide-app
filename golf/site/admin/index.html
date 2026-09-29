@@ -1142,7 +1142,7 @@ const BOOK_STATUS=[
   {k:'done',  t:'⑤ 바우처 발급 · 완료',   c:'#3C6E71'},
   {k:'cancel',t:'취소',   c:'#9AA5A0'}
 ];
-let BOOKS=null, bookFilter='live', bookQ='';       // live = 접수+진행중만, all = 전부
+let BOOKS=null, bookFilter='live', bookQ='';       // live = 완료·취소 빼고 전부, all = 전부
 async function bookApi(action,payload){
   try{
     const {data:{session}}=await sb.auth.getSession();
@@ -1191,7 +1191,8 @@ function drawBooks(){
   }
   const all=BOOKS.list||[];
   /* 처리할 것 = 접수·진행중 + 여행사가 보낸 «추가 요청 메시지»를 아직 확인 안 한 건(컨펌 뒤에 온 메시지도 놓치지 않게, 사장님 2026-09-21) */
-  const bookLive=b=>b.status==='new'||b.status==='doing'||(+b.msgUnread>0);
+  /* 처리할 것 = ⑤완료·취소가 아닌 것 전부(사장님 2026-09-29) — 인보이스 보내고 입금 기다리는 건, 입금 뒤 바우처 보낼 건도 할 일이다 */
+const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
   /* 찾기(사장님 2026-09-23) — 접수번호·견적번호·확정번호, 여행사·손님 이름·연락처, 팀명, 날짜(접수일·이용일·일정), 골프장·호텔 이름.
      찾는 말이 있으면 「처리할 것/전체」와 상관없이 전부에서 찾는다 */
   const q=bookQ.trim().toLowerCase().replace(/\s+/g,'');
