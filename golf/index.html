@@ -242,6 +242,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
    수배요청서·견적서 미리보기도 이 상태 위에 뜨므로 바탕이 어수선하지 않다. 「불러와서 수정」을 누르면 견적기가 다시 보인다 */
 body.boxonly #golfApp>*:not(#qhModal){visibility:hidden}   /* 보관함(#qhModal)은 #golfApp 안에 있어 같이 감추면 안 된다 */
 body.boxonly #qhModal{visibility:visible}
+body.boxonly #quoteHost{visibility:visible}   /* 견적서 그리는 자리(화면 밖) — 감추면 「견적서 다시 보기」가 흰 종이로 찍힌다(2026-09-29) */
 body.boxonly{background:transparent}                          /* 사이트 팝업 틀도 투명(boxmode) — 보관함 창만 사이트 위에 뜬다 */
 body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important}   /* 인라인 스타일보다 앞서야 해서 !important */
 /* 보관함 창 크게(사장님 2026-09-23 「사이즈 키워줘」) — 견적기 안 「내 견적 보관함」 단추로 열어도 같게. 줄마다 인라인 크기라 통째로 키운다 */
