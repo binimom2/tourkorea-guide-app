@@ -2068,7 +2068,10 @@ let QH_TAB='quote';
 /* 행사 종료일(귀국일)이 지난 건·취소된 건은 수배 진행에서 빠진다(사장님 2026-09-23) */
 const qhToday=()=>{ const t=new Date(); t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); return t.toISOString().slice(0,10); };
 const qhLive=r=>!!r.book&&!(r.end&&r.end<qhToday())&&!(r.book.live&&r.book.live.status==='cancel');
-const qhIn=(r,t)=>t==='quote'?!r.book:t==='book'?qhLive(r):!!(r.book&&r.book.live&&r.book.live.url);
+/* 같은 번호 묶음(S003 · S003-1 · S003-2) 가운데 하나라도 수배 요청했으면 나머지는 견적 칸에서 뺀다 — 지우진 않고, 찾기 글을 넣으면 보인다(사장님 2026-09-29) */
+let QH_BOOKED=new Set(), QH_Q='';
+const qhBase=no=>{ const m=/^(\d{8}-[A-Z]\d+)(?:-\d+)?$/.exec(String(no||'')); return m?m[1]:String(no||''); };
+const qhIn=(r,t)=>t==='quote'?(!r.book&&(!!QH_Q||!QH_BOOKED.has(qhBase(r.quoteNo)))):t==='book'?qhLive(r):!!(r.book&&r.book.live&&r.book.live.url);
 function setQhTab(t){ QH_TAB=t; renderQuoteHistory(); }
 /* 보관함 닫기 — 「보관함만 보기」로 열렸으면(사이트 상단 아이콘) 뒤에 견적기를 드러내지 않고 팝업째 닫는다(사장님 2026-09-22) */
 function closeQuoteHistory(){
@@ -2080,6 +2083,7 @@ function closeQuoteHistory(){
 function renderQuoteHistory(){
   const q=(($('#qhSearch')||{}).value||'').trim().toLowerCase();
   let rows=QH_LIST.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route].join(' ').toLowerCase().includes(q));
+  QH_Q=q; QH_BOOKED=new Set(QH_LIST.filter(r=>r&&r.book).map(r=>qhBase(r.quoteNo)));
   const tb=$('#qhTabs');
   if(tb){
     const n=k=>rows.filter(r=>qhIn(r,k)).length;
