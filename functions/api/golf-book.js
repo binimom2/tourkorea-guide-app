@@ -437,6 +437,13 @@ export async function onRequest(context) {
         totalBaht: items.reduce((a, x) => a + x.baht, 0),
         staff: { memo: '', by: '', at: '' },
       };
+      /* 로그인한 여행사가 보낸 것이면 여행사명을 남긴다(관리 화면 이름 앞, 2026-09-29).
+         rec.agency 는 «실시간 견적 → 인보이스» 건 표시라 쓰지 않고 따로 from 에 둔다 */
+      try {
+        const u = await getUser(request);
+        const um = (u && u.user_metadata) || {};
+        if (u && um.kind === 'agency') rec.from = { id: loginIdOf(u), company: s(um.company, 60) };
+      } catch (e) {}
       await srUpsert(KEY, { data_key: PREFIX + rec.no, data: rec, updated_at: rec.at });
       /* 손님에게는 접수번호만 돌려준다 */
       return json({ ok: true, no: rec.no, at: rec.at });

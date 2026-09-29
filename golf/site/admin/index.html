@@ -1193,7 +1193,7 @@ function drawBooks(){
      찾는 말이 있으면 「처리할 것/전체」와 상관없이 전부에서 찾는다 */
   const q=bookQ.trim().toLowerCase().replace(/\s+/g,'');
   const hay=b=>{ const c=b.customer||{}, a=b.agency||{}, qt=b.quote||{}, v=b.voucher||{};
-    return [b.no,a.quoteNo,a.company,a.contact,v.cno,c.name,c.tel,c.email,qt.team,qt.start,qt.end,String(b.at||'').slice(0,10),
+    return [b.no,a.quoteNo,a.company,(b.from&&b.from.company)||'',a.contact,v.cno,c.name,c.tel,c.email,qt.team,qt.start,qt.end,String(b.at||'').slice(0,10),
       ...(b.items||[]).flatMap(it=>[it.name,it.option,it.date,it.dateEnd,it.region]),
       ...((qt.days||[]).flatMap(d=>[d.date,d.hotel,d.course]))].join(' ').toLowerCase().replace(/\s+/g,''); };
   const list=q?all.filter(b=>hay(b).includes(q)):(bookFilter==='all'?all:all.filter(bookLive));
@@ -1234,7 +1234,8 @@ function bookCardHtml(b){
       +'<span class="bkat">'+esc(bookWhen(b.at))+'</span>'
       +'<span class="bktot">'+Number(b.total||0).toLocaleString('ko-KR')+'원</span>'
     +'</div>'
-    +'<div class="bkwho"><b>'+esc(c.name||'')+'</b> <span>'+esc(who)+'</span></div>'
+    /* 로그인한 여행사가 사이트에서 보낸 건은 이름 앞에 여행사명(사장님 2026-09-29) */
+    +'<div class="bkwho">'+((b.from&&b.from.company)?'<b style="color:#0b3d91">['+esc(b.from.company)+']</b> ':'')+'<b>'+esc(c.name||'')+'</b> <span>'+esc(who)+'</span></div>'
     /* 여행사 수배 건(실시간 견적) — 줄줄이 펼치지 않고 「📄 수배요청서」 한 장으로 본다(사장님 2026-09-21 "수배서 파일을 꽂아주세요").
        원가 줄은 직원 확인용이라 접어 둔다. b.quote 가 없는 옛 건은 전처럼 메모·줄을 그대로 보여 준다 */
     +((b.agency&&b.quote)

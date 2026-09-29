@@ -3155,8 +3155,17 @@ async function sendBooking(){
   const btn = $("#bkSend");
   btn.disabled = true; btn.textContent = "보내는 중…"; bkMsg("");
   try{
+    /* 로그인한 여행사면 토큰을 같이 보낸다 — 서버가 여행사명을 예약에 남겨 관리 화면 이름 앞에 띄운다(사장님 2026-09-29) */
+    const hd = { "content-type": "application/json" };
+    try{
+      if(agency && agency.approved){
+        const { data } = await (await agClient()).auth.getSession();
+        const tk = data && data.session && data.session.access_token;
+        if(tk) hd.Authorization = "Bearer " + tk;
+      }
+    }catch(e){}
     const r = await fetch(API + "/api/golf-book", {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST", headers: hd,
       body: JSON.stringify({ action: "create", items: directItem ? [directItem] : CART.filter(c => !c.off), customer })
     });
     const j = await r.json();
