@@ -582,7 +582,7 @@ export async function onRequest(context) {
       if (body.msgRead === true) rec.msgUnread = 0;                // 여행사 「추가 요청 메시지」를 직원이 확인함
       /* 「담당하기」 — 누른 직원(로그인 아이디)이 이 건의 담당자가 된다(사장님 2026-09-29) */
       if (body.assign === true) {
-        rec.assign = { by: loginIdOf(user), at: new Date().toISOString() };
+        rec.assign = { by: loginIdOf(user), name: s(user.user_metadata && user.user_metadata.name, 40), at: new Date().toISOString() };
         if (rec.status === 'new') rec.status = 'doing';           // 담당자가 붙으면 저절로 「② 호텔수배 중」(손님 쪽엔 진행중)
       }
       if (body.memo != null) rec.staff = { memo: s(body.memo, MAX_TEXT), by: loginIdOf(user), at: new Date().toISOString() };
