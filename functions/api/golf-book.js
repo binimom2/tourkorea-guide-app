@@ -154,7 +154,7 @@ function voucherToken() {
 const VOUCHER_DEFAULT = {
   name: '투어코리아 (TOURKOREA)', en: 'We\'ve Tour Thailand', regNo: '', tel: '', tel2: '', email: '',
   issuer: '', emergency: '',
-  bank: '', invoiceNote: '',   // 인보이스(여행사 건) — 입금 계좌 · 안내 문구(사장님 2026-09-21)
+  bank: '우리은행 111-222-3333 투어코리아', invoiceNote: '',   // 인보이스 입금 계좌 · 안내 문구(사장님 2026-09-21) — 기본 계좌(2026-09-29), 관리 화면에 적으면 그쪽이 우선
   notes: '',
   terms: [
     '호텔 체크인 시 프론트 데스크에 여권과 함께 예약확정서(바우처)를 제시해 주세요.',
@@ -192,6 +192,7 @@ function companyOf(site) {
   const v = Object.assign({}, VOUCHER_DEFAULT, (site && site.voucher) || {});
   const o = {};
   for (const k of Object.keys(VOUCHER_DEFAULT)) o[k] = s(v[k], k === 'notes' || k === 'terms' || k === 'invoiceNote' ? 4000 : k === 'bank' ? 600 : 200);
+  if (!o.bank) o.bank = VOUCHER_DEFAULT.bank;   // 관리 화면 입금 안내 칸을 비워 두면 기본 계좌
   return o;
 }
 /* ── 인보이스(사장님 2026-09-21) — 실시간 견적으로 들어온 여행사 수배 건(rec.agency)은 컨펌하면 바우처 대신 인보이스가 나간다.
