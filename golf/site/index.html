@@ -1356,7 +1356,7 @@ function priceHtml(p, kind){
   if(isMenuKind(kind) && !(p && p.menu && p.menu.length)) return "";
   const krw = p && (kind === "hotels" ? p.fromKrw   : kind === "courses" ? p.from18     : p.fromKrw);
   const bt  = p && (kind === "hotels" ? p.fromBaht  : kind === "courses" ? p.from18Baht : p.fromBaht);
-  const inc = kind === "hotels" ? "1박 · 1실 기준" : kind === "courses" ? "그린피+캐디+카트 포함"
+  const inc = kind === "hotels" ? "1박 · 1객실 기준" : kind === "courses" ? "그린피+캐디+카트 포함"
             : "메뉴 " + p.menu.length + "가지 · 1" + unitOf(kind) + " 기준";
   return '<div class="price"><span class="pinc">' + inc + '</span>'
     + (krw
@@ -1832,7 +1832,7 @@ function drawRooms(x, kind){
     openLbox(0, pics[Number(el.dataset.r)]);
   });
   $("#dRoomFoot").textContent =
-    "1실 1박 기준입니다. 날짜(성수기·주말)에 따라 달라져, 오른쪽에서 객실과 날짜를 선택하시면 그날 요금으로 계산해 드립니다.";
+    "1객실 1박 기준입니다. 날짜(성수기·주말)에 따라 달라져, 오른쪽에서 객실과 날짜를 선택하시면 그날 요금으로 계산해 드립니다.";
 }
 
 function openDetail(x, kind){
@@ -2211,15 +2211,20 @@ function optBeds(){ return Math.max(0, childBeds() - quadRooms()); }        // �
 function bedCount(){ return tripleRooms() - (qpNoBed ? optBeds() : 0); }     // 실제로 놓는 엑스트라 베드 수
 function bfCount(){ return quadRooms() + (qpNoBed ? optBeds() : 0); }        // 아동 조식 수
 /* 혼자 쓰는 방(싱글) 수 — 방마다 2명씩 채우고 모자란 만큼. 3명 2실이면 1실 */
+/* 2026-09-29부터 손님이 고른 싱글 객실 수 그대로 — 서버에 singles로 보낸다 */
 function singleRooms(){
   if(qpKind !== "hotels" || qpRooms < 1) return 0;
-  return Math.max(0, Math.min(qpRooms, qpRooms * 2 - qpPax));
+  return qpBeds["싱글"];
 }
-/* 3명 이상 드는 방이 몇 개인가(=엑스트라 베드 수) — 2인 1실이 기준이다.
-   4명 2실이면 0, 3명 1실이면 1, 5명 2실이면 1, 6명 2실이면 2. */
+/* 3명 이상 드는 방이 몇 개인가(=엑스트라 베드 수).
+   2026-09-29부터: 고른 트리플 수 + 트윈·더블에 정원보다 더 드는 사람(아동 3·4인째)만큼 */
 function tripleRooms(){
   if(qpKind !== "hotels" || qpRooms < 1) return 0;   // 룸 갯수를 아직 안 골랐으면 셈하지 않는다
-  return Math.max(0, Math.min(qpRooms, qpPax - qpRooms * 2));
+  return triOf(qpBeds, qpPax);
+}
+function triOf(beds, pax){
+  const cap = beds["트윈"] * 2 + beds["더블"] * 2 + beds["싱글"] + beds["트리플"] * 3;
+  return beds["트리플"] + Math.max(0, Math.min(beds["트윈"] + beds["더블"], pax - cap));
 }
 /* 4명 드는 방이 몇 개인가(=조식 쿠폰 수). 4인째는 **아동 2명이 함께 들 때만** 된다(사장님) —
    성인 2 + 아동 2. 그래서 아동 2명마다 방 하나가 4인방이 될 수 있다. 4명 1실(아동 2)이면 1. */
@@ -2237,7 +2242,7 @@ function drawTriple(){
   if(qpPax > roomCap()){
     box.style.display = "";
     box.innerHTML = "한 방에 <b>세 분</b>까지 드실 수 있습니다(성인 2명 + 아동 2명이면 네 분) — "
-      + qpPax + "명이면 룸 갯수를 <b>" + Math.ceil(qpPax / 3) + "실</b> 이상으로 잡아 주세요.";
+      + qpPax + "명이면 룸 갯수를 <b>" + Math.ceil(qpPax / 3) + "객실</b> 이상으로 잡아 주세요.";
     return;
   }
   const n3 = tripleRooms(), n4 = quadRooms(), t = triplePriceOf();
@@ -2246,7 +2251,7 @@ function drawTriple(){
   /* 금액은 적지 않는다 — 아래 큰 숫자가 이미 «트리플 객실 1박 요금»이다(사장님 2026-09-08).
      여기서 또 「엑스트라 베드 52,000원」을 적으면 두 숫자를 더해 읽으시게 된다. */
   const opt = optBeds(), beds = bedCount();
-  box.innerHTML = "세 분 이상 드는 방 <b>" + n3 + "실</b> — "
+  box.innerHTML = "세 분 이상 드는 방 <b>" + n3 + "객실</b> — "
     + (beds ? "3인째는 <b>엑스트라 베드</b>" : "아동은 침대 없이 <b>조식</b>만")
     + (beds && bfCount() ? ", 침대 없이 드는 아동은 <b>조식</b>만" : "") + " 요금이 붙습니다."
     /* 3인째가 아동인 방만 고를 수 있다 — 성인 3명은 엑스트라 베드가 무조건 들어간다 */
@@ -2388,7 +2393,13 @@ function setChild(n){
    객실 수(qpRooms) = 넷의 합 — 요금은 전과 같이 총인원·객실 수로 센다. 침대 타입은 예약요청 문구에 실린다 */
 const BED_TYPES = ["트윈", "더블", "싱글", "트리플"];
 let qpBeds = { "트윈": 1, "더블": 0, "싱글": 0, "트리플": 0 };
-function bedsLabel(){ return BED_TYPES.filter(t => qpBeds[t]).map(t => t + " " + qpBeds[t] + "실").join(" · "); }
+function bedsLabel(){ return BED_TYPES.filter(t => qpBeds[t]).map(t => t + " " + qpBeds[t] + "객실").join(" · "); }
+/* 담은 뒤(장바구니·예약요청) 표기는 「객실1 트윈 · 객실2 트윈 · 객실3 싱글」(사장님 2026-09-29) */
+function roomsListLabel(){
+  const out = [];
+  BED_TYPES.forEach(t => { for(let i = 0; i < qpBeds[t]; i++) out.push("객실" + (out.length + 1) + " " + t); });
+  return out.join(" · ");
+}
 function bedCap(){ return qpBeds["트윈"] * 2 + qpBeds["더블"] * 2 + qpBeds["싱글"] + qpBeds["트리플"] * 3; }
 function setBed(t, n){
   qpBeds[t] = Math.max(0, Math.min(20, n));
@@ -2399,7 +2410,7 @@ function drawBedRows(){
   const box = $("#qpBedRows"); if(!box) return;
   box.innerHTML = BED_TYPES.map(t => '<div class="qp-occrow"><span>' + t + '</span><div class="qp-pax">'
     + '<button type="button" data-bm="' + t + '" aria-label="' + t + ' 줄이기">−</button>'
-    + '<span>' + qpBeds[t] + '실</span>'
+    + '<span>' + qpBeds[t] + '객실</span>'
     + '<button type="button" data-bp="' + t + '" aria-label="' + t + ' 늘리기">＋</button></div></div>').join("");
   box.querySelectorAll("[data-bm]").forEach(b => b.onclick = () => setBed(b.dataset.bm, qpBeds[b.dataset.bm] - 1));
   box.querySelectorAll("[data-bp]").forEach(b => b.onclick = () => setBed(b.dataset.bp, qpBeds[b.dataset.bp] + 1));
@@ -2538,13 +2549,13 @@ async function qpCalc(){
     const cnt = qpKind === "hotels" ? qpRooms * qpNights : qpPax;
     const ex = extraSum();
     qpBox('<div class="k">' + (qpKind === "hotels"
-            ? (qpRoom ? esc(qpRoom) + " · " : "") + "1실 1박 기준 · 최저가"
+            ? (qpRoom ? esc(qpRoom) + " · " : "") + "1객실 1박 기준 · 최저가"
             : "1인 기준 · " + qpHoles + "홀 최저가") + '</div>'
       + '<div class="v">' + base.toLocaleString("ko-KR") + '<em>원~</em>'
         + BT(baseBt ? '<b class="vbt">(' + baseBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
       + (ex.krw ? '<div class="exline">' + esc(ex.label) + ': ' + ex.krw.toLocaleString("ko-KR") + '원</div>' : '')
       + '<div class="sum">'
-        + (qpKind === "hotels" ? esc(paxLabel()) + ' · ' + qpRooms + '실 ' + qpNights + '박 합계: ' : qpPax + '명 합계: ')
+        + (qpKind === "hotels" ? esc(paxLabel()) + ' · ' + qpRooms + '객실 ' + qpNights + '박 합계: ' : qpPax + '명 합계: ')
         + (base * cnt + ex.krw).toLocaleString("ko-KR") + '원'
         + BT(baseBt ? ' (' + (baseBt * cnt + ex.baht).toLocaleString("ko-KR") + '바트)' : '') + '</div>'
       + '<div class="ask" style="margin-top:6px">'
@@ -2568,6 +2579,7 @@ async function qpCalc(){
             date, nights: qpNights, rooms: qpRooms, pax: qpPax,
             adult: qpAdult, child: qpChild,
             childAges: qpAges.filter(v => v !== "" && v != null),
+            singles: singleRooms(),
             extraAdult: bfCount(), extraChild: bedCount() }   // 아동 베드를 «추가 안 함»으로 고르면 베드 → 조식으로 옮겨 센다
         : { region: qpItem.r, course: qpItem.n, holes: qpHoles, date, pax: qpPax })
     });
@@ -2605,7 +2617,7 @@ async function qpCalc(){
          섞였을 때 큰 숫자는 «방 하나 1박 평균»이다(합계가 정본). */
       const sglN = j.singles || 0, allSgl = sglN > 0 && sglN === j.rooms;
       qpBox('<div class="k">' + (j.room ? esc(j.room) + " · " : "")
-          + (allTri ? (quadN ? '성인 2+아동 2 1박 · ' : '트리플 1박 · ') : allSgl ? '싱글(1인 사용) 1박 · ' : (sglN ? '1실 1박 평균 · ' : ''))
+          + (allTri ? (quadN ? '성인 2+아동 2 1박 · ' : '트리플 1박 · ') : allSgl ? '싱글(1인 사용) 1박 · ' : (sglN ? '1객실 1박 평균 · ' : ''))
           + esc(j.date) + ' 체크인 ' + j.nights + '박</div>'
         + '<div class="v">' + bigKrw.toLocaleString("ko-KR") + '<em>원</em>'
           + BT(bigBt ? '<b class="vbt">(' + bigBt.toLocaleString("ko-KR") + '바트)</b>' : '') + '</div>'
@@ -2613,8 +2625,8 @@ async function qpCalc(){
         + ((j.extraKrw && !allTri) ? '<div class="exline">' + exLbl + ' × '
             + j.nights + '박: ' + j.extraKrw.toLocaleString("ko-KR") + '원</div>' : '')
         + (j.galaKrw ? '<div class="exline">' + esc(j.gala) + ' 의무 포함: ' + j.galaKrw.toLocaleString("ko-KR") + '원</div>' : '')
-        + ((sglN && !allSgl) ? '<div class="exline">1인 사용(싱글) ' + sglN + '실 · 2인 사용 ' + (j.rooms - sglN) + '실</div>' : '')
-        + '<div class="sum">' + esc(paxLabel()) + ' · ' + j.rooms + '실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
+        + ((sglN && !allSgl) ? '<div class="exline">1인 사용(싱글) ' + sglN + '객실· 2인 사용 ' + (j.rooms - sglN) + '객실</div>' : '')
+        + '<div class="sum">' + esc(paxLabel()) + ' · ' + j.rooms + '객실 ' + j.nights + '박 합계: ' + j.totalKrw.toLocaleString("ko-KR") + '원'
           + BT(j.totalBaht ? ' (' + j.totalBaht.toLocaleString("ko-KR") + '바트)' : '') + '</div>'
         + (j.note ? '<div class="ask" style="margin-top:6px">' + esc(j.note) + '</div>' : '')
         + fxNote());
@@ -2765,7 +2777,7 @@ function toAskForm(){
   if(qpKind === "hotels" && qpNights && !$("#qNights").value) $("#qNights").value = qpNights;
   /* 성인·아동(나이)·룸 갯수는 적을 칸이 없어서 문구에 실어 보낸다 */
   askRoomNote = qpKind === "hotels"
-    ? paxLabel() + (qpRooms >= 1 ? " · " + qpRooms + "실" : "")
+    ? paxLabel() + (qpRooms >= 1 ? " · " + qpRooms + "객실" : "")
     : "";
   closeDetail();
   document.getElementById("contact").scrollIntoView({ behavior:"smooth" });
@@ -2901,9 +2913,9 @@ function cartItem(){
   /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
   const yl = s => dparse(s).getFullYear() + "." + dlabel(s);
   const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];
-  if(isH)    parts.push(qpNights + "박 " + qpRooms + "실");
+  if(isH)    parts.push(qpNights + "박 " + qpRooms + "객실");
   if(option) parts.push(option);
-  if(isH && bedsLabel()) parts.push(bedsLabel());
+  if(isH && roomsListLabel()) parts.push(roomsListLabel());
   parts.push(paxLabel());
   /* 아동 엑스트라 베드를 고를 수 있는 구성이면 고른 쪽을 적는다 — 예약요청에 그대로 실려 직원이 호텔에 그대로 넣는다 */
   if(isH && optBeds() > 0) parts.push(qpNoBed ? "아동 엑스트라 베드 없음(조식만)" : "아동 엑스트라 베드 추가");
@@ -2915,7 +2927,7 @@ function cartItem(){
   if(riders) parts.push("탑승 " + riders + "명");
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
-    option, bed: isH ? bedsLabel() : "", date, dateEnd: end, time, riders,
+    option, bed: isH ? roomsListLabel() : "", beds: isH ? Object.assign({}, qpBeds) : null, date, dateEnd: end, time, riders,
     nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
@@ -3177,7 +3189,8 @@ async function repriceCart(){
     /* 스파·티켓… 은 날짜별 요금이 없어 서버에 물을 것이 없다 — 담긴 값 그대로 둔다 */
     if(isMenuKind(c.kind)) return;
     try{
-      let tri  = Math.max(0, Math.min(c.rooms, c.pax - c.rooms * 2));   // 엑스트라 베드 수(3인째)
+      /* 침대 타입별로 담긴 줄(c.beds, 2026-09-29~)은 그 수로, 옛 줄은 인원으로 센다 */
+      let tri  = c.beds ? triOf(c.beds, c.pax) : Math.max(0, Math.min(c.rooms, c.pax - c.rooms * 2));   // 엑스트라 베드 수(3인째)
       let quad = Math.max(0, Math.min(c.rooms, Math.floor((c.child || 0) / 2), c.pax - c.rooms * 3));   // 아동 조식 수(4인째, 아동 2명일 때)
       /* 담을 때 아동 엑스트라 베드를 «추가 안 함»으로 고른 줄은 그 베드를 조식으로 옮겨 센다(패널의 bedCount·bfCount와 같은 셈) */
       if(c.noBed){
@@ -3187,7 +3200,8 @@ async function repriceCart(){
       const body = c.kind === "hotels"
         ? { kind:"hotel", region:c.region, hotel:c.name, room:c.option, date:c.date,
             nights:c.nights, rooms:c.rooms, pax:c.pax, adult:c.adult, child:c.child,
-            childAges: c.ages || [], extraAdult: quad, extraChild: tri }
+            childAges: c.ages || [], extraAdult: quad, extraChild: tri,
+            singles: c.beds ? c.beds["싱글"] : undefined }
         : { region:c.region, course:c.name, date:c.date, pax:c.pax,
             holes: (String(c.option || "").replace(/[^0-9]/g, "") || "18") };
       const r = await fetch(API + "/api/golf-price", {

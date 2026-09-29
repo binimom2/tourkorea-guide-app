@@ -505,7 +505,10 @@ async function hotelPost(B, env) {
        조식만 드는 아동(exAdult) 을 뺀 나머지 아동 수까지가 아동 베드, 그 밖의 베드는 성인 베드다. */
   const pax = Math.max(0, Math.round(+B.pax || 0));
   const child = Math.max(0, Math.round(+B.child || 0));
-  const singles = pax > 0 ? Math.max(0, Math.min(rooms, rooms * 2 - pax)) : 0;
+  /* 손님이 싱글 객실 수를 직접 골랐으면(singles, 2026-09-29~) 그 수로, 아니면 예전처럼 인원으로 센다 */
+  const singles = (B.singles != null && B.singles !== '')
+    ? Math.max(0, Math.min(rooms, Math.round(+B.singles || 0)))
+    : (pax > 0 ? Math.max(0, Math.min(rooms, rooms * 2 - pax)) : 0);
   const bedChild = Math.max(0, Math.min(exChild, child - exAdult));
   const bedAdult = exChild - bedChild;
 

@@ -1457,7 +1457,7 @@ function renderVehicleUI(){
   nt.style.display=notes.length?'':'none';
 }
 /* 숙소 — 룸타입에 따라 실수가 달라진다. 4명이면 트윈은 2실이지만 싱글은 4실이다. */
-const ROOM_TYPES=[['twin','트윈 (2인 1실)'],['single','싱글 (1인 1실)'],['triple','트리플 (3인 1실)']];
+const ROOM_TYPES=[['twin','트윈 (2인 1객실)'],['single','싱글 (1인 1객실)'],['triple','트리플 (3인 1객실)']];
 const ROOM_SHORT={twin:'트윈',single:'싱글',triple:'트리플'};
 function roomCount(pax,rt){ return rt==='single'?pax:(rt==='triple'?Math.ceil(pax/3):Math.ceil(pax/2)); }
 // 박수는 지역 박수를 그대로 쓰되, 손으로 고쳤으면 고친 값을 쓴다
