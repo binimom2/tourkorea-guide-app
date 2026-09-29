@@ -2257,7 +2257,7 @@ function drawTriple(){
     /* 3인째가 아동인 방만 고를 수 있다 — 성인 3명은 엑스트라 베드가 무조건 들어간다 */
     + (opt ? '<div class="qp-bedpick"><span>아동 엑스트라 베드' + (opt > 1 ? " (" + opt + "개)" : "") + '</span>'
         + '<button type="button" data-nobed="0"' + (qpNoBed ? "" : ' class="on"') + '>추가</button>'
-        + '<button type="button" data-nobed="1"' + (qpNoBed ? ' class="on"' : "") + '>추가 안 함 (조식만)</button></div>' : "");
+        + '<button type="button" data-nobed="1"' + (qpNoBed ? ' class="on"' : "") + '>추가 안 함 (조식만 추가)</button></div>' : "");
   box.querySelectorAll("[data-nobed]").forEach(b => b.onclick = () => {
     qpNoBed = b.dataset.nobed === "1";
     drawTriple(); qpCalc();
@@ -2918,7 +2918,7 @@ function cartItem(){
   if(isH && roomsListLabel()) parts.push(roomsListLabel());
   parts.push(paxLabel());
   /* 아동 엑스트라 베드를 고를 수 있는 구성이면 고른 쪽을 적는다 — 예약요청에 그대로 실려 직원이 호텔에 그대로 넣는다 */
-  if(isH && optBeds() > 0) parts.push(qpNoBed ? "아동 엑스트라 베드 없음(조식만)" : "아동 엑스트라 베드 추가");
+  if(isH && optBeds() > 0) parts.push(qpNoBed ? "아동 엑스트라 베드 없음(조식만 추가)" : "아동 엑스트라 베드 추가");
   /* 희망 시간(골프장·스파) — 자유롭게 적은 요청사항. 장바구니 문구 끝에 붙고 예약요청에도 그대로 실린다 */
   const time = isH ? "" : String($("#qpTime").value || "").trim();
   if(time) parts.push(timeLabelOf(qpKind).pre + time);
