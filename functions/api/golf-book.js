@@ -152,7 +152,7 @@ function voucherToken() {
 /* ── 바우처에 실을 회사 정보·업체(골프장/호텔) 주소·전화 — golf_site 에서 읽는다 ──
    관리 화면 「연락처 · 푸터 → 바우처 발행 정보」에서 적는다. 비어 있으면 기본 문구. */
 const VOUCHER_DEFAULT = {
-  name: '투어코리아 (TOURKOREA)', en: 'We\'ve Tour Thailand', regNo: '', tel: '', tel2: '', email: '',
+  name: '투어코리아 (TOURKOREA)', en: '',   // 옛 영문 상호(We've Tour Thailand)는 뺐다(사장님 2026-09-29) regNo: '', tel: '', tel2: '', email: '',
   issuer: '', emergency: '',
   bank: '우리은행 111-222-3333 투어코리아', invoiceNote: '',   // 인보이스 입금 계좌 · 안내 문구(사장님 2026-09-21) — 기본 계좌(2026-09-29), 관리 화면에 적으면 그쪽이 우선
   notes: '',

@@ -139,7 +139,7 @@ function render(v){
   const askedN = v.items.filter(x => x.asked).length;
   const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).filter(Boolean);
   $("#app").innerHTML = '<div class="sheet">'
-    + '<div class="brand">' + esc(c.name || "") + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>'
+    + '<div class="brand">' + esc(c.name || "") + '</div>'   /* 상단은 투어코리아만(사장님 2026-09-29 — 옛 영문 상호 뺌) */
     + '<h1>Voucher<small>예약 확정서</small></h1>'
     + '<p class="tip">※ 상품 이용 시 예약 확정서를 제시해 주세요. 확정번호 (Confirm No.) <b>' + esc(v.cno) + '</b></p>'
     + v.items.map((it, i) => itemHtml(v, it, i)).join("")
@@ -181,7 +181,7 @@ function renderInvoice(v){
     ? '<p class="tip" style="margin-top:-8px">' + (bal ? '<a href="' + esc(location.pathname + location.search.replace(/&d=\w+/, "") + "&d=deposit") + '">디파짓 인보이스 다시 보기</a>'
         : '<a href="' + esc(location.pathname + location.search.replace(/&d=\w+/, "") + "&d=balance") + '">잔금 인보이스 &amp; 확정서 보기 →</a>') + '</p>' : '';
   $("#app").innerHTML = '<div class="sheet inv">'
-    + '<div class="brand">' + esc(c.name || "") + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>'
+    + '<div class="brand">' + esc(c.name || "") + '</div>'
     + (bal ? '<h1>Balance Invoice<small>잔금 인보이스 · 확정서</small></h1>'
            + '<p class="tip">※ <b>디파짓 입금이 확인되어 예약이 확정되었습니다.</b> 아래 잔금을 기한까지 입금해 주세요. 이 문서는 예약 확정서(Confirmation)를 겸합니다.</p>'
            : '<h1>Deposit Invoice<small>디파짓 인보이스</small></h1>'
@@ -240,7 +240,7 @@ function renderItemInvoice(v){
     + '<td>' + esc(it.name) + '<br><span class="mut" style="font-size:12px">' + esc(it.label || it.option || "") + '</span></td>'
     + '<td class="nw" style="text-align:right">' + (it.asked ? '<span class="mut">문의</span>' : won(it.krw)) + '</td></tr>').join("");
   $("#app").innerHTML = '<div class="sheet inv">'
-    + '<div class="brand">' + esc(c.name || "") + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>'
+    + '<div class="brand">' + esc(c.name || "") + '</div>'
     + '<h1>Invoice<small>인보이스</small></h1>'
     + '<p class="tip">※ 요청하신 예약이 확정되었습니다. 아래 금액을 입금해 주시면 확인 후 바우처(예약 확정서)를 보내 드립니다.</p>'
     + '<div class="head"><div class="bn">Invoice No. <b>' + esc(v.cno) + '</b></div>'
