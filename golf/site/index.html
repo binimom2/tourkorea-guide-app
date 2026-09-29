@@ -3122,7 +3122,7 @@ function drawCartBody(){
     + '확인 후 바로 안내드립니다.</p>';
   box.innerHTML = rows + (cartView === "form" ? bformHtml()
     : '<div class="cbtns">'
-      + '<button type="button" class="mbtn ghost" id="cartClear">비우기</button>'
+      + '<button type="button" class="mbtn ghost" id="cartClear">체크한 것 비우기</button>'
       + '<button type="button" class="mbtn" id="cartGo">예약 요청하기 →</button></div>');
   bindRows(box, CART, "cart");
   if(cartView === "form"){
@@ -3133,9 +3133,12 @@ function drawCartBody(){
       if(!CART.some(c => !c.off)){ alert("예약 요청하실 일정을 체크해 주세요."); return; }
       cartView = "form"; drawCartBody();
     };
+    /* 체크한 줄만 뺀다(사장님 2026-09-29 「하나만 체크했는데 통으로 비워짐」) */
     $("#cartClear").onclick = () => {
-      if(!confirm("장바구니를 비울까요?")) return;
-      CART = []; lsPut(CART_KEY, CART); drawTools(); drawCartBody();
+      const n = CART.filter(c => !c.off).length;
+      if(!n){ alert("비울 일정을 체크해 주세요."); return; }
+      if(!confirm("체크한 " + n + "건을 장바구니에서 뺄까요?")) return;
+      CART = CART.filter(c => c.off); lsPut(CART_KEY, CART); drawTools(); drawCartBody();
     };
   }
 }
