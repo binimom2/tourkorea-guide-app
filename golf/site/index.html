@@ -2395,11 +2395,13 @@ function setChild(n){
 const BED_TYPES = ["트윈", "더블", "싱글", "트리플"];
 let qpBeds = { "트윈": 1, "더블": 0, "싱글": 0, "트리플": 0 };
 function bedsLabel(){ return BED_TYPES.filter(t => qpBeds[t]).map(t => t + " " + qpBeds[t] + "객실").join(" · "); }
-/* 담은 뒤(장바구니·예약요청) 표기는 「객실1 트윈 · 객실2 트윈 · 객실3 싱글」(사장님 2026-09-29) */
+/* 담은 뒤(장바구니·예약요청) 표기는 간단히(사장님 2026-09-29) — 「3트윈」「2트윈 1트리플」「3트윈+1아동조식포함」 */
 function roomsListLabel(){
-  const out = [];
-  BED_TYPES.forEach(t => { for(let i = 0; i < qpBeds[t]; i++) out.push("객실" + (out.length + 1) + " " + t); });
-  return out.join(" · ");
+  let s = BED_TYPES.filter(t => qpBeds[t]).map(t => qpBeds[t] + t).join(" ");
+  const eb = Math.max(0, bedCount() - qpBeds["트리플"]), bf = bfCount();   // 트리플 말고 더 놓는 엑스트라 베드 · 아동 조식
+  if(eb) s += "+" + eb + "엑스트라베드";
+  if(bf) s += "+" + bf + "아동조식포함";
+  return s;
 }
 function bedCap(){ return qpBeds["트윈"] * 2 + qpBeds["더블"] * 2 + qpBeds["싱글"] + qpBeds["트리플"] * 3; }
 function setBed(t, n){
@@ -2914,12 +2916,10 @@ function cartItem(){
   /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
   const yl = s => dparse(s).getFullYear() + "." + dlabel(s);
   const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];
-  if(isH)    parts.push(qpNights + "박 " + qpRooms + "객실");
+  if(isH)    parts.push(qpNights + "박 " + roomsListLabel());   // 「2박 3트윈」「2박 2트윈 1트리플」
   if(option) parts.push(option);
-  if(isH && roomsListLabel()) parts.push(roomsListLabel());
   parts.push(paxLabel());
-  /* 아동 엑스트라 베드를 고를 수 있는 구성이면 고른 쪽을 적는다 — 예약요청에 그대로 실려 직원이 호텔에 그대로 넣는다 */
-  if(isH && optBeds() > 0) parts.push(qpNoBed ? "아동 엑스트라 베드 없음(조식만 추가)" : "아동 엑스트라 베드 추가");
+  /* 아동 엑스트라 베드·조식은 위 「+1엑스트라베드」「+1아동조식포함」에 들어 있다(2026-09-29 간단 표기) */
   /* 희망 시간(골프장·스파) — 자유롭게 적은 요청사항. 장바구니 문구 끝에 붙고 예약요청에도 그대로 실린다 */
   const time = isH ? "" : String($("#qpTime").value || "").trim();
   if(time) parts.push(timeLabelOf(qpKind).pre + time);
