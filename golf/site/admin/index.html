@@ -400,6 +400,7 @@ tr.grp td{background:rgba(18,58,43,.045);font-size:12px;font-weight:800;color:va
   padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:700;z-index:80;opacity:0;transition:opacity .25s;pointer-events:none;
   box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:90vw;text-align:center}
 #toast.on{opacity:1}
+.bkbadge{display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:999px;background:#D9412B;color:#fff;font-size:11px;font-weight:900;text-align:center;padding:0 5px;margin-left:6px;vertical-align:middle}
 .dirty{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-left:6px;vertical-align:middle}
 
 /* 손님 화면에서 감춰 둔 줄 — 자료는 남아 있으니 지운 것처럼 보이면 안 된다.
@@ -883,6 +884,7 @@ function drawTabs(){
     '<button id="tab-'+t.k+'" class="'+(t.k===tab?'on':'')+'">'+t.label
     +(dirty[t.k]?'<span class="dirty"></span>':'')+'</button>').join('');
   ts.forEach(t=>{ document.getElementById('tab-'+t.k).onclick=()=>{ tab=t.k; drawTabs(); }; });
+  drawBookBadge();
   draw();
 }
 function draw(){
@@ -1627,6 +1629,39 @@ async function loadBooks(){
   const j=await bookApi('list',{});
   BOOKS=(j&&j.ok)?{list:j.list||[]}:{error:(j&&j.error)||'예약 요청을 불러오지 못했습니다.'};
   if(tab==='books') drawBooks();
+  drawBookBadge();
+}
+/* 새 예약요청 자동 불러오기(사장님 2026-09-29 「매번 새로고침해야 뜬다」) — 30초마다 서버에 물어,
+   바뀐 게 있으면 목록을 새로 그린다. 직원이 메모·상태를 고치는 중(입력칸에 커서)이면 그때는 그리지 않고 다음 차례에.
+   다른 탭에 있으면 탭 이름 옆 숫자 + 알림만. 창이 가려져 있으면 묻지 않는다 */
+const bookSig=l=>(l||[]).map(b=>[b.no,b.status,b.msgUnread||0,(b.voucher&&b.voucher.stage)||'',(b.voucher&&b.voucher.token)?1:0,b.pay?1:0,(b.assign&&b.assign.by)||''].join(':')).join('|');
+let bookPollBusy=false;
+setInterval(async()=>{
+  if(bookPollBusy||document.hidden||!myTabs().some(t=>t.k==='books')) return;
+  bookPollBusy=true;
+  try{
+    const j=await bookApi('list',{});
+    if(!j||!j.ok) return;
+    const old=(BOOKS&&BOOKS.list)||null, list=j.list||[];
+    if(old&&bookSig(old)===bookSig(list)) return;
+    const fresh=old?list.filter(b=>!old.some(o=>o.no===b.no)):[];
+    BOOKS={list};
+    const ae=document.activeElement, pane=document.getElementById('pane');
+    const editing=ae&&pane&&pane.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)&&ae.id!=='bkSearch';
+    if(tab==='books'&&!editing) drawBooks();
+    drawBookBadge();
+    if(fresh.length) toast('📋 새 예약요청 '+fresh.length+'건이 들어왔습니다');
+  }catch(e){}
+  finally{ bookPollBusy=false; }
+},30000);
+/* 탭 이름 옆 빨간 숫자 = 「① 접수」(아직 아무도 안 맡은 건) 수 */
+function drawBookBadge(){
+  const b=document.getElementById('tab-books'); if(!b) return;
+  const n=((BOOKS&&BOOKS.list)||[]).filter(x=>x.status==='new').length;
+  let s=b.querySelector('.bkbadge');
+  if(!n){ if(s) s.remove(); return; }
+  if(!s){ s=document.createElement('span'); s.className='bkbadge'; b.appendChild(s); }
+  s.textContent=n;
 }
 /* 요금표 — /golf/admin/ 을 그대로 끼워 넣는다. 옮겨 적지 않은 이유는,
    요금 계산이 견적기·손님 사이트·API와 얽혀 있어 두 벌이 되면 반드시 어긋나기 때문이다.
