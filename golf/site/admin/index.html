@@ -1138,7 +1138,7 @@ function drawAgencies(){
 /* 일의 순서대로(사장님 2026-09-29 「직원들이 헷갈리면 안 된다」) — 접수 → 호텔수배 → 확정·인보이스 → 입금확인 → 바우처·완료. 키는 예전 그대로(저장값 보존) */
 const BOOK_STATUS=[
   {k:'new',   t:'① 접수',   c:'#E8A33D'},
-  {k:'doing', t:'② 호텔수배 중', c:'#1C5B42'},
+  {k:'doing', t:'② 수배 중', c:'#1C5B42'},
   {k:'confirmed', t:'③ 확정 · 인보이스 발급', c:'#2E7D4F'},   /* 「컨펌」 단추를 누르면 서버가 이 상태로 바꾼다 */
   {k:'paid',  t:'④ 입금확인', c:'#0b3d91'},   /* 여행사 보관함에도 이 상태가 그대로 보인다 */
   {k:'done',  t:'⑤ 바우처 발급 · 완료',   c:'#3C6E71'},
@@ -1261,7 +1261,7 @@ function bookCardHtml(b){
     /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
     +((!b.assign||!b.assign.by)&&b.status!=='cancel'
       ? '<div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button>'
-        +'<span class="bkvhint">이 건을 맡아 진행할 직원이 누르세요 — 담당자로 이름이 붙고 「② 호텔수배 중」이 됩니다. 누른 뒤에 컨펌·인보이스 단추가 나옵니다</span></div>'
+        +'<span class="bkvhint">이 건을 맡아 진행할 직원이 누르세요 — 담당자로 이름이 붙고 「② 수배 중」이 됩니다. 누른 뒤에 인보이스 발급 단추가 나옵니다</span></div>'
         +'<div class="bkfoot"><button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button></div></div>'
       : voucherRowHtml(b)
     +'<div class="bkfoot">'
@@ -1292,8 +1292,8 @@ function voucherRowHtml(b){
   const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
     if(b.status==='cancel') return '';
-    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ 호텔 컨펌 → '+(inv?'디파짓 인보이스':'인보이스')+' 발급</button>'
-      +'<span class="bkvhint">호텔에서 컨펌 회신을 받으면 누르세요 — 인보이스(청구서)가 만들어지고 카톡·이메일로 보낼 수 있습니다</span></div>';
+    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ '+(inv?'디파짓 인보이스':'인보이스')+' 발급</button>'
+      +'<span class="bkvhint">예약처(호텔·골프장 등)에서 컨펌 회신을 받으면 누르세요 — 인보이스(청구서)가 만들어지고 카톡·이메일로 보낼 수 있습니다</span></div>';
   }
   /* 사이트 예약 — 인보이스 나간 뒤 입금 기다리는 중 */
   if(isSiteInv(b)){
@@ -1430,7 +1430,7 @@ function kakaoTextOf(b){
     +(it.dateEnd&&it.dateEnd!==it.date?' ~ '+it.dateEnd:''));
   /* 사이트 예약 인보이스(입금 전, 2026-09-29) */
   if(isSiteInv(b)){
-    return '['+co+'] '+((b.from&&b.from.company)||(b.customer&&b.customer.name)||'')+' 담당자님, 요청하신 예약이 호텔에서 확정되었습니다.\n'
+    return '['+co+'] '+((b.from&&b.from.company)||(b.customer&&b.customer.name)||'')+' 담당자님, 요청하신 예약이 확정되었습니다.\n'
       +'예약번호 '+b.no+' · Invoice No. '+b.voucher.cno+'\n'
       +lines.join('\n')+'\n'
       +'합계 '+Number(b.total||0).toLocaleString('ko-KR')+'원\n'
@@ -1529,7 +1529,7 @@ function bindVoucherBtns(p){
     const inv=isInvoiceBook(b), dn=had?docNameOf(b):(inv?'디파짓 인보이스':'인보이스');   // 새로 만들 때 사이트 예약은 인보이스부터
     /* 인보이스는 메모도 확인·수정 창에서 적는다 — 묻지 않고 바로 초안을 만든다 */
     const memo=inv?((b.voucher&&b.voucher.memo)||''):prompt(dn==='인보이스'
-      ? (had?'인보이스 메모를 고칩니다.':'호텔 컨펌 — 인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한·호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.'
+      ? (had?'인보이스 메모를 고칩니다.':'인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한·예약처 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.'
       : (had?'바우처 메모를 고칩니다.':'컨펌합니다 — 바우처(예약 확정서)를 발급합니다.')+'\n바우처에 실을 메모(호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.',
       (b.voucher&&b.voucher.memo)||'');
     if(memo===null) return;

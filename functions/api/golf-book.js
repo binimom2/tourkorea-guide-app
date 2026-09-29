@@ -357,7 +357,7 @@ function itemInvoiceMailHtml(v) {
     + (it.asked ? '문의' : won(it.krw)) + '</b></td></tr>').join('');
   return '<div style="font-family:-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;max-width:560px;margin:0 auto;color:#222">'
     + '<h2 style="margin:18px 0 4px">' + e(v.company.name) + ' 인보이스 (Invoice)</h2>'
-    + '<p style="margin:0 0 14px;color:#555">' + e(v.to.company) + ' 담당자님, 요청하신 예약이 호텔에서 확정되었습니다. 아래 금액을 입금해 주시면 바우처를 보내 드립니다.</p>'
+    + '<p style="margin:0 0 14px;color:#555">' + e(v.to.company) + ' 담당자님, 요청하신 예약이 확정되었습니다. 아래 금액을 입금해 주시면 바우처를 보내 드립니다.</p>'
     + '<table style="border-collapse:collapse;width:100%;margin-bottom:8px">' + rows
     + '<tr><td style="padding:8px;background:#f3f3f3"><b>합계 (Total)</b></td><td style="padding:8px;background:#f3f3f3;text-align:right"><b>' + won(v.total) + '</b></td></tr></table>'
     + '<p style="margin:14px 0 22px"><a href="' + e(v.url) + '" style="display:inline-block;background:#123A2B;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">인보이스 열기 / Open Invoice</a></p>'
