@@ -509,7 +509,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 기간 요금(프로모션) 표시 — 메뉴 단추와 안내 표에서 금색 작은 글씨 */
 .qp-holes button span i.mprom{display:block;margin:2px 0 0;color:var(--marigold);font-weight:800;opacity:1}
 .rinc.mprom{color:var(--marigold);font-weight:800}
-.qp-holes button.on{border-color:var(--fairway);background:#F1F8F3}
+/* 예약 패널에서 고른 것은 주황(사장님 2026-09-29 「다 초록 초록함」) — 초록은 담기 단추에만 */
+.qp-holes button.on{border-color:var(--marigold);background:#FFF6E6}
 .qp-pax{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:8px}
 .qp-pax button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 0;font:inherit;font-size:17px;cursor:pointer}
 .qp-pax button:hover{border-color:var(--fairway)}
@@ -519,15 +520,15 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-occrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .qp-occrow>span{font-size:13.5px;font-weight:800;line-height:1.3}
 .qp-occrow>span i{display:block;font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
-.qp-perroom{margin:-2px 0 10px;padding:7px 10px;border-radius:9px;background:#f4faf6;border:1px solid #cfe3d6;font-size:12.5px;font-weight:800;color:var(--fairway);line-height:1.45}
+.qp-perroom{margin:-2px 0 10px;padding:7px 10px;border-radius:9px;background:#FFF1EE;border:1px solid #F3C2B6;font-size:12.5px;font-weight:800;color:#B3261E;line-height:1.45}
 .qp-perroom[hidden]{display:none}
 .qp-bedrows{border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
 .qp-occrow .qp-pax{grid-template-columns:32px 56px 32px;flex:none}
 .qp-occrow .qp-pax button{padding:5px 0;font-size:15px}
 .qp-occrow .qp-pax span{font-size:14px}
 .qp-occdone{width:100%;margin-top:2px;border:none;border-radius:10px;padding:11px;font:inherit;font-size:14.5px;
-  font-weight:800;background:var(--fairway);color:#fff;cursor:pointer}
-.qp-occdone:hover{filter:brightness(1.06)}
+  font-weight:800;background:var(--marigold);color:#2A1A00;cursor:pointer}
+.qp-occdone:hover{background:var(--marigold-hi)}
 /* 아동 나이·생년월일 — 아동을 고른 만큼만 펼쳐진다. 미리 0을 넣지 않는다(빈 칸으로 두고 적게 한다) */
 .qp-ages{border-top:1px solid var(--line);margin:2px 0 10px;padding-top:10px}
 .qp-ages:empty{display:none}
@@ -551,14 +552,14 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-bedpick{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
 .qp-bedpick span{font-weight:800;color:var(--ink);margin-right:2px}
 .qp-bedpick button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font:inherit;font-size:12px;font-weight:800;color:var(--ink-soft);cursor:pointer}
-.qp-bedpick button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
+.qp-bedpick button.on{background:var(--marigold);border-color:var(--marigold);color:#2A1A00}
 .dpanel input[type=date]{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;background:#fff;color:inherit}
 /* 날짜 단추 + 달력판 — 손님은 날짜 칸에 직접 적지 않고 달력에서 고른다 */
 .qp-dbtn{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
   font-weight:700;background:#fff;color:inherit;text-align:left;cursor:pointer;
   display:flex;align-items:center;gap:8px}
 .qp-dbtn:hover{border-color:var(--fairway)}
-.qp-dbtn.on{border-color:var(--fairway);background:#f4faf6}
+.qp-dbtn.on{border-color:var(--marigold);background:#FFF9EE}
 .qp-dbtn .ph{color:var(--muted);font-weight:600}
 /* 원하는 시간(스파·마사지) — 날짜 단추와 같은 생김새의 글자칸 */
 .qp-time{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px;font:inherit;font-size:14.5px;
@@ -592,8 +593,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-calgrid button:hover:not(:disabled){background:var(--paper)}
 .qp-calgrid button:disabled{color:#cfcfcf;cursor:default}
 .qp-calgrid button.sun:not(:disabled){color:#c0392b}
-.qp-calgrid button.mid{background:#eaf4ee;border-radius:0}
-.qp-calgrid button.edge{background:var(--fairway);color:#fff}
+.qp-calgrid button.mid{background:#FFF1DA;border-radius:0}
+.qp-calgrid button.edge{background:var(--marigold);color:#2A1A00}
 .qp-calgrid span{padding:7px 0}
 .qp-calfoot{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;line-height:1.4}
 .qp-note{margin-top:12px;background:#FFF5F5;border:1px solid rgba(224,70,75,.35);color:#A8302F;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.55}
