@@ -283,12 +283,42 @@ function voucherUrl(request, rec) {
   const origin = new URL(request.url).origin;
   return origin + '/golf/site/voucher/?no=' + encodeURIComponent(rec.no) + '&t=' + encodeURIComponent(rec.voucher.token);
 }
+/* ── 사이트 예약(장바구니·단품)의 순서(사장님 2026-09-29): 호텔 컨펌 → «항목형 인보이스» → 입금확인 → 바우처.
+   rec.voucher.stage === 'invoice' 인 동안 같은 링크가 인보이스를 연다. 입금확인(markPaid)하면 'voucher' 로 바뀐다.
+   stage 가 없는 옛 건은 바우처로 본다(이미 보낸 바우처 링크가 인보이스로 바뀌면 안 된다) ── */
+const isSiteInvoice = (rec) => !isAgencyRec(rec) && !!(rec && rec.voucher && rec.voucher.stage === 'invoice');
+function itemInvoiceView(request, rec, site) {
+  return {
+    type: 'invoice', kind: 'items',
+    no: rec.no, at: rec.at, status: rec.status,
+    cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
+    to: { company: s(rec.from && rec.from.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: '' },
+    guest: (rec.customer && rec.customer.name) || '',
+    items: (rec.items || []).map(it => ({ kind: it.kind, kindT: it.kindT || '', region: it.region, name: it.name, option: it.option,
+      date: it.date, dateEnd: it.dateEnd, label: it.label, krw: it.asked ? 0 : num(it.krw), asked: !!it.asked })),
+    total: num(rec.total),
+    company: companyOf(site),
+    url: voucherUrl(request, rec),
+  };
+}
+/* 입금확인 — 직원 단추(via:'manual')와 나중에 붙일 입금 알림(via:'auto')이 같은 길로 간다 */
+function markPaid(rec, by, via, dep) {
+  const now = new Date().toISOString();
+  rec.pay = { at: now, by: by || '', via: via || 'manual', name: s(dep && dep.name, 60), amount: num(dep && dep.amount) };
+  if (rec.voucher && rec.voucher.token) {
+    rec.voucher.paidAt = now;
+    if (rec.voucher.stage === 'invoice') rec.voucher.stage = 'voucher';   // 같은 링크가 바우처로 바뀐다
+  }
+  if (rec.status !== 'cancel') rec.status = 'paid';
+}
 /* 손님에게 보여 줄 만큼만 — 연락처·직원 메모는 빼고 */
+/* 바우처는 호텔에 내는 서류라 영문 이름만(사장님 2026-09-29) — 「조수영 / CHO SOOYOUNG」이면 뒤쪽, 슬래시 없는 옛 건은 그대로 */
+const guestEn = (name) => { const p = String(name || '').split(' / '); return (p.length > 1 ? p[p.length - 1] : p[0]).trim(); };
 function voucherView(request, rec, site) {
   return {
     no: rec.no, at: rec.at, status: rec.status,
     cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
-    guest: (rec.customer && rec.customer.name) || '',
+    guest: guestEn(rec.customer && rec.customer.name),
     items: (rec.items || []).map(it => Object.assign({}, it, { venue: venueOf(site, it) })),
     company: companyOf(site),
     url: voucherUrl(request, rec),
@@ -314,6 +344,22 @@ function mailHtml(v) {
     + '<tr><td style="padding:6px 8px">확정번호 (Confirm No.)</td><td style="padding:6px 8px"><b>' + e(v.cno) + '</b></td></tr></table>'
     + '<table style="border-collapse:collapse;width:100%;margin-bottom:18px">' + rows + '</table>'
     + '<p style="margin:0 0 22px"><a href="' + e(v.url) + '" style="display:inline-block;background:#123A2B;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">바우처 열기 / Open Voucher</a></p>'
+    + '<p style="font-size:12px;color:#777;line-height:1.6">링크: ' + e(v.url) + '<br>'
+    + e(v.company.name) + (v.company.tel ? ' · ' + e(v.company.tel) : '') + (v.company.email ? ' · ' + e(v.company.email) : '') + '</p></div>';
+}
+/* 사이트 예약 인보이스 메일 — 항목·합계·링크 */
+function itemInvoiceMailHtml(v) {
+  const e = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
+  const rows = v.items.map(it => '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e5e5"><b>' + e(it.name) + '</b><br><span style="color:#666;font-size:13px">'
+    + e(it.label || '') + '</span></td><td style="padding:6px 8px;border-bottom:1px solid #e5e5e5;text-align:right;white-space:nowrap"><b>'
+    + (it.asked ? '문의' : won(it.krw)) + '</b></td></tr>').join('');
+  return '<div style="font-family:-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;max-width:560px;margin:0 auto;color:#222">'
+    + '<h2 style="margin:18px 0 4px">' + e(v.company.name) + ' 인보이스 (Invoice)</h2>'
+    + '<p style="margin:0 0 14px;color:#555">' + e(v.to.company) + ' 담당자님, 요청하신 예약이 호텔에서 확정되었습니다. 아래 금액을 입금해 주시면 바우처를 보내 드립니다.</p>'
+    + '<table style="border-collapse:collapse;width:100%;margin-bottom:8px">' + rows
+    + '<tr><td style="padding:8px;background:#f3f3f3"><b>합계 (Total)</b></td><td style="padding:8px;background:#f3f3f3;text-align:right"><b>' + won(v.total) + '</b></td></tr></table>'
+    + '<p style="margin:14px 0 22px"><a href="' + e(v.url) + '" style="display:inline-block;background:#123A2B;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700">인보이스 열기 / Open Invoice</a></p>'
     + '<p style="font-size:12px;color:#777;line-height:1.6">링크: ' + e(v.url) + '<br>'
     + e(v.company.name) + (v.company.tel ? ' · ' + e(v.company.tel) : '') + (v.company.email ? ' · ' + e(v.company.email) : '') + '</p></div>';
 }
@@ -459,7 +505,47 @@ export async function onRequest(context) {
         return json({ error: '바우처를 찾지 못했습니다. 주소를 다시 확인해 주세요.' }, 404);
       if (rec.status === 'cancel') return json({ error: '취소된 예약입니다. 문의는 아래 연락처로 주세요.', cancelled: true }, 410);
       const site = await readSite(KEY);
-      return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY, s(body.d, 10)) : voucherView(request, rec, site) });
+      return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY, s(body.d, 10))
+        : isSiteInvoice(rec) ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site) });
+    }
+
+    /* ══ 입금 알림 입구(나중에 페이액션·뱅크다 같은 서비스를 붙일 자리, 2026-09-29) ══
+       서비스가 입금 한 건마다 { action:'deposit', name:입금자명, amount:원, at } 를 보낸다.
+       머리에 x-deposit-secret = 환경 변수 DEPOSIT_HOOK_SECRET 이 맞아야 받는다(없으면 꺼져 있음).
+       인보이스가 나가 있고(③) 아직 입금 전인 건 가운데 금액이 같고 이름이 겹치는 건이 «딱 하나»면 자동 입금확인.
+       못 맞춘 입금은 golf_deposits 에 남겨 직원이 확인한다. 서비스마다 보내는 모양이 다르면 여기서 이름·금액만 꺼내 맞춘다 */
+    if (action === 'deposit') {
+      const sec = env.DEPOSIT_HOOK_SECRET;
+      if (!sec) return json({ error: '입금 알림이 설정되어 있지 않습니다.' }, 503);
+      if ((request.headers.get('x-deposit-secret') || '') !== sec) return json({ error: '권한이 없습니다.' }, 403);
+      const dep = { name: s(body.name, 60), amount: num(body.amount), at: s(body.at, 40) || new Date().toISOString() };
+      if (!dep.amount) return json({ error: '금액이 없습니다.' }, 400);
+      const rows = await srSelect(KEY, 'data_key=like.' + PREFIX + '*&select=data_key,data&limit=1000');
+      const key = (t) => String(t || '').replace(/\s+/g, '').toLowerCase();
+      const nm = key(dep.name);
+      const cands = (Array.isArray(rows) ? rows : [])
+        .filter(r => r && String(r.data_key || '').startsWith(PREFIX)).map(r => r.data)
+        .filter(rec => rec && rec.voucher && rec.voucher.token && !rec.pay && rec.status === 'confirmed' && rec.voucher.released !== false)
+        .filter(rec => num(rec.total) === dep.amount)
+        .filter(rec => {
+          if (!nm) return false;
+          const names = [rec.customer && rec.customer.name, rec.from && rec.from.company, rec.agency && rec.agency.company]
+            .map(key).flatMap(x => x.split('/')).filter(Boolean);
+          return names.some(x => x.includes(nm) || nm.includes(x));
+        });
+      let matched = '';
+      if (cands.length === 1) {
+        const rec = cands[0];
+        markPaid(rec, 'auto', 'auto', dep);
+        await srUpsert(KEY, { data_key: PREFIX + rec.no, data: rec, updated_at: new Date().toISOString() });
+        matched = rec.no;
+      }
+      /* 받은 입금은 모두 기록(최근 500건) — 못 맞춘 것(matched 빈 값)은 직원이 확인 */
+      const lg = await srSelect(KEY, 'data_key=eq.golf_deposits&select=data');
+      const log = (Array.isArray(lg) && lg[0] && Array.isArray(lg[0].data)) ? lg[0].data : [];
+      log.unshift(Object.assign({}, dep, { matched, cands: cands.map(r => r.no).slice(0, 5), got: new Date().toISOString() }));
+      await srUpsert(KEY, { data_key: 'golf_deposits', data: log.slice(0, 500), updated_at: new Date().toISOString() });
+      return json({ ok: true, matched });
     }
 
     /* ══ 여기부터는 직원만 ══ */
@@ -518,6 +604,7 @@ export async function onRequest(context) {
       if (!rec.voucher || !rec.voucher.token) {
         rec.voucher = { cno: String(Math.floor(Date.now() / 1000)), token: voucherToken(), at: now, by: loginIdOf(user), memo: '', sent: [] };
         if (draft) rec.voucher.released = false;
+        else rec.voucher.stage = 'invoice';      // 사이트 예약은 인보이스부터 — 입금확인하면 같은 링크가 바우처가 된다(2026-09-29)
       }
       if (body.memo != null) rec.voucher.memo = s(body.memo, MAX_TEXT);
       if ((rec.status === 'new' || rec.status === 'doing') && rec.voucher.released !== false) rec.status = 'confirmed';
@@ -569,6 +656,19 @@ export async function onRequest(context) {
       return json({ ok: true, rec });
     }
 
+    /* ══ 입금확인(직원 단추, 2026-09-29) — 사이트 예약은 인보이스 링크가 바우처로 바뀐다. 나중에 입금 알림(deposit)도 같은 markPaid ══ */
+    if (action === 'paid') {
+      const no = s(body.no, 40);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      if (!rec.voucher || !rec.voucher.token || rec.voucher.released === false)
+        return json({ error: '인보이스를 먼저 발급해 주세요.' }, 400);
+      markPaid(rec, loginIdOf(user), 'manual');
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: new Date().toISOString() });
+      return json({ ok: true, rec, url: voucherUrl(request, rec) });
+    }
+
     /* ══ 인보이스 발행 — 어드민이 초안을 화면으로 확인한 뒤 누른다 ══ */
     if (action === 'release') {
       const no = s(body.no, 40);
@@ -595,9 +695,11 @@ export async function onRequest(context) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json({ error: '보낼 이메일 주소가 없습니다.' }, 400);
       const site = await readSite(KEY);
       const inv = isAgencyRec(rec);                 // 여행사 수배 건은 인보이스로 나간다(사장님 2026-09-21)
-      const v = inv ? await invoiceView(request, rec, site, KEY) : voucherView(request, rec, site);
+      const sInv = isSiteInvoice(rec);              // 사이트 예약 입금 전 = 항목형 인보이스(2026-09-29)
+      const v = inv ? await invoiceView(request, rec, site, KEY) : sInv ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site);
       const r = inv
         ? await sendMail(env, to, '[' + v.company.name + '] ' + (v.doc === 'balance' ? '잔금 인보이스 & 확정서' : '디파짓 인보이스') + ' (Invoice) · ' + (v.quote.quoteNo || v.no), invoiceMailHtml(v))
+        : sInv ? await sendMail(env, to, '[' + v.company.name + '] 인보이스 (Invoice) · ' + v.no, itemInvoiceMailHtml(v))
         : await sendMail(env, to, '[' + v.company.name + '] 예약 확정서 (Voucher) · ' + v.no, mailHtml(v));
       if (r.setup) return json({ ok: false, setup: true, url: v.url, error: '서버에 RESEND_API_KEY 가 없어 자동 발송을 못 합니다.' });
       if (r.error) return json({ error: r.error }, 502);

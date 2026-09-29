@@ -1277,14 +1277,30 @@ function voucherUrlOf(b){
    같은 링크(/golf/site/voucher/)인데 서버가 인보이스 내용(견적 일정·총액·입금 안내)으로 돌려준다 — 원가 줄은 안 나간다 */
 function isInvoiceBook(b){ return !!(b&&b.agency&&b.agency.quoteNo); }
 /* 여행사 건 인보이스는 두 장(2026-09-23) — 디파짓 인보이스 → 디파짓 입금 확인 뒤 잔금 인보이스·확정서 */
-function docNameOf(b){ return isInvoiceBook(b)?((b.voucher&&b.voucher.stage==='balance')?'잔금 인보이스·확정서':'디파짓 인보이스'):'바우처'; }
+/* 사이트 예약(장바구니·단품)은 호텔 컨펌 → 인보이스 → 입금확인 → 바우처(사장님 2026-09-29). 입금 전엔 같은 링크가 인보이스다 */
+function isSiteInv(b){ return !isInvoiceBook(b)&&!!(b&&b.voucher&&b.voucher.stage==='invoice'); }
+function docNameOf(b){ return isInvoiceBook(b)?((b.voucher&&b.voucher.stage==='balance')?'잔금 인보이스·확정서':'디파짓 인보이스'):(isSiteInv(b)?'인보이스':'바우처'); }
 function voucherRowHtml(b){
   const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
     if(b.status==='cancel') return '';
-    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ 컨펌 · '+dn+' 발급</button>'
-      +'<span class="bkvhint">'+(inv?'컨펌하면 인보이스(청구서)가 만들어지고 여행사에 카톡·이메일로 보낼 수 있습니다'
-        :'컨펌하면 예약 확정서(바우처)가 만들어지고 카톡·이메일로 보낼 수 있습니다')+'</span></div>';
+    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ 호텔 컨펌 → '+(inv?'디파짓 인보이스':'인보이스')+' 발급</button>'
+      +'<span class="bkvhint">호텔에서 컨펌 회신을 받으면 누르세요 — 인보이스(청구서)가 만들어지고 카톡·이메일로 보낼 수 있습니다</span></div>';
+  }
+  /* 사이트 예약 — 인보이스 나간 뒤 입금 기다리는 중 */
+  if(isSiteInv(b)){
+    const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
+    return '<div class="bkvc on">'
+      +'<span class="bkvno">Invoice No. <b>'+esc(v.cno)+'</b></span>'
+      +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">인보이스 열기 ↗</a>'
+      +'<button class="add" data-vpaid="'+esc(b.no)+'" title="입금을 확인했으면 누르세요 — 같은 링크가 바우처로 바뀝니다">💰 입금확인 → 바우처 발급</button>'
+      +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
+      +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
+      +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
+      +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="인보이스에 실리는 메모(입금 기한·계좌 안내 등)">✎ 인보이스 메모</button>'
+      +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
+      +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
+      +'</div>';
   }
   /* 인보이스 초안(사장님 2026-09-23) — 어드민이 화면으로 확인하고 「발행」을 눌러야 여행사에 보인다. 그 전엔 보내기 단추를 안 준다 */
   if(v.released===false){
@@ -1298,6 +1314,9 @@ function voucherRowHtml(b){
     +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
     +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">'+dn+' 열기 ↗</a>'
     +(inv&&v.stage!=='balance'?'<button class="add" data-vbal="'+esc(b.no)+'" title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행</button>':'')
+    +(inv&&v.stage==='balance'&&!b.pay?'<button class="add" data-vpaid="'+esc(b.no)+'" title="잔금이 들어왔으면 누르세요">💰 잔금 입금확인</button>':'')
+    /* 입금확인 기록 — 누가(직원 아이디 / 자동) 언제 */
+    +(b.pay?'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">💰 입금확인 '+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+' · '+esc(bookWhen(b.pay.at))+'</span>':'')
     +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
     +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
@@ -1401,6 +1420,15 @@ function kakaoTextOf(b){
   }
   const lines=(b.items||[]).map(it=>'· '+it.name+(it.option?' '+it.option:'')+' — '+(it.date||'')
     +(it.dateEnd&&it.dateEnd!==it.date?' ~ '+it.dateEnd:''));
+  /* 사이트 예약 인보이스(입금 전, 2026-09-29) */
+  if(isSiteInv(b)){
+    return '['+co+'] '+((b.from&&b.from.company)||(b.customer&&b.customer.name)||'')+' 담당자님, 요청하신 예약이 호텔에서 확정되었습니다.\n'
+      +'예약번호 '+b.no+' · Invoice No. '+b.voucher.cno+'\n'
+      +lines.join('\n')+'\n'
+      +'합계 '+Number(b.total||0).toLocaleString('ko-KR')+'원\n'
+      +'▶ 인보이스: '+voucherUrlOf(b)+'\n'
+      +'입금해 주시면 확인 후 바우처(예약 확정서)를 보내 드립니다.';
+  }
   return '['+co+'] '+((b.customer&&b.customer.name)||'')+' 님, 예약이 확정되었습니다.\n'
     +'예약번호 '+b.no+' · 확정번호 '+b.voucher.cno+'\n'
     +lines.join('\n')+'\n'
@@ -1490,10 +1518,10 @@ function bindVoucherBtns(p){
   p.querySelectorAll('[data-confirm]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.confirm); if(!b) return;
     const had=!!(b.voucher&&b.voucher.token);
-    const inv=isInvoiceBook(b), dn=docNameOf(b);
+    const inv=isInvoiceBook(b), dn=had?docNameOf(b):(inv?'디파짓 인보이스':'인보이스');   // 새로 만들 때 사이트 예약은 인보이스부터
     /* 인보이스는 메모도 확인·수정 창에서 적는다 — 묻지 않고 바로 초안을 만든다 */
-    const memo=inv?((b.voucher&&b.voucher.memo)||''):prompt(inv
-      ? (had?'인보이스 메모를 고칩니다.':'컨펌합니다 — 인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한 등)가 있으면 적어 주세요. 없으면 그냥 확인.'
+    const memo=inv?((b.voucher&&b.voucher.memo)||''):prompt(dn==='인보이스'
+      ? (had?'인보이스 메모를 고칩니다.':'호텔 컨펌 — 인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한·호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.'
       : (had?'바우처 메모를 고칩니다.':'컨펌합니다 — 바우처(예약 확정서)를 발급합니다.')+'\n바우처에 실을 메모(호텔 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.',
       (b.voucher&&b.voucher.memo)||'');
     if(memo===null) return;
@@ -1506,6 +1534,18 @@ function bindVoucherBtns(p){
     /* 인보이스 초안이면 바로 확인 화면을 띄운다 — 확인하고 「발행」해야 여행사에 나간다 */
     if(j.rec.voucher&&j.rec.voucher.released===false){ openInvPreview(j.rec); return; }
     toast(had?dn+' 메모를 고쳤습니다':'✅ 컨펌 — '+dn+'가 발급되었습니다');
+  });
+  /* 입금확인(사장님 2026-09-29 — 당분간 직원이 건건이. 나중에 입금 알림 서비스가 붙으면 서버가 같은 처리를 자동으로) */
+  p.querySelectorAll('[data-vpaid]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.vpaid); if(!b) return;
+    const who=(b.from&&b.from.company)||(b.agency&&b.agency.company)||(b.customer&&b.customer.name)||b.no;
+    if(!confirm('['+who+'] '+Number(b.total||0).toLocaleString('ko-KR')+'원 입금을 확인했습니까?\n\n'
+      +(isInvoiceBook(b)?'확인하면 상태가 「④ 입금확인」이 됩니다.':'확인하면 같은 링크가 바우처(예약 확정서)로 바뀝니다 — 카톡·이메일로 다시 보내 주세요.'))) return;
+    btn.disabled=true; btn.textContent='처리 중…';
+    const j=await bookApi('paid',{no:b.no});
+    if(!j||!j.ok){ btn.disabled=false; toast('❌ '+((j&&j.error)||'입금확인 실패')); drawBooks(); return; }
+    bookReplace(j.rec); drawBooks();
+    toast(isInvoiceBook(b)?'💰 입금확인했습니다':'💰 입금확인 — 바우처가 발급되었습니다. 카톡·이메일로 보내 주세요');
   });
   p.querySelectorAll('[data-vbal]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vbal); if(!b) return;
