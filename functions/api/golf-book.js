@@ -408,7 +408,7 @@ export async function onRequest(context) {
 
       const c = body.customer || {};
       const customer = {
-        name:  s(c.name, 40),
+        name:  s(c.name, 80),   // 「홍길동 / HONG GILDONG」 한글·영문 두 이름(2026-09-29)
         tel:   s(c.tel, 40),
         kakao: s(c.kakao, 60),
         email: s(c.email, 120),
