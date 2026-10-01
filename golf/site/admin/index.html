@@ -1353,6 +1353,9 @@ function voucherRowHtml(b){
     +(inv&&v.stage==='balance'&&!b.pay?'<button class="add" data-vpaid="'+esc(b.no)+'" title="잔금이 들어왔으면 누르세요">💰 잔금 입금확인</button>':'')
     /* 입금확인 기록 — 누가(직원 아이디 / 자동) 언제 */
     +(b.pay?'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">💰 입금확인 '+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+' · '+esc(bookWhen(b.pay.at))+'</span>':'')
+    /* 사이트 예약: 입금확인 뒤 티업·메모를 적고 이 단추로 ⑤ — 그때 여행사·손님에게 바우처가 보인다(사장님 2026-10-01) */
+    +(!inv&&b.pay&&b.status==='paid'?'<button class="add" data-vdone="'+esc(b.no)+'">🎫 바우처 발급</button>':'')
+    +(!inv&&b.status==='done'?'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">🎫 바우처 발급됨</span>':'')
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
     +(inv?'<button class="ghost" data-vprev="'+esc(b.no)+'">✎ 인보이스 수정</button>':'')
     +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
@@ -1573,12 +1576,12 @@ function bindVoucherBtns(p){
     const b=bookOf(btn.dataset.vpaid); if(!b) return;
     const who=(b.from&&b.from.company)||(b.agency&&b.agency.company)||(b.customer&&b.customer.name)||b.no;
     if(!confirm('['+who+'] '+Number(b.total||0).toLocaleString('ko-KR')+'원 입금을 확인했습니까?\n\n'
-      +(isInvoiceBook(b)?'확인하면 상태가 「④ 입금확인」이 됩니다.':'확인하면 「④ 입금확인」이 됩니다. 「바우처 열기 · 수정」에서 확정 티업·메모를 적고 상태를 「⑤ 바우처 발급 · 완료」로 저장하면 여행사·손님에게 바우처가 보입니다.'))) return;
+      +(isInvoiceBook(b)?'확인하면 상태가 「④ 입금확인」이 됩니다.':'확인하면 「④ 입금확인」이 됩니다. 「바우처 열기 · 수정」에서 확정 티업·메모를 적고 「🎫 바우처 발급」을 누르면 여행사·손님에게 바우처가 보입니다.'))) return;
     btn.disabled=true; btn.textContent='처리 중…';
     const j=await bookApi('paid',{no:b.no});
     if(!j||!j.ok){ btn.disabled=false; toast('❌ '+((j&&j.error)||'입금확인 실패')); drawBooks(); return; }
     bookReplace(j.rec); drawBooks();
-    toast(isInvoiceBook(b)?'💰 입금확인했습니다':'💰 입금확인 — 티업·메모를 적고 ⑤로 저장하면 바우처가 나갑니다');
+    toast(isInvoiceBook(b)?'💰 입금확인했습니다':'💰 입금확인 — 티업·메모를 적고 「🎫 바우처 발급」을 누르세요');
   });
   p.querySelectorAll('[data-vbal]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vbal); if(!b) return;
@@ -1598,6 +1601,16 @@ function bindVoucherBtns(p){
     if(!j||!j.ok){ btn.disabled=false; btn.textContent='🗑 삭제'; toast('❌ '+((j&&j.error)||'삭제 실패')); return; }
     BOOKS.list=(BOOKS.list||[]).filter(x=>x.no!==no);
     drawBooks(); toast('🗑 「'+no+'」 예약요청을 삭제했습니다');
+  });
+  p.querySelectorAll('[data-vdone]').forEach(btn=>btn.onclick=async()=>{
+    const b=bookOf(btn.dataset.vdone); if(!b) return;
+    const noTee=(b.items||[]).some(it=>it.kind==='courses'&&!it.teeOk);
+    if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.'
+      +(noTee?'\n\n⚠ 확정 티업이 비어 있는 골프장이 있습니다. 「바우처 열기 · 수정」에서 먼저 적어 주세요.':'')+'\n\n발급할까요?')) return;
+    btn.disabled=true; btn.textContent='발급 중…';
+    const j=await bookApi('status',{no:b.no,status:'done'});
+    if(!j||!j.ok){ btn.disabled=false; btn.textContent='🎫 바우처 발급'; toast('❌ '+((j&&j.error)||'발급 실패')); return; }
+    bookReplace(j.rec); drawBooks(); toast('🎫 바우처를 발급했습니다');
   });
   p.querySelectorAll('[data-vprev]').forEach(btn=>btn.onclick=()=>{ const b=bookOf(btn.dataset.vprev); if(b) openInvPreview(b); });
   p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{

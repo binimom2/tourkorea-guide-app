@@ -2063,7 +2063,9 @@ let QH_LIST=[];
 /* 사이트(장바구니·단품)에서 보낸 예약(사장님 2026-09-29) — 서버 quoteList 가 site[]로 준다. 수배 진행·인보이스 칸에 견적 건 아래로 붙는다 */
 let QH_SITE=[];
 const qsLive=r=>r.status!=='cancel'&&r.status!=='done'&&!(r.end&&r.end<qhToday());
-const qsIn=(r,t)=>t==='book'?qsLive(r):t==='inv'?!!r.url:false;
+/* 칸은 견적 · 수배 진행 · 확정 셋(사장님 2026-10-01) — 인보이스 단계까지는 수배 진행, 바우처가 나오면 확정. 한 건은 한 칸에만 */
+const qsDone=r=>r.doc==='voucher'&&r.status!=='cancel';
+const qsIn=(r,t)=>t==='book'?(qsLive(r)&&!qsDone(r)):t==='done'?qsDone(r):false;
 function siteStepsHtml(r){
   if(r.status==='cancel') return `<div style="margin-top:5px;font-size:11.5px;font-weight:800;color:#c0492f;">예약 상태 : 취소됨</div>`;
   let cur={new:0,doing:1,confirmed:2,paid:3,done:4}[r.status]; if(cur==null) cur=0;
@@ -2097,7 +2099,9 @@ const qhLive=r=>!!r.book&&!(r.end&&r.end<qhToday())&&!(r.book.live&&r.book.live.
 /* 같은 번호 묶음(S003 · S003-1 · S003-2) 가운데 하나라도 수배 요청했으면 나머지는 견적 칸에서 뺀다 — 지우진 않고, 찾기 글을 넣으면 보인다(사장님 2026-09-29) */
 let QH_BOOKED=new Set(), QH_Q='';
 const qhBase=no=>{ const m=/^(\d{8}-[A-Z]\d+)(?:-\d+)?$/.exec(String(no||'')); return m?m[1]:String(no||''); };
-const qhIn=(r,t)=>t==='quote'?(!r.book&&(!!QH_Q||!QH_BOOKED.has(qhBase(r.quoteNo)))):t==='book'?qhLive(r):!!(r.book&&r.book.live&&r.book.live.url);
+/* 여행사 견적 건은 잔금 인보이스·확정서가 나오면(또는 ⑤ 완료) 확정 */
+const qhDone=r=>!!(r.book&&r.book.live&&r.book.live.url&&r.book.live.status!=='cancel'&&(r.book.live.stage==='balance'||r.book.live.status==='done'));
+const qhIn=(r,t)=>t==='quote'?(!r.book&&(!!QH_Q||!QH_BOOKED.has(qhBase(r.quoteNo)))):t==='book'?(qhLive(r)&&!qhDone(r)):t==='done'?qhDone(r):false;
 function setQhTab(t){ QH_TAB=t; renderQuoteHistory(); }
 /* 보관함 닫기 — 「보관함만 보기」로 열렸으면(사이트 상단 아이콘) 뒤에 견적기를 드러내지 않고 팝업째 닫는다(사장님 2026-09-22) */
 function closeQuoteHistory(){
@@ -2114,7 +2118,7 @@ function renderQuoteHistory(){
   let sRows=QH_SITE.filter(r=>!q||[r.no,r.guest,...(r.items||[]).flatMap(x=>[x.name,x.date])].join(' ').toLowerCase().includes(q));
   if(tb){
     const n=k=>rows.filter(r=>qhIn(r,k)).length+sRows.filter(r=>qsIn(r,k)).length;
-    tb.innerHTML=[['quote','📝 견적'],['book','📤 수배 진행'],['inv','🧾 인보이스']].map(([k,t])=>
+    tb.innerHTML=[['quote','📝 견적'],['book','📤 수배 진행'],['done','✅ 확정']].map(([k,t])=>
       `<button type="button" onclick="setQhTab('${k}')" style="border:1px solid ${QH_TAB===k?'#123A2B':'#d8d2c4'};background:${QH_TAB===k?'#123A2B':'#fff'};color:${QH_TAB===k?'#fff':'#123A2B'};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer">${t} ${n(k)}</button>`).join('');
     rows=rows.filter(r=>qhIn(r,QH_TAB));
     sRows=sRows.filter(r=>qsIn(r,QH_TAB));
@@ -2155,7 +2159,7 @@ function renderQuoteHistory(){
            </div>`
         : ''}
     </div>`;
-  }).join('')+siteHtml : '<div style="padding:18px;color:#5E6F66">'+(tb?({quote:'요청 전 견적이 없습니다.',book:'진행 중인 수배 요청이 없습니다.',inv:'아직 발행된 인보이스가 없습니다.'}[QH_TAB]):'찾는 견적이 없습니다.')+'</div>';
+  }).join('')+siteHtml : '<div style="padding:18px;color:#5E6F66">'+(tb?({quote:'요청 전 견적이 없습니다.',book:'진행 중인 수배 요청이 없습니다.',done:'아직 확정된 예약이 없습니다.'}[QH_TAB]):'찾는 견적이 없습니다.')+'</div>';
 }
 
 /* 보관된 견적을 그때 금액 그대로 다시 PNG로 뽑는다. 계산을 다시 하지 않는다. */
