@@ -1304,7 +1304,6 @@ function voucherRowHtml(b){
       +'<button class="add" data-vpaid="'+esc(b.no)+'" title="입금을 확인했으면 누르세요 — 같은 링크가 바우처로 바뀝니다">💰 입금확인 → 바우처 발급</button>'
       +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
       +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
-      +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
       +'<button class="ghost" data-confirm="'+esc(b.no)+'" title="인보이스에 실리는 메모(입금 기한·계좌 안내 등)">✎ 인보이스 메모</button>'
       +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
       +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
@@ -1327,7 +1326,6 @@ function voucherRowHtml(b){
     +(b.pay?'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">💰 입금확인 '+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+' · '+esc(bookWhen(b.pay.at))+'</span>':'')
     +'<button class="ghost" data-vkakao="'+esc(b.no)+'">💬 카톡 문구 복사</button>'
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
-    +'<button class="ghost" data-vlink="'+esc(b.no)+'">🔗 링크 복사</button>'
     +(inv?'<button class="ghost" data-vprev="'+esc(b.no)+'">✎ 인보이스 수정</button>'
       :'<button class="ghost" data-confirm="'+esc(b.no)+'" title="바우처에 실리는 Agent Memo(호텔 컨펌번호 등)">✎ 바우처 메모</button>')
     +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
