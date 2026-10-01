@@ -71,7 +71,14 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .amt .sum{border-top:2px solid #2E7D4F;margin-top:8px;padding-top:10px}
 .amt .sum span{font-size:15px;font-weight:800;opacity:1}
 .amt .sum b{font-size:26px;font-weight:900;color:#1f6b3f}
-@media print{ .act{display:none} .sheet{padding:0} body{background:#fff} .head{-webkit-print-color-adjust:exact;print-color-adjust:exact} .body,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+/* 편집 모드 — 어드민이 적을 칸은 노란색 */
+.ed{font:inherit;font-size:14px;font-weight:700;background:#FFF4B8;border:2px solid #F2C94C;border-radius:6px;padding:5px 8px;color:var(--ink)}
+input.ed{width:150px;text-align:right}
+textarea.ed{display:block;width:100%;margin:6px 0;resize:vertical;font-weight:600;line-height:1.5}
+.edbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FFF4B8;border-bottom:2px solid #F2C94C;padding:10px 16px;font-size:13.5px}
+.edbar button{margin-left:auto;background:var(--fairway);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:800;cursor:pointer}
+.edbar #edMsg{font-weight:700}
+@media print{ .edbar{display:none} .act{display:none} .sheet{padding:0} body{background:#fff} .head{-webkit-print-color-adjust:exact;print-color-adjust:exact} .body,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 </style>
 </head>
 <body>
@@ -113,8 +120,9 @@ function itemHtml(v, it, i){
     rows.push(["Tee Date (라운드 날짜)", date]);
     if(it.option) rows.push(["Round (라운드)", it.option]);
     rows.push(["Players (인원)", (it.pax || 0) + " Player(s)"]);
-    /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간 */
-    if(it.teeOk) rows.push(["Tee Time (확정 티업)", it.teeOk]);
+    /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간. 편집 모드면 노란 칸 */
+    if(EDIT) rows.push(["Tee Time (확정 티업)", { html: '<input class="ed" data-tee="' + i + '" value="' + esc(it.teeOk || "") + '" placeholder="' + esc(it.time ? "희망 " + it.time : "예: 07:30") + '" maxlength="40">' }]);
+    else if(it.teeOk) rows.push(["Tee Time (확정 티업)", it.teeOk]);
     else if(it.time) rows.push(["Tee Time (희망 티타임)", it.time]);
   } else {
     rows.push(["Date (이용일)", date]);
@@ -132,7 +140,7 @@ function itemHtml(v, it, i){
     + '<h3>Booking Details</h3>'
     + '<div class="line">- Date (이용일) : <b>' + esc(date) + '</b></div>'
     + '<div class="line">- Guest Name (이용자명) : <b>' + esc(v.guest) + '</b></div>'
-    + '<div class="tbl">' + rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>').join("") + '</div>'
+    + '<div class="tbl">' + rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + (r[1] && r[1].html ? r[1].html : esc(r[1])) + '</b></div>').join("") + '</div>'
     + '</div>';
 }
 
@@ -148,7 +156,8 @@ function render(v){
     + v.items.map((it, i) => itemHtml(v, it, i)).join("")
     + (total ? '<div class="total"><span>Total (합계)</span><span>' + won(total) + (askedN ? '<i>+ 요금 문의 ' + askedN + '건</i>' : '') + '</span></div>' : '')
     + '<div class="sec"><h3>Agent Memo</h3><p>Confirm No. ' + esc(v.cno)
-      + (v.memo ? '\n' + esc(v.memo) : '') + '\nThis booking is confirmed and payable by ' + esc(c.name || "") + '.</p></div>'
+      + (EDIT ? '\n<textarea class="ed" id="edMemo" rows="3" placeholder="호텔·골프장 컨펌번호, 안내 사항 등">' + esc(v.memo || "") + '</textarea>'
+        : v.memo ? '\n' + esc(v.memo) : '') + '\nThis booking is confirmed and payable by ' + esc(c.name || "") + '.</p></div>'
     + '<div class="sec"><h3>Booked and payable by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
       + (c.tel2 ? '<p class="small">- Tel : ' + esc(c.tel2) + '</p>' : '')
@@ -163,6 +172,32 @@ function render(v){
     + '</div>';
   document.title = "예약 확정서 " + v.no + " · " + (c.name || "");
   $("#act").style.display = "";
+  if(EDIT){
+    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸을 채우고 저장하세요. 손님 화면에는 적은 글자만 보입니다.'
+      + '<button type="button" id="edSave">💾 저장</button><span id="edMsg"></span></div>');
+    $("#edSave").onclick = () => saveEdit(v);
+  }
+}
+/* ── 편집 모드(?edit=1) — 관리 화면 「바우처 열기 · 수정」으로 열면 확정 티업·메모를 바로 적는다(사장님 2026-10-01).
+   같은 브라우저의 직원 로그인(gs-auth) 토큰으로 서버에 저장한다. 손님이 이 주소를 받아도 로그인이 없어 그냥 바우처로 보인다 ── */
+function staffToken(){
+  try{ const a = JSON.parse(localStorage.getItem("gs-auth") || "null"); return (a && (a.access_token || (a.currentSession && a.currentSession.access_token))) || ""; }catch(e){ return ""; }
+}
+const EDIT = new URLSearchParams(location.search).get("edit") === "1" && !!staffToken();
+async function saveEdit(v){
+  const btn = $("#edSave"), msg = $("#edMsg");
+  const tees = {}; document.querySelectorAll("[data-tee]").forEach(e => { tees[e.dataset.tee] = e.value.trim(); });
+  btn.disabled = true; msg.textContent = "저장 중…";
+  try{
+    const r = await fetch("/api/golf-book", { method: "POST",
+      headers: { "content-type": "application/json", Authorization: "Bearer " + staffToken() },
+      body: JSON.stringify({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees }) });
+    const j = await r.json().catch(() => ({}));
+    if(r.status === 401) throw new Error("로그인이 만료되었습니다. 관리 화면을 새로고침한 뒤 다시 저장해 주세요.");
+    if(!j.ok) throw new Error(j.error || "저장하지 못했습니다.");
+    msg.textContent = "✅ 저장했습니다";
+  }catch(e){ msg.textContent = "❌ " + ((e && e.message) || "저장하지 못했습니다."); }
+  btn.disabled = false;
 }
 /* ── 인보이스(사장님 2026-09-21) — 실시간 견적으로 들어온 여행사 수배 건은 컨펌하면 바우처 대신 이 화면이 나간다.
    서버가 v.type==='invoice' 로 견적 내용(v.quote)과 총액만 준다 — 항목별 원가는 오지 않는다 ── */

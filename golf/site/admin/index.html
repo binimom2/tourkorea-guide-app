@@ -1198,9 +1198,8 @@ function bookItemHtml(it,i,no){
     :('<b>'+Number(it.krw).toLocaleString('ko-KR')+'원</b>'
       +(it.baht?' <i>('+Number(it.baht).toLocaleString('ko-KR')+'밧)</i>':''));
   const tag=[BOOK_KIND[it.kind]||'', it.region||''].filter(Boolean).join(' ');
-  /* 골프장 줄 — 확정 티업 시간(사장님 2026-10-01). 아래 「저장」으로 같이 저장되고 바우처에 실린다 */
-  const tee=(no&&it.kind==='courses')
-    ?'<label class="bktee">확정 티업 <input type="text" data-tee="'+esc(no)+'|'+i+'" value="'+esc(it.teeOk||'')+'" placeholder="'+esc(it.time?'희망 '+it.time:'예: 07:30')+'" maxlength="40"></label>':'';
+  /* 확정 티업은 바우처 편집 화면(「바우처 열기 · 수정」)에서 적는다 — 여기선 적힌 것만 보여 준다 */
+  const tee=(it.kind==='courses'&&it.teeOk)?'<span class="bktee">확정 티업 '+esc(it.teeOk)+'</span>':'';
   return '<li><span class="bkw">'+esc(it.name)
     +(tag?' <i>· '+esc(tag)+'</i>':'')+'</span>'
     +'<span class="bkd">'+esc(it.label||'')+'</span>'
@@ -1348,14 +1347,14 @@ function voucherRowHtml(b){
   const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
   return '<div class="bkvc on">'
     +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
-    +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">'+dn+' 열기 ↗</a>'
+    /* 바우처는 «편집 모드»로 연다(사장님 2026-10-01) — 확정 티업·메모를 바우처 위 노란 칸에 바로 적고 저장 */
+    +'<a class="bkvopen" href="'+esc(voucherUrlOf(b)+(inv?'':'&edit=1'))+'" target="_blank" rel="noopener">'+dn+' 열기'+(inv?'':' · 수정')+' ↗</a>'
     +(inv&&v.stage!=='balance'?'<button class="add" data-vbal="'+esc(b.no)+'" title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행</button>':'')
     +(inv&&v.stage==='balance'&&!b.pay?'<button class="add" data-vpaid="'+esc(b.no)+'" title="잔금이 들어왔으면 누르세요">💰 잔금 입금확인</button>':'')
     /* 입금확인 기록 — 누가(직원 아이디 / 자동) 언제 */
     +(b.pay?'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">💰 입금확인 '+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+' · '+esc(bookWhen(b.pay.at))+'</span>':'')
     +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
-    +(inv?'<button class="ghost" data-vprev="'+esc(b.no)+'">✎ 인보이스 수정</button>'
-      :'<button class="ghost" data-confirm="'+esc(b.no)+'" title="바우처에 실리는 Agent Memo(호텔 컨펌번호 등)">✎ 바우처 메모</button>')
+    +(inv?'<button class="ghost" data-vprev="'+esc(b.no)+'">✎ 인보이스 수정</button>':'')
     +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
     +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
     +'</div>';
@@ -1647,9 +1646,8 @@ function bindBookCards(p){
     const no=btn.dataset.save;
     const st=p.querySelector('[data-st="'+CSS.escape(no)+'"]').value;
     const memo=p.querySelector('[data-memo="'+CSS.escape(no)+'"]').value;
-    const tees={}; p.querySelectorAll('[data-tee^="'+CSS.escape(no)+'|"]').forEach(e=>{ tees[e.dataset.tee.split('|').pop()]=e.value.trim(); });
     btn.disabled=true; btn.textContent='저장 중…';
-    const j=await bookApi('status',{no,status:st,memo,tees});
+    const j=await bookApi('status',{no,status:st,memo});
     btn.disabled=false; btn.textContent='저장';
     if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'저장 실패')); return; }
     /* 서버가 돌려준 최신본으로 그 한 건만 갈아 끼운다 — 목록 전체를 다시 받지 않는다 */

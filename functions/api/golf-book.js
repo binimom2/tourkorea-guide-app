@@ -597,6 +597,25 @@ export async function onRequest(context) {
       return json({ ok: true, rec });
     }
 
+    /* ══ 바우처 편집 화면(/golf/site/voucher/?edit=1)에서 어드민이 적은 확정 티업·메모(사장님 2026-10-01) ══ */
+    if (action === 'vEdit') {
+      const no = s(body.no, 40);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      if (!rec.voucher || !rec.voucher.token) return json({ error: '바우처가 아직 발급되지 않았습니다.' }, 400);
+      if (body.memo != null) rec.voucher.memo = s(body.memo, MAX_TEXT);
+      if (body.tees && typeof body.tees === 'object') {
+        Object.keys(body.tees).forEach(k => {
+          const it = (rec.items || [])[+k];
+          if (it && it.kind === 'courses') it.teeOk = s(body.tees[k], 40);
+        });
+      }
+      rec.voucher.editBy = loginIdOf(user); rec.voucher.editAt = new Date().toISOString();
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: rec.voucher.editAt });
+      return json({ ok: true });
+    }
+
     /* ══ 컨펌 → 바우처 발급. 이미 발급된 건이면 번호·링크는 그대로 두고 메모만 고친다
           (손님에게 이미 보낸 링크가 죽으면 안 된다) ══ */
     if (action === 'confirm') {
