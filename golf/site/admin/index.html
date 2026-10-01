@@ -1573,12 +1573,12 @@ function bindVoucherBtns(p){
     const b=bookOf(btn.dataset.vpaid); if(!b) return;
     const who=(b.from&&b.from.company)||(b.agency&&b.agency.company)||(b.customer&&b.customer.name)||b.no;
     if(!confirm('['+who+'] '+Number(b.total||0).toLocaleString('ko-KR')+'원 입금을 확인했습니까?\n\n'
-      +(isInvoiceBook(b)?'확인하면 상태가 「④ 입금확인」이 됩니다.':'확인하면 같은 링크가 바우처(예약 확정서)로 바뀝니다 — 카톡·이메일로 다시 보내 주세요.'))) return;
+      +(isInvoiceBook(b)?'확인하면 상태가 「④ 입금확인」이 됩니다.':'확인하면 「④ 입금확인」이 됩니다. 「바우처 열기 · 수정」에서 확정 티업·메모를 적고 상태를 「⑤ 바우처 발급 · 완료」로 저장하면 여행사·손님에게 바우처가 보입니다.'))) return;
     btn.disabled=true; btn.textContent='처리 중…';
     const j=await bookApi('paid',{no:b.no});
     if(!j||!j.ok){ btn.disabled=false; toast('❌ '+((j&&j.error)||'입금확인 실패')); drawBooks(); return; }
     bookReplace(j.rec); drawBooks();
-    toast(isInvoiceBook(b)?'💰 입금확인했습니다':'💰 입금확인 — 바우처가 발급되었습니다. 카톡·이메일로 보내 주세요');
+    toast(isInvoiceBook(b)?'💰 입금확인했습니다':'💰 입금확인 — 티업·메모를 적고 ⑤로 저장하면 바우처가 나갑니다');
   });
   p.querySelectorAll('[data-vbal]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vbal); if(!b) return;

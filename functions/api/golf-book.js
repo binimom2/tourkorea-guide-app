@@ -287,7 +287,9 @@ function voucherUrl(request, rec) {
 /* ── 사이트 예약(장바구니·단품)의 순서(사장님 2026-09-29): 호텔 컨펌 → «항목형 인보이스» → 입금확인 → 바우처.
    rec.voucher.stage === 'invoice' 인 동안 같은 링크가 인보이스를 연다. 입금확인(markPaid)하면 'voucher' 로 바뀐다.
    stage 가 없는 옛 건은 바우처로 본다(이미 보낸 바우처 링크가 인보이스로 바뀌면 안 된다) ── */
-const isSiteInvoice = (rec) => !isAgencyRec(rec) && !!(rec && rec.voucher && rec.voucher.stage === 'invoice');
+/* 입금확인 뒤에도 상태가 「⑤ 바우처 발급 · 완료」가 되기 전에는 인보이스로 보인다(사장님 2026-10-01) — 어드민이 확정 티업·메모를 적고 ⑤로 바꿔야 바우처가 나간다. */
+const isSiteInvoice = (rec) => !isAgencyRec(rec) && !!(rec && rec.voucher
+  && (rec.voucher.stage === 'invoice' || (rec.voucher.stage === 'voucher' && rec.status !== 'done')));
 function itemInvoiceView(request, rec, site) {
   return {
     type: 'invoice', kind: 'items',
@@ -298,6 +300,7 @@ function itemInvoiceView(request, rec, site) {
     items: (rec.items || []).map(it => ({ kind: it.kind, kindT: it.kindT || '', region: it.region, name: it.name, option: it.option,
       date: it.date, dateEnd: it.dateEnd, label: it.label, krw: it.asked ? 0 : num(it.krw), asked: !!it.asked })),
     total: num(rec.total),
+    paid: !!rec.pay,
     company: companyOf(site),
     url: voucherUrl(request, rec),
   };
@@ -507,7 +510,8 @@ export async function onRequest(context) {
       if (rec.status === 'cancel') return json({ error: '취소된 예약입니다. 문의는 아래 연락처로 주세요.', cancelled: true }, 410);
       const site = await readSite(KEY);
       return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY, s(body.d, 10))
-        : isSiteInvoice(rec) ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site) });
+        /* 어드민 수정 모드(e=1)는 ⑤ 전이라도 바우처로 열어 티업·메모를 적게 한다 */
+        : (isSiteInvoice(rec) && !(body.e === '1' && rec.voucher.stage === 'voucher')) ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site) });
     }
 
     /* ══ 입금 알림 입구(나중에 페이액션·뱅크다 같은 서비스를 붙일 자리, 2026-09-29) ══
