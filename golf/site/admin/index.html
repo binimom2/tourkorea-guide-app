@@ -265,6 +265,8 @@ tr.subrow td{padding:0 6px 11px}
 .bkitems li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
   padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px}
 .bkitems li:last-child{border-bottom:0}
+.bkstafflog{margin-top:8px;padding:8px 12px;background:#FFFBEA;border:1px solid #F1E3B0;border-radius:8px;font-size:13px;line-height:1.6}
+.bkstafflog .bkby{margin-left:6px}
 .bktee{font-size:12.5px;font-weight:700;color:#0b3d91;white-space:nowrap}
 .bktee input{width:110px;margin-left:4px;padding:4px 7px;border:1px solid #9db4dd;border-radius:6px;font-size:13px;font-weight:700}
 .bkw{font-weight:800;min-width:180px}
@@ -1193,6 +1195,13 @@ function bookStatusOf(k){ return BOOK_STATUS.filter(s=>s.k===k)[0]||BOOK_STATUS[
 /* 담긴 줄 하나 — 「람차방 CC · 골프장 파타야 / 09.17 · 18홀 · 4명 / 676,000원」.
    종류 이름은 손님이 보낸 글자를 쓰지 않고 여기서 붙인다. */
 const BOOK_KIND={courses:'골프장',hotels:'호텔'};
+/* 직원 메모 기록 — 옛 건(staff.memo 하나뿐)도 한 줄로 보여 준다 */
+function staffLogHtml(b){
+  const st=b.staff||{};
+  const log=Array.isArray(st.log)?st.log:(st.memo?[{memo:st.memo,by:st.by,at:st.at}]:[]);
+  if(!log.length) return '';
+  return '<div class="bkstafflog">'+log.map(x=>'<div>📝 '+esc(x.memo)+' <span class="bkby">'+esc(x.by||'')+' · '+esc(bookWhen(x.at))+'</span></div>').join('')+'</div>';
+}
 function bookItemHtml(it,i,no){
   const money=(it.asked||!it.krw)?'<i class="bkask">요금 문의</i>'
     :('<b>'+Number(it.krw).toLocaleString('ko-KR')+'원</b>'
@@ -1297,12 +1306,14 @@ function bookCardHtml(b){
       +'<select data-st="'+esc(b.no)+'">'
       +BOOK_STATUS.map(s=>'<option value="'+s.k+'"'+(s.k===b.status?' selected':'')+'>'+s.t+'</option>').join('')
       +'</select>'
-      +'<input type="text" data-memo="'+esc(b.no)+'" placeholder="직원 메모" value="'+esc((b.staff&&b.staff.memo)||'')+'">'
+      /* 직원 메모 — 저장하면 칸은 비고 아래에 글로 쌓인다(사장님 2026-10-01) */
+      +'<input type="text" data-memo="'+esc(b.no)+'" placeholder="직원 메모 (직원만 보임)" value="">'
       +'<button class="add" data-save="'+esc(b.no)+'">저장</button>'
-      +((b.staff&&b.staff.by)?'<span class="bkby">'+esc(b.staff.by)+' · '+esc(bookWhen(b.staff.at))+'</span>':'')
       /* 테스트 기간용 삭제(사장님 2026-09-23 — 나중에 막는다). 서버가 golf_booktrash_<번호>로 옮겨 둔다 */
       +'<button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button>'
-    +'</div></div>');
+    +'</div>'
+    +staffLogHtml(b)
+    +'</div>');
 }
 /* ══ 바우처(예약 확정서) — 직원이 「컨펌」을 누르면 서버가 확정번호·링크를 만든다(사장님 2026-09-10).
    손님에게는 링크를 카톡(문구 복사해서 붙여넣기)이나 이메일(서버 자동 발송)로 보낸다.

@@ -589,7 +589,14 @@ export async function onRequest(context) {
         rec.assign = { by: loginIdOf(user), name: s(user.user_metadata && user.user_metadata.name, 40), at: new Date().toISOString() };
         if (rec.status === 'new') rec.status = 'doing';           // 담당자가 붙으면 저절로 「② 호텔수배 중」(손님 쪽엔 진행중)
       }
-      if (body.memo != null) rec.staff = { memo: s(body.memo, MAX_TEXT), by: loginIdOf(user), at: new Date().toISOString() };
+      /* 직원 메모 — 덮어쓰지 않고 쌓는다(사장님 2026-10-01). 빈 칸으로 저장하면 그대로 둔다 */
+      const memo = body.memo != null ? s(body.memo, MAX_TEXT) : '';
+      if (memo) {
+        const old = rec.staff || {};
+        const log = Array.isArray(old.log) ? old.log : (old.memo ? [{ memo: old.memo, by: old.by, at: old.at }] : []);
+        const e = { memo, by: loginIdOf(user), at: new Date().toISOString() };
+        rec.staff = { memo, by: e.by, at: e.at, log: log.concat([e]).slice(-50) };
+      }
       /* 골프장 확정 티업 시간 — 줄 번호별로 받아 바우처에 싣는다(사장님 2026-10-01) */
       if (body.tees && typeof body.tees === 'object') {
         Object.keys(body.tees).forEach(k => {
