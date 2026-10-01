@@ -586,6 +586,13 @@ export async function onRequest(context) {
         if (rec.status === 'new') rec.status = 'doing';           // 담당자가 붙으면 저절로 「② 호텔수배 중」(손님 쪽엔 진행중)
       }
       if (body.memo != null) rec.staff = { memo: s(body.memo, MAX_TEXT), by: loginIdOf(user), at: new Date().toISOString() };
+      /* 골프장 확정 티업 시간 — 줄 번호별로 받아 바우처에 싣는다(사장님 2026-10-01) */
+      if (body.tees && typeof body.tees === 'object') {
+        Object.keys(body.tees).forEach(k => {
+          const it = (rec.items || [])[+k];
+          if (it && it.kind === 'courses') it.teeOk = s(body.tees[k], 40);
+        });
+      }
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: new Date().toISOString() });
       return json({ ok: true, rec });
     }

@@ -113,7 +113,9 @@ function itemHtml(v, it, i){
     rows.push(["Tee Date (라운드 날짜)", date]);
     if(it.option) rows.push(["Round (라운드)", it.option]);
     rows.push(["Players (인원)", (it.pax || 0) + " Player(s)"]);
-    if(it.time) rows.push(["Tee Time (희망 티타임)", it.time]);
+    /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간 */
+    if(it.teeOk) rows.push(["Tee Time (확정 티업)", it.teeOk]);
+    else if(it.time) rows.push(["Tee Time (희망 티타임)", it.time]);
   } else {
     rows.push(["Date (이용일)", date]);
     if(it.option) rows.push(["Item (내용)", it.option]);
