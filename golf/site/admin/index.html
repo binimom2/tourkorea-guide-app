@@ -887,6 +887,8 @@ function drawTabs(){
     +(dirty[t.k]?'<span class="dirty"></span>':'')+'</button>').join('');
   ts.forEach(t=>{ document.getElementById('tab-'+t.k).onclick=()=>{ tab=t.k; drawTabs(); }; });
   drawBookBadge();
+  drawAgBadge();
+  if(!AGENCIES) agPoll();     // 로그인 직후 — 1분 기다리지 않고 바로 대기 수를 띄운다
   draw();
 }
 function draw(){
@@ -1039,7 +1041,29 @@ async function loadAgencies(){
   AGENCIES=j.error?{error:j.error}:{list:Array.isArray(j.list)?j.list:[]};
   drawAgencies();
 }
+/* 탭 이름 옆 빨간 숫자 = 가입 「대기」 수(사장님 2026-10-01) */
+function drawAgBadge(){
+  const b=document.getElementById('tab-agencies'); if(!b) return;
+  const n=((AGENCIES&&AGENCIES.list)||[]).filter(a=>a.status==='pending').length;
+  let s=b.querySelector('.bkbadge');
+  if(!n){ if(s) s.remove(); return; }
+  if(!s){ s=document.createElement('span'); s.className='bkbadge'; b.appendChild(s); }
+  s.textContent=n;
+}
+/* 다른 탭에 있어도 새 가입 신청을 알 수 있게 1분마다 대기 수만 다시 센다(여행사 회원 탭을 보고 있을 땐 화면을 건드리지 않는다) */
+let agPollBusy=false;
+async function agPoll(){
+  if(agPollBusy||document.hidden||tab==='agencies'||!myTabs().some(t=>t.k==='agencies')) return;
+  agPollBusy=true;
+  try{
+    const j=await agencyApi('list');
+    if(j&&!j.error&&Array.isArray(j.list)){ AGENCIES={list:j.list}; drawAgBadge(); }
+  }catch(e){}
+  finally{ agPollBusy=false; }
+}
+setTimeout(agPoll,3000); setInterval(agPoll,60000);
 function drawAgencies(){
+  drawAgBadge();
   const p=document.getElementById('pane');
   if(AGENCIES===null){
     p.innerHTML='<div class="card"><h2>🏢 여행사 회원</h2><p class="desc">불러오는 중…</p></div>';
