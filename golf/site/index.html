@@ -3054,11 +3054,8 @@ let directItem = null;
    카카오톡 ID는 손님이 자기 아이디를 모르는 일이 많아 뺐다.
    로그인해 두셨으면 성함·이메일을 그 정보로 채워 준다(고쳐 넣으실 수 있다). */
 function bformHtml(){
-  let p = null;
-  try{ p = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); }catch(e){}
-  /* 이름은 여권상 영문 성함으로 받는다(사장님 2026-09-29) — 로그인 이름(한글)은 채우지 않는다. 호텔이 끼면 「투숙자」, 아니면 「예약자」 */
-  const em  = (guest && guest.email) || (p && p.email) || "";
-  const tel = (p && p.tel) || "";
+  /* 여행사가 손님마다 따로 예약하므로 연락처·이메일도 매번 빈칸(사장님 2026-10-01 — 앞 손님 것이 남아 뜨던 것) */
+  const em = "", tel = "";
   return (guest ? '<p class="cnote bfme">로그인하신 정보로 채워 두었습니다 — 고치셔도 됩니다.</p>' : '')
     + '<div class="bform">'
     /* 한글 이름 / 영문 이름(여권상) 두 칸(사장님 2026-09-29) — 서버에는 「홍길동 / HONG GILDONG」 한 줄로 간다 */
@@ -3173,9 +3170,6 @@ async function sendBooking(){
     });
     const j = await r.json();
     if(!j || !j.ok) throw new Error((j && j.error) || "보내지 못했습니다.");
-    /* 다음에 오셔도 다시 적지 않으시게 — 견적 요청 칸과 같은 자리를 쓴다 */
-    try{ localStorage.setItem(GUEST_KEY, JSON.stringify({
-      name: customer.name, tel: customer.tel, email: customer.email })); }catch(e){}
     lastNo = j.no;
     if(directItem){ directItem = null; closeDetail(); }   // 바로 예약 요청 — 장바구니는 그대로 두고 상세 창만 닫는다
     else{
