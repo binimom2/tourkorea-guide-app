@@ -195,7 +195,10 @@ async function saveEdit(v){
     const j = await r.json().catch(() => ({}));
     if(r.status === 401) throw new Error("로그인이 만료되었습니다. 관리 화면을 새로고침한 뒤 다시 저장해 주세요.");
     if(!j.ok) throw new Error(j.error || "저장하지 못했습니다.");
+    /* 저장하면 창을 닫는다(사장님 2026-10-01). 브라우저가 닫기를 막으면 안내만 남긴다 */
     msg.textContent = "✅ 저장했습니다";
+    window.close();
+    setTimeout(() => { msg.textContent = "✅ 저장했습니다 — 이 탭을 닫으셔도 됩니다"; }, 300);
   }catch(e){ msg.textContent = "❌ " + ((e && e.message) || "저장하지 못했습니다."); }
   btn.disabled = false;
 }

@@ -1665,7 +1665,7 @@ async function loadBooks(){
 /* 새 예약요청 자동 불러오기(사장님 2026-09-29 「매번 새로고침해야 뜬다」) — 30초마다 서버에 물어,
    바뀐 게 있으면 목록을 새로 그린다. 직원이 메모·상태를 고치는 중(입력칸에 커서)이면 그때는 그리지 않고 다음 차례에.
    다른 탭에 있으면 탭 이름 옆 숫자 + 알림만. 창이 가려져 있으면 묻지 않는다 */
-const bookSig=l=>(l||[]).map(b=>[b.no,b.status,b.msgUnread||0,(b.voucher&&b.voucher.stage)||'',(b.voucher&&b.voucher.token)?1:0,b.pay?1:0,(b.assign&&b.assign.by)||''].join(':')).join('|');
+const bookSig=l=>(l||[]).map(b=>[b.no,b.status,b.msgUnread||0,(b.voucher&&b.voucher.stage)||'',(b.voucher&&b.voucher.token)?1:0,b.pay?1:0,(b.assign&&b.assign.by)||'',(b.voucher&&b.voucher.editAt)||''].join(':')).join('|');
 let bookPollBusy=false;
 setInterval(async()=>{
   if(bookPollBusy||document.hidden||!myTabs().some(t=>t.k==='books')) return;
