@@ -246,6 +246,11 @@ body.boxonly{background:transparent}                          /* 사이트 팝�
 body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important}   /* 인라인 스타일보다 앞서야 해서 !important */
 /* 보관함 창 크게(사장님 2026-09-23 「사이즈 키워줘」) — 견적기 안 「내 견적 보관함」 단추로 열어도 같게. 줄마다 인라인 크기라 통째로 키운다 */
 #qhModal>div{max-width:860px!important;max-height:88vh!important;min-height:60vh}   /* 건이 적어도 창이 납작하지 않게(사장님 2026-10-01) */
+/* 안쪽 여백 넉넉히(사장님 2026-10-01 「테두리 공란이 없어 답답」) — 줄마다 인라인 여백이라 !important 로 덮는다 */
+#qhModal>div>div:first-child{padding:16px 22px!important}
+#qhBody>div:not(#qhList){padding:12px 22px!important}
+#qhList>div{padding:16px 22px!important}
+#qhList{padding-bottom:10px}
 @media (min-width:900px){ #qhModal>div{zoom:1.18} }
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
