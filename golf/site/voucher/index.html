@@ -51,8 +51,9 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .box li{font-size:12.5px;line-height:1.6;padding-left:12px;text-indent:-12px;margin:2px 0}
 .box li.red{color:#D9412B}
 .box p{margin:0;font-size:12.5px;white-space:pre-wrap;line-height:1.65}
-.act{position:fixed;right:16px;bottom:16px;display:flex;gap:8px;z-index:9}
-.act button{background:var(--fairway);color:#fff;border:0;border-radius:999px;padding:12px 18px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+/* 인쇄 단추는 문서 맨 아래(사장님 2026-10-01 — 떠 있으면 내용을 가린다) */
+.act{max-width:760px;margin:-30px auto 40px;padding:0 20px;display:flex;justify-content:center;gap:8px}
+.act button{background:var(--fairway);color:#fff;border:0;border-radius:999px;padding:12px 22px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
 .err{max-width:560px;margin:80px auto;padding:0 20px;text-align:center}
 .err h2{font-size:20px;font-weight:900;margin:0 0 8px}
 .err p{color:var(--muted);font-size:14px}
