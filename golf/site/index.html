@@ -654,6 +654,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   color:var(--fairway);line-height:0}
 .ntbtn:hover{background:rgba(18,58,43,.09)}
 .ntbtn svg{width:22px;height:22px;display:block}
+/* 마우스 올리면 바로 뜨는 이름표(사장님 2026-10-01) — 기본 title은 늦게 떠서 직접 그린다 */
+.ntbtn[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--fairway);color:#fff;font-size:12px;font-weight:700;line-height:1.3;white-space:nowrap;
+  padding:5px 9px;border-radius:6px;z-index:50;pointer-events:none}
 .ntbtn.has{color:#E0464B}
 .ntbtn.has#navCart{color:var(--fairway)}
 /* 담긴 갯수 — 0이면 아예 안 붙는다(「0」이 달려 있으면 담긴 줄 안다) */
@@ -784,10 +788,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     <!-- 오른쪽 위 — 찜 · 장바구니 · 태국환율.
          메뉴(☰)가 접히는 좁은 화면에서도 이 셋은 늘 보이게 메뉴 밖에 둔다. -->
     <div class="navtools">
-      <button type="button" class="ntbtn" id="navFav" aria-label="찜한 곳"></button>
-      <button type="button" class="ntbtn" id="navCart" aria-label="장바구니"></button>
+      <button type="button" class="ntbtn" id="navFav" aria-label="찜한 곳" data-tip="찜한 곳"></button>
+      <button type="button" class="ntbtn" id="navCart" aria-label="장바구니" data-tip="장바구니"></button>
       <!-- 내 견적 보관함 — 승인된 여행사로 로그인했을 때만 보인다(사장님 2026-09-18). 실시간 견적으로 낸 견적이 담긴다 -->
-      <button type="button" class="ntbtn" id="navBox" aria-label="내 견적 보관함" title="내 견적 보관함 — 실시간 견적으로 낸 견적이 담깁니다" hidden></button>
+      <button type="button" class="ntbtn" id="navBox" aria-label="내 견적 보관함" data-tip="내 견적 보관함 · 수배 진행 · 확정" hidden></button>
       <div class="fxbox" id="fxBox" hidden></div>
     </div>
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
