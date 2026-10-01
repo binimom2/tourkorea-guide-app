@@ -119,7 +119,7 @@ function itemHtml(v, it, i){
     rows.push(["Meal Plan (식사)", ven.bf === true ? "Breakfast Included" : ven.bf === false ? "Room Only" : "-"]);
   } else if(it.kind === "courses"){
     rows.push(["Tee Date (라운드 날짜)", date]);
-    if(it.option) rows.push(["Round (라운드)", it.option]);
+    if(it.option) rows.push(["Round (라운드)", String(it.option).replace(/(\d+)\s*홀/g, "$1 Holes")]);   // 「18홀」→「18 Holes」(사장님 2026-10-01)
     rows.push(["Players (인원)", (it.pax || 0) + " Player(s)"]);
     /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간. 편집 모드면 노란 칸 */
     if(EDIT) rows.push(["Tee Time (확정 티업)", { html: '<input class="ed" data-tee="' + i + '" value="' + esc(it.teeOk || "") + '" placeholder="' + esc(it.time ? "희망 " + it.time : "예: 07:30") + '" maxlength="40">' }]);

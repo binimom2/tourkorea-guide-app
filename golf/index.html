@@ -2078,7 +2078,7 @@ function siteStepsHtml(r){
   if(r.doc==='invoice'&&cur<2) cur=2; if(r.doc==='voucher'&&cur<4) cur=4;
   const steps=['접수','진행중','인보이스 발행','입금확인','바우처 발급'];
   return `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px;">`
-    +steps.map((t,i)=>`<span style="font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;${i<cur?'background:#e3f3e8;color:#1f6b3f;':i===cur?'background:#1f6b3f;color:#fff;':'background:#efece4;color:#9a9f98;'}">${i<cur||(i===4&&cur===4)?'✓ ':''}${t}</span>`
+    +steps.map((t,i)=>`<span style="font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;${i<cur?'background:#e3f3e8;color:#1f6b3f;':i===cur?(cur===4?'background:#1f6b3f;color:#fff;':'background:#E8508A;color:#fff;'):'background:#efece4;color:#9a9f98;'}">${i<cur||(i===4&&cur===4)?'✓ ':''}${t}</span>`
       +(i<steps.length-1?`<span style="color:#b9bdb6;font-size:10px;">›</span>`:'')).join('')
     +`</div>`;
 }
@@ -2361,7 +2361,7 @@ function bookStepsHtml(book){
   if(lv.url&&cur<2) cur=2;                                   // 인보이스가 이미 나갔으면 컨펌 단계로 본다
   const steps=['접수','진행중','컨펌 · 인보이스 발행',st==='done'?'입금완료 · 완료':'입금완료'];
   return `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px;">`
-    +steps.map((t,i)=>`<span style="font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;${i<cur?'background:#e3f3e8;color:#1f6b3f;':i===cur?'background:#1f6b3f;color:#fff;':'background:#efece4;color:#9a9f98;'}">${i<cur?'✓ ':''}${t}</span>`
+    +steps.map((t,i)=>`<span style="font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;${i<cur?'background:#e3f3e8;color:#1f6b3f;':i===cur?(st==='done'?'background:#1f6b3f;color:#fff;':'background:#E8508A;color:#fff;'):'background:#efece4;color:#9a9f98;'}">${i<cur?'✓ ':''}${t}</span>`
       +(i<steps.length-1?`<span style="color:#b9bdb6;font-size:10px;">›</span>`:'')).join('')
     +`</div>`;
 }
