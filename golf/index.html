@@ -245,7 +245,7 @@ body.boxonly #qhModal{visibility:visible}
 body.boxonly{background:transparent}                          /* 사이트 팝업 틀도 투명(boxmode) — 보관함 창만 사이트 위에 뜬다 */
 body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important}   /* 인라인 스타일보다 앞서야 해서 !important */
 /* 보관함 창 크게(사장님 2026-09-23 「사이즈 키워줘」) — 견적기 안 「내 견적 보관함」 단추로 열어도 같게. 줄마다 인라인 크기라 통째로 키운다 */
-#qhModal>div{max-width:860px!important;max-height:88vh!important}
+#qhModal>div{max-width:860px!important;max-height:88vh!important;min-height:60vh}   /* 건이 적어도 창이 납작하지 않게(사장님 2026-10-01) */
 @media (min-width:900px){ #qhModal>div{zoom:1.18} }
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
@@ -471,10 +471,11 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   <!-- 견적 이력: 보관된 견적을 그때 금액 그대로 다시 뽑는다 -->
   <div id="qhModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:16px;">
     <div style="background:#fff;border-radius:14px;width:100%;max-width:620px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25);">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#123A2B;color:#fff;">
+      <!-- 머리 띠는 연한 초록(사장님 2026-10-01, 예전 진초록) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#E3F1E7;color:#123A2B;border-bottom:1px solid #cfe3d5;">
         <b style="font-size:14px;">🗂 견적 이력</b>
         <button type="button" onclick="closeQuoteHistory()"
-                style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+                style="background:rgba(18,58,43,.1);border:none;color:#123A2B;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;font-weight:700;">✕ 닫기</button>
       </div>
       <div id="qhBody" style="overflow:auto;"></div>
     </div>
