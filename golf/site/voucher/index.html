@@ -74,10 +74,11 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .amt .sum b{font-size:26px;font-weight:900;color:#1f6b3f}
 /* 사이트 예약 인보이스(사장님 2026-10-02) — 안내문 굵게, 머리 줄 통일, 품목 글자 통일, 계좌 한 줄, Issued by 오른쪽 */
 .tip.strong{font-size:13.5px;font-weight:800;color:var(--ink)}
-.head.ih .hl{font-size:17px;font-weight:800;color:var(--fairway);line-height:1.6}
-.itin.same th{text-align:center}
+.head.ih .hl{font-size:16px;font-weight:800;color:var(--fairway);line-height:1.6}
+.head.ih .hl span{color:#7A8580;font-weight:700}   /* 앞 이름(Invoice No.·에이전트명 …)은 회색(사장님 2026-10-02) */
+.itin.same th{text-align:center;font-size:13px}
 .itin.same td:first-child,.itin.same td:last-child{text-align:center!important}
-.itin.same td{font-size:13.5px;font-weight:700;color:var(--ink);vertical-align:top}
+.itin.same td{font-size:14.5px;font-weight:700;color:var(--ink);vertical-align:top}
 .box.bank{font-size:15px;font-weight:800}
 .box.bank .acct{font-size:19px;font-weight:900;color:#0b3d91;letter-spacing:.01em}
 .sec.issued{text-align:right}
@@ -297,7 +298,7 @@ function renderItemInvoice(v){
     + '<td>' + esc(it.name) + '<br>' + esc(it.label || it.option || "") + '</td>'
     + '<td class="nw" style="text-align:right">' + (it.asked ? '<span class="mut">문의</span>' : won(it.krw)) + '</td></tr>').join("");
   /* 머리 다섯 줄은 Invoice No. 와 같은 크기·굵기·색(사장님 2026-10-02) */
-  const hl = (k, val) => '<div class="hl">' + k + ' ' + esc(val) + '</div>';
+  const hl = (k, val) => '<div class="hl"><span>' + k + '</span> ' + esc(val) + '</div>';
   $("#app").innerHTML = '<div class="sheet inv">'
     + '<div class="brand">' + esc(c.name || "") + '</div>'
     + '<h1>Invoice<small>인보이스</small></h1>'
