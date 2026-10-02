@@ -248,7 +248,13 @@ tr.subrow td{padding:0 6px 11px}
    표로 짜면 한 건에 골프장·호텔이 여러 줄이라 칸이 어긋난다. 그래서 건마다 카드 하나다. */
 .bkcnt{margin-left:7px;font-size:12px;font-weight:800;color:var(--marigold)}
 .bklist{display:flex;flex-direction:column;gap:11px}
-.bkcard{border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:#fff}
+.bkcard{border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:#fff;overflow:hidden}
+/* 아래 직원 작업 칸은 파란 바탕 — 위 손님 예약 내용(흰 바탕)과 한눈에 구분(사장님 2026-10-02) */
+.bkstaff{margin:10px -13px -12px;padding:11px 13px 12px;background:#E8F0FB;border-top:1px solid #C6D8F1}
+.bkstaff .bkvc{background:#fff}
+.bkstaff .bkvc.on{background:#F1F8F3}
+.bkstaff .bkstafflog{background:#fff}
+.bkstaff .bkfoot input[data-memo]{background:#fff}
 .bkhd{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}
 .bkno{font-size:14px;font-weight:900;letter-spacing:.03em;font-variant-numeric:tabular-nums}
 .bkst{color:#fff;border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:800}
@@ -1301,9 +1307,9 @@ function bookCardHtml(b){
         +'<ul class="bkitems">'+(b.items||[]).map((it,i)=>bookItemHtml(it,i,b.no)).join('')+'</ul>')
     /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
     +((!b.assign||!b.assign.by)&&b.status!=='cancel'
-      ? '<div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button></div>'
-        +'<div class="bkfoot"><button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button></div></div>'
-      : voucherRowHtml(b)
+      ? '<div class="bkstaff"><div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button></div>'
+        +'<div class="bkfoot"><button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button></div></div></div>'
+      : '<div class="bkstaff">'+voucherRowHtml(b)
     +'<div class="bkfoot">'
       +'<select data-st="'+esc(b.no)+'">'
       +BOOK_STATUS.map(s=>'<option value="'+s.k+'"'+(s.k===b.status?' selected':'')+'>'+s.t+'</option>').join('')
@@ -1315,7 +1321,7 @@ function bookCardHtml(b){
       +'<button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button>'
     +'</div>'
     +staffLogHtml(b)
-    +'</div>');
+    +'</div></div>');
 }
 /* ══ 바우처(예약 확정서) — 직원이 「컨펌」을 누르면 서버가 확정번호·링크를 만든다(사장님 2026-09-10).
    손님에게는 링크를 카톡(문구 복사해서 붙여넣기)이나 이메일(서버 자동 발송)로 보낸다.
