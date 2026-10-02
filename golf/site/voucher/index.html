@@ -72,6 +72,15 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .amt .sum{border-top:2px solid #2E7D4F;margin-top:8px;padding-top:10px}
 .amt .sum span{font-size:15px;font-weight:800;opacity:1}
 .amt .sum b{font-size:26px;font-weight:900;color:#1f6b3f}
+/* 사이트 예약 인보이스(사장님 2026-10-02) — 안내문 굵게, 머리 줄 통일, 품목 글자 통일, 계좌 한 줄, Issued by 오른쪽 */
+.tip.strong{font-size:13.5px;font-weight:800;color:var(--ink)}
+.head.ih .hl{font-size:17px;font-weight:800;color:var(--fairway);line-height:1.6}
+.itin.same th{text-align:center}
+.itin.same td:first-child,.itin.same td:last-child{text-align:center!important}
+.itin.same td{font-size:13.5px;font-weight:700;color:var(--ink);vertical-align:top}
+.box.bank{font-size:15px;font-weight:800}
+.box.bank .acct{font-size:19px;font-weight:900;color:#0b3d91;letter-spacing:.01em}
+.sec.issued{text-align:right}
 /* 편집 모드 — 어드민이 적을 칸은 노란색 */
 .ed{font:inherit;font-size:14px;font-weight:700;background:#FFF4B8;border:2px solid #F2C94C;border-radius:6px;padding:5px 8px;color:var(--ink)}
 input.ed{width:150px;text-align:right}
@@ -263,10 +272,10 @@ function renderInvoice(v){
           /* 입금 기한은 빨간색(사장님 2026-09-23). 잔금 인보이스에서는 디파짓 줄을 「입금 완료」로 */
           + '<td class="nw" style="color:#D32F2F">' + (bal && x[1] === v.pay.dep ? '<span style="color:#2E7D4F">✓ 입금 완료</span>' : x[1].due ? esc(dshort(x[1].due)) + '까지' : '-') + '</td></tr>').join("")
         + '</tbody></table></div>' : '')
-    + (c.bank ? '<div class="box"><h3>입금 안내 (계좌)</h3><p>' + esc(c.bank) + '</p></div>' : '')
+    + bankHtml(c.bank)
     + (v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
     + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
-    + '<div class="sec"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
+    + '<div class="sec issued"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
       + (c.tel2 ? '<p class="small">- Tel : ' + esc(c.tel2) + '</p>' : '')
       + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '')
@@ -276,25 +285,36 @@ function renderInvoice(v){
   $("#act").style.display = "";
 }
 /* ── 사이트 예약(장바구니·단품) 인보이스(사장님 2026-09-29) — 호텔 컨펌 뒤 나가고, 입금확인되면 같은 링크가 바우처로 바뀐다 ── */
+/* 입금 계좌 한 줄 — 계좌번호만 진한 파랑·크게(사장님 2026-10-02) */
+function bankHtml(bank){
+  if(!bank) return "";
+  const t = esc(String(bank).replace(/\s*\n\s*/g, " ").trim()).replace(/(\d[\d-]{5,}\d)/, '<b class="acct">$1</b>');
+  return '<div class="box bank">입금계좌안내 : ' + t + '</div>';
+}
 function renderItemInvoice(v){
   const c = v.company || {}, to = v.to || {};
   const rows = (v.items || []).map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
-    + '<td>' + esc(it.name) + '<br><span class="mut" style="font-size:12px">' + esc(it.label || it.option || "") + '</span></td>'
+    + '<td>' + esc(it.name) + '<br>' + esc(it.label || it.option || "") + '</td>'
     + '<td class="nw" style="text-align:right">' + (it.asked ? '<span class="mut">문의</span>' : won(it.krw)) + '</td></tr>').join("");
+  /* 머리 다섯 줄은 Invoice No. 와 같은 크기·굵기·색(사장님 2026-10-02) */
+  const hl = (k, val) => '<div class="hl">' + k + ' ' + esc(val) + '</div>';
   $("#app").innerHTML = '<div class="sheet inv">'
     + '<div class="brand">' + esc(c.name || "") + '</div>'
     + '<h1>Invoice<small>인보이스</small></h1>'
-    + (v.paid ? '<p class="tip">※ <b>입금이 확인되었습니다.</b> 바우처(예약 확정서)를 준비 중이며, 준비되면 이 링크에서 바로 보실 수 있습니다.</p>'
-              : '<p class="tip">※ 요청하신 예약이 확정되었습니다. 아래 금액을 입금해 주시면 확인 후 바우처(예약 확정서)를 보내 드립니다.</p>')
-    + '<div class="head"><div class="bn">Invoice No. <b>' + esc(v.cno) + '</b></div>'
-      + '<h2>에이전트명 : ' + esc(to.company || v.guest || "") + '</h2>'
-      + '<p>· 예약번호 ' + esc(v.no) + '<br>· 여행자정보 ' + esc(v.guest || "") + '<br>· 발행일 ' + esc(String(v.confirmedAt || "").slice(0, 10)) + '</p></div>'
-    + '<div class="body" style="padding-top:12px"><table class="itin"><thead><tr><th>날짜</th><th>내용</th><th style="text-align:right">금액</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + (v.paid ? '<p class="tip strong">※ 입금이 확인되었습니다. 바우처(예약 확정서)를 준비 중이며, 준비되면 이 링크에서 바로 보실 수 있습니다.</p>'
+              : '<p class="tip strong">※ 요청하신 예약이 확정되었습니다. 아래 금액을 입금해 주시면 확인 후 바우처(예약 확정서)를 보내 드립니다.</p>')
+    + '<div class="head ih">'
+      + hl("Invoice No.", v.invNo || v.cno)
+      + hl("에이전트명 :", to.company || v.guest || "")
+      + hl("예약번호", v.no)
+      + hl("여행자정보", v.guest || "")
+      + hl("발행일", String(v.confirmedAt || "").slice(0, 10)) + '</div>'
+    + '<div class="body" style="padding-top:12px"><table class="itin same"><thead><tr><th>날짜</th><th>내용</th><th>금액</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '<div class="amt"><div class="sum"><span>Total (청구 금액)</span><b>' + won(v.total) + '</b></div></div>'
-    + (c.bank ? '<div class="box"><h3>입금 안내 (계좌)</h3><p>' + esc(c.bank) + '</p></div>' : '')
+    + bankHtml(c.bank)
     + (v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
     + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
-    + '<div class="sec"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
+    + '<div class="sec issued"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
       + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '') + '</div>'
     + '</div>';

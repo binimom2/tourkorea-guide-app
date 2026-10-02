@@ -259,13 +259,16 @@ tr.subrow td{padding:0 6px 11px}
 .bkwho{font-size:13.5px;margin-bottom:5px}
 .bkwho b{font-weight:800}
 .bkwho span{color:var(--muted);font-size:12.5px;margin-left:7px;white-space:pre-wrap}
-.bkmemo{background:rgba(232,163,61,.12);border-radius:8px;padding:7px 10px;font-size:12.5px;
-  line-height:1.55;margin-bottom:7px;white-space:pre-wrap}
+/* 손님 요청 = 노랑, 우리 메모 = 파랑(사장님 2026-10-02 — 한눈에 구분) */
+.bkmemo{background:#FFF4CC;border-left:4px solid #E8A33D;border-radius:8px;padding:8px 12px;font-size:14px;font-weight:700;
+  line-height:1.55;margin-bottom:7px;white-space:pre-wrap;color:#3a2a00}
+.bkmemo>b{display:inline-block;margin-right:8px;font-size:11.5px;font-weight:900;color:#fff;background:#E8A33D;border-radius:999px;padding:1px 8px;vertical-align:1px}
 .bkitems{list-style:none;margin:0 0 9px;padding:0;border-top:1px solid var(--line)}
 .bkitems li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
   padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px}
 .bkitems li:last-child{border-bottom:0}
-.bkstafflog{margin-top:8px;padding:8px 12px;background:#FFFBEA;border:1px solid #F1E3B0;border-radius:8px;font-size:13px;line-height:1.6}
+.bkstafflog{margin-top:8px;padding:8px 12px;background:#EAF2FD;border-left:4px solid #3B74C9;border-radius:8px;font-size:13px;line-height:1.6}
+.bkfoot input[data-memo]{background:#F3F8FF;border-color:#A9C4EA}
 .bkstafflog .bkby{margin-left:6px}
 .bktee{font-size:12.5px;font-weight:700;color:#0b3d91;white-space:nowrap}
 .bktee input{width:110px;margin-left:4px;padding:4px 7px;border:1px solid #9db4dd;border-radius:6px;font-size:13px;font-weight:700}
@@ -323,7 +326,7 @@ tr.subrow td{padding:0 6px 11px}
   body.bkdoc-open .bkdoc-act{display:none}
   .bkdoc-row.hd,.bkdoc-row em{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
-.bkvc{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:9px;padding:9px 10px;border-radius:9px;background:rgba(232,163,61,.10)}
+.bkvc{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:9px;padding:9px 10px;border-radius:9px;background:#F3F4F2}
 .bkvc.on{background:rgba(46,125,79,.10)}
 .bkvc .ghost{padding:6px 11px;font-size:12.5px}
 .bkvhint{font-size:12px;color:var(--muted);font-weight:700}
@@ -1294,12 +1297,11 @@ function bookCardHtml(b){
           +((b.quote.requests||[]).length?' · <b style="color:#B23B3B">요청사항 '+(b.quote.requests||[]).length+'건</b>':'')+'</span></div>'
         +bookMsgsHtml(b)
         +'<details class="bkcost"><summary>원가 내역 (직원 확인용)</summary><ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul></details>'
-      : (c.memo?'<div class="bkmemo">“'+esc(c.memo)+'”</div>':'')
+      : (c.memo?'<div class="bkmemo"><b>손님 요청</b>'+esc(c.memo)+'</div>':'')
         +'<ul class="bkitems">'+(b.items||[]).map((it,i)=>bookItemHtml(it,i,b.no)).join('')+'</ul>')
     /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
     +((!b.assign||!b.assign.by)&&b.status!=='cancel'
-      ? '<div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button>'
-        +'<span class="bkvhint">이 건을 맡아 진행할 직원이 누르세요 — 담당자로 이름이 붙고 「② 수배 중」이 됩니다. 누른 뒤에 인보이스 발급 단추가 나옵니다</span></div>'
+      ? '<div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button></div>'
         +'<div class="bkfoot"><button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button></div></div>'
       : voucherRowHtml(b)
     +'<div class="bkfoot">'
@@ -1326,20 +1328,21 @@ function voucherUrlOf(b){
 function isInvoiceBook(b){ return !!(b&&b.agency&&b.agency.quoteNo); }
 /* 여행사 건 인보이스는 두 장(2026-09-23) — 디파짓 인보이스 → 디파짓 입금 확인 뒤 잔금 인보이스·확정서 */
 /* 사이트 예약(장바구니·단품)은 호텔 컨펌 → 인보이스 → 입금확인 → 바우처(사장님 2026-09-29). 입금 전엔 같은 링크가 인보이스다 */
+/* 사이트 예약 인보이스 번호 = 예약번호-1(-2 …), 서버 siteInvNo 와 같은 규칙(사장님 2026-10-02) */
+function siteInvNoOf(b){ return b.no+'-'+Math.max(1,Math.round(+(b.voucher&&b.voucher.invRev)||1)); }
 function isSiteInv(b){ return !isInvoiceBook(b)&&!!(b&&b.voucher&&b.voucher.stage==='invoice'); }
 function docNameOf(b){ return isInvoiceBook(b)?((b.voucher&&b.voucher.stage==='balance')?'잔금 인보이스·확정서':'디파짓 인보이스'):(isSiteInv(b)?'인보이스':'바우처'); }
 function voucherRowHtml(b){
   const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
     if(b.status==='cancel') return '';
-    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ '+(inv?'디파짓 인보이스':'인보이스')+' 발급</button>'
-      +'<span class="bkvhint">예약처(호텔·골프장 등)에서 컨펌 회신을 받으면 누르세요 — 인보이스(청구서)가 만들어지고 카톡·이메일로 보낼 수 있습니다</span></div>';
+    return '<div class="bkvc"><button class="add" data-confirm="'+esc(b.no)+'">✅ '+(inv?'디파짓 인보이스':'인보이스')+' 발급</button></div>';
   }
   /* 사이트 예약 — 인보이스 나간 뒤 입금 기다리는 중 */
   if(isSiteInv(b)){
     const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
     return '<div class="bkvc on">'
-      +'<span class="bkvno">Invoice No. <b>'+esc(v.cno)+'</b></span>'
+      +'<span class="bkvno">Invoice No. <b>'+esc(siteInvNoOf(b))+'</b></span>'
       +'<a class="bkvopen" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">인보이스 열기 ↗</a>'
       +'<button class="add" data-vpaid="'+esc(b.no)+'" title="입금을 확인했으면 누르세요 — 같은 링크가 바우처로 바뀝니다">💰 입금확인 → 바우처 발급</button>'
       +'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
@@ -1470,7 +1473,7 @@ function kakaoTextOf(b){
   /* 사이트 예약 인보이스(입금 전, 2026-09-29) */
   if(isSiteInv(b)){
     return '['+co+'] '+((b.from&&b.from.company)||(b.customer&&b.customer.name)||'')+' 담당자님, 요청하신 예약이 확정되었습니다.\n'
-      +'예약번호 '+b.no+' · Invoice No. '+b.voucher.cno+'\n'
+      +'예약번호 '+b.no+' · Invoice No. '+siteInvNoOf(b)+'\n'
       +lines.join('\n')+'\n'
       +'합계 '+Number(b.total||0).toLocaleString('ko-KR')+'원\n'
       +'▶ 인보이스: '+voucherUrlOf(b)+'\n'
@@ -1690,25 +1693,31 @@ async function loadBooks(){
    바뀐 게 있으면 목록을 새로 그린다. 직원이 메모·상태를 고치는 중(입력칸에 커서)이면 그때는 그리지 않고 다음 차례에.
    다른 탭에 있으면 탭 이름 옆 숫자 + 알림만. 창이 가려져 있으면 묻지 않는다 */
 const bookSig=l=>(l||[]).map(b=>[b.no,b.status,b.msgUnread||0,(b.voucher&&b.voucher.stage)||'',(b.voucher&&b.voucher.token)?1:0,b.pay?1:0,(b.assign&&b.assign.by)||'',(b.voucher&&b.voucher.editAt)||''].join(':')).join('|');
-let bookPollBusy=false;
+let bookPollBusy=false, bookSrvSig='';
+/* 5초마다 「바뀐 게 있나」만 가볍게 묻고(sig), 바뀌었을 때만 목록을 새로 받는다(사장님 2026-10-02 「30초 아닌 실시간」) */
 setInterval(async()=>{
   if(bookPollBusy||document.hidden||!myTabs().some(t=>t.k==='books')) return;
   bookPollBusy=true;
   try{
+    const sg=await bookApi('sig',{});
+    if(!sg||!sg.ok||sg.sig===bookSrvSig) return;
+    /* 직원이 예약 카드에 적는 중이면 받지 않고 다음 차례에(sig 를 안 바꿔 두면 적기를 마친 뒤 다시 받는다) */
+    const ae=document.activeElement, pane=document.getElementById('pane');
+    const editing=ae&&pane&&pane.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)&&ae.id!=='bkSearch';
+    if(tab==='books'&&editing) return;
     const j=await bookApi('list',{});
     if(!j||!j.ok) return;
+    bookSrvSig=sg.sig;
     const old=(BOOKS&&BOOKS.list)||null, list=j.list||[];
     if(old&&bookSig(old)===bookSig(list)) return;
     const fresh=old?list.filter(b=>!old.some(o=>o.no===b.no)):[];
     BOOKS={list};
-    const ae=document.activeElement, pane=document.getElementById('pane');
-    const editing=ae&&pane&&pane.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)&&ae.id!=='bkSearch';
-    if(tab==='books'&&!editing) drawBooks();
+    if(tab==='books') drawBooks();
     drawBookBadge();
     if(fresh.length) toast('📋 새 예약요청 '+fresh.length+'건이 들어왔습니다');
   }catch(e){}
   finally{ bookPollBusy=false; }
-},30000);
+},5000);
 /* 탭 이름 옆 빨간 숫자 = 「① 접수」(아직 아무도 안 맡은 건) 수 */
 function drawBookBadge(){
   const b=document.getElementById('tab-books'); if(!b) return;

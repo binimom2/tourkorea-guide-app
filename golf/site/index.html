@@ -3064,9 +3064,9 @@ function bformHtml(){
     + '<div class="bform">'
     /* 한글 이름 / 영문 이름(여권상) 두 칸(사장님 2026-09-29) — 서버에는 「홍길동 / HONG GILDONG」 한 줄로 간다 */
     + '<label>한글이름<input type="text" id="bkNameKo" value=""></label>'
-    + '<label>여권영문이름<input type="text" id="bkName" autocapitalize="characters" value=""></label>'
-    + '<label>연락처<input type="text" id="bkTel" inputmode="tel" placeholder="010-0000-0000" value="' + esc(tel) + '"></label>'
-    + '<label>이메일<input type="email" id="bkEmail" placeholder="name@example.com" value="' + esc(em) + '"></label>'
+    + '<label>영문이름<input type="text" id="bkName" autocapitalize="characters" value=""></label>'
+    + '<label>연락처<input type="text" id="bkTel" inputmode="tel" value="' + esc(tel) + '"></label>'
+    + '<label>이메일<input type="email" id="bkEmail" value="' + esc(em) + '"></label>'
     + '<label class="full">요청사항 (한글로 적어주세요)<textarea id="bkMemo"></textarea></label>'
     + '</div>'
     + '<p class="cnote">연락처나 이메일 가운데 <b>하나는</b> 꼭 적어 주세요. '
@@ -3152,7 +3152,7 @@ function bkMsg(t){
 async function sendBooking(){
   const g = id => { const el = $("#" + id); return el ? el.value.trim() : ""; };
   if(!g("bkNameKo")) return bkMsg("한글 이름을 적어 주세요.");
-  if(!g("bkName"))   return bkMsg("여권상 영문 이름을 적어 주세요.");
+  if(!g("bkName"))   return bkMsg("영문이름을 적어 주세요.");
   const customer = { name:g("bkNameKo") + " / " + g("bkName").toUpperCase(), tel:g("bkTel"), email:g("bkEmail"), memo:g("bkMemo") };
   if(!customer.tel && !customer.email)
     return bkMsg("연락처나 이메일 가운데 하나는 적어 주세요.");

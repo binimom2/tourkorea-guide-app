@@ -290,11 +290,14 @@ function voucherUrl(request, rec) {
 /* 입금확인 뒤에도 상태가 「⑤ 바우처 발급 · 완료」가 되기 전에는 인보이스로 보인다(사장님 2026-10-01) — 어드민이 확정 티업·메모를 적고 ⑤로 바꿔야 바우처가 나간다. */
 const isSiteInvoice = (rec) => !isAgencyRec(rec) && !!(rec && rec.voucher
   && (rec.voucher.stage === 'invoice' || (rec.voucher.stage === 'voucher' && rec.status !== 'done')));
+/* 사이트 예약 인보이스 번호 = 예약번호-1, 다시 발행하면 -2 …(사장님 2026-10-02, 예전 확정번호 10자리 대신) */
+const siteInvNo = (rec) => rec.no + '-' + (Math.max(1, Math.round(+(rec.voucher && rec.voucher.invRev) || 1)));
 function itemInvoiceView(request, rec, site) {
   return {
     type: 'invoice', kind: 'items',
     no: rec.no, at: rec.at, status: rec.status,
     cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
+    invNo: siteInvNo(rec),
     to: { company: s(rec.from && rec.from.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: '' },
     guest: (rec.customer && rec.customer.name) || '',
     items: (rec.items || []).map(it => ({ kind: it.kind, kindT: it.kindT || '', region: it.region, name: it.name, option: it.option,
@@ -557,6 +560,13 @@ export async function onRequest(context) {
     const user = await getUser(request);
     if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
     if (!await canSee(env, user)) return json({ error: '예약 요청은 어드민·매니저만 볼 수 있습니다.' }, 403);
+
+    /* 바뀐 게 있는지만 — 번호·수정시각 한 줄(사장님 2026-10-02 「30초 아닌 실시간」). 관리 화면이 몇 초마다 묻고, 바뀌었을 때만 list 를 받는다 */
+    if (action === 'sig') {
+      const rows = await srSelect(KEY, 'data_key=like.' + PREFIX + '*&select=data_key,updated_at&limit=1000');
+      const l = (Array.isArray(rows) ? rows : []).filter(r => r && String(r.data_key || '').startsWith(PREFIX));
+      return json({ ok: true, sig: l.length + ':' + l.map(r => String(r.updated_at || '')).sort().pop() });
+    }
 
     if (action === 'list') {
       const rows = await srSelect(KEY,
