@@ -154,7 +154,7 @@ function voucherToken() {
 const VOUCHER_DEFAULT = {
   name: '투어코리아 (TOURKOREA)', en: '',   // 옛 영문 상호(We've Tour Thailand)는 뺐다(사장님 2026-09-29) regNo: '', tel: '', tel2: '', email: '',
   issuer: '', emergency: '',
-  bank: '우리은행 111-222-3333 투어코리아', invoiceNote: '',   // 인보이스 입금 계좌 · 안내 문구(사장님 2026-09-21) — 기본 계좌(2026-09-29), 관리 화면에 적으면 그쪽이 우선
+  bank: '우리은행 1002-152-430072 이동섭', invoiceNote: '',   // 인보이스 입금 계좌 · 안내 문구(사장님 2026-09-21) — 기본 계좌(2026-10-02 실계좌), 관리 화면에 적으면 그쪽이 우선
   notes: '',
   terms: [
     '호텔 체크인 시 프론트 데스크에 여권과 함께 예약확정서(바우처)를 제시해 주세요.',
