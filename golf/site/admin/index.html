@@ -250,6 +250,8 @@ tr.subrow td{padding:0 6px 11px}
 .bklist{display:flex;flex-direction:column;gap:11px}
 .bkcard{border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:#fff;overflow:hidden}
 /* 아래 직원 작업 칸은 파란 바탕 — 위 손님 예약 내용(흰 바탕)과 한눈에 구분(사장님 2026-10-02) */
+.bkcxl{margin:0 0 7px;padding:7px 12px;border-radius:8px;background:#D9412B;color:#fff;font-size:14px;font-weight:900}
+.bkcxl span{font-size:12px;font-weight:700;opacity:.85;margin-left:4px}
 .bkstaff{margin:10px -13px -12px;padding:11px 13px 12px;background:#E8F0FB;border-top:1px solid #C6D8F1}
 .bkstaff .bkvc{background:#fff}
 .bkstaff .bkvc.on{background:#F1F8F3}
@@ -1296,6 +1298,8 @@ function bookCardHtml(b){
       +'<span class="bktot">'+Number(b.total||0).toLocaleString('ko-KR')+'원</span>'
     +'</div>'
     /* 로그인한 여행사가 사이트에서 보낸 건은 이름 앞에 여행사명(사장님 2026-09-29) */
+    /* 여행사가 보관함에서 보낸 취소 요청(사장님 2026-10-02) — 처리 뒤 상태를 「취소」로 바꾸면 사라진다 */
+    +(b.cancelReq&&b.status!=='cancel'?'<div class="bkcxl">취소 요청 <span>'+esc(bookWhen(b.cancelReq.at))+'</span>'+(b.cancelReq.reason?' — '+esc(b.cancelReq.reason):'')+'</div>':'')
     +'<div class="bkwho">'+((b.from&&b.from.company)?'<b style="color:#0b3d91">['+esc(b.from.company)+']</b> ':'')+'<b>'+esc(c.name||'')+'</b> <span>'+esc(who)+'</span></div>'
     /* 여행사 수배 건(실시간 견적) — 줄줄이 펼치지 않고 「📄 수배요청서」 한 장으로 본다(사장님 2026-09-21 "수배서 파일을 꽂아주세요").
        원가 줄은 직원 확인용이라 접어 둔다. b.quote 가 없는 옛 건은 전처럼 메모·줄을 그대로 보여 준다 */
@@ -1718,7 +1722,7 @@ async function loadBooks(){
 /* 새 예약요청 자동 불러오기(사장님 2026-09-29 「매번 새로고침해야 뜬다」) — 30초마다 서버에 물어,
    바뀐 게 있으면 목록을 새로 그린다. 직원이 메모·상태를 고치는 중(입력칸에 커서)이면 그때는 그리지 않고 다음 차례에.
    다른 탭에 있으면 탭 이름 옆 숫자 + 알림만. 창이 가려져 있으면 묻지 않는다 */
-const bookSig=l=>(l||[]).map(b=>[b.no,b.status,b.msgUnread||0,(b.voucher&&b.voucher.stage)||'',(b.voucher&&b.voucher.token)?1:0,b.pay?1:0,(b.assign&&b.assign.by)||'',(b.voucher&&b.voucher.editAt)||''].join(':')).join('|');
+const bookSig=l=>(l||[]).map(b=>[b.no,b.status,b.msgUnread||0,(b.voucher&&b.voucher.stage)||'',(b.voucher&&b.voucher.token)?1:0,b.pay?1:0,(b.assign&&b.assign.by)||'',(b.voucher&&b.voucher.editAt)||'',(b.cancelReq&&b.cancelReq.at)||''].join(':')).join('|');
 let bookPollBusy=false, bookSrvSig='';
 /* 5초마다 「바뀐 게 있나」만 가볍게 묻고(sig), 바뀌었을 때만 목록을 새로 받는다(사장님 2026-10-02 「30초 아닌 실시간」) */
 setInterval(async()=>{
@@ -1747,7 +1751,7 @@ setInterval(async()=>{
 /* 탭 이름 옆 빨간 숫자 = 「① 접수」(아직 아무도 안 맡은 건) 수 */
 function drawBookBadge(){
   const b=document.getElementById('tab-books'); if(!b) return;
-  const n=((BOOKS&&BOOKS.list)||[]).filter(x=>x.status==='new').length;
+  const n=((BOOKS&&BOOKS.list)||[]).filter(x=>x.status==='new'||(x.cancelReq&&x.status!=='cancel')).length;
   let s=b.querySelector('.bkbadge');
   if(!n){ if(s) s.remove(); return; }
   if(!s){ s=document.createElement('span'); s.className='bkbadge'; b.appendChild(s); }
