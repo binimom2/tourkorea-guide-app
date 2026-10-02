@@ -2093,7 +2093,7 @@ function siteRowHtml(r){
       </div>
       ${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" style="flex-shrink:0;border:none;background:${r.doc==='voucher'?'#1f6b3f':'#0b3d91'};color:#fff;border-radius:6px;padding:7px 11px;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;">${r.doc==='voucher'?'🎫 바우처':'🧾 인보이스'}</a>`:''}
       <div style="flex-shrink:0;align-self:stretch;display:flex;align-items:center;padding-left:8px;border-left:1px solid #efeada;">
-        <button type="button" onclick="hideSiteRow('${esc(r.no)}')" title="보관함에서만 뺍니다 — 예약은 그대로입니다" style="border:1px solid #d8d2c4;background:#fff;color:#8a5a4a;border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">삭제</button>
+        <button type="button" onclick="hideSiteRow('${esc(r.no)}')" title="삭제 (보관함에서만 뺍니다 — 예약은 그대로입니다)" aria-label="삭제" style="border:1px solid #d8d2c4;background:#fff;border-radius:6px;padding:5px 8px;font-size:15px;line-height:1;cursor:pointer;">🗑</button>
       </div>
     </div>`;
 }
@@ -2172,7 +2172,7 @@ function renderQuoteHistory(){
       ${GROLE==='agency'
         /* 여행사는 내부용(원가 내역)이 없다 — 대신 오른쪽 칸에 「삭제」(보관함에서 빼기, 사장님 2026-09-22) */
         ? `<div style="flex-shrink:0;align-self:stretch;display:flex;align-items:center;padding-left:8px;border-left:1px solid #efeada;">
-             <button type="button" onclick="removeAgencyQuote(${idx})" title="보관함에서 뺍니다" style="border:1px solid #d8d2c4;background:#fff;color:#8a5a4a;border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">삭제</button>
+             <button type="button" onclick="removeAgencyQuote(${idx})" title="삭제 (보관함에서 뺍니다)" aria-label="삭제" style="border:1px solid #d8d2c4;background:#fff;border-radius:6px;padding:5px 8px;font-size:15px;line-height:1;cursor:pointer;">🗑</button>
            </div>`
         : ''}
     </div>`;
