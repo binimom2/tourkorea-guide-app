@@ -344,6 +344,12 @@ tr.subrow td{padding:0 6px 11px}
 .bkvopen:hover{background:rgba(18,58,43,.07)}
 .bkvopen.now{background:var(--fairway);color:#fff}   /* 지금 할 차례 */
 .bkstep{color:#9aa39d;font-weight:900;font-size:15px}
+.bkvc .bkdone{background:#E3F3E8;color:#1f6b3f;border:1px solid #BFE0CB;border-radius:8px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.bkvc .bkdone:disabled{cursor:default}
+.bkvc .bkdone i{font-style:normal;font-weight:700;opacity:.8;margin-left:3px}
+.bkvc .bkwait{opacity:.45}
+.bkvc a.bkvno{color:inherit;text-decoration:none;margin-right:4px}
+.bkvc a.bkvno:hover{text-decoration:underline}
 .bkvsent{flex-basis:100%;font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.5}
 .vcell{grid-column:1/-1}
 .vcell input{margin-top:3px}
@@ -1344,7 +1350,25 @@ function isInvoiceBook(b){ return !!(b&&b.agency&&b.agency.quoteNo); }
 function siteInvNoOf(b){ return b.no+'-'+Math.max(1,Math.round(+(b.voucher&&b.voucher.invRev)||1)); }
 function isSiteInv(b){ return !isInvoiceBook(b)&&!!(b&&b.voucher&&b.voucher.stage==='invoice'); }
 function docNameOf(b){ return isInvoiceBook(b)?((b.voucher&&b.voucher.stage==='balance')?'잔금 인보이스·확정서':'디파짓 인보이스'):(isSiteInv(b)?'인보이스':'바우처'); }
+/* 사이트 예약 = 단추 셋만, 하는 차례대로(사장님 2026-10-02): ① 인보이스 발급(메모) › ② 입금확인 › ③ 바우처 발급(이메일 있으면 자동 발송).
+   지금 차례만 진하게, 지난 단계는 ✓ 연초록, 아직 안 온 단계는 흐리게. 번호를 누르면 문서가 열린다 */
+function siteStepRowHtml(b){
+  const v=b.voucher||{}, has=!!v.token, cxl=b.status==='cancel';
+  if(cxl&&!has) return '';
+  const paid=!!b.pay, done=b.status==='done';
+  const gt='<span class="bkstep">›</span>';
+  const st=(on,cur)=>on?'bkdone':cur?'add':'ghost bkwait';
+  return '<div class="bkvc on">'
+    +(has?'<a class="bkvno" href="'+esc(voucherUrlOf(b)+(paid?'&edit=1':''))+'" target="_blank" rel="noopener" title="'+(paid?'바우처 열기 · 확정 티업·메모 수정':'인보이스 열기')+'">'
+      +(paid?'확정번호 <b>'+esc(v.cno)+'</b>':'Invoice No. <b>'+esc(siteInvNoOf(b))+'</b>')+' ↗</a>':'')
+    +'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 메모 고치기':'인보이스 발급 · 메모')+'">'+(has?'✓ ':'')+'인보이스 발급</button>'
+    +gt+'<button class="'+st(paid,has&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!has||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
+    +gt+'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||done||cxl?' disabled':'')+'>'+(done?'✓ ':'')+'바우처 발급</button>'
+    +(((v.sent||[]).length)?'<div class="bkvsent">보냄: '+(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>')+'</div>':'')
+    +'</div>';
+}
 function voucherRowHtml(b){
+  if(!isInvoiceBook(b)) return siteStepRowHtml(b);
   const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
     if(b.status==='cancel') return '';
@@ -1619,12 +1643,12 @@ function bindVoucherBtns(p){
     const b=bookOf(btn.dataset.vpaid); if(!b) return;
     const who=(b.from&&b.from.company)||(b.agency&&b.agency.company)||(b.customer&&b.customer.name)||b.no;
     if(!confirm('['+who+'] '+Number(b.total||0).toLocaleString('ko-KR')+'원 입금을 확인했습니까?\n\n'
-      +(isInvoiceBook(b)?'확인하면 상태가 「④ 입금확인」이 됩니다.':'확인하면 「④ 입금확인」이 됩니다. 「바우처 열기 · 수정」에서 확정 티업·메모를 적고 「🎫 바우처 발급」을 누르면 여행사·손님에게 바우처가 보입니다.'))) return;
+      +'확인하면 「④ 입금확인」이 됩니다.')) return;
     btn.disabled=true; btn.textContent='처리 중…';
     const j=await bookApi('paid',{no:b.no});
     if(!j||!j.ok){ btn.disabled=false; toast('❌ '+((j&&j.error)||'입금확인 실패')); drawBooks(); return; }
     bookReplace(j.rec); drawBooks();
-    toast(isInvoiceBook(b)?'💰 입금확인했습니다':'💰 입금확인 — 티업·메모를 적고 「🎫 바우처 발급」을 누르세요');
+    toast('💰 입금확인했습니다');
   });
   p.querySelectorAll('[data-vbal]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vbal); if(!b) return;
@@ -1649,12 +1673,18 @@ function bindVoucherBtns(p){
     const b=bookOf(btn.dataset.vdone); if(!b) return;
     const noTee=(b.items||[]).some(it=>it.kind==='courses'&&!it.teeOk);
     /* 티업이 비었으면 앞 단추로 돌려보내지 않고 바로 수정 화면을 연다(사장님 2026-10-02). 저장하면 이 카드가 저절로 「발급」 차례로 바뀐다 */
-    if(noTee){ window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener'); toast('확정 티업을 적고 저장한 뒤 「🎫 바우처 발급」을 누르세요'); return; }
-    if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.\n\n발급할까요?')) return;
+    if(noTee){ window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener'); toast('확정 티업을 적고 저장한 뒤 「바우처 발급」을 누르세요'); return; }
+    const em=String((b.customer&&b.customer.email)||'').trim(), mailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+    if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.'+(mailOk?'\n이메일도 함께 보냅니다: '+em:'')+'\n\n발급할까요?')) return;
     btn.disabled=true; btn.textContent='발급 중…';
     const j=await bookApi('status',{no:b.no,status:'done'});
-    if(!j||!j.ok){ btn.disabled=false; btn.textContent='🎫 바우처 발급'; toast('❌ '+((j&&j.error)||'발급 실패')); return; }
-    bookReplace(j.rec); drawBooks(); toast('🎫 바우처를 발급했습니다');
+    if(!j||!j.ok){ btn.disabled=false; btn.textContent='바우처 발급'; toast('❌ '+((j&&j.error)||'발급 실패')); return; }
+    bookReplace(j.rec); drawBooks();
+    /* 이메일이 적혀 있으면 바로 보낸다(사장님 2026-10-02). 서버 메일 설정(RESEND_API_KEY) 전이면 안내만 */
+    if(!mailOk){ toast('🎫 바우처를 발급했습니다'); return; }
+    const m=await bookApi('send',{no:b.no,to:em});
+    if(m&&m.ok){ bookReplace(m.rec); drawBooks(); toast('🎫 바우처 발급 · 📧 '+em+' 로 보냈습니다'); }
+    else toast(m&&m.setup?'🎫 바우처 발급 — 이메일 자동발송은 아직 설정 전이라 보내지 않았습니다':'🎫 바우처 발급 — ❌ 이메일 실패: '+((m&&m.error)||''));
   });
   p.querySelectorAll('[data-vprev]').forEach(btn=>btn.onclick=()=>{ const b=bookOf(btn.dataset.vprev); if(b) openInvPreview(b); });
   p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{
