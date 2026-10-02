@@ -351,6 +351,22 @@ tr.subrow td{padding:0 6px 11px}
 .bkvc a.bkvno{color:inherit;text-decoration:none;margin-right:4px}
 .bkvc a.bkvno:hover{text-decoration:underline}
 .bkvsent{flex-basis:100%;font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.5}
+/* 원가·송금 창(사장님 2026-10-02) */
+.bkcostbtn i{font-style:normal;font-weight:800;color:#1f6b3f;margin-left:3px}
+#costWin{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.cwbox{background:#fff;border-radius:10px;width:min(1000px,100%);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.cwbody{overflow:auto;padding:10px 14px 14px}
+.cwt{width:100%;border-collapse:collapse;font-size:13px}
+.cwt th{font-size:11.5px;color:var(--muted);text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.cwt th:first-child,.cwt td:first-child{text-align:left}
+.cwt td{padding:5px 6px;border-bottom:1px solid #eef0ee;text-align:right;white-space:nowrap}
+.cwt td:first-child{white-space:normal}
+.cwt td:first-child i{display:block;font-style:normal;font-size:11.5px;color:var(--muted)}
+.cwt input{width:96px;text-align:right;padding:5px 6px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.cwt input[type=date]{width:132px;text-align:left}
+.cwt tfoot td{font-weight:800;border-top:2px solid var(--line);border-bottom:0}
+.cwsum{margin:10px 0 0;font-size:14px;font-weight:800;display:flex;gap:16px;flex-wrap:wrap}
+.cwsum .neg{color:#B23B3B}
 .vcell{grid-column:1/-1}
 .vcell input{margin-top:3px}
 @media(max-width:640px){ .bkw{min-width:100%} .bkm{margin-left:0} }
@@ -1310,11 +1326,10 @@ function bookCardHtml(b){
     /* 여행사 수배 건(실시간 견적) — 줄줄이 펼치지 않고 「📄 수배요청서」 한 장으로 본다(사장님 2026-09-21 "수배서 파일을 꽂아주세요").
        원가 줄은 직원 확인용이라 접어 둔다. b.quote 가 없는 옛 건은 전처럼 메모·줄을 그대로 보여 준다 */
     +((b.agency&&b.quote)
-      ? '<div class="bkdocrow"><button class="add" data-bkdoc="'+esc(b.no)+'">📄 수배요청서 보기</button>'
+      ? '<div class="bkdocrow"><button class="add" data-bkdoc="'+esc(b.no)+'">📄 수배요청서 보기</button>'+costBtnHtml(b)
           +'<span class="bkvhint">견적 '+esc(b.quote.quoteNo||'')+' · '+esc(b.quote.start||'')+' ~ '+esc(b.quote.end||'')+' · '+(b.quote.pax||0)+'명 · '+esc(b.quote.route||'')
           +((b.quote.requests||[]).length?' · <b style="color:#B23B3B">요청사항 '+(b.quote.requests||[]).length+'건</b>':'')+'</span></div>'
         +bookMsgsHtml(b)
-        +'<details class="bkcost"><summary>원가 내역 (직원 확인용)</summary><ul class="bkitems">'+(b.items||[]).map(bookItemHtml).join('')+'</ul></details>'
       : (c.memo?'<div class="bkmemo"><b>손님 요청</b>'+esc(c.memo)+'</div>':'')
         +'<ul class="bkitems">'+(b.items||[]).map((it,i)=>bookItemHtml(it,i,b.no)).join('')+'</ul>')
     /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
@@ -1364,6 +1379,7 @@ function siteStepRowHtml(b){
     +'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 메모 고치기':'인보이스 발급 · 메모')+'">'+(has?'✓ ':'')+'인보이스 발급</button>'
     +gt+'<button class="'+st(paid,has&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!has||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
     +gt+'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||done||cxl?' disabled':'')+'>'+(done?'✓ ':'')+'바우처 발급</button>'
+    +costBtnHtml(b)
     +(((v.sent||[]).length)?'<div class="bkvsent">보냄: '+(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>')+'</div>':'')
     +'</div>';
 }
@@ -1609,8 +1625,95 @@ function openBookDoc(no){
 }
 function closeBookDoc(){ const ov=document.getElementById('bkDocOv'); if(ov) ov.remove(); document.body.classList.remove('bkdoc-open'); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('bkDocOv')) closeBookDoc(); });
+/* ══ 원가·송금(사장님 2026-10-02) — 「바우처 발급」 옆 단추. 줄마다 요금표 원가·실제 원가·송금액·송금일.
+   사이트 예약은 판매가(손님가)만 저장돼 있어 요금표 원가 = 판매가 − 마진(지금 요금표의 마진 칸, 비면 골프·호텔 200 · 메뉴 100, /api/golf-price 와 같은 규칙).
+   여행사 실시간 견적 건은 줄 금액이 곧 원가(견적기 마진 0) — 「핸들링 차지」는 우리 수익이라 원가 0.
+   저장은 rec.cost(서버 action 'cost') — 손님·여행사 화면엔 안 나간다 ══ */
+const cmOf=(v,d)=>(v!==''&&v!=null&&Number.isFinite(+v)&&+v>=0)?+v:d;
+function listCostOf(b,it){
+  if(!it) return null;
+  if(it.kind==='quote') return /^핸들링/.test(it.name||'')?0:(+it.baht||0);
+  if(it.asked||!(+it.baht>0)) return null;
+  const key=s=>String(s||'').replace(/\s+/g,'').toLowerCase();
+  const B=+it.baht;
+  if(it.kind==='courses'){
+    const hit=PIDX.courses[key(it.name)], m=cmOf(hit&&hit.c.margin,200), m9=Math.round(m/2), h=parseInt(it.option,10)||18;
+    return B-(h===9?m9:h===27?m+m9:h===36?2*m:m)*Math.max(1,+it.pax||1);
+  }
+  if(it.kind==='hotels'){
+    const hit=PIDX.hotels[key(it.name)], h=hit&&hit.h, rm=h&&(h.rooms||[]).find(r=>r&&key(r.t)===key(it.option));
+    return B-cmOf(rm&&rm.margin,cmOf(h&&h.margin,200))*Math.max(1,+it.rooms||1)*Math.max(1,+it.nights||1);
+  }
+  const hit=(PIDX[it.kind]||{})[key(it.name)];
+  return B-cmOf(hit&&hit.o.margin,100)*Math.max(1,+it.pax||1);
+}
+function costBtnHtml(b){
+  const its=b.items||[], L=(b.cost&&b.cost.lines)||{};
+  const need=its.map((it,i)=>i).filter(i=>listCostOf(b,its[i])!==0);
+  const sent=need.filter(i=>L[i]&&+L[i].send>0).length;
+  return '<button class="ghost bkcostbtn" data-bkcostw="'+esc(b.no)+'">💵 원가·송금'+(sent?'<i>송금 '+sent+'/'+need.length+'</i>':'')+'</button>';
+}
+function openCostWin(no){
+  const b=bookOf(no); if(!b) return;
+  const old=document.getElementById('costWin'); if(old) old.remove();
+  const its=b.items||[], L=(b.cost&&b.cost.lines)||{}, ag=isInvoiceBook(b)||(b.agency&&b.quote);
+  const T=n=>Number(Math.round(n)||0).toLocaleString('ko-KR');
+  const val=v=>v==null?'':v;
+  const rows=its.map((it,i)=>{
+    const tc=listCostOf(b,it), x=L[i]||{};
+    return '<tr data-i="'+i+'"><td><b>'+esc(it.name||'')+'</b><i>'+esc(it.label||it.option||'')+'</i></td>'
+      +'<td>'+(ag?'—':(+it.baht>0?T(it.baht):'문의'))+'</td>'
+      +'<td>'+(tc==null?'<span style="color:#B23B3B">요금 없음</span>':T(tc))+'</td>'
+      +'<td><input type="number" min="0" data-k="cost" value="'+esc(val(x.cost))+'"'+(tc!=null?' placeholder="'+T(tc)+'"':'')+'></td>'
+      +'<td><input type="number" min="0" data-k="send" value="'+esc(val(x.send))+'"></td>'
+      +'<td><input type="date" data-k="date" value="'+esc(x.date||'')+'"></td></tr>';
+  }).join('');
+  const sale=ag?(+(b.agency&&b.agency.totalBaht)||0):(+b.totalBaht||its.reduce((a,it)=>a+(+it.baht||0),0));
+  const m=document.createElement('div');
+  m.id='costWin';
+  m.innerHTML='<div class="cwbox">'
+    +'<div class="ivtop"><b style="flex:1">💵 원가 · 송금 — '+esc(b.no)+' · '+esc((b.customer&&b.customer.name)||'')+'</b>'
+      +'<button class="ghost" data-x="1">닫기</button><button class="add" data-save="1">💾 저장</button></div>'
+    +'<div class="cwbody"><table class="cwt"><thead><tr><th>항목</th><th>판매가 (밧)</th><th>요금표 원가</th><th>실제 원가</th><th>송금액</th><th>송금일</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody><tfoot><tr><td>합계</td><td>'+T(sale)+'</td><td id="cwTc"></td><td id="cwAc"></td><td id="cwSd"></td><td></td></tr></tfoot></table>'
+    +'<div class="cwsum" id="cwSum"></div>'
+    +(b.cost&&b.cost.by?'<p class="desc" style="margin:8px 0 0">저장: '+esc(b.cost.by)+' · '+esc(bookWhen(b.cost.at))+'</p>':'')
+    +'</div></div>';
+  document.body.appendChild(m);
+  let dirty=false;
+  const calc=()=>{
+    let tc=0, ac=0, sd=0;
+    m.querySelectorAll('tbody tr').forEach(tr=>{
+      const c=listCostOf(b,its[+tr.dataset.i])||0, a=tr.querySelector('[data-k=cost]').value, s=tr.querySelector('[data-k=send]').value;
+      tc+=c; ac+=(a===''?c:+a||0); sd+=+s||0;
+    });
+    m.querySelector('#cwTc').textContent=T(tc);
+    m.querySelector('#cwAc').textContent=T(ac);
+    m.querySelector('#cwSd').textContent=T(sd);
+    const pf=sale-ac, left=ac-sd;
+    m.querySelector('#cwSum').innerHTML='<span>이익 <b class="'+(pf<0?'neg':'')+'">'+T(pf)+'밧</b></span>'
+      +'<span>미송금 <b class="'+(left>0?'neg':'')+'">'+T(left)+'밧</b></span>';
+  };
+  calc();
+  m.querySelectorAll('input').forEach(el=>el.oninput=()=>{ dirty=true; calc(); });
+  const close=()=>{ if(dirty&&!confirm('저장하지 않은 내용이 있습니다. 닫을까요?')) return; m.remove(); };
+  m.querySelector('[data-x]').onclick=close;
+  m.querySelector('[data-save]').onclick=async e=>{
+    const btn=e.currentTarget, lines={};
+    m.querySelectorAll('tbody tr').forEach(tr=>{
+      const g=k=>tr.querySelector('[data-k='+k+']').value;
+      lines[tr.dataset.i]={cost:g('cost'),send:g('send'),date:g('date')};
+    });
+    btn.disabled=true;
+    const j=await bookApi('cost',{no:b.no,lines});
+    btn.disabled=false;
+    if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'저장 실패')); return; }
+    dirty=false; bookReplace(j.rec); drawBooks(); m.remove(); toast('💵 저장했습니다');
+  };
+}
 function bindVoucherBtns(p){
   p.querySelectorAll('[data-bkdoc]').forEach(btn=>btn.onclick=()=>openBookDoc(btn.dataset.bkdoc));
+  p.querySelectorAll('[data-bkcostw]').forEach(btn=>btn.onclick=()=>openCostWin(btn.dataset.bkcostw));
   p.querySelectorAll('[data-msgread]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.msgread); if(!b) return;
     btn.disabled=true;

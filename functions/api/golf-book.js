@@ -618,6 +618,27 @@ export async function onRequest(context) {
       return json({ ok: true, rec });
     }
 
+    /* ══ 원가·송금(사장님 2026-10-02) — 줄마다 실제 원가(밧)·호텔/골프장에 보낸 송금액(밧)·송금일.
+          rec.cost 에만 담는다 — 손님·여행사에게 나가는 화면(voucherView·agency.js)은 이 칸을 안 읽는다 ══ */
+    if (action === 'cost') {
+      const no = s(body.no, 40);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      const n = (rec.items || []).length, src = (body.lines && typeof body.lines === 'object') ? body.lines : {};
+      const opt = (v) => (v === '' || v == null) ? null : num(v);
+      const lines = {};
+      Object.keys(src).forEach((k) => {
+        const i = +k, x = src[k] || {};
+        if (!(Number.isInteger(i) && i >= 0 && i < n)) return;
+        const o = { cost: opt(x.cost), send: opt(x.send), date: /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || '')) ? x.date : '' };
+        if (o.cost != null || o.send != null || o.date) lines[i] = o;
+      });
+      rec.cost = { lines, by: loginIdOf(user), at: new Date().toISOString() };
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: rec.cost.at });
+      return json({ ok: true, rec });
+    }
+
     /* ══ 바우처 편집 화면(/golf/site/voucher/?edit=1)에서 어드민이 적은 확정 티업·메모(사장님 2026-10-01) ══ */
     if (action === 'vEdit') {
       const no = s(body.no, 40);
