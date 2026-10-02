@@ -340,6 +340,8 @@ tr.subrow td{padding:0 6px 11px}
 .bkvno b{font-weight:900;font-variant-numeric:tabular-nums}
 .bkvopen{font-size:13px;font-weight:800;color:var(--fairway);text-decoration:none;border:1px solid var(--fairway);border-radius:8px;padding:5px 11px;background:#fff}
 .bkvopen:hover{background:rgba(18,58,43,.07)}
+.bkvopen.now{background:var(--fairway);color:#fff}   /* 지금 할 차례 */
+.bkstep{color:#9aa39d;font-weight:900;font-size:15px}
 .bkvsent{flex-basis:100%;font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.5}
 .vcell{grid-column:1/-1}
 .vcell input{margin-top:3px}
@@ -1365,6 +1367,23 @@ function voucherRowHtml(b){
       +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span></div>';
   }
   const sent=(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>');
+  /* 사이트 예약은 하는 차례대로 왼쪽→오른쪽(사장님 2026-10-02): 💰 입금확인 › 바우처 수정 › 🎫 바우처 발급 › 📧 이메일.
+     지금 눌러야 할 단추만 진하게 — 티업이 비었으면 「수정」, 다 적었으면 「발급」 */
+  if(!inv){
+    const needTee=(b.items||[]).some(it=>it.kind==='courses'&&!it.teeOk);
+    const paid=b.pay&&b.status==='paid', done=b.status==='done';
+    const gt='<span class="bkstep">›</span>';
+    return '<div class="bkvc on">'
+      +'<span class="bkvno">확정번호 <b>'+esc(v.cno)+'</b></span>'
+      +(b.pay?'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">💰 입금확인 '+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+' · '+esc(bookWhen(b.pay.at))+'</span>'+gt:'')
+      +'<a class="'+(paid&&needTee?'bkvopen now':'bkvopen')+'" href="'+esc(voucherUrlOf(b)+'&edit=1')+'" target="_blank" rel="noopener">'+(done?'바우처 열기 · 수정':'✏ 바우처 수정 (확정 티업·메모)')+' ↗</a>'
+      +(paid?gt+'<button class="'+(needTee?'ghost':'add')+'" data-vdone="'+esc(b.no)+'">🎫 바우처 발급</button>':'')
+      +(done?gt+'<span class="bkasg" style="background:#E3F3E8;color:#1f6b3f">🎫 바우처 발급됨</span>':'')
+      +gt+'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일 보내기</button>'
+      +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span>'
+      +(sent?'<div class="bkvsent">보냄: '+sent+'</div>':'')
+      +'</div>';
+  }
   return '<div class="bkvc on">'
     +'<span class="bkvno">'+(inv?'Invoice No.':'확정번호')+' <b>'+esc(v.cno)+'</b></span>'
     /* 바우처는 «편집 모드»로 연다(사장님 2026-10-01) — 확정 티업·메모를 바우처 위 노란 칸에 바로 적고 저장 */
@@ -1625,8 +1644,9 @@ function bindVoucherBtns(p){
   p.querySelectorAll('[data-vdone]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vdone); if(!b) return;
     const noTee=(b.items||[]).some(it=>it.kind==='courses'&&!it.teeOk);
-    if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.'
-      +(noTee?'\n\n⚠ 확정 티업이 비어 있는 골프장이 있습니다. 「바우처 열기 · 수정」에서 먼저 적어 주세요.':'')+'\n\n발급할까요?')) return;
+    /* 티업이 비었으면 앞 단추로 돌려보내지 않고 바로 수정 화면을 연다(사장님 2026-10-02). 저장하면 이 카드가 저절로 「발급」 차례로 바뀐다 */
+    if(noTee){ window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener'); toast('확정 티업을 적고 저장한 뒤 「🎫 바우처 발급」을 누르세요'); return; }
+    if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.\n\n발급할까요?')) return;
     btn.disabled=true; btn.textContent='발급 중…';
     const j=await bookApi('status',{no:b.no,status:'done'});
     if(!j||!j.ok){ btn.disabled=false; btn.textContent='🎫 바우처 발급'; toast('❌ '+((j&&j.error)||'발급 실패')); return; }
