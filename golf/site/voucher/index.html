@@ -118,6 +118,8 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 }
 .itin.kv td.amt3{width:120px;text-align:right;vertical-align:middle;white-space:nowrap;font-weight:800;border-left:1px solid var(--line)}
 .box.bank{font-size:15px;font-weight:800}
+.box.bank .bankmemo{margin:8px 0 0;padding-top:8px;border-top:1px dashed #d9dcd8;font-size:13.5px;font-weight:600;white-space:pre-wrap;color:var(--ink)}
+.box.bank .bankmemo b{font-weight:900;margin-right:6px}
 .box.bank .banknote{margin:8px 0 0;font-size:13.5px;font-weight:700;color:#D32F2F}
 .box.bank .acct{font-size:19px;font-weight:900;color:#111;letter-spacing:.01em}   /* 검정(사장님 2026-10-03 — 아래 빨간 안내와 겹치지 않게) */
 .sec.issued{text-align:right}
@@ -452,8 +454,7 @@ function renderInvoice(v){
           /* 입금 기한은 빨간색(사장님 2026-09-23). 잔금 인보이스에서는 디파짓 줄을 「입금 완료」로 */
           + '<td class="nw" style="color:#D32F2F">' + (bal && x[1] === v.pay.dep ? '<span style="color:#2E7D4F">✓ 입금 완료</span>' : x[1].due ? esc(dshort(x[1].due)) + '까지' : '-') + '</td></tr>').join("")
         + '</tbody></table></div>' : '')
-    + bankHtml(c.bank)
-    + (v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
+    + bankHtml(c.bank, v.memo)
     + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
     + '<div class="sec issued"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
@@ -466,12 +467,14 @@ function renderInvoice(v){
 }
 /* ── 사이트 예약(장바구니·단품) 인보이스(사장님 2026-09-29) — 호텔 컨펌 뒤 나가고, 입금확인되면 같은 링크가 바우처로 바뀐다 ── */
 /* 입금 계좌 한 줄 — 계좌번호만 진한 파랑·크게(사장님 2026-10-02) */
-function bankHtml(bank){
-  if(!bank) return "";
+function bankHtml(bank, memo){
+  /* 메모는 송금 안내 줄 바로 아래, 같은 상자 안(사장님 2026-10-03) */
+  const mm = memo ? '<p class="bankmemo"><b>Memo</b> ' + esc(memo) + '</p>' : '';
+  if(!bank) return memo ? '<div class="box bank">' + mm + '</div>' : "";
   /* 은행명·예금주도 계좌번호와 같은 글자(사장님 2026-10-03) */
   const t = esc(String(bank).replace(/\s*\n\s*/g, " ").trim());
   return '<div class="box bank">입금계좌안내 : <b class="acct">' + t + '</b>'
-    + '<p class="banknote">* 에이전트명 또는 담당자명으로 송금 부탁 드립니다.</p></div>';   // 사장님 2026-10-03
+    + '<p class="banknote">* 에이전트명 또는 담당자명으로 송금 부탁 드립니다.</p>' + mm + '</div>';   // 사장님 2026-10-03
 }
 function renderItemInvoice(v){
   const c = v.company || {}, to = v.to || {};
@@ -522,10 +525,9 @@ function renderItemInvoice(v){
       + hl("예약자명", v.guest || "") + '</div>'
     + '<div class="body" style="padding-top:12px"><table class="itin kv"><thead><tr><th>구분</th><th>내용</th><th>금액</th></tr></thead><tbody>' + body + '</tbody></table></div>'
     + '<div class="amt"><div class="sum"><span>Total (청구 금액)</span><b>' + won(v.total) + '</b></div></div>'
-    + bankHtml(c.bank)
+    + bankHtml(c.bank, EDIT ? "" : v.memo)
     /* 어드민 「인보이스 발급」은 이 원본을 수정 모드로 띄워 메모를 덧붙인다(사장님 2026-10-03, 바우처와 같은 방식) */
-    + (EDIT ? '<div class="sec"><h3>Memo</h3><textarea class="ed" id="edMemo" rows="3" placeholder="입금 기한·예약처 컨펌번호 등 덧붙일 글">' + esc(v.memo || "") + '</textarea></div>'
-      : v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
+    + (EDIT ? '<div class="sec"><h3>Memo</h3><textarea class="ed" id="edMemo" rows="3" placeholder="입금 기한·예약처 컨펌번호 등 덧붙일 글">' + esc(v.memo || "") + '</textarea></div>' : '')
     + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
     + '<div class="sec issued"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
