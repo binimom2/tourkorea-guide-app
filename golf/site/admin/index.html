@@ -1421,8 +1421,33 @@ function siteStepRowHtml(b){
     +(((v.sent||[]).length)?'<div class="bkvsent">보냄: '+(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>')+'</div>':'')
     +'</div>';
 }
+/* 여행사 건 단추 줄(사장님 2026-10-03 「실시간도 호텔·골프처럼 일처리 순서로」):
+   디파짓 인보이스 발급(초안이면 「발행」) › 디파짓 입금확인(→ 잔금 인보이스·확정서) › 잔금 입금확인.
+   끝난 단계는 초록 ✓, 지금 차례만 진하게, 아직은 흐리게. 문서는 왼쪽 번호(↗)로 연다 */
+function agencyStepRowHtml(b){
+  const v=b.voucher||{}, has=!!v.token, cxl=b.status==='cancel';
+  if(cxl&&!has) return '';
+  const rel=has&&v.released!==false, depPaid=v.stage==='balance', balPaid=!!b.pay;
+  const gt='<span class="bkstep">›</span>';
+  const st=(on,cur)=>on?'bkdone':cur?'add':'ghost bkwait';
+  const D=cxl?' disabled':'';
+  return '<div class="bkvc on">'
+    +(rel?'<a class="bkvno" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener" title="'+(depPaid?'잔금 인보이스·확정서 열기':'디파짓 인보이스 열기')+'">Invoice No. <b>'+esc(v.cno)+(depPaid?'-B':'-D')+'</b> ↗</a>':'')
+    /* ① 디파짓 인보이스 — 없으면 발급, 초안이면 확인·발행, 나갔으면 ✓(눌러 고치기) */
+    +(!has?'<button class="add" data-confirm="'+esc(b.no)+'"'+D+'>디파짓 인보이스 발급</button>'
+      :!rel?'<button class="add" data-vprev="'+esc(b.no)+'"'+D+'>📨 디파짓 인보이스 발행</button>'
+      :'<button class="bkdone" data-vprev="'+esc(b.no)+'" title="인보이스 확인 · 수정">✓ 디파짓 인보이스</button>')
+    /* ② 디파짓 입금확인 → 잔금 인보이스·확정서 */
+    +gt+'<button class="'+st(depPaid,rel&&!depPaid)+'" data-vbal="'+esc(b.no)+'"'+(!rel||depPaid||cxl?' disabled':'')+' title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">'+(depPaid?'✓ ':'')+'디파짓 입금확인</button>'
+    /* ③ 잔금 입금확인 */
+    +gt+'<button class="'+st(balPaid,depPaid&&!balPaid)+'" data-vpaid="'+esc(b.no)+'"'+(!depPaid||balPaid||cxl?' disabled':'')+'>'+(balPaid?'✓ ':'')+'잔금 입금확인'+(balPaid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
+    +(rel?'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일</button>':'')
+    +(((v.sent||[]).length)?'<div class="bkvsent">보냄: '+(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>')+'</div>':'')
+    +'</div>';
+}
 function voucherRowHtml(b){
   if(!isInvoiceBook(b)) return siteStepRowHtml(b);
+  return agencyStepRowHtml(b);   // 여행사(실시간 견적) 건도 업무 순서 단추 줄(사장님 2026-10-03). 아래 옛 줄은 안 쓴다
   const v=b.voucher, inv=isInvoiceBook(b), dn=docNameOf(b);
   if(!v||!v.token){
     if(b.status==='cancel') return '';
