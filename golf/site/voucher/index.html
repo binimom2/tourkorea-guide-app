@@ -263,24 +263,58 @@ function edSaveBtn(v){
   if(!$("#edSave")) $("#act").insertAdjacentHTML("afterbegin", '<button type="button" id="edSave">💾 저장</button>');
   $("#edSave").onclick = () => saveEdit(v);
 }
-async function saveEdit(v){
-  const btn = $("#edSave"), msg = $("#edMsg");
+/* 직원 토큰으로 /api/golf-book 부르기 */
+async function staffApi(body){
+  const r = await fetch("/api/golf-book", { method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer " + staffToken() }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if(r.status === 401) throw new Error("로그인이 만료되었습니다. 관리 화면을 새로고침한 뒤 다시 해 주세요.");
+  return j;
+}
+/* 노란 칸 저장(창은 안 닫음) */
+async function putEdit(v){
   const tees = {}; document.querySelectorAll("[data-tee]").forEach(e => { tees[e.dataset.tee] = e.value.trim(); });
   const reqs = {}; document.querySelectorAll("[data-req]").forEach(e => { reqs[e.dataset.req] = e.value.trim(); });
   const cfs = {}; document.querySelectorAll("[data-cf]").forEach(e => { cfs[e.dataset.cf] = e.value.trim(); });
+  const j = await staffApi({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees, reqs, cfs });
+  if(!j.ok) throw new Error(j.error || "저장하지 못했습니다.");
+}
+function closeSoon(msg, t){
+  msg.textContent = t; window.close();
+  setTimeout(() => { msg.textContent = t + " — 이 탭을 닫으셔도 됩니다"; }, 300);
+}
+async function saveEdit(v){
+  const btn = $("#edSave"), msg = $("#edMsg");
   btn.disabled = true; msg.textContent = "저장 중…";
   try{
-    const r = await fetch("/api/golf-book", { method: "POST",
-      headers: { "content-type": "application/json", Authorization: "Bearer " + staffToken() },
-      body: JSON.stringify({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees, reqs, cfs }) });
-    const j = await r.json().catch(() => ({}));
-    if(r.status === 401) throw new Error("로그인이 만료되었습니다. 관리 화면을 새로고침한 뒤 다시 저장해 주세요.");
-    if(!j.ok) throw new Error(j.error || "저장하지 못했습니다.");
+    await putEdit(v);
     /* 저장하면 창을 닫는다(사장님 2026-10-01). 브라우저가 닫기를 막으면 안내만 남긴다 */
-    msg.textContent = "✅ 저장했습니다";
-    window.close();
-    setTimeout(() => { msg.textContent = "✅ 저장했습니다 — 이 탭을 닫으셔도 됩니다"; }, 300);
+    closeSoon(msg, "✅ 저장했습니다");
   }catch(e){ msg.textContent = "❌ " + ((e && e.message) || "저장하지 못했습니다."); }
+  btn.disabled = false;
+}
+/* 인보이스 「발송」(사장님 2026-10-03) — 적은 것 저장 → 초안이면 공개(release) → 손님 이메일로 보냄.
+   고칠 것 없으면 그냥 이 단추만 누르면 된다. 단추 차례: 저장 · 발송 · 인쇄 */
+function edSendBtn(v){
+  if(!$("#edSend")) $("#edSave").insertAdjacentHTML("afterend", '<button type="button" id="edSend">📨 발송</button>');
+  $("#edSend").onclick = () => sendInvoice(v);
+}
+async function sendInvoice(v){
+  if(!confirm((v.released ? "인보이스를 다시 보냅니다." : "인보이스를 발송합니다 — 여행사 보관함·손님 링크에 인보이스가 보이게 됩니다.") + "\n손님 이메일이 있으면 이메일로도 보냅니다.\n\n발송할까요?")) return;
+  const btn = $("#edSend"), msg = $("#edMsg");
+  btn.disabled = true; msg.textContent = "발송 중…";
+  try{
+    await putEdit(v);
+    if(!v.released){
+      const r = await staffApi({ action: "release", no: v.no });
+      if(!r.ok) throw new Error(r.error || "발송하지 못했습니다.");
+      v.released = true;
+    }
+    const m = await staffApi({ action: "send", no: v.no });
+    closeSoon(msg, m.ok ? "✅ 발송했습니다 · 📧 " + (m.to || "")
+      : m.setup ? "✅ 발송했습니다 (이메일 자동발송은 아직 설정 전 — 링크를 직접 보내 주세요)"
+      : "✅ 발송했습니다 (이메일은 못 보냄: " + (m.error || "") + ")");
+  }catch(e){ msg.textContent = "❌ " + ((e && e.message) || "발송하지 못했습니다."); }
   btn.disabled = false;
 }
 /* ── 인보이스(사장님 2026-09-21) — 실시간 견적으로 들어온 여행사 수배 건은 컨펌하면 바우처 대신 이 화면이 나간다.
@@ -398,9 +432,11 @@ function renderItemInvoice(v){
   document.title = "인보이스 " + v.no + " · " + (c.name || "");
   $("#act").style.display = "";
   if(EDIT){
-    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸에 덧붙일 글을 적고 아래 「저장」을 누르세요. 손님 화면에는 적은 글자만 보입니다.'
+    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — '
+      + (v.released ? '' : '<b style="color:#D32F2F">아직 발송 전(초안)</b> · ')
+      + '노란 칸에 덧붙일 글을 적고 「저장」, 보낼 때는 「발송」. 손님 화면에는 적은 글자만 보입니다.'
       + '<span id="edMsg"></span></div>');
-    edSaveBtn(v);
+    edSaveBtn(v); edSendBtn(v);
   }
 }
 function fail(msg){

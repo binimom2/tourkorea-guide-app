@@ -1376,6 +1376,7 @@ function siteStepRowHtml(b){
   const v=b.voucher||{}, has=!!v.token, cxl=b.status==='cancel';
   if(cxl&&!has) return '';
   const paid=!!b.pay, done=b.status==='done';
+  const draft=has&&v.released===false, sent=has&&!draft;   // 인보이스 초안 / 발송됨
   const gt='<span class="bkstep">›</span>';
   const st=(on,cur)=>on?'bkdone':cur?'add':'ghost bkwait';
   return '<div class="bkvc on">'
@@ -1383,8 +1384,10 @@ function siteStepRowHtml(b){
       +(paid?'확정번호 <b>'+esc(v.cno)+'</b>':'Invoice No. <b>'+esc(siteInvNoOf(b))+'</b>')+' ↗</a>':'')
     /* 입금확인 뒤엔 발급 인보이스 확인, 바우처 발급 뒤엔 발급 바우처 확인(사장님 2026-10-03) */
     +(has&&paid?'<a class="bkdone" href="'+esc(voucherUrlOf(b)+'&inv=1&edit=1')+'" target="_blank" rel="noopener">✓ 발급 인보이스 확인</a>'
+      /* 초안(아직 발송 전, 2026-10-03)이면 「인보이스 발송」이 지금 차례 — 눌러 인보이스 화면에서 저장·발송 */
+      :draft?'<button class="add" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="인보이스 확인 · 수정 · 발송">📨 인보이스 발송</button>'
       :'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 열기 · 글 덧붙이기':'인보이스 발급')+'">'+(has?'✓ ':'')+'인보이스 발급</button>')
-    +gt+'<button class="'+st(paid,has&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!has||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
+    +gt+'<button class="'+st(paid,sent&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!sent||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
     +gt+(done?'<a class="bkdone" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">✓ 발급 바우처 확인</a>'
       :'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||cxl?' disabled':'')+'>바우처 발급</button>')
     +costBtnHtml(b)
@@ -1742,7 +1745,7 @@ function bindVoucherBtns(p){
       if(!j||!j.ok){ if(w) w.close(); btn.disabled=false; toast('❌ '+((j&&j.error)||'발급 실패')); drawBooks(); return; }
       bookReplace(j.rec); drawBooks();
       if(w){ w.opener=null; w.location.href=voucherUrlOf(j.rec)+'&inv=1&edit=1'; }
-      toast('✅ 인보이스를 발급했습니다 — 덧붙일 글이 있으면 적고 저장하세요');
+      toast('🧾 인보이스 초안을 만들었습니다 — 확인·수정 후 「발송」을 누르세요');
       return;
     }
     /* 인보이스는 메모도 확인·수정 창에서 적는다 — 묻지 않고 바로 초안을 만든다 */

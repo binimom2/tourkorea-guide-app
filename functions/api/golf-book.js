@@ -304,6 +304,7 @@ function itemInvoiceView(request, rec, site) {
       date: it.date, dateEnd: it.dateEnd, label: it.label, krw: it.asked ? 0 : num(it.krw), asked: !!it.asked })),
     total: num(rec.total),
     paid: !!rec.pay,
+    released: rec.voucher.released !== false,   // false = 아직 「발송」 전 초안
     company: companyOf(site),
     url: voucherUrl(request, rec),
   };
@@ -689,8 +690,9 @@ export async function onRequest(context) {
       const draft = isAgencyRec(rec);
       if (!rec.voucher || !rec.voucher.token) {
         rec.voucher = { cno: String(Math.floor(Date.now() / 1000)), token: voucherToken(), at: now, by: loginIdOf(user), memo: '', sent: [] };
-        if (draft) rec.voucher.released = false;
-        else rec.voucher.stage = 'invoice';      // 사이트 예약은 인보이스부터 — 입금확인하면 같은 링크가 바우처가 된다(2026-09-29)
+        /* 사이트 예약도 초안부터(사장님 2026-10-03) — 인보이스 화면에서 저장·수정한 뒤 「발송」(release)을 눌러야 나간다 */
+        rec.voucher.released = false;
+        if (!draft) rec.voucher.stage = 'invoice';      // 사이트 예약은 인보이스부터 — 입금확인하면 같은 링크가 바우처가 된다(2026-09-29)
       }
       if (body.memo != null) rec.voucher.memo = s(body.memo, MAX_TEXT);
       if ((rec.status === 'new' || rec.status === 'doing') && rec.voucher.released !== false) rec.status = 'confirmed';
