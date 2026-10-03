@@ -88,7 +88,8 @@ input.ed{width:150px;text-align:right}
 input.ed.wide{width:260px;max-width:60vw}
 .cfno{color:#D32F2F;font-weight:900}   /* 컨펌번호 빨강(사장님 2026-10-03) */
 .paid{color:#2E7D4F;font-weight:900}
-.teet{color:#B00000;font-weight:900;font-size:15px}   /* 골프 확정 티업 진한 빨강(사장님 2026-10-03) */
+.teet,.tbl b .teet{color:#B00000;font-weight:900;font-size:15px}
+.tbl b .paid{color:#2E7D4F}.tbl b .cfno{color:#D32F2F}   /* 표 안 span 기본 회색(.tbl span)을 이긴다 */   /* 골프 확정 티업 진한 빨강(사장님 2026-10-03) */
 textarea.ed{display:block;width:100%;margin:6px 0;resize:vertical;font-weight:600;line-height:1.5}
 .edbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FFF4B8;border-bottom:2px solid #F2C94C;padding:10px 16px;font-size:13.5px}
 .edbar button{margin-left:auto;background:var(--fairway);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:800;cursor:pointer}
