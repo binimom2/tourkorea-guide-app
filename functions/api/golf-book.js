@@ -789,10 +789,19 @@ export async function onRequest(context) {
       const inv = isAgencyRec(rec);                 // 여행사 수배 건은 인보이스로 나간다(사장님 2026-09-21)
       const sInv = isSiteInvoice(rec);              // 사이트 예약 입금 전 = 항목형 인보이스(2026-09-29)
       const v = inv ? await invoiceView(request, rec, site, KEY) : sInv ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site);
-      const r = inv
-        ? await sendMail(env, to, '[' + v.company.name + '] ' + (v.doc === 'balance' ? '잔금 인보이스 & 확정서' : '디파짓 인보이스') + ' (Invoice) · ' + (v.quote.quoteNo || v.no), invoiceMailHtml(v))
-        : sInv ? await sendMail(env, to, '[' + v.company.name + '] 인보이스 (Invoice) · ' + v.no, itemInvoiceMailHtml(v))
-        : await sendMail(env, to, '[' + v.company.name + '] 예약 확정서 (Voucher) · ' + v.no, mailHtml(v));
+      /* 바우처는 품목마다 한 통씩(사장님 2026-10-03 — 호텔·골프 섞이면 받는 쪽에 각각). 링크도 &it=<줄 번호> 로 그 품목만 */
+      const KR = (k) => k === 'hotels' ? 0 : k === 'courses' ? 1 : 2;
+      const one = (x, i, n) => Object.assign({}, v, { items: [x], url: n > 1 ? v.url + '&it=' + i : v.url });
+      let r = { ok: true };
+      if (inv) r = await sendMail(env, to, '[' + v.company.name + '] ' + (v.doc === 'balance' ? '잔금 인보이스 & 확정서' : '디파짓 인보이스') + ' (Invoice) · ' + (v.quote.quoteNo || v.no), invoiceMailHtml(v));
+      else if (sInv) r = await sendMail(env, to, '[' + v.company.name + '] 인보이스 (Invoice) · ' + v.no, itemInvoiceMailHtml(v));
+      else {
+        const its = v.items.map((x, i) => ({ x, i })).sort((a, b) => KR(a.x.kind) - KR(b.x.kind) || String(a.x.date || '').localeCompare(String(b.x.date || '')) || a.i - b.i);
+        for (const { x, i } of its) {
+          r = await sendMail(env, to, '[' + v.company.name + '] 예약 확정서 (Voucher) · ' + v.no + (its.length > 1 ? ' · ' + x.name : ''), mailHtml(one(x, i, its.length)));
+          if (r.setup || r.error) break;
+        }
+      }
       if (r.setup) return json({ ok: false, setup: true, url: v.url, error: '서버에 RESEND_API_KEY 가 없어 자동 발송을 못 합니다.' });
       if (r.error) return json({ error: r.error }, 502);
       rec.voucher.sent = (rec.voucher.sent || []).concat([{ via: 'email', to, at: new Date().toISOString(), by: loginIdOf(user) }]).slice(-20);

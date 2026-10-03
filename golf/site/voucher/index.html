@@ -222,15 +222,20 @@ function bedsEn(it){
 /* 「투어코리아 (TOURKOREA)」 → 「TOURKOREA」 — 괄호 안 영문이 있으면 그것만 */
 function enName(n){ const m = /\(([^)]*[A-Za-z][^)]*)\)/.exec(n || ""); return m ? m[1].trim() : (n || ""); }
 
+/* ?it=<줄 번호> — 품목 한 장만(사장님 2026-10-03: 직원은 한 번에 적고, 받는 쪽엔 품목마다 따로). 편집 모드는 늘 전체 */
+const ONE = (() => { const x = new URLSearchParams(location.search).get("it"); return x != null && /^\d+$/.test(x) ? +x : null; })();
 function render(v){
   const c = v.company || {};
+  const all = kindSorted(v.items).map(([it, i], k) => [it, i, k]);
+  const pick = ONE != null && !EDIT ? all.filter(x => x[1] === ONE) : [];
+  const shown = pick.length ? pick : all;
   /* 호텔이 없는 바우처(골프 등)는 「호텔 체크인 시」 → 「체크인 시」, 호텔 바우처는 그대로(사장님 2026-10-03) */
-  const noHotel = !v.items.some(x => x.kind === "hotels");
+  const noHotel = !shown.some(x => x[0].kind === "hotels");
   const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).map(t => noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
   const co = enName(c.name);
   /* Confirm No.(빨강) — 품목마다 업체 컨펌번호를 적는다(사장님 2026-10-03, 골프도 호텔과 똑같이).
      호텔은 확정 칸(teeOk)이 곧 컨펌번호, 골프 등은 teeOk가 티업이라 따로 cfNo. 아무것도 안 적었으면 우리 확정번호 */
-  const cfs = kindSorted(v.items).map(([it, i]) => ({ it, i, h: it.kind === "hotels", val: it.kind === "hotels" ? it.teeOk : it.cfNo }));
+  const cfs = shown.map(([it, i]) => ({ it, i, h: it.kind === "hotels", val: it.kind === "hotels" ? it.teeOk : it.cfNo }));
   const many = cfs.length > 1;
   const nm = x => many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '';
   const cfHtml = EDIT
@@ -242,7 +247,7 @@ function render(v){
   $("#app").innerHTML = '<div class="sheet">'
     + '<div class="brand">' + esc(co) + '</div>'
     + '<h1>Voucher<small>예약 확정서</small></h1>'
-    + kindSorted(v.items).map(([it, i], k) => itemHtml(v, it, i, k)).join("")
+    + shown.map(([it, i, k]) => itemHtml(v, it, i, k)).join("")
     /* 「Agent Memo : Confirm No. …」 한 줄로 나란히(사장님 2026-10-03) */
     + '<div class="sec"><h3>Agent Memo : ' + cfHtml + '</h3>'
       + (EDIT ? '<textarea class="ed" id="edMemo" rows="3" placeholder="안내 사항 등 (영문)">' + esc(v.memo || "") + '</textarea>'

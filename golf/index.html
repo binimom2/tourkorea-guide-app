@@ -2091,7 +2091,10 @@ function siteRowHtml(r){
         <div style="font-size:12px;font-weight:700;margin-top:3px;">${won(r.total)} 원</div>
         ${siteStepsHtml(r)}
       </div>
-      ${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" style="flex-shrink:0;border:none;background:${r.doc==='voucher'?'#1f6b3f':'#0b3d91'};color:#fff;border-radius:6px;padding:7px 11px;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;">${r.doc==='voucher'?'🎫 바우처':'🧾 인보이스'}</a>`:''}
+      ${/* 바우처는 품목마다 한 장씩(사장님 2026-10-03) — 호텔·골프 섞이면 단추가 품목 수만큼 */
+        (r.doc==='voucher'&&Array.isArray(r.vouchers)&&r.vouchers.length>1)
+        ?`<div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px;max-width:200px;">${r.vouchers.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" title="${esc(x.name)}" style="border:none;background:#1f6b3f;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🎫 ${esc(x.name)}</a>`).join('')}</div>`
+        :r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" style="flex-shrink:0;border:none;background:${r.doc==='voucher'?'#1f6b3f':'#0b3d91'};color:#fff;border-radius:6px;padding:7px 11px;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;">${r.doc==='voucher'?'🎫 바우처':'🧾 인보이스'}</a>`:''}
       ${r.cancelReq?`<span style="flex-shrink:0;font-size:11.5px;font-weight:800;color:#fff;background:#c0492f;border-radius:6px;padding:5px 9px;white-space:nowrap;">취소 요청함</span>`
         :['new','doing','confirmed'].includes(r.status)?`<button type="button" onclick="cancelSiteRow('${esc(r.no)}')" style="flex-shrink:0;border:1px solid #c0492f;background:#fff;color:#c0492f;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">취소 요청</button>`:''}
       <div style="flex-shrink:0;align-self:stretch;display:flex;align-items:center;padding-left:8px;border-left:1px solid #efeada;">
