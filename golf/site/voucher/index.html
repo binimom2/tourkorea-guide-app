@@ -87,6 +87,9 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .head.cp .cpg span{color:#7A8580;font-weight:700;white-space:nowrap}
 .head.cp .cpg b{font-weight:800;color:var(--fairway)}
 .head.cp .cpg b.wide{grid-column:2/-1}
+.head.cp .cpg{grid-template-columns:78px 1fr 64px 1fr;margin-top:0}
+.head.cp .cpg span.no,.head.cp .cpg b.no{font-size:15px;padding-bottom:3px}
+.head.cp .cpg b.no{font-size:16px;font-weight:900}
 .sec.cp{margin-bottom:12px}
 .inv .nt{color:#D32F2F;font-weight:800}   /* 수배요청서 비고 — 항목 옆 빨강 */
 .sec.cp h3{font-size:13.5px;margin-bottom:4px}
@@ -421,9 +424,10 @@ function renderInvoice(v){
     /* 한 장에 들어오게 줄임(사장님 2026-10-03 「너무 길다」) — 머리·Booking Summary 를 한 상자 두 칸으로,
        포함·요청 사항은 나란히, 1인 요금 × 인원 = 총액은 한 줄 */
     + '<div class="head ih cp">'
-      + '<div class="hl"><span>Invoice No.</span> ' + esc(v.cno) + (bal ? '-B' : '-D')
-        + (bal ? ' <i class="cfm">CONFIRMED · 확정</i>' : '') + '</div>'
+      /* Invoice No. 도 같은 격자 첫 줄 — 값 시작 자리를 아래 줄들과 맞춤(사장님 2026-10-03 「줄맞춤」) */
       + '<div class="cpg">'
+        + '<span class="no">Invoice No.</span><b class="wide no">' + esc(v.cno) + (bal ? '-B' : '-D')
+        + (bal ? ' <i class="cfm">CONFIRMED · 확정</i>' : '') + '</b>'
         + '<span>발행일</span><b>' + esc(issued) + '</b>'
         + '<span>견적번호</span><b>' + esc(q.quoteNo || "") + '</b>'
         /* 차례: 발행일·견적번호 / 에이전트명(한 줄 통째) / 일정·인원. 동선·항공은 뺌(사장님 2026-10-03) */
