@@ -2248,8 +2248,8 @@ function drawTriple(){
   if(qpKind !== "hotels" || qpRooms < 1){ box.style.display = "none"; return; }
   if(qpPax > roomCap()){
     box.style.display = "";
-    box.innerHTML = "한 방에 <b>세 분</b>까지 드실 수 있습니다(성인 2명 + 아동 2명이면 네 분) — "
-      + qpPax + "명이면 룸 갯수를 <b>" + Math.ceil(qpPax / 3) + "객실</b> 이상으로 잡아 주세요.";
+    box.innerHTML = "한 객실 최대 <b>3인</b>까지 투숙 가능합니다(성인 2명 + 아동 2명은 4인 가능). "
+      + qpPax + "명이면 객실을 <b>" + Math.ceil(qpPax / 3) + "실</b> 이상 선택해 주세요.";
     return;
   }
   const n3 = tripleRooms(), n4 = quadRooms(), t = triplePriceOf();
@@ -2258,13 +2258,15 @@ function drawTriple(){
   /* 금액은 적지 않는다 — 아래 큰 숫자가 이미 «트리플 객실 1박 요금»이다(사장님 2026-09-08).
      여기서 또 「엑스트라 베드 52,000원」을 적으면 두 숫자를 더해 읽으시게 된다. */
   const opt = optBeds(), beds = bedCount();
-  box.innerHTML = "세 분 이상 드는 방 <b>" + n3 + "객실</b> — "
-    + (beds ? "3인째는 <b>엑스트라 베드</b>" : "아동은 침대 없이 <b>조식</b>만")
-    + (beds && bfCount() ? ", 침대 없이 드는 아동은 <b>조식</b>만" : "") + " 요금이 붙습니다."
+  /* 문구 다듬음(사장님 2026-10-03 「어색함」) */
+  box.innerHTML = "3인 이상 투숙 객실 <b>" + n3 + "실</b> · "
+    + (beds ? "세 번째 분은 <b>엑스트라 베드</b> 요금" + (bfCount() ? ", 침대 없이 투숙하는 아동은 <b>조식</b> 요금" : "")
+            : "침대 없이 투숙하는 아동은 <b>조식</b> 요금")
+    + "이 추가됩니다."
     /* 3인째가 아동인 방만 고를 수 있다 — 성인 3명은 엑스트라 베드가 무조건 들어간다 */
     + (opt ? '<div class="qp-bedpick"><span>아동 엑스트라 베드' + (opt > 1 ? " (" + opt + "개)" : "") + '</span>'
-        + '<button type="button" data-nobed="0"' + (qpNoBed ? "" : ' class="on"') + '>추가</button>'
-        + '<button type="button" data-nobed="1"' + (qpNoBed ? ' class="on"' : "") + '>추가 안 함 (조식만 추가)</button></div>' : "");
+        + '<button type="button" data-nobed="0"' + (qpNoBed ? "" : ' class="on"') + '>필요</button>'
+        + '<button type="button" data-nobed="1"' + (qpNoBed ? ' class="on"' : "") + '>필요 없음 (조식만)</button></div>' : "");
   box.querySelectorAll("[data-nobed]").forEach(b => b.onclick = () => {
     qpNoBed = b.dataset.nobed === "1";
     drawTriple(); qpCalc();
