@@ -1444,7 +1444,7 @@ function voucherRowHtml(b){
   /* 인보이스 초안(사장님 2026-09-23) — 어드민이 화면으로 확인하고 「발행」을 눌러야 여행사에 보인다. 그 전엔 보내기 단추를 안 준다 */
   if(v.released===false){
     return '<div class="bkvc">'
-      +'<span class="bkvno">Invoice No. <b>'+esc(v.cno)+'</b> <span style="color:#D9412B;font-weight:800">· 초안(여행사에 안 보임)</span></span>'
+      +'<span class="bkvno">Invoice No. <b>'+esc(v.cno)+'</b></span>'   /* 「· 초안(여행사에 안 보임)」 글자는 뺌(사장님 2026-10-03) */
       +'<button class="add" data-vprev="'+esc(b.no)+'">🧾 인보이스 확인 · 수정 · 발행</button>'
       +'<span class="bkby">'+esc(v.by||'')+' · '+esc(bookWhen(v.at))+'</span></div>';
   }
