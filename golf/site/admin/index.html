@@ -346,6 +346,7 @@ tr.subrow td{padding:0 6px 11px}
 .bkstep{color:#9aa39d;font-weight:900;font-size:15px}
 .bkvc .bkdone{background:#E3F3E8;color:#1f6b3f;border:1px solid #BFE0CB;border-radius:8px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
 .bkvc .bkdone:disabled{cursor:default}
+.bkvc a.bkdone{text-decoration:none;display:inline-block}
 .bkvc .bkdone i{font-style:normal;font-weight:700;opacity:.8;margin-left:3px}
 .bkvc .bkwait{opacity:.45}
 .bkvc a.bkvno{color:inherit;text-decoration:none;margin-right:4px}
@@ -1376,11 +1377,12 @@ function siteStepRowHtml(b){
   return '<div class="bkvc on">'
     +(has?'<a class="bkvno" href="'+esc(voucherUrlOf(b)+(paid?'&edit=1':''))+'" target="_blank" rel="noopener" title="'+(paid?'바우처 열기 · 확정 티업·메모 수정':'인보이스 열기')+'">'
       +(paid?'확정번호 <b>'+esc(v.cno)+'</b>':'Invoice No. <b>'+esc(siteInvNoOf(b))+'</b>')+' ↗</a>':'')
-    /* 입금확인 뒤에도 인보이스를 다시 본다(사장님 2026-10-03) */
-    +(has&&paid?'<a class="bkvno" href="'+esc(voucherUrlOf(b)+'&inv=1')+'" target="_blank" rel="noopener" title="인보이스 열기">Invoice No. <b>'+esc(siteInvNoOf(b))+'</b> ↗</a>':'')
-    +'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 메모 고치기':'인보이스 발급 · 메모')+'">'+(has?'✓ ':'')+'인보이스 발급</button>'
+    /* 입금확인 뒤엔 발급 인보이스 확인, 바우처 발급 뒤엔 발급 바우처 확인(사장님 2026-10-03) */
+    +(has&&paid?'<a class="bkdone" href="'+esc(voucherUrlOf(b)+'&inv=1')+'" target="_blank" rel="noopener">✓ 발급 인보이스 확인</a>'
+      :'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 메모 고치기':'인보이스 발급 · 메모')+'">'+(has?'✓ ':'')+'인보이스 발급</button>')
     +gt+'<button class="'+st(paid,has&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!has||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
-    +gt+'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||done||cxl?' disabled':'')+'>'+(done?'✓ ':'')+'바우처 발급</button>'
+    +gt+(done?'<a class="bkdone" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">✓ 발급 바우처 확인</a>'
+      :'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||cxl?' disabled':'')+'>바우처 발급</button>')
     +costBtnHtml(b)
     +(((v.sent||[]).length)?'<div class="bkvsent">보냄: '+(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>')+'</div>':'')
     +'</div>';
