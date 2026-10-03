@@ -3062,6 +3062,8 @@ let directItem = null;
 /* 적는 칸은 «성함 · 연락처 · 이메일 · 요청사항» 넷뿐이다(사장님 2026-09-08).
    카카오톡 ID는 손님이 자기 아이디를 모르는 일이 많아 뺐다.
    로그인해 두셨으면 성함·이메일을 그 정보로 채워 준다(고쳐 넣으실 수 있다). */
+/* 이번에 보낼 줄 — 바로 예약신청이면 그 한 건, 아니면 장바구니에서 체크한 것 */
+function bookList(){ return directItem ? [directItem] : CART.filter(c => !c.off); }
 function bformHtml(){
   /* 여행사가 손님마다 따로 예약하므로 연락처·이메일도 매번 빈칸(사장님 2026-10-01 — 앞 손님 것이 남아 뜨던 것) */
   const em = "", tel = "";
@@ -3073,12 +3075,17 @@ function bformHtml(){
     + '<label><span>영문이름<i class="req">*</i></span><input type="text" id="bkName" autocapitalize="characters" value=""></label>'
     + '<label><span>연락처<i class="req">*</i></span><input type="text" id="bkTel" inputmode="tel" value="' + esc(tel) + '"></label>'
     + '<label><span>이메일<i class="req">*</i></span><input type="email" id="bkEmail" value="' + esc(em) + '"></label>'
+    /* 골프장은 희망 티타임 필수(사장님 2026-10-03) — 상세 창에서 적은 값이 있으면 채워 둔다. 골프장이 여럿이면 줄마다 */
+    + bookList().map((it, k) => it.kind !== "courses" ? "" :
+        '<label class="full"><span>희망 티타임' + (bookList().filter(x => x.kind === "courses").length > 1 ? ' · ' + esc(it.name) : '') + '<i class="req">*</i></span>'
+        + '<input type="text" data-btee="' + k + '" value="' + esc(it.time || "") + '" placeholder="예: 오전 7시대 또는 07:30" maxlength="80"></label>').join("")
     + '<label class="full">요청사항 (한글로 적어주세요)<textarea id="bkMemo"></textarea></label>'
     + '</div>'
     + '<p class="cnote"><i class="req">*</i>필수사항은 꼭 입력해주세요.</p>'
     + '<div class="cbtns">'
-      + '<button type="button" class="mbtn ghost" id="bkBack">← 뒤로</button>'
-      + '<button type="button" class="mbtn" id="bkSend">예약신청 보내기</button></div>'
+      /* 보내기 앞, 닫기·뒤로 뒤(사장님 2026-10-03) */
+      + '<button type="button" class="mbtn" id="bkSend">예약신청 보내기</button>'
+      + '<button type="button" class="mbtn ghost" id="bkBack">← 뒤로</button></div>'
     + '<div class="qp-warn" id="bkMsg" hidden></div>';
 }
 function drawCartBody(){
@@ -3102,7 +3109,7 @@ function drawCartBody(){
       + '<div class="ctotal"><span>합계</span><b>' + ((d.asked || !d.krw) ? '요금 문의' : d.krw.toLocaleString("ko-KR") + '<em>원</em>') + '</b></div>'
       + bformHtml();
     box.querySelectorAll(".cchk,.cdel,.copen").forEach(el => el.remove());   // 한 건뿐 — 체크·빼기·다시 선택은 없다
-    $("#bkBack").textContent = "← 닫기";
+    $("#bkBack").textContent = "닫기";
     $("#bkBack").onclick = closeCart;
     $("#bkSend").onclick = sendBooking;
     return;
@@ -3152,6 +3159,15 @@ async function sendBooking(){
   const customer = { name:g("bkNameKo") + " / " + g("bkName").toUpperCase(), tel:g("bkTel"), email:g("bkEmail"), memo:g("bkMemo") };
   if(!customer.tel)   return bkMsg("연락처를 적어 주세요.");
   if(!customer.email) return bkMsg("이메일을 적어 주세요.");
+  const list = bookList(), tees = [...document.querySelectorAll("[data-btee]")];
+  if(tees.some(e => !e.value.trim())) return bkMsg("희망 티타임을 적어 주세요.");
+  /* 적은 티타임을 그 줄의 time·문구에 반영 — 상세 창에서 적은 옛 값은 바꿔 끼운다 */
+  const pre = timeLabelOf("courses").pre;
+  tees.forEach(e => {
+    const it = list[+e.dataset.btee], t = e.value.trim(); if(!it) return;
+    it.time = t;
+    it.label = String(it.label || "").split(" · ").filter(p => p.indexOf(pre.trim()) !== 0).concat([pre + t]).join(" · ");
+  });
   const btn = $("#bkSend");
   btn.disabled = true; btn.textContent = "보내는 중…"; bkMsg("");
   try{
@@ -3166,7 +3182,7 @@ async function sendBooking(){
     }catch(e){}
     const r = await fetch(API + "/api/golf-book", {
       method: "POST", headers: hd,
-      body: JSON.stringify({ action: "create", items: directItem ? [directItem] : CART.filter(c => !c.off), customer })
+      body: JSON.stringify({ action: "create", items: list, customer })
     });
     const j = await r.json();
     if(!j || !j.ok) throw new Error((j && j.error) || "보내지 못했습니다.");
