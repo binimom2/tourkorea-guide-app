@@ -1376,6 +1376,8 @@ function siteStepRowHtml(b){
   return '<div class="bkvc on">'
     +(has?'<a class="bkvno" href="'+esc(voucherUrlOf(b)+(paid?'&edit=1':''))+'" target="_blank" rel="noopener" title="'+(paid?'바우처 열기 · 확정 티업·메모 수정':'인보이스 열기')+'">'
       +(paid?'확정번호 <b>'+esc(v.cno)+'</b>':'Invoice No. <b>'+esc(siteInvNoOf(b))+'</b>')+' ↗</a>':'')
+    /* 입금확인 뒤에도 인보이스를 다시 본다(사장님 2026-10-03) */
+    +(has&&paid?'<a class="bkvno" href="'+esc(voucherUrlOf(b)+'&inv=1')+'" target="_blank" rel="noopener" title="인보이스 열기">Invoice No. <b>'+esc(siteInvNoOf(b))+'</b> ↗</a>':'')
     +'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 메모 고치기':'인보이스 발급 · 메모')+'">'+(has?'✓ ':'')+'인보이스 발급</button>'
     +gt+'<button class="'+st(paid,has&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!has||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
     +gt+'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||done||cxl?' disabled':'')+'>'+(done?'✓ ':'')+'바우처 발급</button>'
