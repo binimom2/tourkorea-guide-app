@@ -403,7 +403,8 @@ function renderInvoice(v){
   /* 요청 사항 칸은 뺐다(사장님 2026-10-03) — 여행사가 수배요청서 비고에 적은 것을 그 항목 옆에 빨갛게 붙인다.
      호텔·골프는 일정표 줄(h:/g:날짜), 차량·가이드·기타투어는 포함 사항 줄(veh/guide/tour) */
   const n = q.notes || {};
-  const nt = k => n[k] ? ' <span class="nt">· ' + esc(n[k]) + '</span>' : '';
+  /* 디파짓 인보이스 때는 아직 확정 전이라 비고 뒤에 「요청」(사장님 2026-10-03) — 잔금 인보이스·확정서는 그대로 */
+  const nt = k => n[k] ? ' <span class="nt">· ' + esc(n[k]) + (v.doc === "balance" ? '' : ' 요청') + '</span>' : '';
   const days = (q.days || []).map(d => '<tr><td class="nw">' + esc(dshort(d.date)) + '</td><td class="nw">' + esc(d.region) + '</td><td>' + esc(d.hotel || "") + (d.hotel ? nt('h:' + d.date) : '')
     + '</td><td>' + (d.round && d.course ? esc(d.course) + ' <b>' + esc(d.holes || "18") + '홀</b>' + nt('g:' + d.date) : '<span class="mut">라운딩 없음</span>') + '</td></tr>').join("");
   const none = [q.noHotel ? "호텔" : "", q.noGuide ? "가이드" : "", q.noVeh ? "차량" : ""].filter(Boolean);
