@@ -88,6 +88,7 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .head.cp .cpg b{font-weight:800;color:var(--fairway)}
 .head.cp .cpg b.wide{grid-column:2/-1}
 .sec.cp{margin-bottom:12px}
+.inv .nt{color:#D32F2F;font-weight:800}   /* 수배요청서 비고 — 항목 옆 빨강 */
 .sec.cp h3{font-size:13.5px;margin-bottom:4px}
 .sec.cp p{font-size:12.5px;line-height:1.55}
 .itin.cp th{padding:4px 8px;font-size:11.5px}
@@ -394,10 +395,14 @@ function dshort(s){
 }
 function renderInvoice(v){
   const c = v.company || {}, q = v.quote || {}, to = v.to || {};
-  const days = (q.days || []).map(d => '<tr><td class="nw">' + esc(dshort(d.date)) + '</td><td class="nw">' + esc(d.region) + '</td><td>' + esc(d.hotel || "")
-    + '</td><td>' + (d.round && d.course ? esc(d.course) + ' <b>' + esc(d.holes || "18") + '홀</b>' : '<span class="mut">라운딩 없음</span>') + '</td></tr>').join("");
+  /* 요청 사항 칸은 뺐다(사장님 2026-10-03) — 여행사가 수배요청서 비고에 적은 것을 그 항목 옆에 빨갛게 붙인다.
+     호텔·골프는 일정표 줄(h:/g:날짜), 차량·가이드·기타투어는 포함 사항 줄(veh/guide/tour) */
+  const n = q.notes || {};
+  const nt = k => n[k] ? ' <span class="nt">· ' + esc(n[k]) + '</span>' : '';
+  const days = (q.days || []).map(d => '<tr><td class="nw">' + esc(dshort(d.date)) + '</td><td class="nw">' + esc(d.region) + '</td><td>' + esc(d.hotel || "") + (d.hotel ? nt('h:' + d.date) : '')
+    + '</td><td>' + (d.round && d.course ? esc(d.course) + ' <b>' + esc(d.holes || "18") + '홀</b>' + nt('g:' + d.date) : '<span class="mut">라운딩 없음</span>') + '</td></tr>').join("");
   const none = [q.noHotel ? "호텔" : "", q.noGuide ? "가이드" : "", q.noVeh ? "차량" : ""].filter(Boolean);
-  const reqs = (q.requests || []).filter(Boolean);
+  const incNote = t => { const m = /^(차량|가이드|기타투어)\s*-/.exec(String(t || "")); return m ? nt({ "차량": "veh", "가이드": "guide", "기타투어": "tour" }[m[1]]) : ''; };
   /* 두 장(사장님 2026-09-23): ① 디파짓 인보이스 ② 디파짓 입금 뒤 «잔금 인보이스 & 확정서». v.doc 이 지금 보는 쪽 */
   const bal = v.doc === "balance", pay = v.pay || {};
   const issued = String((bal ? v.balAt : v.confirmedAt) || "").slice(0, 10);
@@ -426,9 +431,8 @@ function renderInvoice(v){
       + '</div></div>'
     + (days ? '<div class="sec cp"><h3>일정표</h3><table class="itin cp"><thead><tr><th>날짜</th><th>지역</th><th>호텔</th><th>골프장</th></tr></thead><tbody>' + days + '</tbody></table></div>' : '')
     + '<div class="cp2">'
-      + ((q.includes || []).length ? '<div class="sec cp"><h3>포함 사항</h3><p>' + q.includes.map(t => '· ' + esc(t)).join("\n") + '</p>'
+      + ((q.includes || []).length ? '<div class="sec cp"><h3>포함 사항</h3><p>' + q.includes.map(t => '· ' + esc(t) + incNote(t)).join("\n") + '</p>'
         + (none.length ? '<p style="margin-top:4px;color:#D9412B;font-weight:700">· 불포함(선택하지 않음): ' + esc(none.join(", ")) + '</p>' : '') + '</div>' : '')
-      + (reqs.length ? '<div class="sec cp"><h3>요청 사항</h3><p>' + reqs.map(t => '· ' + esc(t)).join("\n") + '</p></div>' : '')
     + '</div>'
     + '<div class="amt cp">'
       + (q.perKrw ? '<div><span>1인 ' + won(q.perKrw) + ' × ' + (q.pax || 0) + '명</span><b>' + won(q.totalKrw) + '</b></div>' : '')
