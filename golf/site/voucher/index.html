@@ -86,6 +86,7 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .head.cp .cpg{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 12px;margin-top:6px;font-size:13px;align-items:baseline}
 .head.cp .cpg span{color:#7A8580;font-weight:700;white-space:nowrap}
 .head.cp .cpg b{font-weight:800;color:var(--fairway)}
+.head.cp .cpg b.wide{grid-column:2/-1}
 .sec.cp{margin-bottom:12px}
 .sec.cp h3{font-size:13.5px;margin-bottom:4px}
 .sec.cp p{font-size:12.5px;line-height:1.55}
@@ -418,11 +419,10 @@ function renderInvoice(v){
       + '<div class="cpg">'
         + '<span>발행일</span><b>' + esc(issued) + '</b>'
         + '<span>견적번호</span><b>' + esc(q.quoteNo || "") + '</b>'
-        + '<span>에이전트명</span><b>' + esc(to.company || v.guest || "") + (to.contact ? ' · ' + esc(to.contact) + ' 님' : '') + '</b>'
+        /* 차례: 발행일·견적번호 / 에이전트명(한 줄 통째) / 일정·인원. 동선·항공은 뺌(사장님 2026-10-03) */
+        + '<span>에이전트명</span><b class="wide">' + esc(to.company || v.guest || "") + (to.contact ? ' · ' + esc(to.contact) + ' 님' : '') + '</b>'
         + '<span>일정</span><b>' + esc(q.start || "") + ' ~ ' + esc(q.end || "") + (q.nights ? ' (' + q.nights + '박 ' + (q.tripDays || q.nights + 1) + '일)' : '') + '</b>'
         + '<span>인원</span><b>' + (q.pax || 0) + '명</b>'
-        + (q.route ? '<span>동선</span><b>' + esc(q.route) + '</b>' : '')
-        + (q.flight ? '<span>항공</span><b>' + esc(q.flight) + '</b>' : '')
       + '</div></div>'
     + (days ? '<div class="sec cp"><h3>일정표</h3><table class="itin cp"><thead><tr><th>날짜</th><th>지역</th><th>호텔</th><th>골프장</th></tr></thead><tbody>' + days + '</tbody></table></div>' : '')
     + '<div class="cp2">'
