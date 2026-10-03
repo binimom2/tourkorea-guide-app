@@ -1102,8 +1102,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   <div class="modal list" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
     <button class="mclose" id="cartClose" type="button" aria-label="닫기">×</button>
     <h3 id="cartTitle">🛒 장바구니</h3>
-    <p class="sub" id="cartSub">담아 두신 일정입니다. 그대로 예약을 요청하시면
-      담당자가 확인하고 연락드립니다.</p>
+    <p class="sub" id="cartSub">예약신청을 눌러주시면 확인 후 회신 드리겠습니다.</p>
     <div id="cartBody"></div>
   </div>
 </div>
@@ -3109,7 +3108,7 @@ function drawCartBody(){
       + '골프장·호텔을 열어 날짜와 인원을 고르신 뒤 <b>🛒 장바구니에 담기</b>를 눌러 주세요.</div>';
     return;
   }
-  sub.textContent = "담아 두신 일정입니다. 그대로 예약을 요청하시면 담당자가 확인하고 연락드립니다.";
+  sub.textContent = "예약신청을 눌러주시면 확인 후 회신 드리겠습니다.";
   const on   = CART.filter(c => !c.off);
   const askN = on.filter(c => c.asked || !c.krw).length;
   const sum  = on.reduce((a, c) => a + ((c.asked || !c.krw) ? 0 : c.krw), 0);
@@ -3119,12 +3118,11 @@ function drawCartBody(){
     /* 요금은 신뢰의 문제라 「확정」으로 말한다(사장님 2026-09-08).
        그래서 창을 열 때마다 서버에 다시 물어 최신 요금으로 갈아 끼운다(repriceCart) —
        그러지 않으면 며칠 전 담긴 옛 금액을 두고 「확정」이라 말하는 꼴이 된다. */
-    + '<p class="cnote"><b>확정 요금입니다.</b> 예약 가능 여부는 '
-    + '확인 후 바로 안내드립니다.</p>';
+    + '<p class="cnote"><b>확정 요금입니다.</b></p>';
   box.innerHTML = rows + (cartView === "form" ? bformHtml()
     : '<div class="cbtns">'
-      + '<button type="button" class="mbtn ghost" id="cartClear">체크한 것 비우기</button>'
-      + '<button type="button" class="mbtn" id="cartGo">예약 요청하기 →</button></div>');
+      + '<button type="button" class="mbtn" id="cartGo">예약신청하기 →</button>'
+      + '<button type="button" class="mbtn ghost" id="cartClear" title="체크한 것 비우기" aria-label="체크한 것 비우기">🗑</button></div>');
   bindRows(box, CART, "cart");
   if(cartView === "form"){
     $("#bkBack").onclick = () => { cartView = "list"; drawCartBody(); };
