@@ -164,6 +164,7 @@ function itemHtml(v, it, i){
     if(it.time) rows.push(["Note", it.time]);
     if(cf) rows.push(cf);
   }
+  if(v.paid) rows.push(["Payment", { html: '<span class="paid">Full Payment</span>' }]);   // Breakfast 아래(사장님 2026-10-03)
   const rq = reqRow(v, it, i); if(rq) rows.push(rq);
   return '<div class="head">'
     + '<h2>' + esc(ven.en || it.name) + '</h2>'
@@ -214,20 +215,20 @@ function render(v){
     ? hot.map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '') + '</span>'
         + '<input class="ed" data-tee="' + x.i + '" value="' + esc(x.it.teeOk || "") + '" placeholder="호텔 컨펌번호" maxlength="60">').join("<br>")
     : (hot.some(x => x.it.teeOk)
-        ? hot.filter(x => x.it.teeOk).map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' : ' : '') + esc(x.it.teeOk) + '</span>').join("\n")
+        ? hot.filter(x => x.it.teeOk).map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' : ' : '') + esc(x.it.teeOk) + '</span>').join("<br>")
         : '<span class="cfno">Confirm No. ' + esc(v.cno) + '</span>');
   $("#app").innerHTML = '<div class="sheet">'
     + '<div class="brand">' + esc(co) + '</div>'
     + '<h1>Voucher<small>예약 확정서</small></h1>'
     + v.items.map((it, i) => itemHtml(v, it, i)).join("")
-    + '<div class="sec"><h3>Agent Memo</h3><p>' + cfHtml
-      + (EDIT ? '\n<textarea class="ed" id="edMemo" rows="3" placeholder="안내 사항 등 (영문)">' + esc(v.memo || "") + '</textarea>'
-        : v.memo ? '\n' + esc(v.memo) : '') + '</p></div>'
+    /* 「Agent Memo : Confirm No. …」 한 줄로 나란히(사장님 2026-10-03) */
+    + '<div class="sec"><h3>Agent Memo : ' + cfHtml + '</h3>'
+      + (EDIT ? '<textarea class="ed" id="edMemo" rows="3" placeholder="안내 사항 등 (영문)">' + esc(v.memo || "") + '</textarea>'
+        : v.memo ? '<p>' + esc(v.memo) + '</p>' : '') + '</div>'
     + '<div class="sec"><h3>Booked by : <span style="font-weight:600">' + esc(co) + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
       + (c.tel2 ? '<p class="small">- Tel : ' + esc(c.tel2) + '</p>' : '')
       + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '') + '</div>'
-    + (v.paid ? '<div class="sec"><h3>Payment : <span class="paid">Full Payment</span></h3></div>' : '')
     + (c.notes ? '<div class="box"><h3>Important Notes</h3><p>' + esc(c.notes) + '</p></div>' : '')
     + '<div class="box"><h3>Terms &amp; Conditions</h3><ul>'
       + '<li class="red">- This voucher can be shown as captured picture with mobile phone.</li>'
