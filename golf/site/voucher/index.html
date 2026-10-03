@@ -261,9 +261,11 @@ function render(v){
   document.title = "Voucher " + v.no + " · " + co;
   $("#act").style.display = "";
   if(EDIT){
-    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸을 채우고 아래 「저장」을 누르세요. 손님 화면에는 적은 글자만 보입니다.'
+    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — '
+      + (v.status === "done" ? '' : '<b style="color:#D32F2F">아직 발급 전</b> · ')
+      + '노란 칸을 채우고 「저장」, 보낼 때는 「발송」. 손님 화면에는 적은 글자만 보입니다.'
       + '<span id="edMsg"></span></div>');
-    edSaveBtn(v);
+    edSaveBtn(v); edSendBtn(v);
   }
 }
 /* ── 편집 모드(?edit=1) — 관리 화면 「바우처 열기 · 수정」으로 열면 확정 티업·메모를 바로 적는다(사장님 2026-10-01).
@@ -314,15 +316,28 @@ function edSendBtn(v){
   $("#edSend").onclick = () => sendInvoice(v);
 }
 async function sendInvoice(v){
-  if(!confirm((v.released ? "인보이스를 다시 보냅니다." : "인보이스를 발송합니다 — 여행사 보관함·손님 링크에 인보이스가 보이게 됩니다.") + "\n손님 이메일이 있으면 이메일로도 보냅니다.\n\n발송할까요?")) return;
+  /* 바우처도 같은 「발송」(사장님 2026-10-03) — 저장 → 아직 발급 전이면 ⑤ 발급(status done) → 이메일 */
+  const isInv = v.type === "invoice", done = v.status === "done";
+  if(!isInv && !v.paid) return alert("입금확인 뒤에 바우처를 발송할 수 있습니다.");
+  if(!isInv && [...document.querySelectorAll("[data-tee]")].some(e => !e.value.trim()))
+    return alert("노란 확정 칸(티업 · 호텔 컨펌번호 등)을 모두 채운 뒤 발송해 주세요.");
+  const q = isInv
+    ? (v.released ? "인보이스를 다시 보냅니다." : "인보이스를 발송합니다 — 여행사 보관함·손님 링크에 인보이스가 보이게 됩니다.")
+    : (done ? "바우처를 다시 보냅니다." : "바우처를 발급·발송합니다 — 여행사 보관함·손님 링크에 바우처가 보이게 됩니다.");
+  if(!confirm(q + "\n손님 이메일이 있으면 이메일로도 보냅니다.\n\n발송할까요?")) return;
   const btn = $("#edSend"), msg = $("#edMsg");
   btn.disabled = true; msg.textContent = "발송 중…";
   try{
     await putEdit(v);
-    if(!v.released){
+    if(isInv && !v.released){
       const r = await staffApi({ action: "release", no: v.no });
       if(!r.ok) throw new Error(r.error || "발송하지 못했습니다.");
       v.released = true;
+    }
+    if(!isInv && !done){
+      const r = await staffApi({ action: "status", no: v.no, status: "done" });
+      if(!r.ok) throw new Error(r.error || "바우처를 발급하지 못했습니다.");
+      v.status = "done";
     }
     const m = await staffApi({ action: "send", no: v.no });
     closeSoon(msg, m.ok ? "✅ 발송했습니다 · 📧 " + (m.to || "")
