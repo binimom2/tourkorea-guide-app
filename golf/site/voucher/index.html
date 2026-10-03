@@ -245,9 +245,9 @@ function render(v){
   document.title = "Voucher " + v.no + " · " + co;
   $("#act").style.display = "";
   if(EDIT){
-    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸을 채우고 저장하세요. 손님 화면에는 적은 글자만 보입니다.'
-      + '<button type="button" id="edSave">💾 저장</button><span id="edMsg"></span></div>');
-    $("#edSave").onclick = () => saveEdit(v);
+    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸을 채우고 아래 「저장」을 누르세요. 손님 화면에는 적은 글자만 보입니다.'
+      + '<span id="edMsg"></span></div>');
+    edSaveBtn(v);
   }
 }
 /* ── 편집 모드(?edit=1) — 관리 화면 「바우처 열기 · 수정」으로 열면 확정 티업·메모를 바로 적는다(사장님 2026-10-01).
@@ -256,6 +256,11 @@ function staffToken(){
   try{ const a = JSON.parse(localStorage.getItem("gs-auth") || "null"); return (a && (a.access_token || (a.currentSession && a.currentSession.access_token))) || ""; }catch(e){ return ""; }
 }
 const EDIT = new URLSearchParams(location.search).get("edit") === "1" && !!staffToken();
+/* 저장 단추는 문서 맨 아래 인쇄 단추 옆(사장님 2026-10-03) */
+function edSaveBtn(v){
+  if(!$("#edSave")) $("#act").insertAdjacentHTML("afterbegin", '<button type="button" id="edSave">💾 저장</button>');
+  $("#edSave").onclick = () => saveEdit(v);
+}
 async function saveEdit(v){
   const btn = $("#edSave"), msg = $("#edMsg");
   const tees = {}; document.querySelectorAll("[data-tee]").forEach(e => { tees[e.dataset.tee] = e.value.trim(); });
@@ -390,9 +395,9 @@ function renderItemInvoice(v){
   document.title = "인보이스 " + v.no + " · " + (c.name || "");
   $("#act").style.display = "";
   if(EDIT){
-    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸에 덧붙일 글을 적고 저장하세요. 손님 화면에는 적은 글자만 보입니다.'
-      + '<button type="button" id="edSave">💾 저장</button><span id="edMsg"></span></div>');
-    $("#edSave").onclick = () => saveEdit(v);
+    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸에 덧붙일 글을 적고 아래 「저장」을 누르세요. 손님 화면에는 적은 글자만 보입니다.'
+      + '<span id="edMsg"></span></div>');
+    edSaveBtn(v);
   }
 }
 function fail(msg){
