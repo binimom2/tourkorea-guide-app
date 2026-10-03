@@ -105,7 +105,9 @@ textarea.ed{display:block;width:100%;margin:6px 0;resize:vertical;font-weight:60
 .edbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FFF4B8;border-bottom:2px solid #F2C94C;padding:10px 16px;font-size:13.5px}
 .edbar button{margin-left:auto;background:var(--fairway);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:800;cursor:pointer}
 .edbar #edMsg{font-weight:700}
-@media print{ .edbar{display:none} .act{display:none} .sheet{padding:0} body{background:#fff} .head{-webkit-print-color-adjust:exact;print-color-adjust:exact} .body,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+/* 인쇄 때 브라우저가 찍는 날짜·제목·주소·쪽수 줄 없애기(사장님 2026-10-03) — 용지 여백을 0으로 하면 크롬이 안 찍는다. 여백은 종이 안쪽 padding 으로 */
+@page{size:A4;margin:0}
+@media print{ .edbar{display:none} .act{display:none} .sheet{padding:12mm 14mm;max-width:none} body{background:#fff} .head{-webkit-print-color-adjust:exact;print-color-adjust:exact} .body,.box{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 </style>
 </head>
 <body>
