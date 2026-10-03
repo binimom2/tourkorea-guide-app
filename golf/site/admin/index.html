@@ -1381,8 +1381,8 @@ function siteStepRowHtml(b){
     +(has?'<a class="bkvno" href="'+esc(voucherUrlOf(b)+(paid?'&edit=1':''))+'" target="_blank" rel="noopener" title="'+(paid?'바우처 열기 · 확정 티업·메모 수정':'인보이스 열기')+'">'
       +(paid?'확정번호 <b>'+esc(v.cno)+'</b>':'Invoice No. <b>'+esc(siteInvNoOf(b))+'</b>')+' ↗</a>':'')
     /* 입금확인 뒤엔 발급 인보이스 확인, 바우처 발급 뒤엔 발급 바우처 확인(사장님 2026-10-03) */
-    +(has&&paid?'<a class="bkdone" href="'+esc(voucherUrlOf(b)+'&inv=1')+'" target="_blank" rel="noopener">✓ 발급 인보이스 확인</a>'
-      :'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 메모 고치기':'인보이스 발급 · 메모')+'">'+(has?'✓ ':'')+'인보이스 발급</button>')
+    +(has&&paid?'<a class="bkdone" href="'+esc(voucherUrlOf(b)+'&inv=1&edit=1')+'" target="_blank" rel="noopener">✓ 발급 인보이스 확인</a>'
+      :'<button class="'+st(has,!has)+'" data-confirm="'+esc(b.no)+'"'+(cxl?' disabled':'')+' title="'+(has?'인보이스 열기 · 글 덧붙이기':'인보이스 발급')+'">'+(has?'✓ ':'')+'인보이스 발급</button>')
     +gt+'<button class="'+st(paid,has&&!paid)+'" data-vpaid="'+esc(b.no)+'"'+(!has||paid||cxl?' disabled':'')+'>'+(paid?'✓ ':'')+'입금확인'+(paid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
     +gt+(done?'<a class="bkdone" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener">✓ 발급 바우처 확인</a>'
       :'<button class="'+st(done,paid&&!done)+'" data-vdone="'+esc(b.no)+'"'+(!paid||cxl?' disabled':'')+'>바우처 발급</button>')
@@ -1732,6 +1732,18 @@ function bindVoucherBtns(p){
     const b=bookOf(btn.dataset.confirm); if(!b) return;
     const had=!!(b.voucher&&b.voucher.token);
     const inv=isInvoiceBook(b), dn=had?docNameOf(b):(inv?'디파짓 인보이스':'인보이스');   // 새로 만들 때 사이트 예약은 인보이스부터
+    /* 사이트 예약 — 입력창 대신 발급된 인보이스 원본을 수정 모드로 띄워 덧붙일 글을 적게 한다(사장님 2026-10-03, 바우처와 같은 방식) */
+    if(!inv){
+      if(had){ window.open(voucherUrlOf(b)+'&inv=1&edit=1','_blank','noopener'); return; }
+      const w=window.open('','_blank');   // 팝업 차단을 피하려고 누른 순간 창부터 연다
+      btn.disabled=true; btn.textContent='발급 중…';
+      const j=await bookApi('confirm',{no:b.no,memo:''});
+      if(!j||!j.ok){ if(w) w.close(); btn.disabled=false; toast('❌ '+((j&&j.error)||'발급 실패')); drawBooks(); return; }
+      bookReplace(j.rec); drawBooks();
+      if(w){ w.opener=null; w.location.href=voucherUrlOf(j.rec)+'&inv=1&edit=1'; }
+      toast('✅ 인보이스를 발급했습니다 — 덧붙일 글이 있으면 적고 저장하세요');
+      return;
+    }
     /* 인보이스는 메모도 확인·수정 창에서 적는다 — 묻지 않고 바로 초안을 만든다 */
     const memo=inv?((b.voucher&&b.voucher.memo)||''):prompt(dn==='인보이스'
       ? (had?'인보이스 메모를 고칩니다.':'인보이스를 발급합니다.')+'\n인보이스에 실을 메모(입금 기한·예약처 컨펌번호 등)가 있으면 적어 주세요. 없으면 그냥 확인.'

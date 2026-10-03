@@ -515,7 +515,7 @@ export async function onRequest(context) {
       return json({ ok: true, v: isAgencyRec(rec) ? await invoiceView(request, rec, site, KEY, s(body.d, 10))
         /* 어드민 수정 모드(e=1)는 ⑤ 전이라도 바우처로 열어 티업·메모를 적게 한다 */
         /* i=1 — 입금확인 뒤에도 어드민이 인보이스를 다시 연다(사장님 2026-10-03) */
-        : ((isSiteInvoice(rec) || body.i === '1') && !(body.e === '1' && rec.voucher.stage === 'voucher')) ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site) });
+        : (body.i === '1' || (isSiteInvoice(rec) && !(body.e === '1' && rec.voucher.stage === 'voucher'))) ? itemInvoiceView(request, rec, site) : voucherView(request, rec, site) });
     }
 
     /* ══ 입금 알림 입구(나중에 페이액션·뱅크다 같은 서비스를 붙일 자리, 2026-09-29) ══

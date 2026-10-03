@@ -314,7 +314,9 @@ function renderItemInvoice(v){
     + '<div class="body" style="padding-top:12px"><table class="itin same"><thead><tr><th>날짜</th><th>내용</th><th>금액</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '<div class="amt"><div class="sum"><span>Total (청구 금액)</span><b>' + won(v.total) + '</b></div></div>'
     + bankHtml(c.bank)
-    + (v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
+    /* 어드민 「인보이스 발급」은 이 원본을 수정 모드로 띄워 메모를 덧붙인다(사장님 2026-10-03, 바우처와 같은 방식) */
+    + (EDIT ? '<div class="sec"><h3>Memo</h3><textarea class="ed" id="edMemo" rows="3" placeholder="입금 기한·예약처 컨펌번호 등 덧붙일 글">' + esc(v.memo || "") + '</textarea></div>'
+      : v.memo ? '<div class="sec"><h3>Memo</h3><p>' + esc(v.memo) + '</p></div>' : '')
     + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
     + '<div class="sec issued"><h3>Issued by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
@@ -322,6 +324,11 @@ function renderItemInvoice(v){
     + '</div>';
   document.title = "인보이스 " + v.no + " · " + (c.name || "");
   $("#act").style.display = "";
+  if(EDIT){
+    $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸에 덧붙일 글을 적고 저장하세요. 손님 화면에는 적은 글자만 보입니다.'
+      + '<button type="button" id="edSave">💾 저장</button><span id="edMsg"></span></div>');
+    $("#edSave").onclick = () => saveEdit(v);
+  }
 }
 function fail(msg){
   $("#app").innerHTML = '<div class="err"><h2>예약 확정서를 열 수 없습니다</h2><p>' + esc(msg) + '</p></div>';
