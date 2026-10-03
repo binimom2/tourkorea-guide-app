@@ -1307,6 +1307,11 @@ const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
   });
   bindBookCards(p,list);
 }
+/* 줄 차례 호텔 → 골프 → 기타, 같은 종류는 날짜순 — [줄, 원래 번호] 로 돌려준다 */
+function kindSorted(items){
+  const KR=k=>k==='hotels'?0:k==='courses'?1:2;
+  return (items||[]).map((it,i)=>[it,i]).sort((a,b)=>KR(a[0].kind)-KR(b[0].kind)||String(a[0].date||'').localeCompare(String(b[0].date||''))||a[1]-b[1]);
+}
 function bookCardHtml(b){
   const st=bookStatusOf(b.status), c=b.customer||{};
   const who=[c.tel&&('☎ '+c.tel), c.kakao&&('💬 '+c.kakao), c.email&&('✉ '+c.email)]
@@ -1336,7 +1341,8 @@ function bookCardHtml(b){
           +((b.quote.requests||[]).length?' · <b style="color:#B23B3B">요청사항 '+(b.quote.requests||[]).length+'건</b>':'')+'</span></div>'
         +bookMsgsHtml(b)
       : (c.memo?'<div class="bkmemo"><b>손님 요청</b>'+esc(c.memo)+'</div>':'')
-        +'<ul class="bkitems">'+(b.items||[]).map((it,i)=>bookItemHtml(it,i,b.no)).join('')+'</ul>')
+        /* 보이는 차례만 호텔 → 골프 → 기타(사장님 2026-10-03). 줄 번호 i 는 원래 자리 그대로 넘긴다 */
+        +'<ul class="bkitems">'+kindSorted(b.items).map(([it,i])=>bookItemHtml(it,i,b.no)).join('')+'</ul>')
     /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
     +((!b.assign||!b.assign.by)&&b.status!=='cancel'
       ? '<div class="bkstaff"><div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button></div>'

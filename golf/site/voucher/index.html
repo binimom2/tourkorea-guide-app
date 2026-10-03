@@ -136,10 +136,15 @@ function reqRow(v, it, i){
   if(EDIT) return ["Guest Request", { html: '<input class="ed wide" data-req="' + i + '" value="' + esc(it.req || "") + '" placeholder="' + esc(v.req ? "손님: " + v.req : "예: High floor") + '" maxlength="200">' }];
   return it.req ? ["Guest Request", it.req] : null;
 }
-function itemHtml(v, it, i){
+/* 줄 차례 호텔 → 골프 → 기타, 같은 종류는 날짜순(사장님 2026-10-03) — [줄, 원래 번호]. 노란 칸은 원래 번호로 저장한다 */
+function kindSorted(items){
+  const KR = k => k === "hotels" ? 0 : k === "courses" ? 1 : 2;
+  return (items || []).map((it, i) => [it, i]).sort((a, b) => KR(a[0].kind) - KR(b[0].kind) || String(a[0].date || "").localeCompare(String(b[0].date || "")) || a[1] - b[1]);
+}
+function itemHtml(v, it, i, pos){
   const ven = it.venue || {};
   const date = dfmt(it.date) + (it.dateEnd && it.dateEnd !== it.date ? " ~ " + dfmt(it.dateEnd) : "");
-  const rows = [["Booking No.", v.no + (v.items.length > 1 ? "-" + (i + 1) : "")]];
+  const rows = [["Booking No.", v.no + (v.items.length > 1 ? "-" + ((pos == null ? i : pos) + 1) : "")]];
   const cf = it.kind === "hotels" ? null : confRow(it, i);
   if(it.kind === "hotels"){
     const n = it.nights || 1;
@@ -222,7 +227,7 @@ function render(v){
   const co = enName(c.name);
   /* Confirm No.(빨강) — 품목마다 업체 컨펌번호를 적는다(사장님 2026-10-03, 골프도 호텔과 똑같이).
      호텔은 확정 칸(teeOk)이 곧 컨펌번호, 골프 등은 teeOk가 티업이라 따로 cfNo. 아무것도 안 적었으면 우리 확정번호 */
-  const cfs = v.items.map((it, i) => ({ it, i, h: it.kind === "hotels", val: it.kind === "hotels" ? it.teeOk : it.cfNo }));
+  const cfs = kindSorted(v.items).map(([it, i]) => ({ it, i, h: it.kind === "hotels", val: it.kind === "hotels" ? it.teeOk : it.cfNo }));
   const many = cfs.length > 1;
   const nm = x => many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '';
   const cfHtml = EDIT
@@ -234,7 +239,7 @@ function render(v){
   $("#app").innerHTML = '<div class="sheet">'
     + '<div class="brand">' + esc(co) + '</div>'
     + '<h1>Voucher<small>예약 확정서</small></h1>'
-    + v.items.map((it, i) => itemHtml(v, it, i)).join("")
+    + kindSorted(v.items).map(([it, i], k) => itemHtml(v, it, i, k)).join("")
     /* 「Agent Memo : Confirm No. …」 한 줄로 나란히(사장님 2026-10-03) */
     + '<div class="sec"><h3>Agent Memo : ' + cfHtml + '</h3>'
       + (EDIT ? '<textarea class="ed" id="edMemo" rows="3" placeholder="안내 사항 등 (영문)">' + esc(v.memo || "") + '</textarea>'
@@ -435,8 +440,9 @@ function renderItemInvoice(v){
       + '</tbody></table>';
   };
   const KV = { hotels: hotelHtml, courses: golfHtml };
-  const hotels = (v.items || []).filter(it => KV[it.kind]).map(it => KV[it.kind](it)).join("");
-  const rows = (v.items || []).filter(it => !KV[it.kind]).map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
+  const srt = kindSorted(v.items).map(x => x[0]);
+  const hotels = srt.filter(it => KV[it.kind]).map(it => KV[it.kind](it)).join("");
+  const rows = srt.filter(it => !KV[it.kind]).map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
     + '<td>' + esc(it.name) + '<br>' + esc(it.label || it.option || "") + '</td>'
     + '<td class="nw" style="text-align:right">' + (it.asked ? '<span class="mut">문의</span>' : won(it.krw)) + '</td></tr>').join("");
   /* 머리 다섯 줄은 Invoice No. 와 같은 크기·굵기·색(사장님 2026-10-02) */

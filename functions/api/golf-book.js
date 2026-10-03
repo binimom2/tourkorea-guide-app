@@ -459,7 +459,10 @@ export async function onRequest(context) {
   try {
     /* ══ 손님이 예약 요청을 넣는다 — 로그인 없이 열려 있다 ══ */
     if (action === 'create') {
-      const items = (Array.isArray(body.items) ? body.items : []).map(cleanItem).filter(Boolean);
+      /* 줄 차례: 호텔 → 골프 → 기타, 같은 종류는 날짜순(사장님 2026-10-03) — 처음 저장할 때 맞춰 둬야 줄 번호(티업·컨펌 칸)가 안 어긋난다 */
+      const KR = (k) => k === 'hotels' ? 0 : k === 'courses' ? 1 : 2;
+      const items = (Array.isArray(body.items) ? body.items : []).map(cleanItem).filter(Boolean)
+        .sort((a, b) => KR(a.kind) - KR(b.kind) || String(a.date || '').localeCompare(String(b.date || '')));
       if (!items.length) return json({ error: '장바구니가 비어 있습니다.' }, 400);
       if (items.length > MAX_ITEMS) return json({ error: '한 번에 ' + MAX_ITEMS + '줄까지 보내실 수 있습니다.' }, 400);
 
