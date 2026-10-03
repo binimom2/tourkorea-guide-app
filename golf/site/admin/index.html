@@ -358,7 +358,7 @@ tr.subrow td{padding:0 6px 11px}
 /* 원가·송금 창(사장님 2026-10-02) */
 .bkcostbtn i{font-style:normal;font-weight:800;color:#1f6b3f;margin-left:3px}
 #costWin{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
-.cwbox{background:#fff;border-radius:10px;width:min(1000px,100%);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.cwbox{background:#fff;border-radius:10px;width:min(1240px,100%);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
 .cwbody{overflow:auto;padding:10px 14px 14px}
 .cwt{width:100%;border-collapse:collapse;font-size:13px}
 .cwt th{font-size:11.5px;color:var(--muted);text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -366,8 +366,9 @@ tr.subrow td{padding:0 6px 11px}
 .cwt td{padding:5px 6px;border-bottom:1px solid #eef0ee;text-align:right;white-space:nowrap}
 .cwt td:first-child{white-space:normal}
 .cwt td:first-child i{display:block;font-style:normal;font-size:11.5px;color:var(--muted)}
-.cwt input{width:96px;text-align:right;padding:5px 6px;border:1px solid var(--line);border-radius:6px;font:inherit}
-.cwt input[type=date]{width:132px;text-align:left}
+/* 창 하나에 가로 스크롤 없이 다 보이게(사장님 2026-10-03) */
+.cwt input{width:84px!important;min-width:0!important;box-sizing:border-box;text-align:right;padding:5px 6px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.cwt input[type=date]{width:128px!important;text-align:left}
 .cwt tfoot td{font-weight:800;border-top:2px solid var(--line);border-bottom:0}
 .cwsum{margin:10px 0 0;font-size:14px;font-weight:800;display:flex;gap:16px;flex-wrap:wrap}
 .cwsum .neg{color:#B23B3B}
