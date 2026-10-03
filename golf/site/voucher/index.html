@@ -429,10 +429,10 @@ function renderItemInvoice(v){
         ["총 인원수", tot + '명' + (it.child && paxSeg ? ' <span class="mut">(' + esc(paxSeg) + ')</span>' : '')],
         ["룸타입 / 베드타입", esc(it.option || "-") + (beds ? ' / ' + esc(beds) : '')]];
     }
-    if(it.kind === "courses"){   // 총인원수 / 홀수 / 조(4명 1조)
+    if(it.kind === "courses"){   // 총인원수 / 홀수 (조는 뺌, 사장님 2026-10-03)
       const p = it.pax || 0, holes = String(it.option || "").replace(/\s+/g, "");
       return [["골프장", '<b>' + esc(it.name) + '</b>'], ["날짜", esc(dl(it.date))],
-        ["총인원수 / 홀수", p + '명' + (holes ? ' / ' + esc(holes) : '') + (p ? ' / ' + Math.ceil(p / 4) + '조' : '')]];
+        ["총인원수 / 홀수", p + '명' + (holes ? ' / ' + esc(holes) : '')]];
     }
     const rest = lb.split(" · ").filter(p => !/^\d{4}\./.test(p)).join(" · ");
     return [[esc(it.kindT || "상품"), '<b>' + esc(it.name) + '</b>'],
