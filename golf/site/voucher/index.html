@@ -206,8 +206,9 @@ function enName(n){ const m = /\(([^)]*[A-Za-z][^)]*)\)/.exec(n || ""); return m
 
 function render(v){
   const c = v.company || {};
-  /* 「호텔 체크인 시」 → 「체크인 시」(사장님 2026-10-03 — 골프 바우처에도 같은 문구가 나간다). 관리 화면에 저장된 옛 문구도 여기서 맞춘다 */
-  const terms = String(c.terms || "").split(/\n/).map(t => t.trim().replace(/^호텔\s*체크인\s*시/, "체크인 시")).filter(Boolean);
+  /* 호텔이 없는 바우처(골프 등)는 「호텔 체크인 시」 → 「체크인 시」, 호텔 바우처는 그대로(사장님 2026-10-03) */
+  const noHotel = !v.items.some(x => x.kind === "hotels");
+  const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).map(t => noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
   const co = enName(c.name);
   /* Confirm No. = 호텔 컨펌번호(빨강). 호텔이 없거나 아직 비었으면 우리 확정번호 */
   const hot = v.items.map((it, i) => ({ it, i })).filter(x => x.it.kind === "hotels");
