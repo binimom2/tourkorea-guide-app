@@ -1492,7 +1492,7 @@ function renderHotels(){
     const row=document.createElement('div'); row.className='hrow';
     /* 선택지 이름: 객실 요금표가 있는 호텔은 「객실 요금표」로, 옛 1박 단가만 있으면 그 값으로.
        팝업(손님 사이트)에서는 값을 안 붙인다 — 원가에 가까운 숫자가 손님 눈에 들면 안 된다 */
-    const tag=h=>EMBED?'':(roomsWithRates(h).length?' · 객실 요금표':` · ${won(h.perNight)} THB/박`);
+    const tag=h=>(EMBED||GROLE==='agency')?'':(roomsWithRates(h).length?' · 객실 요금표':` · ${won(h.perNight)} THB/박`);   // 여행사도 값 안 붙임(2026-10-03 바트 노출 금지)
     const opts=list.map((h,idx)=>`<option value="${idx}"${String(hotelPick[r.sid])===String(idx)?' selected':''}>${h.name}${tag(h)}</option>`).join('');
     /* 고른 호텔에 객실 요금표가 있으면 객실 타입 고르기 칸이 붙는다(요금이 타입마다 다르다) */
     const hp=hotelPick[r.sid], hsel=(hp!==undefined&&hp!=='')?list[+hp]:null;
@@ -2164,7 +2164,8 @@ function renderQuoteHistory(){
       <div style="flex:1;min-width:0;">
         <div style="font-weight:800;font-size:13px;">${esc(r.quoteNo)} <span style="font-weight:600;color:#5E6F66;">${esc(r.team||'-')}</span>${r.via==='site'?' <span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:#E8A33D;border-radius:999px;padding:1px 7px;vertical-align:middle">사이트 견적</span>':''}</div>
         <div style="font-size:11.5px;color:#5E6F66;margin-top:2px;">${esc(r.start)} · ${esc(r.route)} · ${r.pax}명 · ${r.nights}박</div>
-        <div style="font-size:12px;font-weight:700;margin-top:3px;">${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}</div>
+        <div style="font-size:12px;font-weight:700;margin-top:3px;">${/* 여행사에는 바트 금액을 안 보인다(사장님 2026-10-03) — 원화만 */
+          GROLE==='agency'?(krw?`${won(krw)} 원`:''):`${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}`}</div>
         ${(GROLE==='agency'&&r.book)?bookStepsHtml(r.book):''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
