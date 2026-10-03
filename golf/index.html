@@ -2452,7 +2452,9 @@ async function sendBookForm(idx,rows){
   Q.book={no:j.no,at:new Date().toISOString(),memo:memoLines.join('\n'),notes};
   closeBookForm();
   renderQuoteHistory();
-  alert(again?'요청사항을 고쳤습니다.':`수배 요청을 보냈습니다.\n접수번호: ${j.no}\n\n담당자가 확인하고 연락드리겠습니다.`);
+  /* 수배 당시 실시간 환율로 다시 셈한 금액을 알려 준다(사장님 2026-10-03) — 인보이스가 이 금액으로 나간다 */
+  const fxLine=(j&&j.fxNow&&j.totalKrw)?`\n\n오늘 환율(1밧 = ${j.fx}원)로 다시 계산한 금액: ${won(j.totalKrw)}원\n(인보이스는 이 금액으로 발급됩니다)`:'';
+  alert(again?'요청사항을 고쳤습니다.':`수배 요청을 보냈습니다.\n접수번호: ${j.no}${fxLine}\n\n담당자가 확인하고 연락드리겠습니다.`);
   /* 수배 요청을 보냈으면 창을 모두 닫는다(사장님 2026-09-23) — 견적서 미리보기·보관함, 사이트 팝업이면 팝업째 */
   if(!again){
     const qv=$('#qvModal'); if(qv) qv.hidden=true; document.body.classList.remove('qv-open');
