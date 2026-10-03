@@ -711,6 +711,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .crow .cask{font-size:12.5px;font-weight:800;color:var(--muted)}
 .crow .cdel{background:none;border:0;color:var(--muted);font-size:17px;line-height:1;cursor:pointer;padding:2px 4px}
 .crow .cdel:hover{color:#E0464B}
+.crow .ctrash{align-self:center;font-size:18px;opacity:.75}
+.crow .ctrash:hover{opacity:1}
 .crow .copen{background:none;border:0;color:var(--fairway);font-size:12.5px;font-weight:800;cursor:pointer;padding:0;text-decoration:underline}
 .ctotal{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
   border-top:2px solid var(--line);padding-top:13px;margin-bottom:15px}
@@ -3004,7 +3006,7 @@ function rowHtml(it, mode, i){
           : '<div class="cdesc">지금은 안내하지 않는 곳입니다.</div>')
     + '</div>'
     + '<div class="cright">'
-      + '<button type="button" class="cdel" data-del="' + i + '" aria-label="빼기">✕</button>'
+      + (mode === "cart" ? '' : '<button type="button" class="cdel" data-del="' + i + '" aria-label="빼기">✕</button>')
       + (mode === "cart"
           ? ((it.asked || !it.krw)
               ? '<div class="cask">요금 문의</div>'
@@ -3012,7 +3014,10 @@ function rowHtml(it, mode, i){
                 + BT(it.baht ? '<small>(' + it.baht.toLocaleString("ko-KR") + '바트)</small>' : '')
                 + '</div>')
           : '')
-    + '</div></div>';
+    + '</div>'
+    /* 장바구니 비우기는 줄 끝 휴지통으로(사장님 2026-10-03) */
+    + (mode === "cart" ? '<button type="button" class="cdel ctrash" data-del="' + i + '" aria-label="빼기" title="빼기">🗑</button>' : '')
+    + '</div>';
 }
 /* 목록에서 「다시 고르기」·「✕」를 이어 준다 */
 function bindRows(box, list, mode){
@@ -3121,8 +3126,7 @@ function drawCartBody(){
     + '<p class="cnote"><b>확정 요금입니다.</b></p>';
   box.innerHTML = rows + (cartView === "form" ? bformHtml()
     : '<div class="cbtns">'
-      + '<button type="button" class="mbtn" id="cartGo">예약신청하기 →</button>'
-      + '<button type="button" class="mbtn ghost" id="cartClear" title="체크한 것 비우기" aria-label="체크한 것 비우기">🗑</button></div>');
+      + '<button type="button" class="mbtn" id="cartGo">예약신청하기 →</button></div>');
   bindRows(box, CART, "cart");
   if(cartView === "form"){
     $("#bkBack").onclick = () => { cartView = "list"; drawCartBody(); };
@@ -3131,13 +3135,6 @@ function drawCartBody(){
     $("#cartGo").onclick = () => {
       if(!CART.some(c => !c.off)){ alert("예약 요청하실 일정을 체크해 주세요."); return; }
       cartView = "form"; drawCartBody();
-    };
-    /* 체크한 줄만 뺀다(사장님 2026-09-29 「하나만 체크했는데 통으로 비워짐」) */
-    $("#cartClear").onclick = () => {
-      const n = CART.filter(c => !c.off).length;
-      if(!n){ alert("비울 일정을 체크해 주세요."); return; }
-      if(!confirm("체크한 " + n + "건을 장바구니에서 뺄까요?")) return;
-      CART = CART.filter(c => c.off); lsPut(CART_KEY, CART); drawTools(); drawCartBody();
     };
   }
 }
