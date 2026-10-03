@@ -408,7 +408,7 @@ function renderItemInvoice(v){
   const dl = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? m[1] + "." + m[2] + "." + m[3] + " " + dshort(s).replace(/^\S+\s*/, "") : (s || ""); };
   const hotelHtml = it => {
     const lb = String(it.label || "");
-    const paxSeg = lb.split(" · ").filter(p => /^성인/.test(p)).join(" · ");
+    const paxSeg = lb.split(" · ").filter(p => /^(성인|아동)/.test(p)).join(" · ");
     const tot = (it.adult || 0) + (it.child || 0) || it.pax || 0;
     const bm = /\d+박\s+([^·]+)/.exec(lb), beds = bm ? bm[1].trim() : "";
     const n = it.nights || 0;
@@ -421,8 +421,20 @@ function renderItemInvoice(v){
       + kv("금액", it.asked ? '<span class="mut">문의</span>' : won(it.krw))
       + '</tbody></table>';
   };
-  const hotels = (v.items || []).filter(it => it.kind === "hotels").map(hotelHtml).join("");
-  const rows = (v.items || []).filter(it => it.kind !== "hotels").map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
+  /* 골프도 같은 표 — 총인원수 / 홀수 / 조(4명 1조)(사장님 2026-10-03) */
+  const golfHtml = it => {
+    const kv = (k, val) => '<tr><td>' + k + '</td><td>' + val + '</td></tr>';
+    const p = it.pax || 0, holes = String(it.option || "").replace(/\s+/g, "");
+    return '<table class="itin kv"><thead><tr><th>구분</th><th>내용</th></tr></thead><tbody>'
+      + kv("골프장", '<b>' + esc(it.name) + '</b>')
+      + kv("날짜", esc(dl(it.date)))
+      + kv("총인원수 / 홀수", p + '명' + (holes ? ' / ' + esc(holes) : '') + (p ? ' / ' + Math.ceil(p / 4) + '조' : ''))
+      + kv("금액", it.asked ? '<span class="mut">문의</span>' : won(it.krw))
+      + '</tbody></table>';
+  };
+  const KV = { hotels: hotelHtml, courses: golfHtml };
+  const hotels = (v.items || []).filter(it => KV[it.kind]).map(it => KV[it.kind](it)).join("");
+  const rows = (v.items || []).filter(it => !KV[it.kind]).map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
     + '<td>' + esc(it.name) + '<br>' + esc(it.label || it.option || "") + '</td>'
     + '<td class="nw" style="text-align:right">' + (it.asked ? '<span class="mut">문의</span>' : won(it.krw)) + '</td></tr>').join("");
   /* 머리 다섯 줄은 Invoice No. 와 같은 크기·굵기·색(사장님 2026-10-02) */
