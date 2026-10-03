@@ -312,6 +312,12 @@ tr.subrow td{padding:0 6px 11px}
 .bkmsgs .m span{flex:none;color:var(--muted);font-weight:700;white-space:nowrap}
 .bkmsgs .m p{margin:0;white-space:pre-wrap;font-weight:600}
 .bkmsgs .m.un p{color:#B23B3B;font-weight:800}
+.bkmsgs .m .who{color:#5E6F66;font-weight:800}
+.bkmsgs .m.st{background:#E3F1E7;border-radius:6px;padding:3px 6px;border-top:0;margin-top:2px}
+.bkmsgs .m.st .who{color:#1f6b3f}
+.bkmsgs .mrep{display:flex;gap:6px;margin-top:6px}
+.bkmsgs .mrep textarea{flex:1;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;resize:vertical;min-height:34px;background:#fff}
+.bkmsgs .mrep button{flex:none}
 .bkcost summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);padding:4px 0}
 #bkDocOv{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
 .bkdoc-box{background:#fff;border-radius:12px;max-width:860px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)}
@@ -1689,12 +1695,22 @@ function bookDocHtml(b){
 }
 /* 💬 추가 요청 메시지(사장님 2026-09-21) — 접수된 수배요청서는 여행사가 못 고친다. 더 전할 말은 같은 접수번호 아래 메시지로 쌓인다(b.msgs).
    안 읽은 건(b.msgUnread)이 있으면 빨간 표시 + 「확인함」 — 누르면 서버가 0으로 돌린다(상태·직원 메모는 그대로) */
+/* 💬 1:1 메시지 — 여행사 ↔ 직원 주고받기(사장님 2026-10-03 「어드민에서도 주고받게, 카톡 필요 없게」).
+   여행사가 보낸 건(from 없음)·직원 답장(from:'staff', 초록). 여행사 건(AQ)·여행사가 보낸 사이트 예약(from.id)에만 답장 칸 */
 function bookMsgsHtml(b){
-  const ms=Array.isArray(b.msgs)?b.msgs:[]; if(!ms.length) return '';
+  const ms=Array.isArray(b.msgs)?b.msgs:[];
+  const canReply=!!((b.agency&&b.agency.id)||(b.from&&b.from.id))&&b.status!=='cancel';
+  if(!ms.length&&!canReply) return '';
   const un=Math.max(0,+b.msgUnread||0);
-  return '<div class="bkmsgs'+(un?' new':'')+'"><div class="hd">💬 여행사 메시지 '+ms.length+'건'
-    +(un?' <b>새 메시지 '+un+'</b><button class="ghost" data-msgread="'+esc(b.no)+'">확인함</button>':'')+'</div>'
-    +ms.map((m,i)=>'<div class="m'+(i>=ms.length-un?' un':'')+'"><span>'+esc(bookWhen(m.at))+'</span><p>'+esc(m.text||'')+'</p></div>').join('')
+  const fromAg=ms.filter(m=>m.from!=='staff');
+  let k=0;   // 여행사가 보낸 것 중 뒤에서 un 개가 안 읽은 것
+  return '<div class="bkmsgs'+(un?' new':'')+'"><div class="hd">💬 1:1 메시지'+(ms.length?' '+ms.length+'건':'')
+    +(un?' <b>새 메시지 '+un+'</b><button class="ghost" data-msgread="'+esc(b.no)+'">확인함</button>':'')
+    +(b.agencyUnread?' <span style="font-weight:700;color:var(--muted)">· 여행사가 아직 안 읽은 답장 '+(+b.agencyUnread)+'</span>':'')+'</div>'
+    +ms.map(m=>{ const st=m.from==='staff'; const isUn=!st&&(++k>fromAg.length-un);
+      return '<div class="m'+(isUn?' un':'')+(st?' st':'')+'"><span>'+esc(bookWhen(m.at))+'</span><span class="who">'+(st?'투어코리아'+(m.by?' · '+esc(m.by):''):'여행사')+'</span><p>'+esc(m.text||'')+'</p></div>'; }).join('')
+    +(canReply?'<div class="mrep"><textarea data-mreptx="'+esc(b.no)+'" rows="1" maxlength="1000" placeholder="여행사에 답장 (보낸 글은 여행사 보관함 「1:1 메시지」에 뜹니다)"></textarea>'
+      +'<button class="add" data-mrep="'+esc(b.no)+'">답장 보내기</button></div>':'')
     +'</div>';
 }
 function openBookDoc(no){
@@ -1798,6 +1814,15 @@ function openCostWin(no){
 function bindVoucherBtns(p){
   p.querySelectorAll('[data-bkdoc]').forEach(btn=>btn.onclick=()=>openBookDoc(btn.dataset.bkdoc));
   p.querySelectorAll('[data-bkcostw]').forEach(btn=>btn.onclick=()=>openCostWin(btn.dataset.bkcostw));
+  /* 💬 답장 보내기 — 서버 msgReply(여행사 보관함에 뜸, 여행사 쪽 「새 답장」) */
+  p.querySelectorAll('[data-mrep]').forEach(btn=>btn.onclick=async()=>{
+    const no=btn.dataset.mrep, ta=p.querySelector('[data-mreptx="'+CSS.escape(no)+'"]');
+    const text=String(ta&&ta.value||'').trim(); if(!text){ if(ta) ta.focus(); toast('답장 내용을 적어 주세요'); return; }
+    btn.disabled=true; btn.textContent='보내는 중…';
+    const j=await bookApi('msgReply',{no,text});
+    if(!j||!j.ok){ btn.disabled=false; btn.textContent='답장 보내기'; toast('❌ '+((j&&j.error)||'보내지 못했습니다')); return; }
+    bookReplace(j.rec); drawBooks(); toast('💬 답장을 보냈습니다 — 여행사 보관함에 뜹니다');
+  });
   p.querySelectorAll('[data-msgread]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.msgread); if(!b) return;
     btn.disabled=true;
@@ -1955,6 +1980,8 @@ setInterval(async()=>{
     const ae=document.activeElement, pane=document.getElementById('pane');
     const editing=ae&&pane&&pane.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)&&ae.id!=='bkSearch';
     if(tab==='books'&&editing) return;
+    /* 답장 칸에 적어 둔 글이 있으면(커서가 떠나 있어도) 다시 그리지 않는다 — 적던 답장이 지워지지 않게 */
+    if(tab==='books'&&[...document.querySelectorAll('[data-mreptx]')].some(t=>t.value.trim())) return;
     const j=await bookApi('list',{});
     if(!j||!j.ok) return;
     bookSrvSig=sg.sig;

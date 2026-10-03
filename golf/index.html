@@ -2118,7 +2118,7 @@ function siteRowHtml(r){
         ?`<div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px;max-width:200px;">${r.vouchers.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" title="${esc(x.name)}" style="border:none;background:#1f6b3f;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🎫 ${esc(x.name)}</a>`).join('')}</div>`
         :r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" style="flex-shrink:0;border:none;background:${r.doc==='voucher'?'#1f6b3f':'#0b3d91'};color:#fff;border-radius:6px;padding:7px 11px;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;">${r.doc==='voucher'?'🎫 바우처':'🧾 인보이스'}</a>`:''}
       ${/* 💬 메시지 보내기(사장님 2026-10-03) — 송금했습니다 · 명단 · 변경 요청 등. 취소된 건 빼고 언제든 */
-        r.status!=='cancel'?`<button type="button" onclick="openSiteMsg('${esc(r.no)}')" style="flex-shrink:0;border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">💬 1:1 메시지 보내기${(r.msgs||[]).length?` (${r.msgs.length})`:''}</button>`:''}
+        r.status!=='cancel'?`<button type="button" onclick="openSiteMsg('${esc(r.no)}')" style="flex-shrink:0;border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">${msgBtnLabel(r.msgs,r.unread)}</button>`:''}
       ${r.cancelReq?`<span style="flex-shrink:0;font-size:11.5px;font-weight:800;color:#fff;background:#c0492f;border-radius:6px;padding:5px 9px;white-space:nowrap;">취소 요청함</span>`
         :['new','doing','confirmed'].includes(r.status)?`<button type="button" onclick="cancelSiteRow('${esc(r.no)}')" style="flex-shrink:0;border:1px solid #c0492f;background:#fff;color:#c0492f;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">취소 요청</button>`:''}
       <div style="flex-shrink:0;align-self:stretch;display:flex;align-items:center;padding-left:8px;border-left:1px solid #efeada;">
@@ -2197,7 +2197,7 @@ function renderQuoteHistory(){
           ? (r.book
               ? `<span style="font-size:10.5px;font-weight:800;color:#1f6b3f;background:#e3f3e8;border-radius:6px;padding:4px 8px;text-align:center;white-space:nowrap;">✅ 수배 요청함 · ${esc(String(r.book.at||'').slice(5,10).replace('-','/'))}</span>
                  <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📄 수배요청서 보기</button>
-                 <button type="button" onclick="openBookMsg(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">💬 1:1 메시지 보내기${(r.book.msgs||[]).length?` (${r.book.msgs.length})`:''}</button>
+                 <button type="button" onclick="openBookMsg(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">${msgBtnLabel(r.book.msgs,r.book.unread)}</button>
                  ${(r.book.live&&r.book.live.url)?`<a href="${esc(r.book.live.url)}" target="_blank" rel="noopener" style="border:none;background:#0b3d91;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-align:center;text-decoration:none;white-space:nowrap;">🧾 ${r.book.live.stage==='balance'?'잔금 인보이스 · 확정서':r.book.live.depPaid?'디파짓 인보이스 · 입금확인됨':'디파짓 인보이스'}</a>`:''}`
               : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
           : ''}
@@ -2416,15 +2416,30 @@ function bookStepsHtml(book){
     +`</div>`;
 }
 /* 💬 추가 요청 메시지(사장님 2026-09-21) — 접수된 수배 아래로 메시지를 보낸다(수정·삭제 없음). 어드민 예약요청 카드에 빨갛게 뜬다 */
+/* 💬 1:1 메시지 — 직원 답장(from:'staff')은 초록 바탕 「투어코리아」로 구분(사장님 2026-10-03 「어드민에서도 주고받게」) */
 function bookMsgListHtml(book){
   const ms=(book&&Array.isArray(book.msgs))?book.msgs:[];
-  return ms.map(x=>`<div style="display:flex;gap:8px;padding:5px 0;border-top:1px dashed #e7e3d8;font-size:12.5px;">
+  return ms.map(x=>{ const st=x.from==='staff';
+    return `<div style="display:flex;gap:8px;padding:6px 8px;margin-top:4px;border-radius:7px;font-size:12.5px;${st?'background:#E3F1E7;':'background:#faf8f2;'}">
       <span style="flex:none;color:#5E6F66;font-weight:700;white-space:nowrap;">${esc(String(x.at||'').slice(5,16).replace('-','/').replace('T',' '))}</span>
-      <span style="white-space:pre-wrap;font-weight:600;">${esc(x.text||'')}</span></div>`).join('');
+      <span style="flex:none;font-weight:800;color:${st?'#1f6b3f':'#5E6F66'};">${st?'투어코리아':'보냄'}</span>
+      <span style="white-space:pre-wrap;font-weight:600;">${esc(x.text||'')}</span></div>`; }).join('');
+}
+/* 버튼 글자 — 메시지 수 + 안 읽은 답장(빨강) */
+function msgBtnLabel(msgs,unread){
+  const n=(msgs||[]).length;
+  return `💬 1:1 메시지 보내기${n?` (${n})`:''}${unread?` <b style="background:#D32F2F;color:#fff;border-radius:999px;padding:0 6px;margin-left:3px;">새 답장 ${unread}</b>`:''}`;
 }
 /* 사이트 예약 줄의 「💬 메시지 보내기」 — 견적 수배 건과 같은 창을 쓴다(서버 siteMsg) */
+/* 창을 열면 직원 답장을 읽은 것으로(서버 msgSeen) — 버튼의 「새 답장」 빨간 표시가 꺼진다 */
+function msgSeen(no,obj){
+  if(!obj||!obj.unread) return;
+  obj.unread=0; try{ renderQuoteHistory(); }catch(e){}
+  agencyApi({action:'msgSeen',no}).catch(()=>{});
+}
 function openSiteMsg(no){
   const r=(QH_SITE||[]).find(x=>x.no===no); if(!r||GROLE!=='agency') return;
+  msgSeen(no,r);
   const first=(r.items||[])[0]||{};
   msgModal(`${esc(r.no)} · ${esc(first.name||'')}${(r.items||[]).length>1?' 외 '+((r.items.length)-1)+'건':''}`, '', {msgs:r.msgs||[]},
     text=>agencyApi({action:'siteMsg',no,text}),
@@ -2432,6 +2447,7 @@ function openSiteMsg(no){
 }
 function openBookMsg(idx){
   const Q=QH_LIST[idx]; if(!Q||!Q.book||GROLE!=='agency') return;
+  msgSeen(Q.book.no,Q.book);
   msgModal(`${esc(Q.quoteNo)}${Q.team?' · '+esc(Q.team):''} · ${esc(Q.start)} ~ ${esc(Q.end||'')}`, bookStepsHtml(Q.book), Q.book,
     text=>agencyApi({action:'quoteBookMsg',quoteNo:Q.quoteNo,text}),
     msg=>{ Q.book.msgs=(Array.isArray(Q.book.msgs)?Q.book.msgs:[]).concat([msg]); });

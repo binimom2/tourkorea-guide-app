@@ -652,6 +652,24 @@ export async function onRequest(context) {
     }
 
     /* ══ 바우처 편집 화면(/golf/site/voucher/?edit=1)에서 어드민이 적은 확정 티업·메모(사장님 2026-10-01) ══ */
+    /* ══ 💬 1:1 메시지 — 직원 답장(사장님 2026-10-03 「어드민에서도 주고받게, 카톡 필요 없게」).
+          여행사 메시지와 같은 rec.msgs 에 from:'staff' 로 쌓고, 여행사 쪽 안 읽음(agencyUnread)을 올린다.
+          직원이 답장하면 여행사가 보낸 것은 읽은 셈(msgUnread 0) ══ */
+    if (action === 'msgReply') {
+      const no = s(body.no, 40);
+      const text = String(body.text == null ? '' : body.text).split(/\r?\n/).map((x) => s(x, 300)).filter(Boolean).slice(0, 20).join('\n').slice(0, 1000);
+      if (!no || !text) return json({ error: '보낼 내용을 적어 주세요.' }, 400);
+      const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
+      const rec = Array.isArray(rows) && rows[0] && rows[0].data;
+      if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
+      const now = new Date().toISOString();
+      rec.msgs = (Array.isArray(rec.msgs) ? rec.msgs : []).concat([{ at: now, by: loginIdOf(user), text, from: 'staff' }]).slice(-80);
+      rec.msgUnread = 0;
+      rec.agencyUnread = Math.max(0, Math.round(+rec.agencyUnread || 0)) + 1;
+      await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
+      return json({ ok: true, rec });
+    }
+
     if (action === 'vEdit') {
       const no = s(body.no, 40);
       const rows = await srSelect(KEY, 'data_key=eq.' + encodeURIComponent(PREFIX + no) + '&select=data');
