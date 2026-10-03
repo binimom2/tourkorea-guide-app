@@ -327,6 +327,8 @@ function voucherView(request, rec, site) {
     cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
     guest: guestEn(rec.customer && rec.customer.name),
     items: (rec.items || []).map(it => Object.assign({}, it, { venue: venueOf(site, it) })),
+    paid: !!rec.pay,
+    req: (rec.customer && rec.customer.memo) || '',   // 손님이 적은 요청 원문 — 편집 모드 예시 글로만 쓴다
     company: companyOf(site),
     url: voucherUrl(request, rec),
   };
@@ -652,6 +654,13 @@ export async function onRequest(context) {
         Object.keys(body.tees).forEach(k => {
           const it = (rec.items || [])[+k];
           if (it) it.teeOk = s(body.tees[k], 60);   // 골프 확정 티업 · 호텔 컨펌번호 · 그 밖 확정 내용(사장님 2026-10-03 전 품목 통일)
+        });
+      }
+      /* 바우처 Guest Request — 직원이 영어로 옮겨 적는 손님 요청(사장님 2026-10-03) */
+      if (body.reqs && typeof body.reqs === 'object') {
+        Object.keys(body.reqs).forEach(k => {
+          const it = (rec.items || [])[+k];
+          if (it) it.req = s(body.reqs[k], 200);
         });
       }
       rec.voucher.editBy = loginIdOf(user); rec.voucher.editAt = new Date().toISOString();

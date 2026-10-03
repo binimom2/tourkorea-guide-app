@@ -85,6 +85,9 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 /* 편집 모드 — 어드민이 적을 칸은 노란색 */
 .ed{font:inherit;font-size:14px;font-weight:700;background:#FFF4B8;border:2px solid #F2C94C;border-radius:6px;padding:5px 8px;color:var(--ink)}
 input.ed{width:150px;text-align:right}
+input.ed.wide{width:260px;max-width:60vw}
+.cfno{color:#D32F2F;font-weight:900}   /* 컨펌번호 빨강(사장님 2026-10-03) */
+.paid{color:#2E7D4F;font-weight:900}
 textarea.ed{display:block;width:100%;margin:6px 0;resize:vertical;font-weight:600;line-height:1.5}
 .edbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FFF4B8;border-bottom:2px solid #F2C94C;padding:10px 16px;font-size:13.5px}
 .edbar button{margin-left:auto;background:var(--fairway);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:800;cursor:pointer}
@@ -110,87 +113,101 @@ function won(n){ return Number(n || 0).toLocaleString("ko-KR") + "원"; }
 
 /* 담긴 줄 하나 = 확정서 한 장(업체 머리 + 상세표). 종류마다 표의 줄이 다르다. */
 /* 품목마다 어드민이 적는 확정 칸(it.teeOk) — 골프 확정 티업과 같은 방식으로 전 품목 통일(사장님 2026-10-03) */
+/* 바우처는 영문만(사장님 2026-10-03) — 호텔 프론트·골프장이 읽는 문서. 품목 값(객실명 등)은 받은 그대로 */
+/* 골프 확정 티업 · 그 밖 확정 내용은 상세표에, 호텔 컨펌번호는 Agent Memo에 빨간 글씨로 */
 function confRow(it, i){
-  const lb = it.kind === "courses" ? "Tee Time (확정 티업)" : it.kind === "hotels" ? "Hotel Confirm No. (호텔 컨펌번호)" : "Confirmed (확정 내용)";
-  const ph = it.kind === "courses" ? (it.time ? "희망 " + it.time : "예: 07:30") : it.kind === "hotels" ? "호텔 컨펌번호" : (it.time ? "희망 " + it.time : "확정 시간 · 내용");
+  const lb = it.kind === "courses" ? "Tee Time" : "Confirmed";
+  const ph = it.time ? "희망 " + it.time : it.kind === "courses" ? "예: 07:30" : "확정 시간 · 내용";
   if(EDIT) return [lb, { html: '<input class="ed" data-tee="' + i + '" value="' + esc(it.teeOk || "") + '" placeholder="' + esc(ph) + '" maxlength="60">' }];
   return it.teeOk ? [lb, it.teeOk] : null;
+}
+/* 손님 요청(하이플로어 등) — 직원이 영어로 적는다. 손님이 적은 원문은 노란 칸 예시 글로만 보인다 */
+function reqRow(v, it, i){
+  if(EDIT) return ["Guest Request", { html: '<input class="ed wide" data-req="' + i + '" value="' + esc(it.req || "") + '" placeholder="' + esc(v.req ? "손님: " + v.req : "예: High floor") + '" maxlength="200">' }];
+  return it.req ? ["Guest Request", it.req] : null;
 }
 function itemHtml(v, it, i){
   const ven = it.venue || {};
   const date = dfmt(it.date) + (it.dateEnd && it.dateEnd !== it.date ? " ~ " + dfmt(it.dateEnd) : "");
-  const rows = [];
-  const cf = confRow(it, i);
+  const rows = [["Booking No.", v.no + (v.items.length > 1 ? "-" + (i + 1) : "")]];
+  const cf = it.kind === "hotels" ? null : confRow(it, i);
   if(it.kind === "hotels"){
-    rows.push(["Nights (투숙 박수)", (it.nights || 1) + " Night(s)"]);
-    rows.push(["Room Type (객실 타입)", it.option || "-"]);
-    if(ven.bed) rows.push(["Bed Type (침대 타입)", ven.bed]);
-    rows.push(["Room(s) (객실 수)", (it.rooms || 1) + " Room(s)"]);
-    rows.push(["Adult (성인)", "Total " + (it.adult || it.pax || 0)]);
+    const n = it.nights || 1;
+    rows.push(["Check-in ~ Check-out", date + " / " + n + " Night" + (n > 1 ? "s" : "")]);
+    rows.push(["Guest Name", v.guest]);
+    rows.push(["Room Type / Bed Type", (it.option || "-") + (ven.bed ? " / " + ven.bed : "")]);
     /* 아동은 생년월일도 같이 적는다(2026-09-19) — 호텔이 아동 요금(만 11세까지)을 생년월일로 확인한다 */
-    if(it.child) rows.push(["Child (아동)", "Total " + it.child + ((it.ages || []).length ? " (" + it.ages.map((a, k) => {
+    const kids = it.child ? ", Child " + it.child + ((it.ages || []).length ? " (" + it.ages.map((a, k) => {
       const b = (it.births || [])[k] || "";
-      return (b.length === 8 ? b.slice(0, 4) + "-" + b.slice(4, 6) + "-" + b.slice(6, 8) + " · " : "") + a + "세";
-    }).join(", ") + ")" : "")]);
+      return (b.length === 8 ? b.slice(0, 4) + "-" + b.slice(4, 6) + "-" + b.slice(6, 8) + " · " : "") + a + "y";
+    }).join(", ") + ")" : "") : "";
+    const rm = it.rooms || 1;
+    rows.push(["Guests / Rooms", "Adult " + (it.adult || it.pax || 0) + kids + " / " + rm + " Room" + (rm > 1 ? "s" : "")]);
     /* 아동 엑스트라 베드를 «추가 안 함»으로 고른 예약(2026-09-19) — 호텔이 베드를 넣지 않게 적어 준다 */
-    if(it.noBed) rows.push(["Extra Bed (엑스트라 베드)", "No extra bed for child (breakfast only · 아동 조식만)"]);
-    rows.push(["Meal Plan (식사)", ven.bf === true ? "Breakfast Included" : ven.bf === false ? "Room Only" : "-"]);
-    if(cf) rows.push(cf);
+    if(it.noBed) rows.push(["Extra Bed", "No extra bed for child (breakfast only)"]);
+    rows.push(["Breakfast", ven.bf === true ? "Included" : ven.bf === false ? "Not Included" : "-"]);
   } else if(it.kind === "courses"){
-    rows.push(["Tee Date (라운드 날짜)", date]);
-    if(it.option) rows.push(["Round (라운드)", String(it.option).replace(/(\d+)\s*홀/g, "$1 Holes")]);   // 「18홀」→「18 Holes」(사장님 2026-10-01)
-    rows.push(["Players (인원)", (it.pax || 0) + " Player(s)"]);
-    /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간. 편집 모드면 노란 칸 */
+    rows.push(["Tee Date", date]);
+    rows.push(["Guest Name", v.guest]);
+    if(it.option) rows.push(["Round", String(it.option).replace(/(\d+)\s*홀/g, "$1 Holes")]);   // 「18홀」→「18 Holes」(사장님 2026-10-01)
+    rows.push(["Players", (it.pax || 0) + " Player(s)"]);
+    /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간 */
     if(cf) rows.push(cf);
-    else if(it.time) rows.push(["Tee Time (희망 티타임)", it.time]);
+    else if(it.time) rows.push(["Requested Tee Time", it.time]);
   } else {
-    rows.push(["Date (예약일자)", date]);
-    if(it.option) rows.push(["Item (내용)", it.option]);
-    if(it.pax) rows.push(["Qty (인원 · 수량)", String(it.pax)]);
-    if(it.riders) rows.push(["Passengers (탑승 인원)", it.riders + " pax"]);   // 차량 탑승 인원수(2026-09-11)
-    if(it.time) rows.push(["Note (미팅 · 시간 · 편명)", it.time]);
+    rows.push(["Date", date]);
+    rows.push(["Guest Name", v.guest]);
+    if(it.option) rows.push(["Item", it.option]);
+    if(it.pax) rows.push(["Qty", String(it.pax)]);
+    if(it.riders) rows.push(["Passengers", it.riders + " pax"]);   // 차량 탑승 인원수(2026-09-11)
+    if(it.time) rows.push(["Note", it.time]);
     if(cf) rows.push(cf);
   }
+  const rq = reqRow(v, it, i); if(rq) rows.push(rq);
   return '<div class="head">'
-    + '<div class="bn">Booking No. (예약번호) <b>' + esc(v.no) + (v.items.length > 1 ? "-" + (i + 1) : "") + '</b></div>'
-    + '<h2>' + esc(ven.en || it.name) + (ven.en ? ' <span style="font-weight:600;font-size:14px">' + esc(it.name) + '</span>' : '') + '</h2>'
-    + '<p>' + (ven.addr ? '· ' + esc(ven.addr) + '<br>' : '') + (ven.tel ? '· ' + esc(ven.tel) + '<br>' : '')
-    + '· ' + esc(KIND_T[it.kind] || (it.kindT || "")) + (it.region ? ' · ' + esc(it.region) : '') + '</p>'
+    + '<h2>' + esc(ven.en || it.name) + '</h2>'
+    + '<p>' + (ven.addr ? '· ' + esc(ven.addr) + '<br>' : '') + (ven.tel ? '· ' + esc(ven.tel) : '') + '</p>'
     + '</div><div class="body">'
     + '<h3>Booking Details</h3>'
-    + '<div class="line">- Date (예약일자) : <b>' + esc(date) + '</b></div>'
-    + '<div class="line">- Guest Name (예약자명) : <b>' + esc(v.guest) + '</b></div>'
     + '<div class="tbl">' + rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + (r[1] && r[1].html ? r[1].html : esc(r[1])) + '</b></div>').join("") + '</div>'
     + '</div>';
 }
+/* 「투어코리아 (TOURKOREA)」 → 「TOURKOREA」 — 괄호 안 영문이 있으면 그것만 */
+function enName(n){ const m = /\(([^)]*[A-Za-z][^)]*)\)/.exec(n || ""); return m ? m[1].trim() : (n || ""); }
 
 function render(v){
   const c = v.company || {};
-  const total = v.items.reduce((a, x) => a + (x.asked ? 0 : (x.krw || 0)), 0);
-  const askedN = v.items.filter(x => x.asked).length;
   const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).filter(Boolean);
+  const co = enName(c.name);
+  /* Confirm No. = 호텔 컨펌번호(빨강). 호텔이 없거나 아직 비었으면 우리 확정번호 */
+  const hot = v.items.map((it, i) => ({ it, i })).filter(x => x.it.kind === "hotels");
+  const many = hot.length > 1;
+  const cfHtml = EDIT && hot.length
+    ? hot.map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '') + '</span>'
+        + '<input class="ed" data-tee="' + x.i + '" value="' + esc(x.it.teeOk || "") + '" placeholder="호텔 컨펌번호" maxlength="60">').join("<br>")
+    : (hot.some(x => x.it.teeOk)
+        ? hot.filter(x => x.it.teeOk).map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' : ' : '') + esc(x.it.teeOk) + '</span>').join("\n")
+        : '<span class="cfno">Confirm No. ' + esc(v.cno) + '</span>');
   $("#app").innerHTML = '<div class="sheet">'
-    + '<div class="brand">' + esc(c.name || "") + '</div>'   /* 상단은 투어코리아만(사장님 2026-09-29 — 옛 영문 상호 뺌) */
+    + '<div class="brand">' + esc(co) + '</div>'
     + '<h1>Voucher<small>예약 확정서</small></h1>'
-    + '<p class="tip">※ 상품 이용 시 예약 확정서를 제시해 주세요. 확정번호 (Confirm No.) <b>' + esc(v.cno) + '</b></p>'
     + v.items.map((it, i) => itemHtml(v, it, i)).join("")
-    + (total ? '<div class="total"><span>Total (합계)</span><span>' + won(total) + (askedN ? '<i>+ 요금 문의 ' + askedN + '건</i>' : '') + '</span></div>' : '')
-    + '<div class="sec"><h3>Agent Memo</h3><p>Confirm No. ' + esc(v.cno)
-      + (EDIT ? '\n<textarea class="ed" id="edMemo" rows="3" placeholder="호텔·골프장 컨펌번호, 안내 사항 등">' + esc(v.memo || "") + '</textarea>'
-        : v.memo ? '\n' + esc(v.memo) : '') + '\nThis booking is confirmed and payable by ' + esc(c.name || "") + '.</p></div>'
-    + '<div class="sec"><h3>Booked and payable by : <span style="font-weight:600">' + esc(c.name || "") + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
+    + '<div class="sec"><h3>Agent Memo</h3><p>' + cfHtml
+      + (EDIT ? '\n<textarea class="ed" id="edMemo" rows="3" placeholder="안내 사항 등 (영문)">' + esc(v.memo || "") + '</textarea>'
+        : v.memo ? '\n' + esc(v.memo) : '') + '</p></div>'
+    + '<div class="sec"><h3>Booked by : <span style="font-weight:600">' + esc(co) + (c.tel ? ' (Tel : ' + esc(c.tel) + ')' : '') + '</span></h3>'
       + (c.regNo ? '<p class="small">- Registration No : ' + esc(c.regNo) + '</p>' : '')
       + (c.tel2 ? '<p class="small">- Tel : ' + esc(c.tel2) + '</p>' : '')
       + (c.email ? '<p class="small">- Email : ' + esc(c.email) + '</p>' : '') + '</div>'
-    + (c.issuer ? '<div class="sec"><h3>Issued by : <span style="font-weight:600">' + esc(c.issuer) + '</span></h3></div>' : '')
-    + (c.notes ? '<div class="box"><h3>중요 안내</h3><p>' + esc(c.notes) + '</p></div>' : '')
-    + '<div class="box"><h3>유의 사항</h3><ul>'
+    + (v.paid ? '<div class="sec"><h3>Payment : <span class="paid">Full Payment</span></h3></div>' : '')
+    + (c.notes ? '<div class="box"><h3>Important Notes</h3><p>' + esc(c.notes) + '</p></div>' : '')
+    + '<div class="box"><h3>Terms &amp; Conditions</h3><ul>'
       + '<li class="red">- This voucher can be shown as captured picture with mobile phone.</li>'
       + terms.map(t => '<li>- ' + esc(t) + '</li>').join("")
-      + (c.emergency ? '<li>- 비상연락망 ' + esc(c.emergency) + '</li>' : '')
+      + (c.emergency ? '<li>- Emergency Contact : ' + esc(c.emergency) + '</li>' : '')
     + '</ul></div>'
     + '</div>';
-  document.title = "예약 확정서 " + v.no + " · " + (c.name || "");
+  document.title = "Voucher " + v.no + " · " + co;
   $("#act").style.display = "";
   if(EDIT){
     $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — 노란 칸을 채우고 저장하세요. 손님 화면에는 적은 글자만 보입니다.'
@@ -207,11 +224,12 @@ const EDIT = new URLSearchParams(location.search).get("edit") === "1" && !!staff
 async function saveEdit(v){
   const btn = $("#edSave"), msg = $("#edMsg");
   const tees = {}; document.querySelectorAll("[data-tee]").forEach(e => { tees[e.dataset.tee] = e.value.trim(); });
+  const reqs = {}; document.querySelectorAll("[data-req]").forEach(e => { reqs[e.dataset.req] = e.value.trim(); });
   btn.disabled = true; msg.textContent = "저장 중…";
   try{
     const r = await fetch("/api/golf-book", { method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + staffToken() },
-      body: JSON.stringify({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees }) });
+      body: JSON.stringify({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees, reqs }) });
     const j = await r.json().catch(() => ({}));
     if(r.status === 401) throw new Error("로그인이 만료되었습니다. 관리 화면을 새로고침한 뒤 다시 저장해 주세요.");
     if(!j.ok) throw new Error(j.error || "저장하지 못했습니다.");
