@@ -2986,7 +2986,7 @@ function addToCart(direct){
   drawTools();
   /* 담은 뒤 알림(사장님 2026-10-03 — 상세 창이 위 🛒 를 가려 담겼는지 모름. 09-08 「말 없음」을 바꿈):
      단추 글자가 잠깐 「✓ 담았습니다」로 바뀌고, 아래에 «장바구니 보기» 한 줄 */
-  qpTell((i >= 0 ? "✓ 장바구니에 있던 같은 일정을 <b>새 내용으로 바꿨습니다.</b>" : "✓ <b>장바구니에 담았습니다.</b> (" + CART.length + "건)")
+  qpTell((i >= 0 ? "✓ 장바구니에 있던 같은 일정을 <b>새 내용으로 바꿨습니다.</b>" : "✓ 이 상품을 <b>장바구니에 담았습니다.</b> (총 " + CART.length + "건)")
     + ' <button type="button" class="qp-gocart" id="qpGoCart">장바구니 보기 →</button>', true);
   $("#qpGoCart").onclick = () => openCart();
   const b = $("#dCart"), t0 = b.dataset.t0 || (b.dataset.t0 = b.innerHTML);
