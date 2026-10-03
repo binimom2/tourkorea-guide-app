@@ -135,7 +135,8 @@ function itemHtml(v, it, i){
     const n = it.nights || 1;
     rows.push(["Check-in ~ Check-out", date + " / " + n + " Night" + (n > 1 ? "s" : "")]);
     rows.push(["Guest Name", v.guest]);
-    rows.push(["Room Type / Bed Type", (it.option || "-") + (ven.bed ? " / " + ven.bed : "")]);
+    const bd = bedsEn(it);
+    rows.push(["Room Type / Bed Type", roomEn(it.option) + (bd ? " / " + bd : "")]);
     /* 아동은 생년월일도 같이 적는다(2026-09-19) — 호텔이 아동 요금(만 11세까지)을 생년월일로 확인한다 */
     const kids = it.child ? ", Child " + it.child + ((it.ages || []).length ? " (" + it.ages.map((a, k) => {
       const b = (it.births || [])[k] || "";
@@ -171,6 +172,33 @@ function itemHtml(v, it, i){
     + '<h3>Booking Details</h3>'
     + '<div class="tbl">' + rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + (r[1] && r[1].html ? r[1].html : esc(r[1])) + '</b></div>').join("") + '</div>'
     + '</div>';
+}
+/* 객실명 영문(사장님 2026-10-03 「Deluxe Type / 2Twin」) — 요금표 객실명이 한글이라 흔한 낱말을 바꿔 적는다. 긴 말부터 바꾼다 */
+const ROOM_EN = [["원베드룸","One Bedroom"],["투베드룸","Two Bedroom"],["쓰리베드룸","Three Bedroom"],["이그제큐티브","Executive"],["비치프론트","Beachfront"],
+  ["슈페리어","Superior"],["슈페리얼","Superior"],["스탠다드","Standard"],["스탠더드","Standard"],["디럭스","Deluxe"],["프리미어","Premier"],["프리미엄","Premium"],
+  ["시그니처","Signature"],["레지던스","Residence"],["스튜디오","Studio"],["주니어","Junior"],["스위트","Suite"],["패밀리","Family"],["그랜드","Grand"],
+  ["로얄","Royal"],["로열","Royal"],["클럽","Club"],["코너","Corner"],["오션뷰","Ocean View"],["씨뷰","Sea View"],["시티뷰","City View"],["가든뷰","Garden View"],
+  ["풀뷰","Pool View"],["리버뷰","River View"],["마운틴뷰","Mountain View"],["풀빌라","Pool Villa"],["풀억세스","Pool Access"],["풀액세스","Pool Access"],
+  ["빌라","Villa"],["발코니","Balcony"],["테라스","Terrace"],["킹","King"],["트윈","Twin"],["더블","Double"],["싱글","Single"],["트리플","Triple"],
+  ["객실","Room"],["룸","Room"],["타입","Type"],["오션","Ocean"],["가든","Garden"],["풀","Pool"],["뷰","View"]];
+function roomEn(s){
+  let t = String(s || "");
+  ROOM_EN.forEach(([k, e]) => { t = t.split(k).join(" " + e + " "); });
+  t = t.replace(/\s+/g, " ").trim();
+  if(!t) return "-";
+  return /\b(Room|Suite|Villa|Studio|Residence|Bedroom|Type)\b/.test(t) ? t : t + " Type";
+}
+/* 손님이 고른 침대 구성 — 담을 때 문구(label)의 「2트윈 1트리플+1엑스트라베드+1아동조식포함」을 읽어 「2Twin 1Triple + 1Extra Bed + 1Child Breakfast」로 */
+function bedsEn(it){
+  const src = String(it.label || ""), BED = { "트윈": "Twin", "더블": "Double", "싱글": "Single", "트리플": "Triple" };
+  const m = /\d+박\s+((?:\d+(?:트윈|더블|싱글|트리플)\s*)+)((?:\+\d+(?:엑스트라베드|아동조식포함))*)/.exec(src);
+  if(!m) return "";
+  let t = m[1].trim().split(/\s+/).map(x => x.replace(/(\d+)(트윈|더블|싱글|트리플)/, (_, n, k) => n + BED[k])).join(" ");
+  (m[2].match(/\+\d+(?:엑스트라베드|아동조식포함)/g) || []).forEach(x => {
+    const n = x.replace(/\D/g, "");
+    t += " + " + n + (/엑스트라/.test(x) ? "Extra Bed" : "Child Breakfast");
+  });
+  return t;
 }
 /* 「투어코리아 (TOURKOREA)」 → 「TOURKOREA」 — 괄호 안 영문이 있으면 그것만 */
 function enName(n){ const m = /\(([^)]*[A-Za-z][^)]*)\)/.exec(n || ""); return m ? m[1].trim() : (n || ""); }
