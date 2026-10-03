@@ -210,14 +210,16 @@ function render(v){
   const noHotel = !v.items.some(x => x.kind === "hotels");
   const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).map(t => noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
   const co = enName(c.name);
-  /* Confirm No. = 호텔 컨펌번호(빨강). 호텔이 없거나 아직 비었으면 우리 확정번호 */
-  const hot = v.items.map((it, i) => ({ it, i })).filter(x => x.it.kind === "hotels");
-  const many = hot.length > 1;
-  const cfHtml = EDIT && hot.length
-    ? hot.map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '') + '</span>'
-        + '<input class="ed" data-tee="' + x.i + '" value="' + esc(x.it.teeOk || "") + '" placeholder="호텔 컨펌번호" maxlength="60">').join("<br>")
-    : (hot.some(x => x.it.teeOk)
-        ? hot.filter(x => x.it.teeOk).map(x => '<span class="cfno">Confirm No. ' + (many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' : ' : '') + esc(x.it.teeOk) + '</span>').join("<br>")
+  /* Confirm No.(빨강) — 품목마다 업체 컨펌번호를 적는다(사장님 2026-10-03, 골프도 호텔과 똑같이).
+     호텔은 확정 칸(teeOk)이 곧 컨펌번호, 골프 등은 teeOk가 티업이라 따로 cfNo. 아무것도 안 적었으면 우리 확정번호 */
+  const cfs = v.items.map((it, i) => ({ it, i, h: it.kind === "hotels", val: it.kind === "hotels" ? it.teeOk : it.cfNo }));
+  const many = cfs.length > 1;
+  const nm = x => many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '';
+  const cfHtml = EDIT
+    ? cfs.map(x => '<span class="cfno">Confirm No. ' + nm(x) + '</span>'
+        + '<input class="ed" ' + (x.h ? 'data-tee' : 'data-cf') + '="' + x.i + '" value="' + esc(x.val || "") + '" placeholder="' + (x.h ? '호텔' : '업체') + ' 컨펌번호" maxlength="60">').join("<br>")
+    : (cfs.some(x => x.val)
+        ? cfs.filter(x => x.val).map(x => '<span class="cfno">Confirm No. ' + (many ? nm(x) + ': ' : '') + esc(x.val) + '</span>').join("<br>")
         : '<span class="cfno">Confirm No. ' + esc(v.cno) + '</span>');
   $("#app").innerHTML = '<div class="sheet">'
     + '<div class="brand">' + esc(co) + '</div>'
@@ -256,11 +258,12 @@ async function saveEdit(v){
   const btn = $("#edSave"), msg = $("#edMsg");
   const tees = {}; document.querySelectorAll("[data-tee]").forEach(e => { tees[e.dataset.tee] = e.value.trim(); });
   const reqs = {}; document.querySelectorAll("[data-req]").forEach(e => { reqs[e.dataset.req] = e.value.trim(); });
+  const cfs = {}; document.querySelectorAll("[data-cf]").forEach(e => { cfs[e.dataset.cf] = e.value.trim(); });
   btn.disabled = true; msg.textContent = "저장 중…";
   try{
     const r = await fetch("/api/golf-book", { method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + staffToken() },
-      body: JSON.stringify({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees, reqs }) });
+      body: JSON.stringify({ action: "vEdit", no: v.no, memo: $("#edMemo").value, tees, reqs, cfs }) });
     const j = await r.json().catch(() => ({}));
     if(r.status === 401) throw new Error("로그인이 만료되었습니다. 관리 화면을 새로고침한 뒤 다시 저장해 주세요.");
     if(!j.ok) throw new Error(j.error || "저장하지 못했습니다.");

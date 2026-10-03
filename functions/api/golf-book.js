@@ -663,6 +663,13 @@ export async function onRequest(context) {
           if (it) it.req = s(body.reqs[k], 200);
         });
       }
+      /* 골프 등 호텔 아닌 품목의 업체 컨펌번호(호텔은 teeOk가 컨펌번호) — 바우처 Agent Memo 빨강(사장님 2026-10-03) */
+      if (body.cfs && typeof body.cfs === 'object') {
+        Object.keys(body.cfs).forEach(k => {
+          const it = (rec.items || [])[+k];
+          if (it) it.cfNo = s(body.cfs[k], 60);
+        });
+      }
       rec.voucher.editBy = loginIdOf(user); rec.voucher.editAt = new Date().toISOString();
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: rec.voucher.editAt });
       return json({ ok: true });
