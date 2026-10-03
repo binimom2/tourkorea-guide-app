@@ -163,7 +163,9 @@ function itemHtml(v, it, i, pos){
   const cf = it.kind === "hotels" ? null : confRow(it, i);
   if(it.kind === "hotels"){
     const n = it.nights || 1;
-    rows.push(["Check-in ~ Check-out", date + " / " + n + " Night" + (n > 1 ? "s" : "")]);
+    /* 날짜가 줄 중간(2026-11- / 03)에서 끊기지 않게 날짜 하나씩 묶음(휴대폰, 2026-10-03) */
+    const nw = s => '<span style="white-space:nowrap">' + esc(s) + '</span>';
+    rows.push(["Check-in ~ Check-out", { html: nw(dfmt(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? ' ~ ' + nw(dfmt(it.dateEnd)) : '') + ' / ' + nw(n + " Night" + (n > 1 ? "s" : "")) }]);
     rows.push(["Guest Name", v.guest]);
     const bd = bedsEn(it);
     rows.push(["Room Type / Bed Type", roomEn(it.option) + (bd ? " / " + bd : "")]);
