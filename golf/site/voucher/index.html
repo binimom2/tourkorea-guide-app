@@ -85,6 +85,16 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .itin.kv td{font-size:14.5px;color:var(--ink);vertical-align:top}
 .itin.kv td:first-child{width:150px;color:var(--muted);white-space:nowrap}
 .itin.kv tr.top td{border-top:2px solid #C9D3CE}   /* 품목 사이 굵은 줄 */
+/* 휴대폰: 구분·금액 칸을 좁혀 내용 칸이 넓게(사장님 2026-10-03 모바일 점검) */
+@media(max-width:560px){
+  .sheet{padding:16px 12px 50px}
+  .body{padding:12px 10px 14px}
+  .itin.kv td,.itin.kv th{padding:6px 5px;font-size:13px}
+  .itin.kv td:first-child{width:auto;white-space:normal;word-break:keep-all;min-width:58px}
+  .itin.kv td.amt3{width:auto!important;font-size:13px}
+  .head.ih .hl{font-size:14px}
+  .head.ih .hl span{width:70px;margin-right:12px}
+}
 .itin.kv td.amt3{width:120px;text-align:right;vertical-align:middle;white-space:nowrap;font-weight:800;border-left:1px solid var(--line)}
 .box.bank{font-size:15px;font-weight:800}
 .box.bank .banknote{margin:8px 0 0;font-size:13.5px;font-weight:700;color:#D32F2F}

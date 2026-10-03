@@ -219,7 +219,8 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .qv-body{overflow:auto;padding:12px;background:#e9e9e6}
 .qv-body img{display:block;width:100%;max-width:760px;height:auto;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.18);background:#fff}
 /* 견적서 인쇄(사장님 2026-09-16: A4를 벗어남 → 조금 축소) — 미리보기 창이 열린 채 인쇄하면 견적서 그림만 A4 한 장에 맞춰 찍는다 */
-@page{size:A4;margin:10mm}
+/* 용지 여백 0 → 크롬이 날짜·제목·주소·쪽수 줄을 안 찍는다(사장님 2026-10-03). 여백은 아래 .qv-body padding 으로 */
+@page{size:A4;margin:0}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}   /* 배경색·글자색을 인쇄에서 빼지 않게(사장님 2026-09-16 "컬러로 안 나온다") */
   body.qv-open>*:not(#qvModal){display:none!important}
@@ -227,7 +228,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
   body.qv-open #qvModal{position:static!important;display:block!important;background:none!important;padding:0!important;inset:auto!important}
   body.qv-open .qv-box{max-width:none!important;max-height:none!important;box-shadow:none!important;border-radius:0!important;display:block!important;overflow:visible!important}
   body.qv-open .qv-hd{display:none!important}
-  body.qv-open .qv-body{padding:0!important;background:#fff!important;overflow:visible!important}
+  body.qv-open .qv-body{padding:10mm!important;background:#fff!important;overflow:visible!important}
   body.qv-open .qv-body img{width:auto!important;max-width:100%!important;max-height:272mm!important;height:auto!important;margin:0 auto!important;box-shadow:none!important}
 }
 .dlbtn.ghost{background:transparent;color:var(--fairway);border-color:rgba(18,58,43,.3)}
@@ -1909,11 +1910,12 @@ function buildQuoteHtml(mode, Q){
   const totKrw=perKrw*pax;
   const moneyRow=(k,v,opt)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;${(opt&&opt.top)||''}">
       <span style="font-size:${(opt&&opt.big)?15:13}px;${(opt&&opt.big)?'font-weight:800':'opacity:.85'}">${k}</span>
-      <span style="font-size:${(opt&&opt.big)?27:20}px;font-weight:800;${(opt&&opt.big)?'color:#E8A33D':''}">${v}</span>
+      <span style="font-size:${(opt&&opt.big)?27:20}px;font-weight:800;${(opt&&opt.big)?'color:#1f6b3f':''}">${v}</span>
     </div>`;
-  const DASH='border-top:1px dashed rgba(255,255,255,.25);margin-top:8px;padding-top:8px;';
-  const RULE='border-top:2px solid #E8A33D;margin-top:9px;padding-top:11px;';
-  const sub=t=>`<div style="text-align:right;font-size:13px;font-weight:800;color:#E9DFC8;opacity:.92;margin-top:2px">${t}</div>`;
+  /* 금액 상자는 연한 초록(사장님 2026-10-03, 예전 진초록) — 줄·보조 글자도 밝은 바탕에 맞춤 */
+  const DASH='border-top:1px dashed rgba(18,58,43,.25);margin-top:8px;padding-top:8px;';
+  const RULE='border-top:2px solid #2E7D4F;margin-top:9px;padding-top:11px;';
+  const sub=t=>`<div style="text-align:right;font-size:13px;font-weight:800;color:#5E6F66;margin-top:2px">${t}</div>`;
   const moneyBox=(mode==='internal')
     ? moneyRow('1인 요금',`${won(Q.per)} <span style="font-size:12px;opacity:.7">THB</span>`)
       +(perKrw?sub(`${won(perKrw)} 원`):'')
@@ -1983,7 +1985,7 @@ function buildQuoteHtml(mode, Q){
     </div>
     ${detail}
 
-    <div style="margin-top:18px;background:#123A2B;color:#E9DFC8;border-radius:10px;padding:16px 18px">
+    <div style="margin-top:18px;background:#E3F1E7;color:#123A2B;border:1px solid #cfe3d5;border-radius:10px;padding:16px 18px">
       ${moneyBox}
     </div>
 

@@ -689,6 +689,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   .fxbox{min-width:84px}
   .fxbox .fxh{font-size:9.5px;padding:1px 6px}
   .fxbox .fxr{font-size:10.5px;padding:0 5px;gap:4px}
+  /* 휴대폰은 두 줄(사장님 2026-10-03 모바일 점검 — 한 줄이면 환율 상자가 잘리고 화면이 옆으로 밀렸다):
+     1줄 로고 · 로그인 / 2줄 찾기칸 · ♡ · 🛒 · 환율 */
+  .nav .wrap{flex-wrap:wrap;row-gap:6px;padding-top:8px;padding-bottom:8px;height:auto}
+  .nav .menu{order:1;margin-left:auto}
+  .nsearch{order:9;flex:1 1 180px!important;margin:0!important}
+  .navtools{order:10;margin-left:0}
+  .loginbtn{padding:7px 12px;font-size:13px;white-space:nowrap}
 }
 
 /* 찜·장바구니 창 — 상세창보다 좁고 목록만 보여 준다 */
