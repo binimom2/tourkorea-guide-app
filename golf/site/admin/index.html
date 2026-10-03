@@ -1299,8 +1299,12 @@ const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
     +'</div>'
     +(q?'<p class="desc" style="margin:4px 0 8px">「'+esc(bookQ)+'」 찾은 결과 '+list.length+'건 (전체에서)</p>':'')
     /* 「전체」는 첫 줄만 보이게 접어 둔다 — 머리 줄을 누르면 펼침(사장님 2026-10-03). 찾기 결과·처리할 것은 펼친 채 */
-    +(list.length?'<div class="bklist">'+list.map(b=>{ const h=bookCardHtml(b);
-        return (bookFilter==='all'&&!q)?h.replace('<div class="bkcard">','<div class="bkcard'+(BK_OPEN.has(b.no)?'':' fold')+'" data-fold="'+esc(b.no)+'">'):h; }).join('')+'</div>'
+    /* 「처리할 것」 안의 취소 요청 건도 접는다 — 첫 줄에 빨간 「취소 요청」 표시(사장님 2026-10-03) */
+    +(list.length?'<div class="bklist">'+list.map(b=>{ let h=bookCardHtml(b);
+        const cx=!!(b.cancelReq&&b.status!=='cancel');
+        if(q||!(bookFilter==='all'||cx)) return h;
+        if(cx) h=h.replace('<span class="bkat">','<span class="bkst" style="background:#D9412B">취소 요청</span><span class="bkat">');
+        return h.replace('<div class="bkcard">','<div class="bkcard'+(BK_OPEN.has(b.no)?'':' fold')+'" data-fold="'+esc(b.no)+'">'); }).join('')+'</div>'
       :'<p class="desc" style="padding:18px 0">'+(q?'찾는 예약 요청이 없습니다.':'해당하는 예약 요청이 없습니다.')+'</p>')
     +'</div>';
   const sx=document.getElementById('bkSearch');
