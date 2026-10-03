@@ -1429,20 +1429,22 @@ function siteStepRowHtml(b){
 function agencyStepRowHtml(b){
   const v=b.voucher||{}, has=!!v.token, cxl=b.status==='cancel';
   if(cxl&&!has) return '';
-  const rel=has&&v.released!==false, depPaid=v.stage==='balance', balPaid=!!b.pay;
+  const rel=has&&v.released!==false, depPaid=v.stage==='balance', balSent=depPaid&&v.balReleased!==false, balPaid=!!b.pay;
   const gt='<span class="bkstep">›</span>';
   const st=(on,cur)=>on?'bkdone':cur?'add':'ghost bkwait';
   const D=cxl?' disabled':'';
   return '<div class="bkvc on">'
-    +(rel?'<a class="bkvno" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener" title="'+(depPaid?'잔금 인보이스·확정서 열기':'디파짓 인보이스 열기')+'">Invoice No. <b>'+esc(v.cno)+(depPaid?'-B':'-D')+'</b> ↗</a>':'')
+    +(rel?'<a class="bkvno" href="'+esc(voucherUrlOf(b))+'" target="_blank" rel="noopener" title="'+(balSent?'잔금 인보이스·확정서 열기':'디파짓 인보이스 열기')+'">Invoice No. <b>'+esc(v.cno)+(balSent?'-B':'-D')+'</b> ↗</a>':'')
     /* ① 디파짓 인보이스 — 없으면 발급, 초안이면 확인·발행, 나갔으면 ✓(눌러 고치기) */
     +(!has?'<button class="add" data-confirm="'+esc(b.no)+'"'+D+'>디파짓 인보이스 발급</button>'
       :!rel?'<button class="add" data-vprev="'+esc(b.no)+'"'+D+'>📨 디파짓 인보이스 발행</button>'
       :'<button class="bkdone" data-vprev="'+esc(b.no)+'" title="인보이스 확인 · 수정">✓ 디파짓 인보이스</button>')
-    /* ② 디파짓 입금확인 → 잔금 인보이스·확정서 */
-    +gt+'<button class="'+st(depPaid,rel&&!depPaid)+'" data-vbal="'+esc(b.no)+'"'+(!rel||depPaid||cxl?' disabled':'')+' title="디파짓이 들어왔으면 누르세요 — 같은 링크가 잔금 인보이스·확정서로 바뀝니다">'+(depPaid?'✓ ':'')+'디파짓 입금확인</button>'
-    /* ③ 잔금 입금확인 */
-    +gt+'<button class="'+st(balPaid,depPaid&&!balPaid)+'" data-vpaid="'+esc(b.no)+'"'+(!depPaid||balPaid||cxl?' disabled':'')+'>'+(balPaid?'✓ ':'')+'잔금 입금확인'+(balPaid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
+    /* ② 디파짓 입금확인 — 입금 기록만(잔금 인보이스는 ③에서 따로 발송, 사장님 2026-10-03) */
+    +gt+'<button class="'+st(depPaid,rel&&!depPaid)+'" data-vbal="'+esc(b.no)+'"'+(!rel||depPaid||cxl?' disabled':'')+' title="디파짓이 들어왔으면 누르세요 — 입금확인만 기록합니다">'+(depPaid?'✓ ':'')+'디파짓 입금확인</button>'
+    /* ③ 잔금 인보이스·확정서 발송 — 예약을 다 확정한 뒤 확인·수정하고 발송 */
+    +gt+'<button class="'+st(balSent,depPaid&&!balSent)+'" data-vbalsend="'+esc(b.no)+'"'+(!depPaid||cxl?' disabled':'')+' title="잔금 인보이스·확정서 확인 · 수정 · 발송">'+(balSent?'✓ 잔금 인보이스·확정서':'📨 잔금 인보이스·확정서 발송')+'</button>'
+    /* ④ 잔금 입금확인 */
+    +gt+'<button class="'+st(balPaid,balSent&&!balPaid)+'" data-vpaid="'+esc(b.no)+'"'+(!balSent||balPaid||cxl?' disabled':'')+'>'+(balPaid?'✓ ':'')+'잔금 입금확인'+(balPaid?' <i>'+esc(b.pay.via==='auto'?'자동':(b.pay.by||''))+'</i>':'')+'</button>'
     +(rel?'<button class="ghost" data-vmail="'+esc(b.no)+'">📧 이메일</button>':'')
     +(((v.sent||[]).length)?'<div class="bkvsent">보냄: '+(v.sent||[]).slice(-3).map(x=>(x.via==='email'?'📧 ':'💬 ')+esc(x.to||'')+' · '+esc(bookWhen(x.at))).join('<br>')+'</div>':'')
     +'</div>';
@@ -1517,12 +1519,15 @@ async function openInvPreview(b){
   const old=document.getElementById('invPrev'); if(old) old.remove();
   let v=null;
   try{
-    const r=await fetch('/api/golf-book',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'voucher',no:b.no,t:b.voucher.token})});
+    /* 디파짓 입금확인 뒤면 잔금 인보이스·확정서를 본다(d=balance — 발송 전이라도 어드민은 미리 봄, 2026-10-03) */
+    const r=await fetch('/api/golf-book',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'voucher',no:b.no,t:b.voucher.token,d:b.voucher.stage==='balance'?'balance':''})});
     const j=await r.json(); if(j&&j.ok) v=j.v;
   }catch(e){}
   if(!v){ toast('❌ 인보이스를 불러오지 못했습니다'); return; }
   const q=v.quote||{}, inv=b.voucher.inv||{}, dep=inv.dep||{}, bal=inv.bal||{};
-  const draft=b.voucher.released===false;
+  const balMode=b.voucher.stage==='balance';
+  const draft=balMode?b.voucher.balReleased===false:b.voucher.released===false;
+  const docUrl=()=>voucherUrlOf(b)+(balMode?'&d=balance':'');
   const I=(k,val,ph,type)=>'<input data-iv="'+k+'" type="'+(type||'text')+'" value="'+esc(val==null?'':val)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+'>';
   const F=(lab,html)=>'<label class="ivf"><span>'+lab+'</span>'+html+'</label>';
   const days=(q.days||[]).map((d,i)=>'<div class="ivday" data-di="'+i+'"><b>'+esc(d.date||'')+'</b>'
@@ -1534,7 +1539,7 @@ async function openInvPreview(b){
   const m=document.createElement('div');
   m.id='invPrev';
   m.innerHTML='<div class="ivbox">'
-    +'<div class="ivtop"><b style="flex:1">🧾 인보이스 '+(draft?'확인 · 수정':'수정')+' — '+esc((b.agency&&b.agency.company)||'')+' · '+esc((b.agency&&b.agency.quoteNo)||b.no)
+    +'<div class="ivtop"><b style="flex:1">🧾 '+(balMode?'잔금 인보이스 · 확정서':'디파짓 인보이스')+' '+(draft?'확인 · 수정':'수정')+' — '+esc((b.agency&&b.agency.company)||'')+' · '+esc((b.agency&&b.agency.quoteNo)||b.no)
       +(draft?' <span style="color:#D9412B">(발송 전)</span>':' <span style="color:#2E7D4F">(발송됨 · 저장하면 여행사 화면에 바로 반영)</span>')+'</b>'
       +'<button class="ghost" data-x="1">닫기</button></div>'
     +'<div class="ivmain"><div class="ivform">'
@@ -1550,7 +1555,7 @@ async function openInvPreview(b){
       +'<label class="ivf wide"><span>포함 사항 (한 줄에 하나)</span><textarea data-iv="q.includes" rows="4">'+esc((q.includes||[]).join('\n'))+'</textarea></label>'
       +'<label class="ivf wide"><span>요청 사항 (한 줄에 하나)</span><textarea data-iv="q.requests" rows="3">'+esc((q.requests||[]).join('\n'))+'</textarea></label>'
       +'<label class="ivf wide"><span>메모</span><textarea data-iv="memo" rows="2">'+esc(b.voucher.memo||'')+'</textarea></label>'
-    +'</div><iframe src="'+esc(voucherUrlOf(b))+'"></iframe></div>'
+    +'</div><iframe src="'+esc(docUrl())+'"></iframe></div>'
     /* 아래 단추 줄: 저장·미리보기 / 인쇄 / 발송하기(사장님 2026-10-03) — 발송 = 저장 → (발송 전이면) 여행사에 공개 → 이메일 */
     +'<div class="ivbot"><button class="ghost" data-save="1">💾 저장 · 미리보기</button>'
       +'<button class="ghost" data-print="1">🖨 인쇄</button>'
@@ -1577,22 +1582,23 @@ async function openInvPreview(b){
     const j=await bookApi('invEdit',{no:b.no,inv:collect(),memo:val('memo')});
     if(!j||!j.ok){ toast('❌ '+((j&&j.error)||'저장 실패')); return null; }
     bookReplace(j.rec); b=j.rec;
-    const fr=m.querySelector('iframe'); fr.src=voucherUrlOf(b)+'&r='+Date.now();
+    const fr=m.querySelector('iframe'); fr.src=docUrl()+'&r='+Date.now();
     return j;
   };
   m.querySelector('[data-x]').onclick=()=>{ m.remove(); drawBooks(); };
   m.querySelector('[data-save]').onclick=async e=>{ const bt=e.currentTarget; bt.disabled=true; if(await save()) toast('💾 저장했습니다 — 오른쪽이 새 인보이스입니다'); bt.disabled=false; };
   /* 🖨 인쇄 — 오른쪽 미리보기(같은 사이트 iframe)만 인쇄 */
-  m.querySelector('[data-print]').onclick=()=>{ try{ const w=m.querySelector('iframe').contentWindow; w.focus(); w.print(); }catch(e){ window.open(voucherUrlOf(b),'_blank','noopener'); } };
+  m.querySelector('[data-print]').onclick=()=>{ try{ const w=m.querySelector('iframe').contentWindow; w.focus(); w.print(); }catch(e){ window.open(docUrl(),'_blank','noopener'); } };
   const rb=m.querySelector('[data-rel]');
   rb.onclick=async e=>{
     const em=String((b.customer&&b.customer.email)||'').trim();
-    if(!confirm((draft?'인보이스를 발송합니다 — 여행사 보관함에 보이게 됩니다.':'인보이스를 다시 보냅니다.')+(em?'\n이메일도 보냅니다: '+em:'')+'\n\n발송할까요?')) return;
+    const dn=balMode?'잔금 인보이스·확정서':'디파짓 인보이스';
+    if(!confirm((draft?dn+'를 발송합니다 — 여행사 보관함에 보이게 됩니다.':dn+'를 다시 보냅니다.')+(em?'\n이메일도 보냅니다: '+em:'')+'\n\n발송할까요?')) return;
     const bt=e.currentTarget, t0=bt.textContent; bt.disabled=true; bt.textContent='발송 중…';
     const back=msg=>{ bt.disabled=false; bt.textContent=t0; if(msg) toast('❌ '+msg); };
     if(!await save()) return back();
-    if(b.voucher.released===false){
-      const j=await bookApi('release',{no:b.no});
+    if(balMode?b.voucher.balReleased===false:b.voucher.released===false){
+      const j=await bookApi('release',balMode?{no:b.no,bal:1}:{no:b.no});
       if(!j||!j.ok) return back((j&&j.error)||'발송 실패');
       bookReplace(j.rec); b=j.rec;
     }
@@ -1600,7 +1606,7 @@ async function openInvPreview(b){
     if(em){ const s=await bookApi('send',{no:b.no,to:em});
       if(s&&s.ok){ bookReplace(s.rec); mail=' · 📧 '+em; } else mail=s&&s.setup?' · 이메일 자동발송은 아직 설정 전':' · ❌ 이메일 실패'; }
     m.remove(); drawBooks();
-    toast('📨 인보이스를 발송했습니다 — 여행사 보관함에 보입니다'+mail);
+    toast('📨 '+dn+'를 발송했습니다 — 여행사 보관함에 보입니다'+mail);
   };
 }
 function kakaoTextOf(b){
@@ -1845,13 +1851,15 @@ function bindVoucherBtns(p){
   });
   p.querySelectorAll('[data-vbal]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vbal); if(!b) return;
-    if(!confirm('['+((b.agency&&b.agency.company)||b.no)+'] 디파짓 입금을 확인했습니까?\n\n확인하면 잔금 인보이스 · 확정서가 발행되고, 여행사 보관함의 인보이스 링크가 잔금 쪽으로 바뀝니다.')) return;
-    btn.disabled=true; btn.textContent='발행 중…';
+    /* 입금확인만(사장님 2026-10-03) — 잔금 인보이스·확정서는 예약을 다 확정한 뒤 「📨 잔금 인보이스·확정서 발송」으로 따로 */
+    if(!confirm('['+((b.agency&&b.agency.company)||b.no)+'] 디파짓 입금을 확인했습니까?\n\n입금확인만 기록합니다. 잔금 인보이스 · 확정서는 예약을 확정한 뒤 다음 단계에서 발송하세요.')) return;
+    const t0=btn.textContent; btn.disabled=true; btn.textContent='처리 중…';
     const j=await bookApi('balance',{no:b.no});
-    if(!j||!j.ok){ btn.disabled=false; btn.textContent='💰 디파짓 입금 확인 → 잔금 인보이스·확정서 발행'; toast('❌ '+((j&&j.error)||'발행 실패')); return; }
+    if(!j||!j.ok){ btn.disabled=false; btn.textContent=t0; toast('❌ '+((j&&j.error)||'입금확인 실패')); return; }
     bookReplace(j.rec); drawBooks();
-    toast('✅ 잔금 인보이스·확정서를 발행했습니다 — 카톡·이메일로 보내 주세요');
+    toast('💰 디파짓 입금확인 — 예약 확정 후 「📨 잔금 인보이스·확정서 발송」을 누르세요');
   });
+  p.querySelectorAll('[data-vbalsend]').forEach(btn=>btn.onclick=()=>{ const b=bookOf(btn.dataset.vbalsend); if(b) openInvPreview(b); });
   p.querySelectorAll('[data-bdel]').forEach(btn=>btn.onclick=async()=>{
     const no=btn.dataset.bdel, b=bookOf(no); if(!b) return;
     const who=(b.agency&&b.agency.company)||(b.customer&&b.customer.name)||'';

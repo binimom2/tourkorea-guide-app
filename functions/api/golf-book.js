@@ -265,10 +265,14 @@ async function invoiceView(request, rec, site, key, want) {
   }
   /* 두 번 나간다(사장님 2026-09-23) — ① 디파짓 인보이스 → 디파짓 입금 확인되면 ② 잔금 인보이스 & 확정서.
      stage 'balance' 가 되면 같은 링크가 잔금 쪽을 연다. doc 로 예전 디파짓 인보이스도 다시 볼 수 있다 */
-  const stage = rec.voucher.stage === 'balance' ? 'balance' : 'deposit';
-  const doc = (want === 'deposit' || want === 'balance') ? (want === 'balance' && stage !== 'balance' ? 'deposit' : want) : stage;
+  /* 디파짓 입금확인과 잔금 인보이스·확정서 «발송»은 따로(사장님 2026-10-03 — 실시간 견적은 예약 사항이 많아 확정에 시간이 걸린다).
+     balReleased === false 인 동안 여행사에게는 디파짓 인보이스(입금 확인됨)로 보이고, 어드민 미리보기(d=balance)만 잔금 쪽을 본다 */
+  const real = rec.voucher.stage === 'balance' ? 'balance' : 'deposit';
+  const balHidden = real === 'balance' && rec.voucher.balReleased === false;
+  const stage = balHidden ? 'deposit' : real;
+  const doc = want === 'balance' ? real : want === 'deposit' ? 'deposit' : stage;
   return {
-    type: 'invoice', stage, doc, depPaidAt: rec.voucher.depPaidAt || '', balAt: rec.voucher.balAt || '',
+    type: 'invoice', stage, doc, balHidden, depPaidAt: rec.voucher.depPaidAt || '', balAt: rec.voucher.balAt || '',
     no: rec.no, at: rec.at, status: rec.status,
     cno: rec.voucher.cno, confirmedAt: rec.voucher.at, memo: rec.voucher.memo || '',
     to,
@@ -743,6 +747,8 @@ export async function onRequest(context) {
       const now = new Date().toISOString();
       rec.voucher.stage = 'balance'; rec.voucher.depPaidAt = rec.voucher.depPaidAt || now;
       rec.voucher.balAt = now; rec.voucher.balBy = loginIdOf(user);
+      /* 입금확인만 — 잔금 인보이스·확정서는 어드민이 확인·수정 뒤 「발송하기」(release bal)로 따로 내보낸다(사장님 2026-10-03) */
+      if (rec.voucher.balReleased == null) rec.voucher.balReleased = false;
       if (rec.status === 'new' || rec.status === 'doing') rec.status = 'confirmed';
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
       return json({ ok: true, rec });
@@ -756,6 +762,7 @@ export async function onRequest(context) {
       if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
       if (!rec.voucher || !rec.voucher.token || rec.voucher.released === false)
         return json({ error: '인보이스를 먼저 발급해 주세요.' }, 400);
+      if (rec.voucher.balReleased === false) return json({ error: '잔금 인보이스·확정서를 먼저 발송해 주세요.' }, 400);
       markPaid(rec, loginIdOf(user), 'manual');
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: new Date().toISOString() });
       return json({ ok: true, rec, url: voucherUrl(request, rec) });
@@ -769,7 +776,9 @@ export async function onRequest(context) {
       if (!rec) return json({ error: '그 접수번호를 찾지 못했습니다.' }, 404);
       if (!rec.voucher || !rec.voucher.token) return json({ error: '먼저 컨펌해서 인보이스를 만들어 주세요.' }, 400);
       const now = new Date().toISOString();
-      rec.voucher.released = now; rec.voucher.relBy = loginIdOf(user);
+      /* bal=1 — 잔금 인보이스·확정서 발송(디파짓 입금확인 뒤, 2026-10-03) */
+      if (body.bal) { if (rec.voucher.stage !== 'balance') return json({ error: '디파짓 입금확인을 먼저 해 주세요.' }, 400); rec.voucher.balReleased = now; rec.voucher.balRelBy = loginIdOf(user); }
+      else { rec.voucher.released = now; rec.voucher.relBy = loginIdOf(user); }
       if (rec.status === 'new' || rec.status === 'doing') rec.status = 'confirmed';
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: now });
       return json({ ok: true, rec, url: voucherUrl(request, rec) });

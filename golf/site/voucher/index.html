@@ -421,7 +421,9 @@ function renderInvoice(v){
     + (bal ? '<h1>Balance Invoice<small>잔금 인보이스 · 확정서</small></h1>'
            + '<p class="tip">※ <b>디파짓 입금이 확인되어 예약이 확정되었습니다.</b> 아래 잔금을 기한까지 입금해 주세요. 이 문서는 예약 확정서(Confirmation)를 겸합니다.</p>'
            : '<h1>Deposit Invoice<small>디파짓 인보이스</small></h1>'
-           + '<p class="tip">※ 요청하신 수배의 디파짓 인보이스입니다. 기한까지 디파짓을 입금해 주시면 예약을 확정하고 잔금 인보이스 · 확정서를 보내 드립니다.</p>')
+           /* 디파짓 입금확인 뒤 잔금 인보이스 발송 전(2026-10-03) */
+           + (v.depPaidAt ? '<p class="tip">※ <b>디파짓 입금이 확인되었습니다.</b> 예약 확정 후 잔금 인보이스 · 확정서를 보내 드립니다.</p>'
+             : '<p class="tip">※ 요청하신 수배의 디파짓 인보이스입니다. 기한까지 디파짓을 입금해 주시면 예약을 확정하고 잔금 인보이스 · 확정서를 보내 드립니다.</p>'))
     + other
     /* 한 장에 들어오게 줄임(사장님 2026-10-03 「너무 길다」) — 머리·Booking Summary 를 한 상자 두 칸으로,
        포함·요청 사항은 나란히, 1인 요금 × 인원 = 총액은 한 줄 */
@@ -458,7 +460,7 @@ function renderInvoice(v){
         + [["디파짓 (Deposit)", v.pay.dep], ["잔금 (Balance)", v.pay.bal]].filter(x => x[1]).map(x => '<tr><td class="nw">' + x[0] + '</td><td class="nw">' + won(x[1].per)
           + '</td><td class="nw">× ' + (q.pax || 0) + '명</td><td class="nw">' + won(x[1].total) + '</td>'
           /* 입금 기한은 빨간색(사장님 2026-09-23). 잔금 인보이스에서는 디파짓 줄을 「입금 완료」로 */
-          + '<td class="nw" style="color:#D32F2F">' + (bal && x[1] === v.pay.dep ? '<span style="color:#2E7D4F">✓ 입금 완료</span>' : x[1].due ? esc(dshort(x[1].due)) + '까지' : '-') + '</td></tr>').join("")
+          + '<td class="nw" style="color:#D32F2F">' + ((bal || v.depPaidAt) && x[1] === v.pay.dep ? '<span style="color:#2E7D4F">✓ 입금 완료</span>' : x[1].due ? esc(dshort(x[1].due)) + '까지' : '-') + '</td></tr>').join("")
         + '</tbody></table></div>' : '')
     + bankHtml(c.bank, v.memo)
     + (c.invoiceNote ? '<div class="box"><h3>안내</h3><p>' + esc(c.invoiceNote) + '</p></div>' : '')
