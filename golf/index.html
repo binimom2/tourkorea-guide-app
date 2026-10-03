@@ -2447,7 +2447,7 @@ function msgModal(sub,steps,book,send,after){
     catch(e){ btn.disabled=false; err.textContent='보내지 못했습니다. '+((e&&e.message)||'인터넷 연결을 확인해 주세요.'); return; }
     after((j&&j.msg)||{at:new Date().toISOString(),text});
     closeBookForm();          // 보내고 나면 창을 닫고 알린다(사장님 2026-09-22) — 보낸 글은 다시 열면 위에 쌓여 있다
-    renderQuoteHistory();
+    try{ renderQuoteHistory(); }catch(e){}   // 보관함 목록이 닫혀 있어도 알림은 뜨게
     alert('메시지를 보냈습니다. 담당자가 확인합니다.');
   };
   m.querySelector('#bkMsgText').focus();
