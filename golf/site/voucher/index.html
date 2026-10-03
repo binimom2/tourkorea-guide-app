@@ -148,13 +148,13 @@ function itemHtml(v, it, i){
     if(it.noBed) rows.push(["Extra Bed", "No extra bed for child (breakfast only)"]);
     rows.push(["Breakfast", ven.bf === true ? "Included" : ven.bf === false ? "Not Included" : "-"]);
   } else if(it.kind === "courses"){
-    rows.push(["Tee Date", date]);
+    /* 골프는 「Date / Tee Time」「Round / Players」 나란히, 확정 티업 빨강(사장님 2026-10-03).
+       확정 티업이 없으면 손님 희망 시간(검정), 편집 모드면 노란 칸 */
+    const tt = EDIT ? cf[1].html : it.teeOk ? '<span class="cfno">' + esc(it.teeOk) + '</span>' : esc(it.time || "-");
+    rows.push(["Date / Tee Time", { html: esc(date) + ' / ' + tt }]);
     rows.push(["Guest Name", v.guest]);
-    if(it.option) rows.push(["Round", String(it.option).replace(/(\d+)\s*홀/g, "$1 Holes")]);   // 「18홀」→「18 Holes」(사장님 2026-10-01)
-    rows.push(["Players", (it.pax || 0) + " Player(s)"]);
-    /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간 */
-    if(cf) rows.push(cf);
-    else if(it.time) rows.push(["Requested Tee Time", it.time]);
+    const pl = (it.pax || 0) + " Player" + ((it.pax || 0) > 1 ? "s" : "");
+    rows.push(["Round / Players", (it.option ? String(it.option).replace(/(\d+)\s*홀/g, "$1 Holes") + " / " : "") + pl]);   // 「18홀」→「18 Holes」(사장님 2026-10-01)
   } else {
     rows.push(["Date", date]);
     rows.push(["Guest Name", v.guest]);
