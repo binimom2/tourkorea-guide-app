@@ -379,11 +379,11 @@ function renderItemInvoice(v){
               /* 골프는 「예약이 가능하며」(사장님 2026-10-03) */
               : '<p class="tip strong">※ 요청하신 예약이 ' + ((v.items || []).some(x => x.kind === "courses") ? '가능하며' : '확정되었습니다.') + ' 아래 금액을 입금해 주시면 확인 후 바우처(예약 확정서)를 보내 드립니다.</p>')
     + '<div class="head ih">'
+      /* 차례: 번호 · 발행일 · 에이전트명 · 예약자명, 예약번호 뺌(사장님 2026-10-03) */
       + hl("Invoice No.", v.invNo || v.cno)
+      + hl("발행일", String(v.confirmedAt || "").slice(0, 10))
       + hl("에이전트명", to.company || v.guest || "")
-      + hl("예약번호", v.no)
-      + hl("여행자정보", v.guest || "")
-      + hl("발행일", String(v.confirmedAt || "").slice(0, 10)) + '</div>'
+      + hl("예약자명", v.guest || "") + '</div>'
     + '<div class="body" style="padding-top:12px"><table class="itin same"><thead><tr><th>날짜</th><th>내용</th><th>금액</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '<div class="amt"><div class="sum"><span>Total (청구 금액)</span><b>' + won(v.total) + '</b></div></div>'
     + bankHtml(c.bank)
