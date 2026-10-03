@@ -612,7 +612,7 @@ export async function onRequest(context) {
       if (body.tees && typeof body.tees === 'object') {
         Object.keys(body.tees).forEach(k => {
           const it = (rec.items || [])[+k];
-          if (it && it.kind === 'courses') it.teeOk = s(body.tees[k], 40);
+          if (it) it.teeOk = s(body.tees[k], 60);
         });
       }
       await srUpsert(KEY, { data_key: PREFIX + no, data: rec, updated_at: new Date().toISOString() });
@@ -651,7 +651,7 @@ export async function onRequest(context) {
       if (body.tees && typeof body.tees === 'object') {
         Object.keys(body.tees).forEach(k => {
           const it = (rec.items || [])[+k];
-          if (it && it.kind === 'courses') it.teeOk = s(body.tees[k], 40);
+          if (it) it.teeOk = s(body.tees[k], 60);   // 골프 확정 티업 · 호텔 컨펌번호 · 그 밖 확정 내용(사장님 2026-10-03 전 품목 통일)
         });
       }
       rec.voucher.editBy = loginIdOf(user); rec.voucher.editAt = new Date().toISOString();

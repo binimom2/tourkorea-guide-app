@@ -109,10 +109,18 @@ const KIND_T = { courses: "골프장 / Golf Course", hotels: "호텔 / Hotel" };
 function won(n){ return Number(n || 0).toLocaleString("ko-KR") + "원"; }
 
 /* 담긴 줄 하나 = 확정서 한 장(업체 머리 + 상세표). 종류마다 표의 줄이 다르다. */
+/* 품목마다 어드민이 적는 확정 칸(it.teeOk) — 골프 확정 티업과 같은 방식으로 전 품목 통일(사장님 2026-10-03) */
+function confRow(it, i){
+  const lb = it.kind === "courses" ? "Tee Time (확정 티업)" : it.kind === "hotels" ? "Hotel Confirm No. (호텔 컨펌번호)" : "Confirmed (확정 내용)";
+  const ph = it.kind === "courses" ? (it.time ? "희망 " + it.time : "예: 07:30") : it.kind === "hotels" ? "호텔 컨펌번호" : (it.time ? "희망 " + it.time : "확정 시간 · 내용");
+  if(EDIT) return [lb, { html: '<input class="ed" data-tee="' + i + '" value="' + esc(it.teeOk || "") + '" placeholder="' + esc(ph) + '" maxlength="60">' }];
+  return it.teeOk ? [lb, it.teeOk] : null;
+}
 function itemHtml(v, it, i){
   const ven = it.venue || {};
   const date = dfmt(it.date) + (it.dateEnd && it.dateEnd !== it.date ? " ~ " + dfmt(it.dateEnd) : "");
   const rows = [];
+  const cf = confRow(it, i);
   if(it.kind === "hotels"){
     rows.push(["Nights (투숙 박수)", (it.nights || 1) + " Night(s)"]);
     rows.push(["Room Type (객실 타입)", it.option || "-"]);
@@ -127,13 +135,13 @@ function itemHtml(v, it, i){
     /* 아동 엑스트라 베드를 «추가 안 함»으로 고른 예약(2026-09-19) — 호텔이 베드를 넣지 않게 적어 준다 */
     if(it.noBed) rows.push(["Extra Bed (엑스트라 베드)", "No extra bed for child (breakfast only · 아동 조식만)"]);
     rows.push(["Meal Plan (식사)", ven.bf === true ? "Breakfast Included" : ven.bf === false ? "Room Only" : "-"]);
+    if(cf) rows.push(cf);
   } else if(it.kind === "courses"){
     rows.push(["Tee Date (라운드 날짜)", date]);
     if(it.option) rows.push(["Round (라운드)", String(it.option).replace(/(\d+)\s*홀/g, "$1 Holes")]);   // 「18홀」→「18 Holes」(사장님 2026-10-01)
     rows.push(["Players (인원)", (it.pax || 0) + " Player(s)"]);
     /* 확정 티업(어드민이 적음)이 있으면 그것만, 없으면 손님 희망 시간. 편집 모드면 노란 칸 */
-    if(EDIT) rows.push(["Tee Time (확정 티업)", { html: '<input class="ed" data-tee="' + i + '" value="' + esc(it.teeOk || "") + '" placeholder="' + esc(it.time ? "희망 " + it.time : "예: 07:30") + '" maxlength="40">' }]);
-    else if(it.teeOk) rows.push(["Tee Time (확정 티업)", it.teeOk]);
+    if(cf) rows.push(cf);
     else if(it.time) rows.push(["Tee Time (희망 티타임)", it.time]);
   } else {
     rows.push(["Date (이용일)", date]);
@@ -141,6 +149,7 @@ function itemHtml(v, it, i){
     if(it.pax) rows.push(["Qty (인원 · 수량)", String(it.pax)]);
     if(it.riders) rows.push(["Passengers (탑승 인원)", it.riders + " pax"]);   // 차량 탑승 인원수(2026-09-11)
     if(it.time) rows.push(["Note (미팅 · 시간 · 편명)", it.time]);
+    if(cf) rows.push(cf);
   }
   return '<div class="head">'
     + '<div class="bn">Booking No. (예약번호) <b>' + esc(v.no) + (v.items.length > 1 ? "-" + (i + 1) : "") + '</b></div>'

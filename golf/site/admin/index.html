@@ -1248,7 +1248,7 @@ function bookItemHtml(it,i,no){
       +(it.baht?' <i>('+Number(it.baht).toLocaleString('ko-KR')+'밧)</i>':''));
   const tag=[BOOK_KIND[it.kind]||'', it.region||''].filter(Boolean).join(' ');
   /* 확정 티업은 바우처 편집 화면(「바우처 열기 · 수정」)에서 적는다 — 여기선 적힌 것만 보여 준다 */
-  const tee=(it.kind==='courses'&&it.teeOk)?'<span class="bktee">확정 티업 '+esc(it.teeOk)+'</span>':'';
+  const tee=it.teeOk?'<span class="bktee">'+(it.kind==='courses'?'확정 티업':it.kind==='hotels'?'호텔 컨펌':'확정')+' '+esc(it.teeOk)+'</span>':'';
   return '<li><span class="bkw">'+esc(it.name)
     +(tag?' <i>· '+esc(tag)+'</i>':'')+'</span>'
     +'<span class="bkd">'+esc(it.label||'')+'</span>'
@@ -1422,7 +1422,7 @@ function voucherRowHtml(b){
   /* 사이트 예약은 하는 차례대로 왼쪽→오른쪽(사장님 2026-10-02): 💰 입금확인 › 바우처 수정 › 🎫 바우처 발급 › 📧 이메일.
      지금 눌러야 할 단추만 진하게 — 티업이 비었으면 「수정」, 다 적었으면 「발급」 */
   if(!inv){
-    const needTee=(b.items||[]).some(it=>it.kind==='courses'&&!it.teeOk);
+    const needTee=(b.items||[]).some(it=>!it.teeOk);
     const paid=b.pay&&b.status==='paid', done=b.status==='done';
     const gt='<span class="bkstep">›</span>';
     return '<div class="bkvc on">'
@@ -1794,9 +1794,9 @@ function bindVoucherBtns(p){
   });
   p.querySelectorAll('[data-vdone]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.vdone); if(!b) return;
-    const noTee=(b.items||[]).some(it=>it.kind==='courses'&&!it.teeOk);
-    /* 티업이 비었으면 앞 단추로 돌려보내지 않고 바로 수정 화면을 연다(사장님 2026-10-02). 저장하면 이 카드가 저절로 「발급」 차례로 바뀐다 */
-    if(noTee){ window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener'); toast('확정 티업을 적고 저장한 뒤 「바우처 발급」을 누르세요'); return; }
+    /* 품목마다 확정 칸(골프 티업·호텔 컨펌번호·그 밖 확정 내용)이 비었으면 바로 수정 화면을 연다(사장님 2026-10-02, 10-03 전 품목 통일) */
+    const noTee=(b.items||[]).some(it=>!it.teeOk);
+    if(noTee){ window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener'); toast('노란 확정 칸(티업·컨펌번호 등)을 적고 저장한 뒤 「바우처 발급」을 누르세요'); return; }
     const em=String((b.customer&&b.customer.email)||'').trim(), mailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
     if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.'+(mailOk?'\n이메일도 함께 보냅니다: '+em:'')+'\n\n발급할까요?')) return;
     btn.disabled=true; btn.textContent='발급 중…';
