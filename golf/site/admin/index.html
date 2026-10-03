@@ -260,6 +260,11 @@ tr.subrow td{padding:0 6px 11px}
 .bkstaff .bkvc.on{background:#F1F8F3}
 .bkstaff .bkstafflog{background:#fff}
 .bkstaff .bkfoot input[data-memo]{background:#fff}
+.bkcard.fold>*:not(.bkhd){display:none}
+.bkcard.fold .bkhd{margin-bottom:0}
+.bkcard[data-fold] .bkhd{cursor:pointer}
+.bkcard[data-fold] .bkno::before{content:"▾ ";color:var(--muted)}
+.bkcard.fold .bkno::before{content:"▸ "}
 .bkhd{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}
 .bkno{font-size:14px;font-weight:900;letter-spacing:.03em;font-variant-numeric:tabular-nums}
 .bkst{color:#fff;border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:800}
@@ -1293,7 +1298,9 @@ const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
       +'<input id="bkSearch" placeholder="접수번호 · 견적번호 · 여행사 · 이름 · 날짜(2026-11-01) · 골프장/호텔로 찾기" value="'+esc(bookQ)+'" style="flex:1;min-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px">'
     +'</div>'
     +(q?'<p class="desc" style="margin:4px 0 8px">「'+esc(bookQ)+'」 찾은 결과 '+list.length+'건 (전체에서)</p>':'')
-    +(list.length?'<div class="bklist">'+list.map(bookCardHtml).join('')+'</div>'
+    /* 「전체」는 첫 줄만 보이게 접어 둔다 — 머리 줄을 누르면 펼침(사장님 2026-10-03). 찾기 결과·처리할 것은 펼친 채 */
+    +(list.length?'<div class="bklist">'+list.map(b=>{ const h=bookCardHtml(b);
+        return (bookFilter==='all'&&!q)?h.replace('<div class="bkcard">','<div class="bkcard'+(BK_OPEN.has(b.no)?'':' fold')+'" data-fold="'+esc(b.no)+'">'):h; }).join('')+'</div>'
       :'<p class="desc" style="padding:18px 0">'+(q?'찾는 예약 요청이 없습니다.':'해당하는 예약 요청이 없습니다.')+'</p>')
     +'</div>';
   const sx=document.getElementById('bkSearch');
@@ -1305,8 +1312,15 @@ const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
     if(b.dataset.f==='reload'){ BOOKS=null; drawBooks(); return; }
     bookFilter=b.dataset.f; drawBooks();
   });
+  p.querySelectorAll('.bkcard[data-fold] .bkhd').forEach(h=>h.onclick=e=>{
+    if(e.target.closest('button,a')) return;
+    const card=h.closest('.bkcard'), no=card.dataset.fold;
+    card.classList.toggle('fold');
+    if(card.classList.contains('fold')) BK_OPEN.delete(no); else BK_OPEN.add(no);
+  });
   bindBookCards(p,list);
 }
+var BK_OPEN=new Set();   // 「전체」에서 펼쳐 둔 카드(다시 그려도 유지)
 /* 줄 차례 호텔 → 골프 → 기타, 같은 종류는 날짜순 — [줄, 원래 번호] 로 돌려준다 */
 function kindSorted(items){
   const KR=k=>k==='hotels'?0:k==='courses'?1:2;
