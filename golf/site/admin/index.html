@@ -252,7 +252,10 @@ tr.subrow td{padding:0 6px 11px}
 /* 아래 직원 작업 칸은 파란 바탕 — 위 손님 예약 내용(흰 바탕)과 한눈에 구분(사장님 2026-10-02) */
 .bkcxl{margin:0 0 7px;padding:7px 12px;border-radius:8px;background:#D9412B;color:#fff;font-size:14px;font-weight:900}
 .bkcxl span{font-size:12px;font-weight:700;opacity:.85;margin-left:4px}
-.bkstaff{margin:10px -13px -12px;padding:11px 13px 12px;background:#E8F0FB;border-top:1px solid #C6D8F1}
+.bkstaff{margin:10px -13px -12px;padding:11px 13px 12px;background:rgba(0,0,0,.035);border-top:1px solid rgba(0,0,0,.08)}
+/* 건마다 카드 전체를 연파랑·연분홍 번갈아(사장님 2026-10-03) — 안의 손님 요청 노랑·단추 줄 초록은 그대로 */
+.bklist>.bkcard:nth-child(odd){background:#EAF2FD;border-color:#C6D8F1}
+.bklist>.bkcard:nth-child(even){background:#FCEDF2;border-color:#F0CAD6}
 .bkstaff .bkvc{background:#fff}
 .bkstaff .bkvc.on{background:#F1F8F3}
 .bkstaff .bkstafflog{background:#fff}
