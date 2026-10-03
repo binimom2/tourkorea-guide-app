@@ -80,6 +80,10 @@ h1 small{font-size:18px;font-weight:800;margin-left:8px;vertical-align:middle}
 .itin.same th{text-align:center;font-size:13px}
 .itin.same td:first-child,.itin.same td:last-child{text-align:center!important}
 .itin.same td{font-size:14.5px;font-weight:700;color:var(--ink);vertical-align:top}
+.itin.kv{margin-bottom:12px}
+.itin.kv th{text-align:center;font-size:13px}
+.itin.kv td{font-size:14.5px;color:var(--ink);vertical-align:top}
+.itin.kv td:first-child{width:150px;color:var(--muted);white-space:nowrap}
 .box.bank{font-size:15px;font-weight:800}
 .box.bank .banknote{margin:8px 0 0;font-size:13.5px;font-weight:700;color:#D32F2F}
 .box.bank .acct{font-size:19px;font-weight:900;color:#0b3d91;letter-spacing:.01em}
@@ -400,7 +404,25 @@ function bankHtml(bank){
 }
 function renderItemInvoice(v){
   const c = v.company || {}, to = v.to || {};
-  const rows = (v.items || []).map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
+  /* 호텔은 한 줄에 몰아 쓰면 글자가 밀린다 — 구분·내용 표로 나눠 적는다(사장님 2026-10-03) */
+  const dl = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? m[1] + "." + m[2] + "." + m[3] + " " + dshort(s).replace(/^\S+\s*/, "") : (s || ""); };
+  const hotelHtml = it => {
+    const lb = String(it.label || "");
+    const paxSeg = lb.split(" · ").filter(p => /^성인/.test(p)).join(" · ");
+    const tot = (it.adult || 0) + (it.child || 0) || it.pax || 0;
+    const bm = /\d+박\s+([^·]+)/.exec(lb), beds = bm ? bm[1].trim() : "";
+    const n = it.nights || 0;
+    const kv = (k, val) => '<tr><td>' + k + '</td><td>' + val + '</td></tr>';
+    return '<table class="itin kv"><thead><tr><th>구분</th><th>내용</th></tr></thead><tbody>'
+      + kv("호텔", '<b>' + esc(it.name) + '</b>')
+      + kv("날짜", esc(dl(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? ' ~ ' + esc(dl(it.dateEnd)) : '') + (n ? ' · ' + n + '박' : ''))
+      + kv("총 인원수", tot + '명' + (it.child && paxSeg ? ' <span class="mut">(' + esc(paxSeg) + ')</span>' : ''))
+      + kv("룸타입 / 베드타입", esc(it.option || "-") + (beds ? ' / ' + esc(beds) : ''))
+      + kv("금액", it.asked ? '<span class="mut">문의</span>' : won(it.krw))
+      + '</tbody></table>';
+  };
+  const hotels = (v.items || []).filter(it => it.kind === "hotels").map(hotelHtml).join("");
+  const rows = (v.items || []).filter(it => it.kind !== "hotels").map(it => '<tr><td class="nw">' + esc(dshort(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? '<br>~ ' + esc(dshort(it.dateEnd)) : '') + '</td>'
     + '<td>' + esc(it.name) + '<br>' + esc(it.label || it.option || "") + '</td>'
     + '<td class="nw" style="text-align:right">' + (it.asked ? '<span class="mut">문의</span>' : won(it.krw)) + '</td></tr>').join("");
   /* 머리 다섯 줄은 Invoice No. 와 같은 크기·굵기·색(사장님 2026-10-02) */
@@ -418,7 +440,8 @@ function renderItemInvoice(v){
       + hl("발행일", String(v.confirmedAt || "").slice(0, 10))
       + hl("에이전트명", to.company || v.guest || "")
       + hl("예약자명", v.guest || "") + '</div>'
-    + '<div class="body" style="padding-top:12px"><table class="itin same"><thead><tr><th>날짜</th><th>내용</th><th>금액</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="body" style="padding-top:12px">' + hotels
+      + (rows ? '<table class="itin same"><thead><tr><th>날짜</th><th>내용</th><th>금액</th></tr></thead><tbody>' + rows + '</tbody></table>' : '') + '</div>'
     + '<div class="amt"><div class="sum"><span>Total (청구 금액)</span><b>' + won(v.total) + '</b></div></div>'
     + bankHtml(c.bank)
     /* 어드민 「인보이스 발급」은 이 원본을 수정 모드로 띄워 메모를 덧붙인다(사장님 2026-10-03, 바우처와 같은 방식) */

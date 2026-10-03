@@ -301,7 +301,8 @@ function itemInvoiceView(request, rec, site) {
     to: { company: s(rec.from && rec.from.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: '' },
     guest: (rec.customer && rec.customer.name) || '',
     items: (rec.items || []).map(it => ({ kind: it.kind, kindT: it.kindT || '', region: it.region, name: it.name, option: it.option,
-      date: it.date, dateEnd: it.dateEnd, label: it.label, krw: it.asked ? 0 : num(it.krw), asked: !!it.asked })),
+      date: it.date, dateEnd: it.dateEnd, label: it.label, krw: it.asked ? 0 : num(it.krw), asked: !!it.asked,
+      nights: num(it.nights), rooms: num(it.rooms), pax: num(it.pax), adult: num(it.adult), child: num(it.child) })),   // 호텔 줄을 구분·내용 표로(2026-10-03)
     total: num(rec.total),
     paid: !!rec.pay,
     released: rec.voucher.released !== false,   // false = 아직 「발송」 전 초안
