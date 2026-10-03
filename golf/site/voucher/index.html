@@ -307,8 +307,8 @@ function render(v){
   $("#act").style.display = "";
   if(EDIT){
     $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — '
-      + (v.status === "done" ? '' : '<b style="color:#D32F2F">아직 발급 전</b> · ')
-      + '노란 칸을 채우고 「저장」, 보낼 때는 「발송」. 손님 화면에는 적은 글자만 보입니다.'
+      + (v.status === "done" ? '' : '<b style="color:#D32F2F">(발송 전)</b> · ')
+      + '노란 칸을 채우고 아래 「저장」, 보낼 때는 「발송하기」. 손님 화면에는 적은 글자만 보입니다.'
       + '<span id="edMsg"></span></div>');
     edSaveBtn(v); edSendBtn(v);
   }
@@ -357,7 +357,8 @@ async function saveEdit(v){
 /* 인보이스 「발송」(사장님 2026-10-03) — 적은 것 저장 → 초안이면 공개(release) → 손님 이메일로 보냄.
    고칠 것 없으면 그냥 이 단추만 누르면 된다. 단추 차례: 저장 · 발송 · 인쇄 */
 function edSendBtn(v){
-  if(!$("#edSend")) $("#edSave").insertAdjacentHTML("afterend", '<button type="button" id="edSend">📨 발송</button>');
+  /* 단추 차례 통일(사장님 2026-10-03): 저장 · 인쇄 · 발송하기 — 여행사 인보이스 창과 같게 */
+  if(!$("#edSend")) $("#act").insertAdjacentHTML("beforeend", '<button type="button" id="edSend">📨 발송하기</button>');
   $("#edSend").onclick = () => sendInvoice(v);
 }
 async function sendInvoice(v){
@@ -542,8 +543,8 @@ function renderItemInvoice(v){
   $("#act").style.display = "";
   if(EDIT){
     $("#app").insertAdjacentHTML("afterbegin", '<div class="edbar">✏ <b>수정 모드</b> — '
-      + (v.released ? '' : '<b style="color:#D32F2F">아직 발송 전(초안)</b> · ')
-      + '노란 칸에 덧붙일 글을 적고 「저장」, 보낼 때는 「발송」. 손님 화면에는 적은 글자만 보입니다.'
+      + (v.released ? '' : '<b style="color:#D32F2F">(발송 전)</b> · ')
+      + '노란 칸에 덧붙일 글을 적고 아래 「저장」, 보낼 때는 「발송하기」. 손님 화면에는 적은 글자만 보입니다.'
       + '<span id="edMsg"></span></div>');
     edSaveBtn(v); edSendBtn(v);
   }

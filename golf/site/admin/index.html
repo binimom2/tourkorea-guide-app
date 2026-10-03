@@ -175,6 +175,8 @@ tr.subrow td{padding:0 6px 11px}
 #invPrev{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}
 .ivbox{background:#fff;border-radius:10px;width:min(1320px,100%);height:min(94vh,1200px);display:flex;flex-direction:column;overflow:hidden}
 .ivtop{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.ivbot{display:flex;gap:8px;justify-content:center;padding:10px 14px;border-top:1px solid var(--line);background:#faf8f2}
+.ivbot button{min-width:130px}
 .ivmain{flex:1;display:grid;grid-template-columns:minmax(360px,470px) 1fr;min-height:0}
 .ivmain iframe{width:100%;height:100%;border:0;border-left:1px solid var(--line)}
 .ivform{overflow:auto;padding:6px 14px 20px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;align-content:start}
@@ -1533,10 +1535,8 @@ async function openInvPreview(b){
   m.id='invPrev';
   m.innerHTML='<div class="ivbox">'
     +'<div class="ivtop"><b style="flex:1">🧾 인보이스 '+(draft?'확인 · 수정':'수정')+' — '+esc((b.agency&&b.agency.company)||'')+' · '+esc((b.agency&&b.agency.quoteNo)||b.no)
-      +(draft?' <span style="color:#D9412B">(초안 · 여행사에 안 보임)</span>':' <span style="color:#2E7D4F">(발행됨 · 저장하면 여행사 화면에 바로 반영)</span>')+'</b>'
-      +'<button class="ghost" data-x="1">닫기</button>'
-      +'<button class="ghost" data-save="1">💾 저장 · 미리보기</button>'
-      +(draft?'<button class="add" data-rel="1">✅ 저장 · 여행사에 발행</button>':'')+'</div>'
+      +(draft?' <span style="color:#D9412B">(발송 전)</span>':' <span style="color:#2E7D4F">(발송됨 · 저장하면 여행사 화면에 바로 반영)</span>')+'</b>'
+      +'<button class="ghost" data-x="1">닫기</button></div>'
     +'<div class="ivmain"><div class="ivform">'
       +'<h4>받는 분</h4>'+F('여행사',I('to.company',v.to&&v.to.company))+F('담당자',I('to.contact',v.to&&v.to.contact))
       +'<h4>일정</h4>'+F('팀명',I('q.team',q.team))+F('출발',I('q.start',q.start,'','date'))+F('귀국',I('q.end',q.end,'','date'))+F('인원',I('q.pax',q.pax,'','number'))
@@ -1550,7 +1550,11 @@ async function openInvPreview(b){
       +'<label class="ivf wide"><span>포함 사항 (한 줄에 하나)</span><textarea data-iv="q.includes" rows="4">'+esc((q.includes||[]).join('\n'))+'</textarea></label>'
       +'<label class="ivf wide"><span>요청 사항 (한 줄에 하나)</span><textarea data-iv="q.requests" rows="3">'+esc((q.requests||[]).join('\n'))+'</textarea></label>'
       +'<label class="ivf wide"><span>메모</span><textarea data-iv="memo" rows="2">'+esc(b.voucher.memo||'')+'</textarea></label>'
-    +'</div><iframe src="'+esc(voucherUrlOf(b))+'"></iframe></div></div>';
+    +'</div><iframe src="'+esc(voucherUrlOf(b))+'"></iframe></div>'
+    /* 아래 단추 줄: 저장·미리보기 / 인쇄 / 발송하기(사장님 2026-10-03) — 발송 = 저장 → (발송 전이면) 여행사에 공개 → 이메일 */
+    +'<div class="ivbot"><button class="ghost" data-save="1">💾 저장 · 미리보기</button>'
+      +'<button class="ghost" data-print="1">🖨 인쇄</button>'
+      +'<button class="add" data-rel="1">📨 발송하기</button></div></div>';
   document.body.appendChild(m);
   const val=k=>{ const el=m.querySelector('[data-iv="'+k+'"]'); return el?el.value:''; };
   /* 총액·잔금이 비어 있으면 1인 요금 × 인원, 1인 요금 − 디파짓으로 채워 준다(적어 넣으면 그 값) */
@@ -1578,14 +1582,25 @@ async function openInvPreview(b){
   };
   m.querySelector('[data-x]').onclick=()=>{ m.remove(); drawBooks(); };
   m.querySelector('[data-save]').onclick=async e=>{ const bt=e.currentTarget; bt.disabled=true; if(await save()) toast('💾 저장했습니다 — 오른쪽이 새 인보이스입니다'); bt.disabled=false; };
+  /* 🖨 인쇄 — 오른쪽 미리보기(같은 사이트 iframe)만 인쇄 */
+  m.querySelector('[data-print]').onclick=()=>{ try{ const w=m.querySelector('iframe').contentWindow; w.focus(); w.print(); }catch(e){ window.open(voucherUrlOf(b),'_blank','noopener'); } };
   const rb=m.querySelector('[data-rel]');
-  if(rb) rb.onclick=async e=>{
-    const bt=e.currentTarget; bt.disabled=true; bt.textContent='발행 중…';
-    if(!await save()){ bt.disabled=false; bt.textContent='✅ 저장 · 여행사에 발행'; return; }
-    const j=await bookApi('release',{no:b.no});
-    if(!j||!j.ok){ bt.disabled=false; bt.textContent='✅ 저장 · 여행사에 발행'; toast('❌ '+((j&&j.error)||'발행 실패')); return; }
-    m.remove(); bookReplace(j.rec); drawBooks();
-    toast('✅ 인보이스를 발행했습니다 — 여행사 보관함에 보입니다. 카톡·이메일로도 보낼 수 있습니다');
+  rb.onclick=async e=>{
+    const em=String((b.customer&&b.customer.email)||'').trim();
+    if(!confirm((draft?'인보이스를 발송합니다 — 여행사 보관함에 보이게 됩니다.':'인보이스를 다시 보냅니다.')+(em?'\n이메일도 보냅니다: '+em:'')+'\n\n발송할까요?')) return;
+    const bt=e.currentTarget, t0=bt.textContent; bt.disabled=true; bt.textContent='발송 중…';
+    const back=msg=>{ bt.disabled=false; bt.textContent=t0; if(msg) toast('❌ '+msg); };
+    if(!await save()) return back();
+    if(b.voucher.released===false){
+      const j=await bookApi('release',{no:b.no});
+      if(!j||!j.ok) return back((j&&j.error)||'발송 실패');
+      bookReplace(j.rec); b=j.rec;
+    }
+    let mail='';
+    if(em){ const s=await bookApi('send',{no:b.no,to:em});
+      if(s&&s.ok){ bookReplace(s.rec); mail=' · 📧 '+em; } else mail=s&&s.setup?' · 이메일 자동발송은 아직 설정 전':' · ❌ 이메일 실패'; }
+    m.remove(); drawBooks();
+    toast('📨 인보이스를 발송했습니다 — 여행사 보관함에 보입니다'+mail);
   };
 }
 function kakaoTextOf(b){
