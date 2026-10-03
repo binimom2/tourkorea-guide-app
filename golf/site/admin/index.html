@@ -1362,7 +1362,8 @@ function bookCardHtml(b){
         +bookMsgsHtml(b)
       : (c.memo?'<div class="bkmemo"><b>손님 요청</b>'+esc(c.memo)+'</div>':'')
         /* 보이는 차례만 호텔 → 골프 → 기타(사장님 2026-10-03). 줄 번호 i 는 원래 자리 그대로 넘긴다 */
-        +'<ul class="bkitems">'+kindSorted(b.items).map(([it,i])=>bookItemHtml(it,i,b.no)).join('')+'</ul>')
+        +'<ul class="bkitems">'+kindSorted(b.items).map(([it,i])=>bookItemHtml(it,i,b.no)).join('')+'</ul>'
+        +bookMsgsHtml(b))   /* 사이트 예약에도 여행사 「💬 메시지」(2026-10-03) */
     /* 담당자가 먼저다(사장님 2026-09-29) — 「🙋 담당하기」를 눌러야 컨펌·인보이스·입금확인·상태 바꾸기가 나온다 */
     +((!b.assign||!b.assign.by)&&b.status!=='cancel'
       ? '<div class="bkstaff"><div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button></div>'
@@ -1645,7 +1646,7 @@ function bookDocHtml(b){
 function bookMsgsHtml(b){
   const ms=Array.isArray(b.msgs)?b.msgs:[]; if(!ms.length) return '';
   const un=Math.max(0,+b.msgUnread||0);
-  return '<div class="bkmsgs'+(un?' new':'')+'"><div class="hd">💬 추가 요청 '+ms.length+'건'
+  return '<div class="bkmsgs'+(un?' new':'')+'"><div class="hd">💬 여행사 메시지 '+ms.length+'건'
     +(un?' <b>새 메시지 '+un+'</b><button class="ghost" data-msgread="'+esc(b.no)+'">확인함</button>':'')+'</div>'
     +ms.map((m,i)=>'<div class="m'+(i>=ms.length-un?' un':'')+'"><span>'+esc(bookWhen(m.at))+'</span><p>'+esc(m.text||'')+'</p></div>').join('')
     +'</div>';

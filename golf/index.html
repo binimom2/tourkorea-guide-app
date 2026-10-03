@@ -2098,6 +2098,8 @@ function siteRowHtml(r){
         (r.doc==='voucher'&&Array.isArray(r.vouchers)&&r.vouchers.length>1)
         ?`<div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px;max-width:200px;">${r.vouchers.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" title="${esc(x.name)}" style="border:none;background:#1f6b3f;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🎫 ${esc(x.name)}</a>`).join('')}</div>`
         :r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" style="flex-shrink:0;border:none;background:${r.doc==='voucher'?'#1f6b3f':'#0b3d91'};color:#fff;border-radius:6px;padding:7px 11px;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;">${r.doc==='voucher'?'🎫 바우처':'🧾 인보이스'}</a>`:''}
+      ${/* 💬 메시지 보내기(사장님 2026-10-03) — 송금했습니다 · 명단 · 변경 요청 등. 취소된 건 빼고 언제든 */
+        r.status!=='cancel'?`<button type="button" onclick="openSiteMsg('${esc(r.no)}')" style="flex-shrink:0;border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">💬 메시지 보내기${(r.msgs||[]).length?` (${r.msgs.length})`:''}</button>`:''}
       ${r.cancelReq?`<span style="flex-shrink:0;font-size:11.5px;font-weight:800;color:#fff;background:#c0492f;border-radius:6px;padding:5px 9px;white-space:nowrap;">취소 요청함</span>`
         :['new','doing','confirmed'].includes(r.status)?`<button type="button" onclick="cancelSiteRow('${esc(r.no)}')" style="flex-shrink:0;border:1px solid #c0492f;background:#fff;color:#c0492f;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">취소 요청</button>`:''}
       <div style="flex-shrink:0;align-self:stretch;display:flex;align-items:center;padding-left:8px;border-left:1px solid #efeada;">
@@ -2176,7 +2178,7 @@ function renderQuoteHistory(){
           ? (r.book
               ? `<span style="font-size:10.5px;font-weight:800;color:#1f6b3f;background:#e3f3e8;border-radius:6px;padding:4px 8px;text-align:center;white-space:nowrap;">✅ 수배 요청함 · ${esc(String(r.book.at||'').slice(5,10).replace('-','/'))}</span>
                  <button type="button" onclick="bookAgencyQuote(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📄 수배요청서 보기</button>
-                 <button type="button" onclick="openBookMsg(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">💬 추가 요청 보내기${(r.book.msgs||[]).length?` (${r.book.msgs.length})`:''}</button>
+                 <button type="button" onclick="openBookMsg(${idx})" style="border:1px solid #1f6b3f;background:#fff;color:#1f6b3f;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">💬 메시지 보내기${(r.book.msgs||[]).length?` (${r.book.msgs.length})`:''}</button>
                  ${(r.book.live&&r.book.live.url)?`<a href="${esc(r.book.live.url)}" target="_blank" rel="noopener" style="border:none;background:#0b3d91;color:#fff;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:800;text-align:center;text-decoration:none;white-space:nowrap;">🧾 ${r.book.live.stage==='balance'?'잔금 인보이스 · 확정서':'디파짓 인보이스'}</a>`:''}`
               : `<button type="button" onclick="bookAgencyQuote(${idx})" style="border:none;background:#E91E63;color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✅ 확정 · 수배 요청</button>`)
           : ''}
@@ -2349,7 +2351,7 @@ function bookAgencyQuote(idx){
           <div style="font-size:23px;font-weight:800;letter-spacing:-.03em;margin-top:2px;">수배요청서</div></div>
         <div style="text-align:right;font-size:11.5px;color:#5E6F66;"><div style="font-size:13px;font-weight:800;color:#15211C;">${esc(Q.quoteNo)}</div>요청일 ${esc(again?String(Q.book.at||'').slice(0,10):iso(new Date()))}</div>
       </div>
-      ${again?`<div style="margin-top:10px;padding:8px 11px;border-radius:8px;background:#e3f3e8;color:#1f6b3f;font-size:12.5px;font-weight:700;">✅ 접수된 수배요청서입니다 — 내용은 고칠 수 없습니다. 더 전하실 말씀은 보관함의 「💬 추가 요청 보내기」로 보내 주세요.${bookStepsHtml(Q.book)}</div>`:''}
+      ${again?`<div style="margin-top:10px;padding:8px 11px;border-radius:8px;background:#e3f3e8;color:#1f6b3f;font-size:12.5px;font-weight:700;">✅ 접수된 수배요청서입니다 — 내용은 고칠 수 없습니다. 더 전하실 말씀은 보관함의 「💬 메시지 보내기」로 보내 주세요.${bookStepsHtml(Q.book)}</div>`:''}
       <div class="bkinfo">
         <span>팀명</span><b>${esc(Q.team||'-')}</b><span>인원</span><b>${Q.pax}명</b>
         <span>일정</span><b>${esc(Q.start)} ~ ${esc(Q.end||'')} <i>(${Q.nights}박 ${Q.tripDays||(Q.nights+1)}일)</i></b><span>항공</span><b>${esc(Q.flight||'-')}</b>
@@ -2370,7 +2372,7 @@ function bookAgencyQuote(idx){
       <span id="bkErr" style="flex:1;font-size:12.5px;font-weight:700;color:#c0492f;"></span>
       <button type="button" id="bkCancel" style="border:1px solid #d8d2c4;background:#fff;color:#15211C;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;">${again?'닫기':'취소'}</button>
       ${again
-        ? `<button type="button" id="bkMsg" style="border:none;background:#1f6b3f;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">💬 추가 요청 보내기</button>`
+        ? `<button type="button" id="bkMsg" style="border:none;background:#1f6b3f;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">💬 메시지 보내기</button>`
         : `<button type="button" id="bkSend" style="border:none;background:#E91E63;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;">✅ 확정 · 수배 요청 보내기</button>`}
     </div></div>`;
   document.body.appendChild(m);
@@ -2401,19 +2403,32 @@ function bookMsgListHtml(book){
       <span style="flex:none;color:#5E6F66;font-weight:700;white-space:nowrap;">${esc(String(x.at||'').slice(5,16).replace('-','/').replace('T',' '))}</span>
       <span style="white-space:pre-wrap;font-weight:600;">${esc(x.text||'')}</span></div>`).join('');
 }
+/* 사이트 예약 줄의 「💬 메시지 보내기」 — 견적 수배 건과 같은 창을 쓴다(서버 siteMsg) */
+function openSiteMsg(no){
+  const r=(QH_SITE||[]).find(x=>x.no===no); if(!r||GROLE!=='agency') return;
+  const first=(r.items||[])[0]||{};
+  msgModal(`${esc(r.no)} · ${esc(first.name||'')}${(r.items||[]).length>1?' 외 '+((r.items.length)-1)+'건':''}`, '', {msgs:r.msgs||[]},
+    text=>agencyApi({action:'siteMsg',no,text}),
+    msg=>{ r.msgs=(r.msgs||[]).concat([msg]); });
+}
 function openBookMsg(idx){
   const Q=QH_LIST[idx]; if(!Q||!Q.book||GROLE!=='agency') return;
+  msgModal(`${esc(Q.quoteNo)}${Q.team?' · '+esc(Q.team):''} · ${esc(Q.start)} ~ ${esc(Q.end||'')}`, bookStepsHtml(Q.book), Q.book,
+    text=>agencyApi({action:'quoteBookMsg',quoteNo:Q.quoteNo,text}),
+    msg=>{ Q.book.msgs=(Array.isArray(Q.book.msgs)?Q.book.msgs:[]).concat([msg]); });
+}
+function msgModal(sub,steps,book,send,after){
   closeBookForm();
   const IN='width:100%;box-sizing:border-box;border:1.5px solid #d8d2c4;border-radius:7px;padding:8px 10px;font:inherit;font-size:13.5px;font-weight:600;background:#fff;color:#15211C;resize:vertical;line-height:1.5;';
   const m=document.createElement('div'); m.id='bkModal';
   m.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;';
   m.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);">
     <div style="flex:1;overflow:auto;padding:20px 22px 10px;">
-      <div style="font-size:18px;font-weight:800;">💬 추가 요청 보내기</div>
-      <div style="font-size:12.5px;color:#5E6F66;font-weight:700;margin-top:3px;">${esc(Q.quoteNo)}${Q.team?' · '+esc(Q.team):''} · ${esc(Q.start)} ~ ${esc(Q.end||'')}</div>
-      ${bookStepsHtml(Q.book)}
-      <div id="bkMsgList" style="margin-top:12px;">${bookMsgListHtml(Q.book)}</div>
-      <textarea id="bkMsgText" maxlength="1000" rows="4" placeholder="담당자에게 전할 추가 요청을 적어 주세요. 보낸 메시지는 고치거나 지울 수 없습니다." style="${IN}margin-top:10px;"></textarea>
+      <div style="font-size:18px;font-weight:800;">💬 메시지 보내기</div>
+      <div style="font-size:12.5px;color:#5E6F66;font-weight:700;margin-top:3px;">${sub}</div>
+      ${steps||''}
+      <div id="bkMsgList" style="margin-top:12px;">${bookMsgListHtml(book)}</div>
+      <textarea id="bkMsgText" maxlength="1000" rows="4" placeholder="담당자에게 전할 말씀을 적어 주세요(예: 송금했습니다 · 명단 · 변경 요청). 보낸 메시지는 고치거나 지울 수 없습니다." style="${IN}margin-top:10px;"></textarea>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 22px;border-top:1px solid #e7e3d8;background:#faf8f2;">
       <span id="bkErr" style="flex:1;font-size:12.5px;font-weight:700;color:#c0492f;"></span>
@@ -2428,9 +2443,9 @@ function openBookMsg(idx){
     if(!text){ err.textContent='보낼 내용을 적어 주세요.'; ta.focus(); return; }
     btn.disabled=true; err.textContent='';
     let j;
-    try{ j=await agencyApi({action:'quoteBookMsg',quoteNo:Q.quoteNo,text}); }
+    try{ j=await send(text); }
     catch(e){ btn.disabled=false; err.textContent='보내지 못했습니다. '+((e&&e.message)||'인터넷 연결을 확인해 주세요.'); return; }
-    Q.book.msgs=(Array.isArray(Q.book.msgs)?Q.book.msgs:[]).concat([j.msg||{at:new Date().toISOString(),text}]);
+    after((j&&j.msg)||{at:new Date().toISOString(),text});
     closeBookForm();          // 보내고 나면 창을 닫고 알린다(사장님 2026-09-22) — 보낸 글은 다시 열면 위에 쌓여 있다
     renderQuoteHistory();
     alert('메시지를 보냈습니다. 담당자가 확인합니다.');
