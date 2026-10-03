@@ -1801,22 +1801,11 @@ function bindVoucherBtns(p){
     BOOKS.list=(BOOKS.list||[]).filter(x=>x.no!==no);
     drawBooks(); toast('🗑 「'+no+'」 예약요청을 삭제했습니다');
   });
-  p.querySelectorAll('[data-vdone]').forEach(btn=>btn.onclick=async()=>{
+  /* 인보이스와 같이 바우처 화면(수정 모드)을 열어 저장·발송한다(사장님 2026-10-03) — 그 화면 「발송」이 ⑤ 발급 + 이메일 */
+  p.querySelectorAll('[data-vdone]').forEach(btn=>btn.onclick=()=>{
     const b=bookOf(btn.dataset.vdone); if(!b) return;
-    /* 품목마다 확정 칸(골프 티업·호텔 컨펌번호·그 밖 확정 내용)이 비었으면 바로 수정 화면을 연다(사장님 2026-10-02, 10-03 전 품목 통일) */
-    const noTee=(b.items||[]).some(it=>!it.teeOk);
-    if(noTee){ window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener'); toast('노란 확정 칸(티업·컨펌번호 등)을 적고 저장한 뒤 「바우처 발급」을 누르세요'); return; }
-    const em=String((b.customer&&b.customer.email)||'').trim(), mailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
-    if(!confirm('바우처를 발급합니다 — 여행사 보관함·손님 링크에 바우처가 보입니다.'+(mailOk?'\n이메일도 함께 보냅니다: '+em:'')+'\n\n발급할까요?')) return;
-    btn.disabled=true; btn.textContent='발급 중…';
-    const j=await bookApi('status',{no:b.no,status:'done'});
-    if(!j||!j.ok){ btn.disabled=false; btn.textContent='바우처 발급'; toast('❌ '+((j&&j.error)||'발급 실패')); return; }
-    bookReplace(j.rec); drawBooks();
-    /* 이메일이 적혀 있으면 바로 보낸다(사장님 2026-10-02). 서버 메일 설정(RESEND_API_KEY) 전이면 안내만 */
-    if(!mailOk){ toast('🎫 바우처를 발급했습니다'); return; }
-    const m=await bookApi('send',{no:b.no,to:em});
-    if(m&&m.ok){ bookReplace(m.rec); drawBooks(); toast('🎫 바우처 발급 · 📧 '+em+' 로 보냈습니다'); }
-    else toast(m&&m.setup?'🎫 바우처 발급 — 이메일 자동발송은 아직 설정 전이라 보내지 않았습니다':'🎫 바우처 발급 — ❌ 이메일 실패: '+((m&&m.error)||''));
+    window.open(voucherUrlOf(b)+'&edit=1','_blank','noopener');
+    toast('노란 칸을 확인하고 「📨 발송」을 누르세요');
   });
   p.querySelectorAll('[data-vprev]').forEach(btn=>btn.onclick=()=>{ const b=bookOf(btn.dataset.vprev); if(b) openInvPreview(b); });
   p.querySelectorAll('[data-vlink]').forEach(btn=>btn.onclick=async()=>{
