@@ -2082,6 +2082,8 @@ function drawCal(){
     + (anyClosed ? " · ✕ 표시는 골프장 휴장일입니다" : "");
 }
 function calPick(s){
+  /* 날짜를 고르면 「먼저 날짜를 선택해 주세요」 같은 경고는 지운다(사장님 2026-10-05) */
+  { const w = $("#qpWarn"); if(w && w.className === "qp-warn") qpTell(""); }
   if(qpKind !== "hotels"){
     $("#qpDate").value = s; closeCal(); drawDateBtn(); qpCalc(); return;
   }
