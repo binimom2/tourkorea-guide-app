@@ -2723,6 +2723,8 @@ async function downloadQuote(mode){
     if(GUEST){
       /* 로그인 없는 손님 모드: 서버에 쓸 권한이 없어 남기지 않는다 — 받은 견적서 그림만 보관한다. */
     } else if(GROLE==='agency'){
+      /* 어드민 「📑 견적 기록」에는 견적서를 낼 때마다 남긴다(사장님 2026-10-05) — 서버가 대신 쓴다. 실패해도 견적서는 그대로 */
+      agencyApi({action:'quoteLog',quote:JSON.parse(JSON.stringify(Q))}).catch(()=>{});
       /* 여행사: 여기서 자동으로 담지 않는다 — 미리보기 창의 「💾 저장하기」를 누르면 내려받기와 「내 견적 보관함」 담기가
          같이 된다(위 showQuotePreview의 saveQ, 사장님 2026-09-18). 보기만 한 견적이 쌓이지 않게. 직원 「견적 이력」과는 따로다 */
     } else if(!await saveQuoteRecord(Q)) alert('견적서는 만들어졌지만 견적 보관에 실패했습니다.\n나중에 「견적 이력」에서 찾을 수 없으니 파일을 꼭 보관해 주세요.');

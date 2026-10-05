@@ -994,7 +994,8 @@ function drawQuotes(){
     const perK=fx>0?qKrwUp(Number(r.per||0)*fx):0, totK=perK*pax;
     const open=quoteOpen===r.quoteNo;
     const warn=(r.lines||[]).some(l=>l.warn);
-    const via=r.via==='site'?'<span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:var(--marigold);border-radius:999px;padding:1px 7px">사이트</span>':'<span style="font-size:10.5px;font-weight:800;color:#fff;background:var(--fairway);border-radius:999px;padding:1px 7px">직원</span>';
+    const via=r.via==='agency'?'<span style="font-size:10.5px;font-weight:800;color:#fff;background:#1F7FB8;border-radius:999px;padding:1px 7px">여행사'+(r.company?' · '+esc(r.company):'')+'</span>'   // 여행사가 낸 견적(서버 quoteLog, 2026-10-05)
+      :r.via==='site'?'<span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:var(--marigold);border-radius:999px;padding:1px 7px">사이트</span>':'<span style="font-size:10.5px;font-weight:800;color:#fff;background:var(--fairway);border-radius:999px;padding:1px 7px">직원</span>';
     const main='<tr data-q="'+esc(r.quoteNo)+'" style="cursor:pointer;'+(open?'background:#FBF7EC;':'')+'">'
       +td('<b>'+esc(r.quoteNo)+'</b>'+(warn?' <span title="요금 미입력 항목 있음" style="color:#B23B3B;font-weight:900">!</span>':''),'white-space:nowrap')
       +td(esc(r.issued||''),'white-space:nowrap;color:var(--muted)')
