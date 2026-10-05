@@ -499,7 +499,7 @@ function renderItemInvoice(v){
       return [["호텔", '<b>' + esc(it.name) + '</b>'],
         ["날짜", esc(dl(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? ' ~ ' + esc(dl(it.dateEnd)) : '') + (n ? ' · ' + n + '박' : '')],
         ["총 인원수", tot + '명' + (it.child && paxSeg ? ' <span class="mut">(' + esc(paxSeg) + ')</span>' : '')],
-        ["룸타입 / 베드타입", esc(it.option || "-") + (beds ? ' / ' + esc(beds) : '')]];
+        ["객실 타입 / 베드 타입", esc(it.option || "-") + (beds ? ' / ' + esc(beds) : '')]];
     }
     if(it.kind === "courses"){   // 총인원수 / 홀수 (조는 뺌, 사장님 2026-10-03)
       const p = it.pax || 0, holes = String(it.option || "").replace(/\s+/g, "");

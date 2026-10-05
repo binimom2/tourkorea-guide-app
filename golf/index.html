@@ -1506,7 +1506,7 @@ function renderHotels(){
       rtSel+
       `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.sid}"><small>박</small>`+
       `<select data-hroom="${r.sid}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
-      `<span class="hrooms" data-hrooms="${r.sid}">${roomCount(pax,rt)}룸</span>`;   // 「실」→「룸」(사장님 2026-09-11)
+      `<span class="hrooms" data-hrooms="${r.sid}">${roomCount(pax,rt)}객실</span>`;   // 「실」→「룸」(사장님 2026-09-11) → 「객실」로 통일(2026-10-05)
     wrap.appendChild(row);
   });
 }
@@ -1514,7 +1514,7 @@ function renderHotels(){
 function updateRoomTags(pax){
   document.querySelectorAll('[data-hrooms]').forEach(el=>{
     const reg=el.dataset.hrooms;
-    el.textContent=roomCount(pax,hotelRoom[reg]||'twin')+'룸';
+    el.textContent=roomCount(pax,hotelRoom[reg]||'twin')+'객실';
   });
 }
 

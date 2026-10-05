@@ -2276,7 +2276,7 @@ function openPanel(x, kind){
   }
   /* 칸 이름을 종류에 맞춘다 — 호텔에 「인원 4인 / 라운드」가 뜨면 안 된다 */
   const isH = kind === "hotels";
-  $("#qpHoleLab").textContent = isH ? "룸 타입" : isMenuKind(kind) ? "메뉴 선택" : "라운드 선택";
+  $("#qpHoleLab").textContent = isH ? "객실 타입" : isMenuKind(kind) ? "메뉴 선택" : "라운드 선택";
   $("#qpDateLab").textContent = isH ? "체크인 - 체크아웃 날짜를 선택해주세요" : "날짜를 선택해주세요";
   $("#qpRoomsWrap").style.display  = isH ? "" : "none";   // 객실 수·성인·아동 묶음
   $("#qpPaxWrap").style.display    = isH ? "none" : "";   // 골프장만 쓰는 「인원」 칸
@@ -2626,8 +2626,8 @@ async function qpCalc(){
      인원수·박수·룸 갯수는 2명 1박 1실에서 시작하니, 아직 안 고른 것은 룸 타입뿐이다. */
   if(qpKind === "hotels" && !qpRoom){
     qpResult = null;
-    qpBox('<div class="ask"><b>룸 타입</b>을 선택해 주세요.<br>'
-        + '날짜 · 인원수 · 박수 · 룸 갯수 · 룸 타입을 선택하시면 그날 요금으로 계산해 드립니다.</div>');
+    qpBox('<div class="ask"><b>객실 타입</b>을 선택해 주세요.<br>'
+        + '날짜 · 인원수 · 박수 · 객실 수 · 객실 타입을 선택하시면 그날 요금으로 계산해 드립니다.</div>');
     return;
   }
   /* 스파·티켓… — 메뉴를 고르면 그 값(1인 손님가)×인원이 곧 금액이다. 날짜마다 다르지 않아
@@ -3079,7 +3079,7 @@ function addToCart(direct){
   if(!dCur) return;
   if(direct === true && !bookGate()) return;
   if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
-  if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 선택해 주세요.");
+  if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>객실 타입</b>을 선택해 주세요.");
   if(qpKind === "hotels" && qpRooms < 1){ openOcc(); return qpTell("<b>객실</b>(트윈·더블·싱글·트리플)을 선택해 주세요."); }  /* 아동이 있으면 생년월일을 꼭 받는다(사장님 2026-09-19) — 아동 요금(엑스트라 아동·아동 조식)은 그 호텔의 아동 나이(childMax, 11 또는 12)까지만 적용된다 */
   if(qpKind === "hotels" && qpChild){
     syncAges();
