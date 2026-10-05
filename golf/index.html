@@ -893,8 +893,9 @@ function hotelNextTarget(){
     const hs=row.querySelector('.hsel'); if(!hs) continue;
     if(!hs.value) return hs;
     const sid=hs.dataset.hotel;
+    /* 화면 순서대로(사장님 2026-10-05): 호텔 → 객실 타입(디럭스 등) → 객실 구성(트윈 2인 1객실 등) */
+    const rt=row.querySelector('[data-hrt]');   if(rt&&rt.options.length>1&&!hotelSeen.has(sid+':rt')) return rt;   // 객실 타입이 하나뿐이면 건너뛴다
     const rm=row.querySelector('[data-hroom]'); if(rm&&!hotelSeen.has(sid+':room')) return rm;
-    const rt=row.querySelector('[data-hrt]');   if(rt&&!hotelSeen.has(sid+':rt'))   return rt;
   }
   return null;
 }
@@ -929,12 +930,13 @@ function markNext(){
     } else sh.style.display='none';
   }
 }
-/* 호텔 칸(객실 구성·객실 타입)을 한 번 만지고 나가면 다음 칸으로 */
-document.addEventListener('focusout',e=>{
+/* 호텔 칸(객실 타입·객실 구성)을 한 번 누르면(또는 바꾸면) 다음 칸으로.
+   (고르면 호텔 줄을 다시 그려 칸이 바뀌므로 «나갈 때»가 아니라 «누를 때» 센다) */
+['focusin','change'].forEach(ev=>document.addEventListener(ev,e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.hroom!==undefined){ hotelSeen.add(t.dataset.hroom+':room'); setTimeout(markNext,0); }
   else if(t.dataset&&t.dataset.hrt!==undefined){ hotelSeen.add(t.dataset.hrt+':rt'); setTimeout(markNext,0); }
-});
+}));
 
 /* 새 견적 내기 — 입력을 전부 비운다.
    견적번호도 비워야 다음 견적서에서 새 번호를 받는다(안 비우면 앞 팀 번호로 덮어써 보관된다).
