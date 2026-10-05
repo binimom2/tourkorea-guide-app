@@ -2784,11 +2784,11 @@ const COST_CATEGORIES=[
     {k:'season',label:'시즌',type:'select',options:['비수기','성수기'],w:'third'},
     {k:'dateFrom',label:'시작일',type:'date',w:'third'},
     {k:'dateTo',label:'종료일',type:'date',w:'third'},
-    {k:'rt1',label:'룸타입①',type:'text'},
+    {k:'rt1',label:'객실 타입①',type:'text'},
     {k:'amt1',label:'금액①',type:'text',money:true},
-    {k:'rt2',label:'룸타입②',type:'text'},
+    {k:'rt2',label:'객실 타입②',type:'text'},
     {k:'amt2',label:'금액②',type:'text',money:true},
-    {k:'rt3',label:'룸타입③',type:'text'},
+    {k:'rt3',label:'객실 타입③',type:'text'},
     {k:'amt3',label:'금액③',type:'text',money:true},
     {k:'extbed',label:'EXT BED',type:'text',money:true},
     {k:'remark',label:'비고',type:'textarea'},
@@ -2906,7 +2906,7 @@ function downloadCostExcel(){
     season:'시즌',dateFrom:'시작일',dateTo:'종료일',period:'기간',
     gf18wd:'18홀그린피(주중)',gf18we:'18홀그린피(주말)',caddy:'캐디피',cart:'전동카',
     gf9wd:'9홀그린피(주중)',gf9we:'9홀그린피(주말)',caddy9:'캐디피(9홀)',cart9:'전동카(9홀)',
-    roomType:'룸타입',twin:'트윈',amount:'금액',extbed:'EXT BED',rooms:'룸수',joiners:'조인',adult:'성인',child:'아동' };
+    roomType:'객실 타입',twin:'트윈',amount:'금액',extbed:'EXT BED',rooms:'객실 수',joiners:'조인',adult:'성인',child:'아동' };
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const head='<tr>'+keys.map(k=>`<th>${esc(LBL[k]||k)}</th>`).join('')+'</tr>';
   const body=flat.map(r=>'<tr>'+keys.map(k=>`<td>${esc(r[k])}</td>`).join('')+'</tr>').join('');
@@ -3470,12 +3470,12 @@ function getHotels(){ return normHotelSeasons(migrateHotel(getCostRows('hotel'))
 async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 
 function renderHotelTable(){
-  const COLS=['호텔명','지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
-  const CEN=['지역','시즌','기간','룸타입 구분','트윈/싱글','엑스트라','조이너스'];
+  const COLS=['호텔명','지역','시즌','기간','객실 타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
+  const CEN=['지역','시즌','기간','객실 타입 구분','트윈/싱글','엑스트라','조이너스'];
   /* 앞쪽 칸은 폭을 정해 좁히고, 비고에는 폭을 주지 않아 남는 공간을 전부 가져가게 한다.
      (칸마다 직접 지정 — td:last-child 같은 위치 기준은 시즌이 여러 줄인 항목에서
       비고가 마지막 칸이 되어 버려 표가 깨진다) */
-  const W={'호텔명':120,'지역':84,'시즌':84,'기간':142,'룸타입 구분':112,'트윈/싱글':106,'엑스트라':116,'조이너스':96};
+  const W={'호텔명':120,'지역':84,'시즌':84,'기간':142,'객실 타입 구분':112,'트윈/싱글':106,'엑스트라':116,'조이너스':96};
   document.getElementById('costTableHead').innerHTML=COLS.map(l=>`<th class="${CEN.indexOf(l)>=0?'num':''}"${W[l]?` style="width:${W[l]}px;"`:''}>${escapeHtml(l)}</th>`).join('')+'<th></th>';
   const region=(document.getElementById('cf-region').value||'').trim().toLowerCase();
   const q=(document.getElementById('cf-search').value||'').trim().toLowerCase();
@@ -3619,17 +3619,17 @@ function hotelSeasonBlockHtml(s,i){
       <div class="f-row" style="${t}"><label>종료일</label>${hotelSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed #e3e7ef;">
-      <b style="font-size:12px;color:#3c5a86;">룸타입 구분 (${rooms.length}개)</b>
+      <b style="font-size:12px;color:#3c5a86;">객실 타입 구분 (${rooms.length}개)</b>
       <div style="display:flex;align-items:center;gap:10px;">
         <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5570;cursor:pointer;user-select:none;">
           <input type="checkbox" ${common?'checked':''} onchange="toggleHotelRemarkCommon(${i})" style="cursor:pointer;"/> 비고 공통 사용
         </label>
-        <button type="button" class="btn btn-save" style="padding:0 10px;height:26px;font-size:11.5px;" onclick="addHotelRoom(${i})">＋ 룸타입 추가</button>
+        <button type="button" class="btn btn-save" style="padding:0 10px;height:26px;font-size:11.5px;" onclick="addHotelRoom(${i})">＋ 객실 타입 추가</button>
       </div>
     </div>
     ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j,common)).join('')}
     ${common?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
-      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (이 기간 공통 — 룸타입 ${rooms.length}개에 함께 적용, 표에서 한 칸으로 합쳐짐)</div>
+      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (이 기간 공통 — 객실 타입 ${rooms.length}개에 함께 적용, 표에서 한 칸으로 합쳐짐)</div>
       ${remarkColorBar('h-'+i+'-remark')}
       <textarea id="h-${i}-remark" style="width:100%;">${escapeHtml(s.remark||'')}</textarea>
     </div>`:''}
@@ -3652,11 +3652,11 @@ function hotelRoomBlockHtml(rm,i,j,common){
   const q='flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;';
   return `<div style="border:1px dashed #d8dfea;border-radius:8px;padding:9px;margin-top:6px;background:#fff;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span style="font-size:11px;color:#8892a0;font-weight:700;">룸타입 ${j+1}</span>
+      <span style="font-size:11px;color:#8892a0;font-weight:700;">객실 타입 ${j+1}</span>
       <a class="act-del" style="cursor:pointer;font-size:11.5px;" onclick="delHotelRoom(${i},${j})">삭제</a>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">
-      <div class="f-row" style="${q}"><label>룸타입 구분</label><input type="text" id="h-${i}-${j}-roomType" value="${escapeAttr(rm.roomType||'')}" placeholder="예: 시티뷰, 씨뷰"/></div>
+      <div class="f-row" style="${q}"><label>객실 타입 구분</label><input type="text" id="h-${i}-${j}-roomType" value="${escapeAttr(rm.roomType||'')}" placeholder="예: 시티뷰, 씨뷰"/></div>
       <div class="f-row" style="${q}"><label>트윈/싱글</label><input type="text" id="h-${i}-${j}-rate" value="${escapeAttr(rm.rate||'')}"/></div>
       <div class="f-row" style="${q}"><label>엑스트라</label><input type="text" id="h-${i}-${j}-extbed" value="${escapeAttr(rm.extbed||'')}"/></div>
       <div class="f-row" style="${q}"><label>조이너스</label><input type="text" id="h-${i}-${j}-joiners" value="${escapeAttr(rm.joiners||'')}"/></div>
@@ -3729,7 +3729,7 @@ function openHotelDetail(i){
     // 기간 아래 룸타입들을 가로 표로
     const tbl=`<table style="width:100%;border-collapse:collapse;">
       <tr>
-        <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:left;">룸타입</th>
+        <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:left;">객실 타입</th>
         <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:center;">트윈/싱글</th>
         <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:center;">엑스트라</th>
         <th style="padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:center;">조이너스</th>
