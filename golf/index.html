@@ -1531,7 +1531,7 @@ function calc(){
   pi.textContent=ROUTE.length
     ? `${pax}명 · ${ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')} = 총 ${nights}박 ${tripDays(nights)}일`
     : '';
-  pi.style.display=ROUTE.length?'':'none';
+  pi.style.display='none';   // 1번 머리 요약에 같은 내용이 나와서 감춤(사장님 2026-10-05)
   const lines=[];
   // 1) 골프 (체크된 날)
   dayState.forEach(st=>{
