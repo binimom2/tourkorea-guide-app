@@ -48,6 +48,10 @@ html.embed .wrap{padding-top:6px}
 @keyframes nextPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,140,40,0)}50%{box-shadow:0 0 0 4px rgba(232,140,40,.75)}}
 .nextHint:not(.chips){animation:nextPulse 1.2s ease-in-out infinite;border-color:#E88C28!important}
 .chips.nextHint .chip{animation:nextPulse 1.2s ease-in-out infinite}
+/* 깜빡이는 테두리가 칸 가장자리에서 잘리지 않게 — 칸 속에 여유를 주고 바깥 여백으로 되돌린다(모양은 그대로). 지역 칩은 사이도 띄운다 */
+.step .cbody{padding:6px;margin:-6px}
+.step.folded .cbody{padding:0;margin:0}
+.chips.nextHint{gap:12px}
 /* 드롭다운 글자 통일(사장님 2026-10-05) — 「호텔 선택·가이드 선택…」 같은 안내 줄은 옅은 회색,
    실제 고를 것(호텔명·가이드 종류·차량)은 차량 칸과 같은 진한 글자. 안내 줄이 골라져 있으면 칸 글자도 회색 */
 .f select{font-weight:700}
