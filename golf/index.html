@@ -44,6 +44,10 @@ html.embed .wrap{padding-top:6px}
 #vehChoiceList .vcopt{padding:8px 11px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #vehChoiceList .vcopt.on{background:#f1ebdb}
 #vehChoiceList .vcopt.hi{background:rgba(18,58,43,.12)}
+/* 다음에 채울 칸 — 주황 테두리가 은은하게 깜빡인다(markNext, 사장님 2026-10-05). 지역은 칩마다 */
+@keyframes nextPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,140,40,0)}50%{box-shadow:0 0 0 4px rgba(232,140,40,.75)}}
+.nextHint:not(.chips){animation:nextPulse 1.2s ease-in-out infinite;border-color:#E88C28!important}
+.chips.nextHint .chip{animation:nextPulse 1.2s ease-in-out infinite}
 /* 드롭다운 글자 통일(사장님 2026-10-05) — 「호텔 선택·가이드 선택…」 같은 안내 줄은 옅은 회색,
    실제 고를 것(호텔명·가이드 종류·차량)은 차량 칸과 같은 진한 글자. 안내 줄이 골라져 있으면 칸 글자도 회색 */
 .f select{font-weight:700}
@@ -863,6 +867,20 @@ function renderRegions(){
       <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
 }
 function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); buildTourSelOptions(); calc(); }   // 7번 기타투어 목록은 2번에서 고른 지역을 따라간다
+/* 다음에 채울 칸 깜빡이기(사장님 2026-10-05 「다음에 어디로 가야 할지 표시가 없다」) —
+   날짜 → 인원수 → 지역 → 호텔 → 차량 → 가이드 차례로, 아직 안 채운 첫 칸 하나만 주황 테두리로 깜빡인다.
+   calc() 가 돌 때마다(무엇이든 바꾸면) 다시 정한다 */
+function markNext(){
+  let t=null;
+  if(!$('#startDate').value) t=$('#dateBtn');
+  else if(!(+$('#pax').value>0)) t=$('#pax');
+  else if(!ROUTE.length) t=$('#regChips');
+  else if(useHotelOn()&&!stepDone('s3')) t=[...document.querySelectorAll('.hsel')].find(s=>!s.value)||null;
+  else if(!vehPicked()) t=$('#vehChoiceBtn');
+  else if(!stepDone('s6')) t=$('#guideSel');
+  document.querySelectorAll('.nextHint').forEach(e=>{ if(e!==t) e.classList.remove('nextHint'); });
+  if(t) t.classList.add('nextHint');
+}
 
 /* 새 견적 내기 — 입력을 전부 비운다.
    견적번호도 비워야 다음 견적서에서 새 번호를 받는다(안 비우면 앞 팀 번호로 덮어써 보관된다).
@@ -1532,6 +1550,7 @@ function updateRoomTags(pax){
 /* ── 계산 ── */
 function calc(){
   if(!window._ready) return;
+  try{ markNext(); }catch(e){}
   const pax=Math.max(1,+$('#pax').value||1);
   const nights=totalNights();
   updateRoomTags(pax);
