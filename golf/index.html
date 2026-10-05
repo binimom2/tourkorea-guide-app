@@ -818,6 +818,8 @@ function tripCalPick(ds){
   closeTripCal();
   applyTripToRoute(n);
   refreshAll();
+  /* 날짜를 다 고르면 다음 칸 «인원수»로 커서를 옮긴다(사장님 2026-10-05) */
+  setTimeout(()=>{ const p=$('#pax'); if(p){ p.focus(); try{ p.select(); }catch(e){} } },0);
 }
 /* 태국 오전 출국을 켜고 끄면 날짜는 그대로 두고 박수가 바뀐다(3박5일 ↔ 4박5일) */
 function reNightsFromDates(){
