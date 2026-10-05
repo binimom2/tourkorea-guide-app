@@ -141,7 +141,10 @@ body.fs-sm .qp-price .v{font-size:25px}
   background-size:cover,cover;background-position:center,center}
 .hero.has-img::after{opacity:.45}
 /* 밝은 첫 화면(사장님 2026-10-05) — 골프장 사진을 옅게(흰 막) 깔고 글자는 짙은 초록. 관리 화면 사진·글자색보다 우선 */
-.hero.light{background:linear-gradient(100deg,rgba(255,255,255,.62) 0%,rgba(255,255,255,.40) 55%,rgba(255,255,255,.22) 100%),url("/golf/site/img/hero-golf.webp") center/cover;color:#123A2B}
+/* 사진은 첫 화면 + 바로 아래 메뉴 띠까지 한 장으로 깐다(.herobg 가 둘을 감싼다) */
+.herobg{background:linear-gradient(100deg,rgba(255,255,255,.62) 0%,rgba(255,255,255,.40) 55%,rgba(255,255,255,.22) 100%),url("/golf/site/img/hero-golf.webp") center/cover}
+.hero.light{background:none;color:#123A2B}
+.herobg .trust{background:rgba(255,255,255,.35)}
 .hero.light::after{display:none}
 .hero.light h1,.hero.light .eyebrow{color:#123A2B!important;text-shadow:0 1px 10px rgba(255,255,255,.7)}
 .hero.light h1{color:#B85A17!important}
@@ -826,12 +829,14 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   </div>
 </div>
 
+<div class="herobg">
 <header class="hero" id="top">
   <div class="wrap" id="heroBox"></div>
 </header>
 
 <div class="trust">
   <div class="wrap" id="trustBox"></div>
+</div>
 </div>
 
 <!-- 1차 화면: 종류(골프장·호텔·…)를 고르면 그 목록이 아래 카드로 깔린다.
