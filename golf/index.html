@@ -65,6 +65,7 @@ html.embed .wrap{padding-top:6px}
 /* 기본 정보는 가장 자주 만지는 칸이라 크게. 대신 날짜·인원·박수는 좁혀서
    팀명이 남는 폭을 다 쓰게 하고, 5칸이 한 줄에 여유 있게 들어가도록 했다. */
 #pax,#nights,#daysOut,#teamName{font-size:15px;padding:10px 11px}
+#teamName{font-weight:800;color:var(--ink)}   /* 여행사명은 진하게(사장님 2026-10-05) */
 /* 인원수는 화살표 없이 숫자만 찍는다(사장님 2026-09-11). 박 칸 화살표는 둔다 */
 #pax::-webkit-inner-spin-button,#pax::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 #pax{-moz-appearance:textfield;appearance:textfield}
@@ -74,7 +75,7 @@ html.embed .wrap{padding-top:6px}
 #dateBtn{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:10px 11px;font:inherit;font-size:15px;
   font-weight:700;background:var(--paper);color:var(--ink);text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px}
 #dateBtn:hover,#dateBtn.open{border-color:var(--fairway);background:#fff}
-#dateBtn .ph{color:var(--muted);font-weight:600}
+#dateBtn .ph{color:#A3ADA8;font-weight:500}   /* 날짜 고르기 전 안내 글자는 연하게(사장님 2026-10-05) */
 #dateBtn .v,#dateBtn .ph{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dateBtn .cal{flex:none;width:18px;height:18px;opacity:.5}
 .tcal{width:300px;max-width:100%;box-sizing:border-box;margin-top:10px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:#fff}
