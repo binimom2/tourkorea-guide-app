@@ -142,15 +142,16 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero.has-img::after{opacity:.45}
 /* 밝은 첫 화면(사장님 2026-10-05) — 골프장 사진을 옅게(흰 막) 깔고 글자는 짙은 초록. 관리 화면 사진·글자색보다 우선 */
 /* 사진은 첫 화면 + 바로 아래 메뉴 띠까지 한 장으로 깐다(.herobg 가 둘을 감싼다) */
-.herobg{background:linear-gradient(100deg,rgba(255,255,255,.48) 0%,rgba(255,255,255,.26) 55%,rgba(255,255,255,.10) 100%),url("/golf/site/img/hero-golf.webp") center/cover}
+.herobg{background:linear-gradient(100deg,rgba(255,255,255,.48) 0%,rgba(255,255,255,.26) 55%,rgba(255,255,255,.10) 100%),var(--hero-img,url("/golf/site/img/hero-golf.webp")) center/cover}
 .hero.light{background:none;color:#123A2B}
 .herobg .trust{background:none;border-top:0}
 .herobg .trust b{text-shadow:0 1px 8px rgba(255,255,255,.9)}
 .hero.light::after{display:none}
-.hero.light h1,.hero.light .eyebrow{color:#123A2B!important;text-shadow:0 1px 10px rgba(255,255,255,.7)}
-.hero.light h1{color:#B85A17!important}
-.hero.light h1 em{color:#C8641E!important}
-.hero.light p.lead{color:#2D4A3E!important;text-shadow:0 1px 8px rgba(255,255,255,.7)}
+/* 글자 색은 관리 화면에서 고른 색이 우선 — 안 고르면(기본) 아래 짙은 색 */
+.hero.light h1,.hero.light .eyebrow{color:#123A2B;text-shadow:0 1px 10px rgba(255,255,255,.7)}
+.hero.light h1{color:#B85A17}
+.hero.light h1 em{color:#C8641E}
+.hero.light p.lead{color:#2D4A3E;text-shadow:0 1px 8px rgba(255,255,255,.7)}
 .hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
 .hero .eyebrow{font-size:clamp(14px,1.7vw,16.5px);font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:14px}
 /* 관리 화면에 적은 띄어쓰기(여러 칸)가 그대로 보이게 — 브라우저는 원래 빈칸을 하나로 줄인다(사장님 2026-09-11) */
@@ -1561,11 +1562,11 @@ function drawHero(){
   const eyeSt = (EYE[h.eyeSize] || "") + (h.eyeColor ? ";color:" + esc(h.eyeColor) : "") + ";" + szSt(h.eyePx, h.eyeW, "5.2vw");
   /* 큰 제목·설명 문구도 각각 색을 고를 수 있다(사장님 2026-09-11 — 전에는 윗줄만 됐다). 비면 흰색 그대로 */
   const colSt = (c, sz) => ((c || sz) ? ' style="' + (c ? "color:" + esc(c) + ";" : "") + (sz || "") + '"' : "");
-  /* 배경 사진 — 관리 화면 사진칸의 첫 장(h.img)만 쓴다 */
+  /* 배경 사진 — 관리 화면 사진칸의 첫 장(h.img)을 첫 화면+메뉴 띠(.herobg)에 옅게 깐다. 없으면 기본 골프장 사진 */
   const heroEl = $("#top");
   heroEl.classList.add("light");
   heroEl.classList.toggle("has-img", false);
-  heroEl.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : "none");
+  heroEl.parentElement.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : 'url("/golf/site/img/hero-golf.webp")');
   $("#heroBox").innerHTML =
     '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
     + "<h1" + colSt(h.titleColor, szSt(h.titlePx, h.titleW, "9vw")) + ">" + title + "</h1>"
