@@ -414,6 +414,8 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
         <div><label for="noVeh" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="noVeh"> 차량이 필요 없습니다
         </label><span id="noVehWarn" style="display:none;font-size:13px;font-weight:800;color:#c62828;"></span></div>
+        <!-- 차량 안내(사장님 2026-10-05) -->
+        <div class="hint" style="margin-top:8px;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.55;">※ 일정 외 지역 운행 시 유류비가 추가될 수 있습니다.<br>※ 20시 이후에는 시간당 300바트(약 $10)의 추가 요금이 부과됩니다.</div>
         <!-- 차량 사진 창(사장님 2026-09-15): 차종 이름 + 사진 최대 3장. 배경 클릭·닫기로 닫힘(ovguard가 창 안 드래그는 막아 줌) -->
         <div id="vehPhotoOv" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:center;justify-content:center;padding:16px;">
           <div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
