@@ -159,14 +159,14 @@ body .trust.top .wrap b{color:#4E5753}
 /* 지금 보고 있는 종류 — 휘어진 주황 밑줄 대신 연초록 바탕 + 글자 아래 짧은 초록 막대(사장님 2026-10-05) */
 body .trust.top button.on{background:rgba(18,58,43,.08);box-shadow:none;position:relative}
 body .trust.top button.on b{color:var(--fairway)}
-/* 「실시간 견적」 — 금색 네모 대신 하늘색 동그란(알약) 바탕(사장님 2026-10-05) */
-body .trust.top button.hot{background:#BFE6F7;border-radius:999px;animation:hotglow-sky 2.2s ease-in-out infinite}
-body .trust.top button.hot:hover{background:#A9DCF3}
-body .trust.top button.hot:active{background:#93D2EE}
-body .trust.top button.hot b{color:#0E3A5C}
-/* 테두리는 주황으로 굵게 깜빡인다(사장님 2026-10-05) */
-@keyframes hotglow-sky{0%,100%{box-shadow:0 0 0 3px rgba(232,140,40,.55),0 6px 18px rgba(30,110,160,.16)}
-  50%{box-shadow:0 0 0 6px rgba(232,140,40,.9),0 6px 22px rgba(30,110,160,.2)}}
+/* 「실시간 견적」 — 사이트의 제일 중점(사장님 2026-10-05). 바다 파랑 동그란(알약) 바탕 + 흰 글자 */
+body .trust.top button.hot{background:#1F7FB8;border-radius:999px;animation:hotglow-sky 2.2s ease-in-out infinite}
+body .trust.top button.hot:hover{background:#1A6FA2}
+body .trust.top button.hot:active{background:#165E8A}
+body .trust.top button.hot b{color:#fff}
+/* 테두리는 금색으로 굵게 깜빡인다 */
+@keyframes hotglow-sky{0%,100%{box-shadow:0 0 0 3px rgba(232,163,61,.55),0 6px 18px rgba(20,90,140,.18)}
+  50%{box-shadow:0 0 0 6px rgba(232,163,61,.9),0 6px 22px rgba(20,90,140,.22)}}
 body .trust.top button.on::after{content:"";position:absolute;left:50%;bottom:6px;width:26px;height:3px;margin-left:-13px;border-radius:3px;background:var(--fairway)}
 /* 휴대폰은 여러 줄이면 화면을 너무 가려서 한 줄로 두고 옆으로 밀어 본다 */
 @media(max-width:640px){
