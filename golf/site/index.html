@@ -2961,6 +2961,7 @@ function cartItem(){
 const cartKeyOf = c => [c.kind, c.name, c.option, c.date, c.time || "", c.bed || ""].join("|");
 function addToCart(direct){
   if(!dCur) return;
+  if(direct === true && !bookGate()) return;
   if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
   if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>룸 타입</b>을 선택해 주세요.");
   if(qpKind === "hotels" && qpRooms < 1){ openOcc(); return qpTell("<b>객실</b>(트윈·더블·싱글·트리플)을 선택해 주세요."); }  /* 아동이 있으면 생년월일을 꼭 받는다(사장님 2026-09-19) — 아동 요금(엑스트라 아동·아동 조식)은 그 호텔의 아동 나이(childMax, 11 또는 12)까지만 적용된다 */
@@ -3157,6 +3158,7 @@ function drawCartBody(){
   }else{
     $("#cartGo").onclick = () => {
       if(!CART.some(c => !c.off)){ alert("예약신청하실 일정을 체크해 주세요."); return; }
+      if(!bookGate()) return;
       cartView = "form"; drawCartBody();
     };
   }
@@ -3686,6 +3688,29 @@ goQuote = function(){
   _goQuoteOpen();
 };
 agPaint();
+
+/* 예약신청도 승인된 여행사 회원만(사장님 2026-10-05) — 아이디 없으면 가입 신청부터, 승인 대기면 상태 안내.
+   직원이 이 브라우저에 업무 로그인해 두었으면 그대로 통과(시험용). 로그인 창은 상세·장바구니 창 위로 띄운다 */
+function bookGate(){
+  if(agency && agency.approved) return true;
+  if(staffIn()) return true;
+  $("#agMask").style.zIndex = 250;
+  if(!agency){
+    agOpen("login");
+    agMsg("예약신청은 투어코리아 여행사 회원만 가능합니다.\n아이디가 없으시면 먼저 「여행사 가입 신청」 후 승인을 받아 주세요.", true);
+  }else{
+    agOpen("status");
+    agMsg("가입 승인 후 예약신청을 하실 수 있습니다.", true);
+  }
+  return false;
+}
+function staffIn(){
+  try{
+    const raw = localStorage.getItem("sb-" + SB_URL.split("//")[1].split(".")[0] + "-auth-token")
+             || localStorage.getItem("gs-auth");
+    return !!(raw && JSON.parse(raw));
+  }catch(e){ return false; }
+}
 
 /* 직원·어드민이 이 브라우저에서 업무 화면에 로그인해 뒀으면 「⚙ 관리」 버튼을 띄운다.
    손님 「로그인」과는 별개의 문이다 — 손님은 이 버튼을 볼 일이 없다.
