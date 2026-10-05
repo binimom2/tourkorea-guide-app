@@ -27,7 +27,7 @@
   --maxw:1120px;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth; scroll-padding-top:64px}
+html{scroll-behavior:smooth; scroll-padding-top:calc(var(--stickh,64px) + 4px)}
 /* 저장본이 오기 전(html.presite)에는 본문을 감춘다 — 기본값 화면이 잠깐 비치지 않게. 바탕색만 남긴다. */
 html.presite body{visibility:hidden}
 /* 바탕은 흰색 — 베이지(--paper)는 바탕에서 뺀다(사장님 2026-09-16). --paper는 작은 상자(요금 칸·달력 hover)에만 남는다 */
@@ -152,6 +152,18 @@ body.fs-sm .qp-price .v{font-size:25px}
    사진은 관리 화면 「첫 화면 → 배경 사진」에 올린 차례대로 — 1장이면 넘기지 않고 1장만, 여러 장이면 5초마다 넘어간다.
    글자(윗줄·제목·설명)는 가운데 카드 위에 고정. 사진 원본 그대로(막 없음), 글자에만 그림자 */
 .trust.top{border-top:0;border-bottom:1px solid var(--line)}
+/* 메뉴 띠는 스크롤해도 헤더 바로 아래 붙어 있다(사장님 2026-10-05). --navh 는 헤더 높이(스크립트가 잰다) */
+.trust.top{position:sticky;top:var(--navh,60px);z-index:55;background:#fff}
+/* 휴대폰은 여러 줄이면 화면을 너무 가려서 한 줄로 두고 옆으로 밀어 본다 */
+@media(max-width:640px){
+  .trust.top .wrap{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:8px 10px;gap:4px}
+  .trust.top .wrap::-webkit-scrollbar{display:none}
+  .trust.top button,.trust.top .secw{flex:0 0 auto}
+  .trust.top button{padding:9px 12px}
+  .trust.top b{font-size:16px}
+  .trust.top button.hot{transform:none;margin:0 6px 0 2px}
+  .trust.top button.hot b{font-size:16px}
+}
 .hero.slides{background:#fff;padding:22px 0 8px}
 .hero.slides::after{display:none}
 .hs{position:relative;height:clamp(230px,34vw,440px);--hsw:min(1100px,86vw)}
@@ -453,7 +465,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 종류마다 한 칸씩 — 골프장 아래 호텔, 그 아래 스파… */
 /* 종류는 «페이지»처럼 한 번에 하나만 보인다(사장님 2026-09-09) — 골프장·호텔·스파를 세로로 다 쌓으면
    자료가 많아져 끝없이 길어진다. 위 종류 단추(catpick)가 페이지 탭이다. */
-.catsec{display:none;padding:6px 0 8px;scroll-margin-top:70px}
+.catsec{display:none;padding:6px 0 8px;scroll-margin-top:calc(var(--stickh,70px) + 10px)}
 /* 종류 페이지(골프장·호텔·스파…) 머리 — 전 메뉴 공통(사장님 2026-09-16):
    띠와 제목 사이가 너무 떠 보여 여백을 줄이고, 영문 소제목(HOTELS)과 설명 문구는 감춘다(한글 제목만).
    글은 관리 화면 「각 섹션 제목」에 그대로 남아 있다 — 화면에서만 뺀다. */
@@ -461,7 +473,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .catsec .sechead{margin-bottom:16px}
 .catsec .sechead .kicker,.catsec .sechead p{display:none}
 .catsec.on{display:block}
-@media(max-width:860px){ .catpick{top:60px} .catsec{scroll-margin-top:70px} }
+@media(max-width:860px){ .catpick{top:60px} }
 .catpick button{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font:inherit;font-size:15px;font-weight:800;color:var(--fairway);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
 .catpick button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(18,58,43,.10)}
 .catpick button em{font-style:normal;font-size:20px;line-height:1}
@@ -1632,6 +1644,18 @@ function hsGo(i){
 }
 $("#hsPrev").onclick = () => hsGo(hsCur - 1);
 $("#hsNext").onclick = () => hsGo(hsCur + 1);
+/* 헤더·메뉴 띠 높이를 재어 둔다 — 메뉴 띠가 헤더 바로 밑에 붙고, 종류로 건너뛸 때 제목이 띠 밑에 숨지 않게 */
+(function(){
+  const nav = document.querySelector(".nav"), bar = document.querySelector(".trust.top");
+  const set = () => {
+    const r = document.documentElement.style;
+    r.setProperty("--navh", nav.offsetHeight + "px");
+    r.setProperty("--stickh", (nav.offsetHeight + bar.offsetHeight) + "px");
+  };
+  set();
+  if(window.ResizeObserver){ const ro = new ResizeObserver(set); ro.observe(nav); ro.observe(bar); }
+  else window.addEventListener("resize", set);
+})();
 /* 휴대폰 — 옆으로 밀어서 넘기기 */
 (function(){
   let x0 = null;
