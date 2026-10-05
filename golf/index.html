@@ -2852,13 +2852,23 @@ function autoFold(activeId){
   };
   toTop(); requestAnimationFrame(()=>setTimeout(toTop,30));
 }
+/* 마우스로 누르는 순간(포커스) 위 칸이 접히면 누른 칸이 마우스 밑에서 위로 빠져나가 첫 클릭이 헛돈다
+   (사장님 2026-10-05 「견적서 보기·차량 칸을 두 번 눌러야 먹힘」). 마우스로 누른 것은 손을 뗀 «뒤»에 접는다.
+   키보드(Tab)로 옮긴 것은 예전처럼 바로 접는다 */
+let _ptrDown=false, _pendingFold=null;
+document.addEventListener('pointerdown',()=>{ _ptrDown=true; },true);
+['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,()=>{
+  setTimeout(()=>{ _ptrDown=false; const f=_pendingFold; _pendingFold=null; if(f) f(); },0);   // click 이 끝난 다음 차례
+},true));
 document.addEventListener('focusin',e=>{
   const st=e.target.closest('.step');
   if(st) touched.add(st.id);
-  /* 결과 쪽 단추(「견적서 보기」·「내 견적 보관함」…)는 누르는 순간 위 칸이 접히며 단추가 마우스 밑에서 빠져나가
-     첫 번째 클릭이 헛돌았다(사장님 2026-10-05 「두 번 눌러야 넘어감」). 단추는 클릭이 끝난 뒤에 접는다 */
-  if(!st&&e.target.closest('button,a')){ setTimeout(()=>autoFold(null),350); return; }
-  autoFold(st?st.id:null);   // 견적 결과 쪽을 만지면(st 없음) 위 칸들이 전부 접힌다
+  const fold=()=>{
+    autoFold(st?st.id:null);   // 견적 결과 쪽을 만지면(st 없음) 위 칸들이 전부 접힌다
+    if(document.getElementById('vehChoiceList')) openVehList();   // 펼쳐 둔 차량 목록은 접힌 뒤 자리로 다시 붙인다
+  };
+  if(_ptrDown){ _pendingFold=fold; return; }
+  fold();
 });
 
 /* ── 이벤트 ── */
