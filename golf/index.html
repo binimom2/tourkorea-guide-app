@@ -357,6 +357,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <div class="cbody">
       <div class="chips" id="regChips"></div>
       <div class="picked" id="regPicked"></div>
+      <div class="hint" id="regSplitHint" style="display:none;margin-top:6px;font-size:13px;font-weight:800;"></div>
       <div class="hint" id="paxInfo"></div>
     </div>
   </div>
@@ -759,11 +760,19 @@ const REGION_FALLBACK=['방콕','파타야','후아힌','칸차나부리','카�
    첫 지역을 고르는 순간 그 지역 박수로 넘겨준다(예전엔 지역이 없으면 일정이 안 바뀌었다). */
 let tripNights=0;
 function totalNights(){ return ROUTE.length?ROUTE.reduce((a,r)=>a+(+r.nights||0),0):tripNights; }
+/* 날짜(또는 총 박수 칸)로 정한 «목표 총 박수»(사장님 2026-10-05).
+   지역이 2곳 이상이면 지역 박수 합이 모자라도 날짜·총 박수는 이 값을 지키고, 「총 N박을 나눠 입력」 안내를 띄운다.
+   지역이 1곳 이하면 예전처럼 지역 박수 합이 곧 총 박수다 */
+let tripGoal=0;
+function splitMode(){ return ROUTE.length>=2&&tripGoal>0; }
+function shownNights(){ return splitMode()?tripGoal:totalNights(); }
+function splitOk(){ return !splitMode()||totalNights()===tripGoal; }
 // 숫자칸에 0을 미리 넣지 않는다 — 0이 남아 있으면 숫자를 찍을 때 앞뒤로 밀린다
 function numval(n){ return (+n>0)?String(+n):''; }
 function syncTripInput(){
   if(ROUTE.length) tripNights=ROUTE.reduce((a,r)=>a+(+r.nights||0),0);
-  const n=totalNights();
+  if(ROUTE.length<2) tripGoal=totalNights();   // 지역 1곳 이하 — 지역 박수가 곧 총 박수
+  const n=shownNights();
   const el=$('#nights');
   if(el&&document.activeElement!==el) el.value=numval(n);   // 입력 중이면 건드리지 않는다
   const d=$('#daysOut'); if(d) d.value=n>0?String(tripDays(n)):'';
@@ -834,13 +843,14 @@ function reNightsFromDates(){
   const s=$('#startDate').value, e=$('#endDate').value;
   if(!s||!e) return false;
   const n=Math.min(14,nightsFromDays(tcGap(s,e)+1));
-  if(n===totalNights()) return false;
+  if(n===shownNights()) return false;
   applyTripToRoute(n); refreshAll(); return true;
 }
 // 박수를 직접 고치면 뒤쪽 지역 박수를 늘리거나(추가) 뒤에서부터 깎아서(감소) 합을 맞춘다
 function applyTripToRoute(n){
-  tripNights=n;
+  tripNights=n; tripGoal=n;
   if(!ROUTE.length) return;
+  if(splitMode()&&ROUTE.some(r=>!(+r.nights>0))) return;   // 아직 나눠 적는 중이면 목표만 바꾸고 칸은 손님이 채운다
   let d=n-totalNights();
   if(d>0){ const last=ROUTE[ROUTE.length-1]; last.nights=(+last.nights||0)+d; return; }
   for(let i=ROUTE.length-1;i>=0&&d<0;i--){
@@ -855,6 +865,8 @@ function applyTripToRoute(n){
 let STOP_SEQ=0;
 function toggleRegion(name){
   // 첫 지역이면 위에 적어둔 총 박수를 그대로 준다. 두 번째부터는 0박으로 두고 직접 나눠 적는다.
+  // 두 번째 지역을 고르는 순간 첫 지역에 들어가 있던 총 박수도 비운다 — 전부 빈 칸에서 나눠 적게(사장님 2026-10-05)
+  if(ROUTE.length===1){ if(!(tripGoal>0)) tripGoal=+ROUTE[0].nights||0; ROUTE[0].nights=0; }
   ROUTE.push({region:name,nights:ROUTE.length?0:tripNights,sid:'s'+(++STOP_SEQ)});
   autoPickVehicleGroup();   // 고른 지역에 맞는 차량 요금열로 바꿔준다
   refreshAll();
@@ -872,19 +884,57 @@ function renderRegions(){
 }
 function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); buildTourSelOptions(); calc(); }   // 7번 기타투어 목록은 2번에서 고른 지역을 따라간다
 /* 다음에 채울 칸 깜빡이기(사장님 2026-10-05 「다음에 어디로 가야 할지 표시가 없다」) —
-   날짜 → 인원수 → 지역 → 호텔 → 차량 → 가이드 차례로, 아직 안 채운 첫 칸 하나만 주황 테두리로 깜빡인다.
+   날짜 → 인원수 → 지역 → 지역별 박수 → 호텔(호텔 → 객실 구성 → 객실 타입, 지역마다) → 골프장 → 차량 → 가이드 차례로,
+   아직 안 채운 첫 칸 하나만 주황 테두리로 깜빡인다. 「필요 없음」을 고른 큰 칸은 건너뛴다.
    calc() 가 돌 때마다(무엇이든 바꾸면) 다시 정한다 */
+const hotelSeen=new Set();   // 기본값이 이미 들어 있는 호텔 칸(객실 구성·객실 타입)은 한 번 만져야 다음으로 넘어간다 — "sid:room" / "sid:rt"
+function hotelNextTarget(){
+  for(const row of document.querySelectorAll('.hrow')){
+    const hs=row.querySelector('.hsel'); if(!hs) continue;
+    if(!hs.value) return hs;
+    const sid=hs.dataset.hotel;
+    const rm=row.querySelector('[data-hroom]'); if(rm&&!hotelSeen.has(sid+':room')) return rm;
+    const rt=row.querySelector('[data-hrt]');   if(rt&&!hotelSeen.has(sid+':rt'))   return rt;
+  }
+  return null;
+}
+function golfNextTarget(){
+  if(vehPicked()) return null;                                   // 골프는 선택 사항 — 차량까지 넘어갔으면 다시 묻지 않는다
+  const half=dayState.findIndex(st=>st.round&&!st.course);
+  if(half>=0) return document.querySelector(`[data-c="${half}"]`);
+  if(dayState.some(st=>st.round&&st.course)) return null;
+  const c=[...document.querySelectorAll('[data-r]')].find(x=>!x.disabled);
+  return c?c.closest('.rchk'):null;
+}
 function markNext(){
   let t=null;
   if(!$('#startDate').value) t=$('#dateBtn');
   else if(!(+$('#pax').value>0)) t=$('#pax');
   else if(!ROUTE.length) t=$('#regChips');
-  else if(useHotelOn()&&!stepDone('s3')) t=[...document.querySelectorAll('.hsel')].find(s=>!s.value)||null;
+  else if(!splitOk()){ const k=ROUTE.findIndex(r=>!(+r.nights>0)); t=document.querySelector(`[data-reg-n="${k>=0?k:ROUTE.length-1}"]`); }
+  else if(useHotelOn()&&(t=hotelNextTarget())){}
+  else if((t=golfNextTarget())){}
   else if(!vehPicked()) t=$('#vehChoiceBtn');
   else if(!stepDone('s6')) t=$('#guideSel');
   document.querySelectorAll('.nextHint').forEach(e=>{ if(e!==t) e.classList.remove('nextHint'); });
   if(t) t.classList.add('nextHint');
+  /* 지역 2곳 이상 — 총 박수를 나눠 적으라는 안내 */
+  const sh=$('#regSplitHint');
+  if(sh){
+    if(splitMode()){
+      const sum=totalNights(), ok=sum===tripGoal;
+      sh.style.display='';
+      sh.style.color=ok?'#2e7d32':'#c62828';
+      sh.textContent=ok?`✓ 총 ${tripGoal}박을 지역별로 나눴습니다.`:`총 ${tripGoal}박을 지역별로 나눠 입력해 주세요. (지금 ${sum}박 / ${tripGoal}박)`;
+    } else sh.style.display='none';
+  }
 }
+/* 호텔 칸(객실 구성·객실 타입)을 한 번 만지고 나가면 다음 칸으로 */
+document.addEventListener('focusout',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.hroom!==undefined){ hotelSeen.add(t.dataset.hroom+':room'); setTimeout(markNext,0); }
+  else if(t.dataset&&t.dataset.hrt!==undefined){ hotelSeen.add(t.dataset.hrt+':rt'); setTimeout(markNext,0); }
+});
 
 /* 새 견적 내기 — 입력을 전부 비운다.
    견적번호도 비워야 다음 견적서에서 새 번호를 받는다(안 비우면 앞 팀 번호로 덮어써 보관된다).
@@ -924,7 +974,7 @@ function resetQuote(){
   Object.keys(hotelRoom).forEach(k=>delete hotelRoom[k]);
   Object.keys(hotelRoomT).forEach(k=>delete hotelRoomT[k]);
   dayState.length=0;
-  tripNights=0;
+  tripNights=0; tripGoal=0; hotelSeen.clear();
   LAST=null;
   QUOTE_NO=''; QUOTE_NO_FOR=''; showQuoteNo();
 
@@ -2298,7 +2348,7 @@ async function editQuote(idx){
   /* 2) 지역 — 정거장마다 새 sid를 받는다(호텔 선택의 열쇠) */
   const srcIdx=[];                                    // ROUTE[i]가 저장본 route의 몇 번째였는지(없어진 지역이 빠지면 번호가 밀린다)
   (S.route||[]).forEach((r,k)=>{ if(REGIONS.indexOf(r.region)<0){ missing.push(`지역 ${r.region}`); return; } ROUTE.push({region:r.region,nights:+r.nights||0,sid:'s'+(++STOP_SEQ)}); srcIdx.push(k); });
-  tripNights=ROUTE.reduce((a,r)=>a+(+r.nights||0),0);
+  tripNights=ROUTE.reduce((a,r)=>a+(+r.nights||0),0); tripGoal=tripNights;
   autoPickVehicleGroup();
   /* 3) 호텔 — 이름으로 다시 찾는다 */
   { const c=$('#noHotel'); if(c) c.checked=!!S.noHotel; }
@@ -2637,6 +2687,7 @@ async function downloadQuote(mode){
   if(!$('#startDate').value){ showNotice('출발 일자를 먼저 선택해 주세요.'); return; }
   /* 안 고른 칸이 있으면 견적서를 만들지 않고 알린다(사장님 2026-09-16): 호텔(「필요 없음」 체크도 안 함) / 골프장(라운딩 체크했는데 골프장 안 고름) / 차량(「차량 선택」 그대로) / 가이드(「가이드 선택」 그대로).
      빨간 굵은 글씨 창(showNotice) — 기본 alert는 색을 못 입힌다 */
+  if(!splitOk()){ showNotice(`지역별 박수를 입력해 주세요. (총 ${tripGoal}박)`); return; }
   if(!stepDone('s3')){ showNotice('호텔을 선택해주세요.'); return; }
   if(dayState.some(st=>st.round&&!st.course)){ showNotice('골프장을 선택해주세요.'); return; }
   if(!vehPicked()){ showNotice('차량을 선택해주세요.'); return; }
@@ -2688,7 +2739,7 @@ const STEPS=['s1','s2','s3','s4','s5','s6','s7'];   // s7 기타투어는 선택
 function stepDone(id){
   switch(id){
     case 's1': return !!$('#startDate').value && (+$('#pax').value>0);
-    case 's2': return ROUTE.length>0;
+    case 's2': return ROUTE.length>0&&splitOk();   // 지역 2곳 이상이면 박수 합이 총 박수와 맞아야 끝(사장님 2026-10-05)
     case 's3': {
       if(!useHotelOn()) return true;
       const stay=ROUTE.filter(r=>(+r.nights||0)>0);
@@ -2706,7 +2757,7 @@ function isFolded(id){ const e=document.getElementById(id); return !!(e&&e.class
 const DOT='  ·  ';
 function stepSummary(id){
   const pax=Math.max(1,+$('#pax').value||1);
-  const n=totalNights();
+  const n=shownNights();   // 지역별로 나눠 적는 중이어도 1번 요약은 날짜로 정한 총 박수
   switch(id){
     case 's1': {
       const team=($('#teamName').value||'').trim();
@@ -2839,7 +2890,11 @@ document.addEventListener('click',e=>{
   if(del){
     const i=+del.dataset.regDel; const r=ROUTE[i];
     if(r){ delete hotelPick[r.sid]; delete hotelNights[r.sid]; delete hotelRoom[r.sid]; delete hotelRoomT[r.sid]; }
-    ROUTE.splice(i,1); autoPickVehicleGroup(); refreshAll(); return;
+    ROUTE.splice(i,1);
+    /* 지역이 1곳만 남으면 그 지역이 총 박수를 다 갖는다 / 다 빼면 총 박수는 그대로 둔다(날짜가 안 바뀌게) */
+    if(ROUTE.length===1&&tripGoal>0) ROUTE[0].nights=tripGoal;
+    if(!ROUTE.length&&tripGoal>0) tripNights=tripGoal;
+    autoPickVehicleGroup(); refreshAll(); return;
   }
 });
 // 총 박수 / 지역별 박수 입력
