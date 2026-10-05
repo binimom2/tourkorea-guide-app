@@ -140,18 +140,17 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero.has-img{background-image:linear-gradient(115deg,rgba(8,34,24,.82) 0%,rgba(8,34,24,.48) 50%,rgba(8,34,24,.34) 100%),var(--hero-img);
   background-size:cover,cover;background-position:center,center}
 .hero.has-img::after{opacity:.45}
-/* 밝은 첫 화면(사장님 2026-10-05) — 골프장 사진을 옅게(흰 막) 깔고 글자는 짙은 초록. 관리 화면 사진·글자색보다 우선 */
-/* 사진은 첫 화면 + 바로 아래 메뉴 띠까지 한 장으로 깐다(.herobg 가 둘을 감싼다) */
-.herobg{background:linear-gradient(100deg,rgba(255,255,255,.48) 0%,rgba(255,255,255,.26) 55%,rgba(255,255,255,.10) 100%),var(--hero-img,url("/golf/site/img/hero-golf.webp")) center/cover}
+/* 첫 화면(사장님 2026-10-05) — 사진은 첫 화면 + 바로 아래 메뉴 띠까지 한 장으로, 원본 그대로(흰 막 없음). .herobg 가 둘을 감싼다 */
+.herobg{background:var(--hero-img,url("/golf/site/img/hero-golf.webp")) var(--hero-pos,center)/cover}
 .hero.light{background:none;color:#123A2B}
 .herobg .trust{background:none;border-top:0}
 .herobg .trust b{text-shadow:0 1px 8px rgba(255,255,255,.9)}
 .hero.light::after{display:none}
 /* 글자 색은 관리 화면에서 고른 색이 우선 — 안 고르면(기본) 아래 짙은 색 */
-.hero.light h1,.hero.light .eyebrow{color:#123A2B;text-shadow:0 1px 10px rgba(255,255,255,.7)}
+.hero.light h1,.hero.light .eyebrow{color:#123A2B;text-shadow:0 1px 6px rgba(0,0,0,.28)}
 .hero.light h1{color:#B85A17}
 .hero.light h1 em{color:#C8641E}
-.hero.light p.lead{color:#2D4A3E;text-shadow:0 1px 8px rgba(255,255,255,.7)}
+.hero.light p.lead{color:#2D4A3E;text-shadow:0 1px 6px rgba(0,0,0,.28)}
 .hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
 .hero .eyebrow{font-size:clamp(14px,1.7vw,16.5px);font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:14px}
 /* 관리 화면에 적은 띄어쓰기(여러 칸)가 그대로 보이게 — 브라우저는 원래 빈칸을 하나로 줄인다(사장님 2026-09-11) */
@@ -1567,6 +1566,8 @@ function drawHero(){
   heroEl.classList.add("light");
   heroEl.classList.toggle("has-img", false);
   heroEl.parentElement.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : 'url("/golf/site/img/hero-golf.webp")');
+  /* 사진 기준점 — 관리 화면에서 사진을 눌러 정한 곳(h.imgPos "x% y%"), 없으면 가운데 */
+  heroEl.parentElement.style.setProperty("--hero-pos", /^\d{1,3}% \d{1,3}%$/.test(h.imgPos || "") ? h.imgPos : "center");
   $("#heroBox").innerHTML =
     '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
     + "<h1" + colSt(h.titleColor, szSt(h.titlePx, h.titleW, "9vw")) + ">" + title + "</h1>"
