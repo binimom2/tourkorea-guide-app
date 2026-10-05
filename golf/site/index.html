@@ -140,6 +140,13 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero.has-img{background-image:linear-gradient(115deg,rgba(8,34,24,.82) 0%,rgba(8,34,24,.48) 50%,rgba(8,34,24,.34) 100%),var(--hero-img);
   background-size:cover,cover;background-position:center,center}
 .hero.has-img::after{opacity:.45}
+/* 밝은 첫 화면(사장님 2026-10-05) — 골프장 사진을 옅게(흰 막) 깔고 글자는 짙은 초록. 관리 화면 사진·글자색보다 우선 */
+.hero.light{background:linear-gradient(100deg,rgba(255,255,255,.80) 0%,rgba(255,255,255,.62) 55%,rgba(255,255,255,.45) 100%),url("/golf/site/img/hero-golf.webp") center/cover;color:#123A2B}
+.hero.light::after{display:none}
+.hero.light h1,.hero.light .eyebrow{color:#123A2B!important;text-shadow:0 1px 10px rgba(255,255,255,.7)}
+.hero.light h1{color:#B85A17!important}
+.hero.light h1 em{color:#C8641E!important}
+.hero.light p.lead{color:#2D4A3E!important;text-shadow:0 1px 8px rgba(255,255,255,.7)}
 .hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
 .hero .eyebrow{font-size:clamp(14px,1.7vw,16.5px);font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:14px}
 /* 관리 화면에 적은 띄어쓰기(여러 칸)가 그대로 보이게 — 브라우저는 원래 빈칸을 하나로 줄인다(사장님 2026-09-11) */
@@ -1550,7 +1557,8 @@ function drawHero(){
   const colSt = (c, sz) => ((c || sz) ? ' style="' + (c ? "color:" + esc(c) + ";" : "") + (sz || "") + '"' : "");
   /* 배경 사진 — 관리 화면 사진칸의 첫 장(h.img)만 쓴다 */
   const heroEl = $("#top");
-  heroEl.classList.toggle("has-img", !!h.img);
+  heroEl.classList.add("light");
+  heroEl.classList.toggle("has-img", false);
   heroEl.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : "none");
   $("#heroBox").innerHTML =
     '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
