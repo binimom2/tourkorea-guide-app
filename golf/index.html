@@ -44,6 +44,15 @@ html.embed .wrap{padding-top:6px}
 #vehChoiceList .vcopt{padding:8px 11px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #vehChoiceList .vcopt.on{background:#f1ebdb}
 #vehChoiceList .vcopt.hi{background:rgba(18,58,43,.12)}
+/* 드롭다운 글자 통일(사장님 2026-10-05) — 「호텔 선택·가이드 선택…」 같은 안내 줄은 옅은 회색,
+   실제 고를 것(호텔명·가이드 종류·차량)은 차량 칸과 같은 진한 글자. 안내 줄이 골라져 있으면 칸 글자도 회색 */
+.f select{font-weight:700}
+select option{color:var(--ink);font-weight:700}
+select option[value=""]{color:#A3ADA8;font-weight:500}
+select:has(option[value=""]:checked){color:#A3ADA8;font-weight:500}
+.hrow select,.day select{font-weight:700;color:var(--ink)}
+.hrow select:has(option[value=""]:checked),.day select:has(option[value=""]:checked){color:#A3ADA8;font-weight:500}
+#vehChoiceList .vcopt[data-v=""],#vehChoiceBtn .vcph{color:#A3ADA8;font-weight:500}
 /* 「수배요청서」 창(#bkModal, 사장님 2026-09-21) — 견적 내용 + 항목마다 비고란. 좁은 화면에서는 한 줄씩 아래로 쌓는다 */
 #bkModal .bkinfo{display:grid;grid-template-columns:52px 1fr 52px 1fr;gap:7px 10px;margin-top:13px;font-size:13px;align-items:baseline}
 #bkModal .bkinfo span{color:#5E6F66;font-weight:700}
@@ -434,7 +443,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
            예전 체크박스(#useGuide)와 종류칸(#guide)은 계산 로직이 그대로 쓰므로 숨겨 둔다. -->
       <h2 class="steph">6. 가이드<span class="csum" id="sum6"></span><span class="cedit">수정</span></h2>
       <div class="cbody">
-        <div class="f"><select id="guideSel" style="font-size:14px;font-weight:700;"></select></div>
+        <div class="f"><select id="guideSel" style="font-size:14px;"></select></div>
         <!-- 가이드 인원(사장님 2026-09-15): 보통 1명, 밴 1대라도 1명이면 된다. 종류를 고르면 보이고 요금·지방 숙박비 × 인원 -->
         <!-- 5번 「＋ 차량 추가 선택」과 같은 패턴(사장님 2026-09-16): 제목 한 줄, 누르면 가이드 인원 칸이 아래로 펼쳐진다 -->
         <div id="guideCntWrap" style="display:none;margin:8px 0 10px;font-size:13.5px;font-weight:800;color:var(--ink);">
@@ -456,7 +465,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
   <div class="card step" id="s7" style="display:none">
     <h2 class="steph">7. 기타투어<span class="csum" id="sum7"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
-      <div class="f"><select id="tourSel" style="font-size:14px;font-weight:700;"></select></div>
+      <div class="f"><select id="tourSel" style="font-size:14px;"></select></div>
       <div id="tourPicked"></div>
       <div id="tourEmptyHint" style="display:none;margin-top:8px;font-size:12.5px;font-weight:700;color:#b23b3b;">아직 등록된 기타투어가 없습니다 — 사이트 관리 → 「💰 실시간 요금표&amp;코드관리」 → 「🎫 기타투어」에서 제목과 금액을 넣고 저장하세요. (이 안내는 직원에게만 보입니다)</div>
       <div class="hint" style="margin-top:8px;font-weight:700;">* 확정 시 원하는 날짜와 시간대를 알려 주셔야 합니다.</div>
@@ -1082,7 +1091,8 @@ function renderVehChoices(){
      select 글자는 투명하게 하고, 그 위에 같은 글자를 그린 겉면(#vehChoiceFace)을 얹는다(누르는 건 아래 select가 받음). 펼친 목록은 전부 검정 */
   /* 펼친 목록에서도 「추천」 글자만 빨갛게(사장님 2026-09-21) — 기본 드롭다운(option)은 줄 전체 색만 줄 수 있어서
      단추(#vehChoiceBtn) + 직접 그린 목록(#vehChoiceList, openVehList)으로 바꿨다. 고르면 예전처럼 onVehChoiceChange */
-  const optHtml=o=>(o.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(o.t+codeTxt(o.v));
+  const optHtml=o=>o.v===''?'<span class="vcph">'+esc(o.t)+'</span>'   // 「차량 선택」 안내 줄은 옅은 회색(사장님 2026-10-05)
+    :(o.rec?'<span style="color:#c62828;font-weight:800;">추천</span> · ':'')+esc(o.t+codeTxt(o.v));
   const cur=opts.find(o=>o.v===vehChoice)||opts[0];
   closeVehList();
   _vehOpts=opts.map(o=>({v:o.v,html:optHtml(o)}));
