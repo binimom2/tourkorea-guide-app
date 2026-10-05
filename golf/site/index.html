@@ -162,8 +162,9 @@ body .trust.top button.hot{background:#BFE6F7;border-radius:999px;animation:hotg
 body .trust.top button.hot:hover{background:#A9DCF3}
 body .trust.top button.hot:active{background:#93D2EE}
 body .trust.top button.hot b{color:#0E3A5C}
-@keyframes hotglow-sky{0%,100%{box-shadow:0 0 0 2px rgba(91,177,222,.35),0 6px 18px rgba(30,110,160,.16)}
-  50%{box-shadow:0 0 0 4px rgba(91,177,222,.55),0 6px 22px rgba(30,110,160,.2)}}
+/* 테두리는 주황으로 굵게 깜빡인다(사장님 2026-10-05) */
+@keyframes hotglow-sky{0%,100%{box-shadow:0 0 0 3px rgba(232,140,40,.55),0 6px 18px rgba(30,110,160,.16)}
+  50%{box-shadow:0 0 0 6px rgba(232,140,40,.9),0 6px 22px rgba(30,110,160,.2)}}
 body .trust.top button.on::after{content:"";position:absolute;left:50%;bottom:6px;width:26px;height:3px;margin-left:-13px;border-radius:3px;background:var(--fairway)}
 /* 휴대폰은 여러 줄이면 화면을 너무 가려서 한 줄로 두고 옆으로 밀어 본다 */
 @media(max-width:640px){
