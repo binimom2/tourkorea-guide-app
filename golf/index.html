@@ -1241,7 +1241,13 @@ document.addEventListener('keydown',e=>{
   }
 });
 document.addEventListener('focusout',e=>{ if(e.target&&e.target.id==='vehChoiceBtn') closeVehList(); });
-window.addEventListener('scroll',e=>{ const l=document.getElementById('vehChoiceList'); if(l&&!(e.target instanceof Node&&l.contains(e.target))) closeVehList(); },true);
+window.addEventListener('scroll',e=>{
+  const l=document.getElementById('vehChoiceList'); if(!l||(e.target instanceof Node&&l.contains(e.target))) return;
+  /* 위 칸이 접히며 화면이 저절로 움직인 스크롤(_vlQuiet 동안)은 목록을 닫지 않고 단추 자리로 다시 붙인다 —
+     닫으면 차량 칸을 한 번 더 눌러야 했다(사장님 2026-10-05) */
+  if(Date.now()<(window._vlQuiet||0)){ openVehList(); return; }
+  closeVehList();
+},true);
 window.addEventListener('resize',closeVehList);
 
 /* ── 차량 사진 창(사장님 2026-09-15) — 관리 차량 열의 사진(imgs 최대 3장, 옛 img 한 장도 포함) ── */
@@ -2866,8 +2872,10 @@ document.addEventListener('focusin',e=>{
   const st=e.target.closest('.step');
   if(st) touched.add(st.id);
   const fold=()=>{
+    const hadList=!!document.getElementById('vehChoiceList');
+    window._vlQuiet=Date.now()+600;   // 접히며 생기는 스크롤에 차량 목록이 닫히지 않게
     autoFold(st?st.id:null);   // 견적 결과 쪽을 만지면(st 없음) 위 칸들이 전부 접힌다
-    if(document.getElementById('vehChoiceList')) openVehList();   // 펼쳐 둔 차량 목록은 접힌 뒤 자리로 다시 붙인다
+    if(hadList){ openVehList(); setTimeout(()=>{ if(document.getElementById('vehChoiceList')) openVehList(); },120); }   // 펼쳐 둔 차량 목록은 접힌 뒤 자리로 다시 붙인다
   };
   if(_ptrDown){ _pendingFold=fold; return; }
   fold();
