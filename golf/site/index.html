@@ -140,17 +140,6 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero.has-img{background-image:linear-gradient(115deg,rgba(8,34,24,.82) 0%,rgba(8,34,24,.48) 50%,rgba(8,34,24,.34) 100%),var(--hero-img);
   background-size:cover,cover;background-position:center,center}
 .hero.has-img::after{opacity:.45}
-/* 첫 화면(사장님 2026-10-05) — 사진은 첫 화면 + 바로 아래 메뉴 띠까지 한 장으로, 원본 그대로(흰 막 없음). .herobg 가 둘을 감싼다 */
-.herobg{background:var(--hero-img,url("/golf/site/img/hero-golf.webp")) var(--hero-pos,center)/cover}
-.hero.light{background:none;color:#123A2B}
-.herobg .trust{background:none;border-top:0}
-.herobg .trust b{text-shadow:0 1px 8px rgba(255,255,255,.9)}
-.hero.light::after{display:none}
-/* 글자 색은 관리 화면에서 고른 색이 우선 — 안 고르면(기본) 아래 짙은 색 */
-.hero.light h1,.hero.light .eyebrow{color:#123A2B;text-shadow:0 1px 6px rgba(0,0,0,.28)}
-.hero.light h1{color:#B85A17}
-.hero.light h1 em{color:#C8641E}
-.hero.light p.lead{color:#2D4A3E;text-shadow:0 1px 6px rgba(0,0,0,.28)}
 .hero .wrap{position:relative;z-index:1;padding-top:66px;padding-bottom:64px}
 .hero .eyebrow{font-size:clamp(14px,1.7vw,16.5px);font-weight:800;letter-spacing:.14em;color:var(--marigold);margin-bottom:14px}
 /* 관리 화면에 적은 띄어쓰기(여러 칸)가 그대로 보이게 — 브라우저는 원래 빈칸을 하나로 줄인다(사장님 2026-09-11) */
@@ -158,6 +147,39 @@ body.fs-sm .qp-price .v{font-size:25px}
 .hero h1{margin:0;font-size:clamp(29px,5.4vw,52px);font-weight:900;letter-spacing:-.045em;line-height:1.2}
 .hero h1 em{font-style:normal;color:var(--marigold)}
 .hero p.lead{margin:16px 0 0;font-size:clamp(15px,1.9vw,18px);color:rgba(255,255,255,.86);max-width:620px}
+/* ── 첫 화면 사진 넘기기(사장님 2026-10-05) ──
+   메뉴 띠는 헤더 바로 아래로 올리고, 그 아래 둥근 사진 카드가 옆으로 넘어간다(양옆 카드가 살짝 보임).
+   사진은 관리 화면 「첫 화면 → 배경 사진」에 올린 차례대로 — 1장이면 넘기지 않고 1장만, 여러 장이면 5초마다 넘어간다.
+   글자(윗줄·제목·설명)는 가운데 카드 위에 고정. 사진 원본 그대로(막 없음), 글자에만 그림자 */
+.trust.top{border-top:0;border-bottom:1px solid var(--line)}
+.hero.slides{background:#fff;padding:22px 0 8px}
+.hero.slides::after{display:none}
+.hs{position:relative;height:clamp(230px,34vw,440px);--hsw:min(1100px,86vw)}
+.hs-s{position:absolute;top:0;left:50%;width:var(--hsw);height:100%;margin-left:calc(var(--hsw) / -2);border-radius:18px;
+  background:#e8ece9 var(--hero-pos,center)/cover no-repeat;opacity:0;transform:translateX(0);transition:transform .6s ease,opacity .6s ease}
+.hs-s.c{opacity:1;z-index:2}
+.hs-s.l{opacity:1;transform:translateX(calc(-100% - 16px))}
+.hs-s.r{opacity:1;transform:translateX(calc(100% + 16px))}
+.hs-s.ll{transform:translateX(calc(-200% - 32px))}
+.hs-s.rr{transform:translateX(calc(200% + 32px))}
+.hs-text{position:absolute;top:0;bottom:0;left:50%;width:var(--hsw);margin-left:calc(var(--hsw) / -2);z-index:3;display:flex;align-items:center;pointer-events:none}
+.hs-text .cta,.hs-text a{pointer-events:auto}
+.hero.slides .wrap{padding:0 clamp(22px,6vw,76px);margin:0;max-width:none;width:100%}
+.hero.slides .eyebrow,.hero.slides h1,.hero.slides p.lead{text-shadow:0 2px 10px rgba(0,0,0,.38)}
+.hs-btn{position:absolute;top:50%;z-index:4;width:42px;height:42px;margin-top:-21px;border-radius:50%;border:0;background:rgba(255,255,255,.88);
+  color:#123A2B;font-size:22px;font-weight:900;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.18);line-height:1}
+.hs-btn.p{left:calc(50% - var(--hsw) / 2 + 12px)}
+.hs-btn.n{right:calc(50% - var(--hsw) / 2 + 12px)}
+.hs-dots{display:flex;justify-content:center;gap:7px;margin-top:12px}
+.hs-dots button{width:8px;height:8px;border-radius:999px;border:0;padding:0;background:#cfd6d2;cursor:pointer;transition:width .3s}
+.hs-dots button.on{width:22px;background:var(--fairway)}
+.hero.one .hs-btn,.hero.one .hs-dots{display:none}
+/* 휴대폰 — 글자가 넘치지 않게 카드를 키우고, 화살표 대신 밀어서 넘긴다 */
+@media (max-width:640px){
+  .hs{height:360px;--hsw:90vw}
+  .hs-btn{display:none}
+  .hero.slides .wrap{padding:0 18px}
+}
 .keys{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0}
 .keys span{border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:7px 15px;font-size:13px;font-weight:700;background:rgba(255,255,255,.07)}
 .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
@@ -830,15 +852,19 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   </div>
 </div>
 
-<div class="herobg">
-<header class="hero" id="top">
-  <div class="wrap" id="heroBox"></div>
-</header>
-
-<div class="trust">
+<div class="trust top">
   <div class="wrap" id="trustBox"></div>
 </div>
-</div>
+
+<header class="hero slides" id="top">
+  <div class="hs">
+    <div id="heroSlides"></div>
+    <div class="hs-text"><div class="wrap" id="heroBox"></div></div>
+    <button type="button" class="hs-btn p" id="hsPrev" aria-label="이전 사진">‹</button>
+    <button type="button" class="hs-btn n" id="hsNext" aria-label="다음 사진">›</button>
+  </div>
+  <div class="hs-dots" id="hsDots"></div>
+</header>
 
 <!-- 1차 화면: 종류(골프장·호텔·…)를 고르면 그 목록이 아래 카드로 깔린다.
      카드를 누르면 2차 화면(상세)이 열린다. 종류는 data.js의 cats에서 온다. -->
@@ -1561,13 +1587,13 @@ function drawHero(){
   const eyeSt = (EYE[h.eyeSize] || "") + (h.eyeColor ? ";color:" + esc(h.eyeColor) : "") + ";" + szSt(h.eyePx, h.eyeW, "5.2vw");
   /* 큰 제목·설명 문구도 각각 색을 고를 수 있다(사장님 2026-09-11 — 전에는 윗줄만 됐다). 비면 흰색 그대로 */
   const colSt = (c, sz) => ((c || sz) ? ' style="' + (c ? "color:" + esc(c) + ";" : "") + (sz || "") + '"' : "");
-  /* 배경 사진 — 관리 화면 사진칸의 첫 장(h.img)을 첫 화면+메뉴 띠(.herobg)에 옅게 깐다. 없으면 기본 골프장 사진 */
+  /* 사진 — 관리 화면 사진칸에 올린 차례대로 넘긴다(1장이면 고정). 없으면 기본 골프장 사진 */
   const heroEl = $("#top");
-  heroEl.classList.add("light");
-  heroEl.classList.toggle("has-img", false);
-  heroEl.parentElement.style.setProperty("--hero-img", h.img ? 'url("' + String(h.img).replace(/["\\]/g, "") + '")' : 'url("/golf/site/img/hero-golf.webp")');
+  const pics = [h.img].concat(h.imgs || []).map(s => String(s || "").trim()).filter((s, i, a) => s && a.indexOf(s) === i);
+  if(!pics.length) pics.push("/golf/site/img/hero-golf.webp");
   /* 사진 기준점 — 관리 화면에서 사진을 눌러 정한 곳(h.imgPos "x% y%"), 없으면 가운데 */
-  heroEl.parentElement.style.setProperty("--hero-pos", /^\d{1,3}% \d{1,3}%$/.test(h.imgPos || "") ? h.imgPos : "center");
+  heroEl.style.setProperty("--hero-pos", /^\d{1,3}% \d{1,3}%$/.test(h.imgPos || "") ? h.imgPos : "center");
+  heroSlides(pics);
   $("#heroBox").innerHTML =
     '<div class="eyebrow" style="' + eyeSt + '">' + esc(h.eyebrow || "") + "</div>"
     + "<h1" + colSt(h.titleColor, szSt(h.titlePx, h.titleW, "9vw")) + ">" + title + "</h1>"
@@ -1583,6 +1609,40 @@ function drawHero(){
         : "");
   drawSectors();
 }
+/* 첫 화면 사진 넘기기 — 가운데(c) 한 장, 양옆(l·r)이 살짝 보이고, 나머지는 바깥(ll·rr)에 숨어 있다 */
+let hsCur = 0, hsN = 0, hsTimer = null;
+function heroSlides(pics){
+  hsN = pics.length; hsCur = 0;
+  $("#heroSlides").innerHTML = pics.map(u => '<div class="hs-s" style="background-image:url(&quot;' + esc(String(u).replace(/["\\]/g, "")) + '&quot;)"></div>').join("");
+  $("#hsDots").innerHTML = pics.map((u, i) => '<button type="button" aria-label="' + (i + 1) + '번 사진"></button>').join("");
+  $("#top").classList.toggle("one", hsN < 2);
+  [...$("#hsDots").children].forEach((b, i) => b.onclick = () => hsGo(i));
+  hsGo(0);
+}
+function hsGo(i){
+  if(!hsN) return;
+  hsCur = (i + hsN) % hsN;
+  [...$("#heroSlides").children].forEach((el, k) => {
+    const d = (k - hsCur + hsN) % hsN;
+    el.className = "hs-s " + (d === 0 ? "c" : d === 1 ? "r" : (d === hsN - 1 && hsN > 2) ? "l" : d <= hsN / 2 ? "rr" : "ll");
+  });
+  [...$("#hsDots").children].forEach((b, k) => b.classList.toggle("on", k === hsCur));
+  clearInterval(hsTimer);
+  if(hsN > 1) hsTimer = setInterval(() => hsGo(hsCur + 1), 5000);
+}
+$("#hsPrev").onclick = () => hsGo(hsCur - 1);
+$("#hsNext").onclick = () => hsGo(hsCur + 1);
+/* 휴대폰 — 옆으로 밀어서 넘기기 */
+(function(){
+  let x0 = null;
+  const el = $("#top");
+  el.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive:true });
+  el.addEventListener("touchend", e => {
+    if(x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if(Math.abs(dx) > 40) hsGo(hsCur + (dx < 0 ? 1 : -1));
+  });
+})();
 /* 히어로 바로 아래 띠 — 종류로 바로 가는 «섹터 메뉴»(사장님 2026-09-08).
    예전에는 「직영·직수배·실시간·전담」 문구가 있던 자리다(자료는 SITE.trust 에 그대로 남아 있다).
    종류는 관리 화면 「＋ 종류 관리」에서 늘리시면 여기도 저절로 늘어난다.
