@@ -154,6 +154,10 @@ body.fs-sm .qp-price .v{font-size:25px}
 .trust.top{border-top:0;border-bottom:1px solid var(--line)}
 /* 메뉴 띠는 스크롤해도 헤더 바로 아래 붙어 있다(사장님 2026-10-05). --navh 는 헤더 높이(스크립트가 잰다) */
 .trust.top{position:sticky;top:var(--navh,60px);z-index:55;background:#fff}
+/* 지금 보고 있는 종류 — 휘어진 주황 밑줄 대신 연초록 바탕 + 글자 아래 짧은 초록 막대(사장님 2026-10-05) */
+body .trust.top button.on{background:rgba(18,58,43,.08);box-shadow:none;position:relative}
+body .trust.top button.on b{color:var(--fairway)}
+body .trust.top button.on::after{content:"";position:absolute;left:50%;bottom:6px;width:26px;height:3px;margin-left:-13px;border-radius:3px;background:var(--fairway)}
 /* 휴대폰은 여러 줄이면 화면을 너무 가려서 한 줄로 두고 옆으로 밀어 본다 */
 @media(max-width:640px){
   .trust.top .wrap{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:8px 10px;gap:4px}
