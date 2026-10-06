@@ -1830,6 +1830,8 @@ function fmtDay(ds){ const d=new Date(ds+'T00:00:00'); return `${ds.slice(5).rep
 
 /* 견적서 '불포함 사항' — 고정 목록(사장님 2026-09-14). 바꿀 일이 있으면 여기만 고친다 */
 const QUOTE_EXCLUDES=['중식 · 석식','캐디팁','에티켓팁','기타 개인경비','항공','여행자보험'];   // 「항공」 추가(사장님 2026-09-15)
+/* 포함 사항 중 7번 기타 줄 — 견적서에서는 「추가 선택 사항」으로 따로 뺀다(사장님 2026-10-06). 데이터(includes)는 그대로라 수배요청서는 전과 같다 */
+function isExtraLine(t){ return /^기타투어\s*-/.test(String(t||'')); }
 /* 저장돼 있던 불포함 목록에 「항공」이 없으면 「기타 개인경비」 뒤에 끼워 넣는다(관리에서 저장하면 그때 서버에도 반영) */
 function withAirExclude(list){
   if(!Array.isArray(list)) return list;
@@ -2120,7 +2122,7 @@ function buildQuoteHtml(mode, Q){
     <div style="margin-top:16px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">포함 사항</div>
       <div style="font-size:13.5px;font-weight:700;color:#15211C"><!-- +1·진하게(사장님 2026-09-16) -->
-        ${(((Q.includes||{})[mode==='internal'?'internal':'customer'])||[]).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
+        ${(((Q.includes||{})[mode==='internal'?'internal':'customer'])||[]).filter(t=>!isExtraLine(t)).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}
       </div>
     </div>
     <!-- 불포함 사항(사장님 2026-09-14) — QUOTE_EXCLUDES 상수 -->
@@ -2130,6 +2132,12 @@ function buildQuoteHtml(mode, Q){
         <div style="padding:3px 0">${[Q.noHotel?'호텔':'',Q.noGuide?'가이드':'',Q.noVeh?'차량':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(', ')}</div>   <!-- 한 줄 가로 표기, 쉼표로(사장님 2026-09-15 저녁) · 안 고른 호텔·가이드·차량은 맨 앞에 빨갛게 -->
       </div>
     </div>
+    <!-- 추가 선택 사항(사장님 2026-10-06) — 포함 → 불포함 → 추가 선택 차례. 7번 기타(식사·투어)를 따로 보인다. 금액은 총액에 들어 있다 -->
+    ${(()=>{ const ex=(((Q.includes||{})[mode==='internal'?'internal':'customer'])||[]).filter(isExtraLine); if(!ex.length) return '';
+      return `<div style="margin-top:12px">
+      <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">추가 선택 사항</div>
+      <div style="font-size:13.5px;font-weight:700;color:#15211C">${ex.map(t=>String(t).replace(/^기타투어\s*-\s*/,'')).flatMap(t=>t.split(/,\s*/)).map(t=>`<div style="padding:3px 0">· ${esc(t)}</div>`).join('')}</div>
+    </div>`; })()}
     ${detail}
 
     <div style="margin-top:18px;background:#E3F1E7;color:#123A2B;border:1px solid #cfe3d5;border-radius:10px;padding:16px 18px">
