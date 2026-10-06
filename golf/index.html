@@ -726,8 +726,12 @@ function guideCodeLabel(t){
 }
 /* 한국어 가능 로컬가이드는 밴용·버스용 요금이 따로다(사장님 2026-10-06) — 이름에 「버스/bus」가 들면 버스용, 「밴/van」이면 밴용.
    버스면 5번 동승 칸에 버스용만, 밴이면 6번에 밴용만 띄워 고른 차량에 맞는 요금이 들어가게 한다. */
-function guideIsBus(t){ return guideRank(t)===1&&/버스|bus/i.test(String(t||'')); }
-function guideIsVan(t){ return guideRank(t)===1&&!guideIsBus(t); }   // 한국어 로컬 중 버스용이 아닌 것 = 밴용(「-밴」「-벤」 표기 무관)
+/* 영어 로컬도 「-버스」 열을 두면 똑같이 나눈다(사장님 2026-10-06) */
+function guideIsBus(t){ const r=guideRank(t); return (r===1||r===2)&&/버스|bus/i.test(String(t||'')); }
+function guideIsVan(t){ const r=guideRank(t); return (r===1||r===2)&&!guideIsBus(t); }   // 로컬 중 버스용이 아닌 것 = 밴용(「-밴」「-벤」 표기 무관)
+/* 차량에 맞는 로컬만 남긴다 — 같은 구분(한국어/영어)에 버스용·밴용이 둘 다 있으면 버스면 버스용, 밴이면 밴용. 한쪽만 있으면 그대로 */
+function guideFitVeh(list,bus){ return list.filter(t=>{ const r=guideRank(t); if(r!==1&&r!==2) return true;
+  const same=list.filter(x=>guideRank(x)===r); return bus?(guideIsBus(t)||!same.some(guideIsBus)):(guideIsVan(t)||!same.some(guideIsVan)); }); }
 /* 선택지 글자 — 코드관리 라벨은 구분(한국인/로컬 한국어/로컬 영어)마다 하나라, 같은 구분이 둘 이상 뜨면 똑같은 글자가 겹친다.
    그럴 땐 종류 이름을 그대로 쓴다(사장님 2026-10-06 「2개가 떠요」) */
 /* 로컬가이드는 요금표의 종류 이름을 그대로 쓰되 꼬리 「-밴」「-벤」「-버스」는 뗀다 — 어느 쪽이 뜰지는 고른 차량이 정한다 */
@@ -1051,7 +1055,7 @@ function syncBusGuide(){
   if(!on) return;
   /* 동승 가이드는 로컬(한국어/영어)만 — 한국인가이드는 6번에서 추가(사장님 2026-09-15). 로컬 종류가 없으면 전부 */
   /* 한국어 로컬은 버스용 요금 열이 있으면 그것만(밴용은 뺀다, 사장님 2026-10-06) */
-  const all0=guideTypesOrdered(), all=all0.some(guideIsBus)?all0.filter(t=>!guideIsVan(t)):all0;
+  const all=guideFitVeh(guideTypesOrdered(),true);
   const locals=all.filter(t=>guideRank(t)===1||guideRank(t)===2);
   /* 저렴한 영어 로컬을 앞에 두고 기본 선택으로(사장님 2026-09-15) */
   const types=(locals.length?locals:all).slice().sort((a,b)=>(guideRank(a)===2?0:1)-(guideRank(b)===2?0:1));
@@ -1349,8 +1353,7 @@ function buildGuideSelOptions(){
      밴이면 종류 전부 + 노가이드 가능. */
   const bus=(typeof vehPlan==='function')&&vehPlan().kind==='bus';
   /* 밴이면 한국어 로컬은 밴용 요금만(버스용 열은 5번 버스 동승 칸 전용, 사장님 2026-10-06) */
-  const all=guideTypesOrdered(), hasVan=all.some(guideIsVan);
-  const types=all.filter(t=>bus?guideRank(t)===0:!(hasVan&&guideIsBus(t)));
+  const types=bus?guideTypesOrdered().filter(t=>guideRank(t)===0):guideFitVeh(guideTypesOrdered(),false);
   const lab=t=>guideOptLabel(t,types);
   const cur=sel.value;
   /* 6번도 코드관리 가이드 라벨(비용 안내 포함)이 있으면 그 글자 — 손님이 비용을 대략 알고 고르게(사장님 2026-09-15) */
