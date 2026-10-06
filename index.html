@@ -689,7 +689,7 @@
     body.print-guide .inc-exp-print-row .settle-result-row .settle-result-val { font-size:12px; }
 
     /* 총수익금+비율+정산금: 3열 한 줄 */
-    body.print-guide .inc-final-print-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; align-items:center; margin-top:4px; }
+    body.print-guide .inc-final-print-row { display:grid; grid-template-columns:1fr 0.5fr 1fr 1fr 1fr; gap:4px; align-items:center; margin-top:4px; }
     body.print-guide .inc-final-print-row .settle-result-row { border-top:none; padding:4px; background:#f0f8ff; border-radius:6px; flex-direction:column; align-items:flex-start; }
     body.print-guide .inc-final-print-row .settle-result-row span:first-child { font-size:9px; }
     body.print-guide .inc-final-print-row .settle-pct-row { padding:4px 6px; border-radius:6px; flex-direction:column; align-items:flex-start; gap:2px; }
@@ -1479,7 +1479,7 @@
 
         <!-- 최종 정산: 4열 한 줄 -->
         <div class="settle-section-sub">최종 정산</div>
-        <div class="inc-final-print-row" style="display:grid;grid-template-columns:1fr 0.5fr 1.25fr 1.25fr;gap:8px;margin-bottom:8px;align-items:end;">
+        <div class="inc-final-print-row" style="display:grid;grid-template-columns:1fr 0.5fr 1.15fr 1fr 1.15fr;gap:8px;margin-bottom:8px;align-items:end;">
           <div class="settle-display-group">
             <label>총 수익금 (฿)</label>
             <div class="settle-display" style="color:var(--primary);font-weight:800;" id="inc-net-total">฿ 0</div>
@@ -1494,6 +1494,10 @@
           <div class="settle-display-group">
             <label>💰 가이드 정산금 (฿)</label>
             <div class="settle-display" style="color:#1A8A60;font-weight:800;font-size:16px;border:2px solid #1A8A60;background:#e8f9f0;" id="inc-guide-pay">฿ 0</div>
+          </div>
+          <div class="settle-display-group">
+            <label>1인 메꾸기 (฿/인)</label>
+            <div class="settle-display" style="font-weight:800;font-size:16px;" id="inc-fill-per" title="(지상비 합계 − 행사 지출금) ÷ 행사인원(성인+어린이)">฿ 0</div>
           </div>
           <div class="settle-display-group">
             <label>🏢 회사 정산금 (฿)</label>
@@ -2843,6 +2847,7 @@ function calcPaxTotal() {
   const c=parseInt(document.getElementById('paxChild').value)||0;
   const t=parseInt(document.getElementById('paxTC').value)||0;
   document.getElementById('paxTotalDisplay').textContent=(a+c+t)+'명';
+  try { if(typeof calcIncentive==='function') calcIncentive(); } catch(e) {}
 }
 
 // ══════════════════════════════════
@@ -3853,6 +3858,13 @@ function calcIncentive() {
   const landTotalFmt='฿ '+fmtNum(Math.round(landTotal));
   document.getElementById('inc-land-total').textContent=landTotalFmt;
   const lt2=document.getElementById('inc-land-total2'); if(lt2) lt2.textContent=landTotalFmt;
+
+  // 1인 메꾸기 = (지상비 합계 − 행사 지출금) ÷ 행사인원(성인+어린이, TC 제외)
+  const fillPax=(parseInt(document.getElementById('paxAdult')?.value)||0)+(parseInt(document.getElementById('paxChild')?.value)||0);
+  const fillBase=landTotal-exp1;
+  const fillPer=fillPax>0?Math.round(fillBase/fillPax):0;
+  const fperEl=document.getElementById('inc-fill-per');
+  if(fperEl){ fperEl.textContent=(fillPer<0?'-฿ ':'฿ ')+fmtNum(Math.abs(fillPer)); fperEl.style.color=fillPer<0?'var(--danger)':'var(--primary)'; }
 
   const netEl=document.getElementById('inc-net-total');
   netEl.textContent=(net<0?'-':'')+' ฿ '+fmtNum(Math.abs(Math.round(net)));
