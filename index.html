@@ -3346,10 +3346,13 @@ function calcGigatipTotal(){
 
 // 기가팁 합계가 있는 통화만, TC정산금 항목이 있을 때만 해당 정산서 필드를 덮어씀 (기존 수동입력값은 항목이 없으면 그대로 유지)
 function applyGigatipToSettlement(tipByCur, tcTHB) {
-  const hasKRW = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='KRW');
-  const hasUSD = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='USD');
-  const hasTHB = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='THB');
-  const hasTC  = state.gigatip.some(r=>(r.type||'기가팁')==='TC정산금');
+  // 금액·인원이 모두 빈 줄(기본으로 생기는 ฿ 빈 줄 등)은 없는 것으로 친다.
+  // 예전엔 빈 ฿ 줄 하나만 있어도 지상비(฿) 수동입력이 매번 빈 값으로 덮어써졌다.
+  const filled = r => String(r.price||'').trim()!=='' || String(r.pax||'').trim()!=='';
+  const hasKRW = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='KRW' && filled(r));
+  const hasUSD = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='USD' && filled(r));
+  const hasTHB = state.gigatip.some(r=>(r.type||'기가팁')==='기가팁' && (r.currency||'THB')==='THB' && filled(r));
+  const hasTC  = state.gigatip.some(r=>(r.type||'기가팁')==='TC정산금' && filled(r));
 
   const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value = val ? fmtNum(Math.round(val)) : ''; };
 
