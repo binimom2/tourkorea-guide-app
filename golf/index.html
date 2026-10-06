@@ -1588,14 +1588,17 @@ const ROOM_TYPES=[['twin','트윈 (2인 1객실)'],['single','싱글 (1인 1객�
 const ROOM_SHORT={twin:'트윈',single:'싱글',triple:'트리플'};
 function roomCount(pax,rt){ return rt==='single'?pax:(rt==='triple'?Math.ceil(pax/3):Math.ceil(pax/2)); }
 /* 객실 구성(사장님 2026-10-06) — 홀수 인원이면 「2트윈 · 1싱글」「1트윈 · 1트리플」처럼 섞는다.
-   지역(sid)마다 {twin,single,triple} 객실 수. 안 만졌으면 인원에서 자동: 짝수=전부 트윈, 홀수=트윈+싱글 1.
+   지역(sid)마다 {twin,single,triple} 객실 수. 안 만졌으면 인원에서 자동: 짝수=전부 트윈, 홀수=트윈+트리플 1.
    옛 저장값(한 타입 'twin' 등)은 그 타입만으로 채운다 */
 const ROOM_KINDS=[['twin','트윈'],['single','싱글'],['triple','트리플']];
 function roomMix(pax,sid){
   const v=hotelRoom[sid];
   if(v&&typeof v==='object') return {twin:Math.max(0,+v.twin||0),single:Math.max(0,+v.single||0),triple:Math.max(0,+v.triple||0)};
   if(typeof v==='string'&&ROOM_SHORT[v]) return Object.assign({twin:0,single:0,triple:0},{[v]:roomCount(pax,v)});
-  return {twin:Math.floor(pax/2),single:pax%2,triple:0};
+  /* 홀수는 트윈 + 트리플 1 — 7명이면 2트윈 · 1트리플(사장님 2026-10-06). 1명이면 싱글 1 */
+  if(pax%2===0) return {twin:pax/2,single:0,triple:0};
+  if(pax===1) return {twin:0,single:1,triple:0};
+  return {twin:(pax-3)/2,single:0,triple:1};
 }
 function mixRooms(m){ return m.twin+m.single+m.triple; }
 function mixCap(m){ return m.twin*2+m.single+m.triple*3; }
@@ -1640,7 +1643,7 @@ function renderHotels(){
       rtSel+
       `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.sid}"><small>박</small>`+
       /* 트윈·싱글·트리플 객실 수를 각각 적는다(사장님 2026-10-06). 0은 빈칸으로 둔다 */
-      `<span class="hmix">${ROOM_KINDS.map(([k,l])=>`<label><small>${l}</small><input type="number" min="0" max="99" inputmode="numeric" data-hmix="${r.sid}" data-kind="${k}" value="${mx[k]||''}"></label>`).join('')}</span>`+
+      `<span class="hmix">${ROOM_KINDS.map(([k,l])=>`<label><input type="number" min="0" max="99" inputmode="numeric" data-hmix="${r.sid}" data-kind="${k}" value="${mx[k]||''}"><small>${l}</small></label>`).join('')}</span>`+
       `<span class="hrooms" data-hrooms="${r.sid}">${roomTagHtml(pax,mx)}</span>`;   // 「실」→「룸」(사장님 2026-09-11) → 「객실」로 통일(2026-10-05)
     wrap.appendChild(row);
   });
