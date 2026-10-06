@@ -244,7 +244,11 @@ export async function onRequestPost({ request, env }) {
     if (!nn) return;
     const rec = (HOTELS[h.region] || []).find((x) => x.name === h.name);
     if (!rec) { warnings.push(h.name + ' 요금이 등록되어 있지 않습니다'); return; }
-    const rms = roomCount(pax, String(h.room || 'twin'));
+    /* 객실 구성이 {twin,single,triple} 객실 수로 오면 그 합(2026-10-06), 옛 한 타입 글자면 인원에서 센다 */
+    const rr = h.room;
+    const rms = (rr && typeof rr === 'object')
+      ? ['twin', 'single', 'triple'].reduce((a, k) => a + Math.max(0, Math.floor(+rr[k] || 0)), 0)
+      : roomCount(pax, String(rr || 'twin'));
     total += ((+rec.perNight || 0) + marginOf(rec.margin)) * nn * rms;
     hotelNights += nn;
   });

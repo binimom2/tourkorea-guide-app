@@ -153,6 +153,11 @@ select:has(option[value=""]:checked){color:#A3ADA8;font-weight:500}
 .hrow input{width:64px;font:inherit;font-size:15px;text-align:right;padding:10px 9px;border:1px solid var(--line);border-radius:7px;background:#fff}
 .hrow small{font-weight:600;color:var(--muted);font-size:13px}
 .hrow .hrooms{font-size:14px;font-weight:800;color:var(--fairway);white-space:nowrap;min-width:40px;text-align:right}
+/* 객실 구성 — 트윈·싱글·트리플 객실 수(2026-10-06) */
+.hrow .hmix{display:inline-flex;align-items:center;gap:8px}
+.hrow .hmix label{display:inline-flex;align-items:center;gap:4px}
+.hrow .hmix input{width:52px}
+.hrow .hwarn{display:block;font-size:12px;color:#c62828;font-weight:800}
 /* 일수는 박수+1로 자동 — 직접 못 고친다 */
 #daysOut{background:rgba(18,58,43,.06);color:var(--muted);cursor:default}
 /* 오전 출발 / 오전 출국 체크 */
@@ -912,7 +917,7 @@ function hotelNextTarget(){
     const sid=hs.dataset.hotel;
     /* 화면 순서대로(사장님 2026-10-05): 호텔 → 객실 타입(디럭스 등) → 객실 구성(트윈 2인 1객실 등) */
     const rt=row.querySelector('[data-hrt]');   if(rt&&rt.options.length>1&&!hotelSeen.has(sid+':rt')) return rt;   // 객실 타입이 하나뿐이면 건너뛴다
-    const rm=row.querySelector('[data-hroom]'); if(rm&&!hotelSeen.has(sid+':room')) return rm;
+    const rm=row.querySelector('[data-hmix]'); if(rm&&!hotelSeen.has(sid+':room')) return rm;   // 객실 구성(트윈 칸)
   }
   return null;
 }
@@ -951,7 +956,7 @@ function markNext(){
    (고르면 호텔 줄을 다시 그려 칸이 바뀌므로 «나갈 때»가 아니라 «누를 때» 센다) */
 ['focusin','change'].forEach(ev=>document.addEventListener(ev,e=>{
   const t=e.target;
-  if(t.dataset&&t.dataset.hroom!==undefined){ hotelSeen.add(t.dataset.hroom+':room'); setTimeout(markNext,0); }
+  if(t.dataset&&t.dataset.hmix!==undefined){ hotelSeen.add(t.dataset.hmix+':room'); setTimeout(markNext,0); }
   else if(t.dataset&&t.dataset.hrt!==undefined){ hotelSeen.add(t.dataset.hrt+':rt'); setTimeout(markNext,0); }
 }));
 
@@ -1582,6 +1587,23 @@ function renderVehicleUI(){
 const ROOM_TYPES=[['twin','트윈 (2인 1객실)'],['single','싱글 (1인 1객실)'],['triple','트리플 (3인 1객실)']];
 const ROOM_SHORT={twin:'트윈',single:'싱글',triple:'트리플'};
 function roomCount(pax,rt){ return rt==='single'?pax:(rt==='triple'?Math.ceil(pax/3):Math.ceil(pax/2)); }
+/* 객실 구성(사장님 2026-10-06) — 홀수 인원이면 「2트윈 · 1싱글」「1트윈 · 1트리플」처럼 섞는다.
+   지역(sid)마다 {twin,single,triple} 객실 수. 안 만졌으면 인원에서 자동: 짝수=전부 트윈, 홀수=트윈+싱글 1.
+   옛 저장값(한 타입 'twin' 등)은 그 타입만으로 채운다 */
+const ROOM_KINDS=[['twin','트윈'],['single','싱글'],['triple','트리플']];
+function roomMix(pax,sid){
+  const v=hotelRoom[sid];
+  if(v&&typeof v==='object') return {twin:Math.max(0,+v.twin||0),single:Math.max(0,+v.single||0),triple:Math.max(0,+v.triple||0)};
+  if(typeof v==='string'&&ROOM_SHORT[v]) return Object.assign({twin:0,single:0,triple:0},{[v]:roomCount(pax,v)});
+  return {twin:Math.floor(pax/2),single:pax%2,triple:0};
+}
+function mixRooms(m){ return m.twin+m.single+m.triple; }
+function mixCap(m){ return m.twin*2+m.single+m.triple*3; }
+function mixLabel(m){ return ROOM_KINDS.filter(([k])=>m[k]>0).map(([k,l])=>`${m[k]}${l}`).join(' · '); }
+function roomTagHtml(pax,m){
+  const cap=mixCap(m);
+  return `${mixRooms(m)}객실`+(cap!==pax?`<b class="hwarn">객실 인원 ${cap}명 / 총인원 ${pax}명</b>`:'');
+}
 // 박수는 지역 박수를 그대로 쓰되, 손으로 고쳤으면 고친 값을 쓴다
 function hotelNightsOf(r){
   const v=hotelNights[r.sid];
@@ -1603,7 +1625,7 @@ function renderHotels(){
   const pax=Math.max(1,+$('#pax').value||1);
   stay.forEach(r=>{
     const list=H[r.region]||[];   // 숙소 목록은 지역 이름으로, 고른 값은 정거장 번호(sid)로
-    const rt=hotelRoom[r.sid]||'twin';
+    const mx=roomMix(pax,r.sid);
     const row=document.createElement('div'); row.className='hrow';
     /* 선택지 이름: 객실 요금표가 있는 호텔은 「객실 요금표」로, 옛 1박 단가만 있으면 그 값으로.
        팝업(손님 사이트)에서는 값을 안 붙인다 — 원가에 가까운 숫자가 손님 눈에 들면 안 된다 */
@@ -1617,16 +1639,20 @@ function renderHotels(){
       `<select class="hsel" data-hotel="${r.sid}"><option value="">${list.length?'호텔 선택':'등록된 숙소 없음'}</option>${opts}</select>`+
       rtSel+
       `<input type="number" min="0" max="14" value="${numval(hotelNightsOf(r))}" data-hn="${r.sid}"><small>박</small>`+
-      `<select data-hroom="${r.sid}">${ROOM_TYPES.map(([v,l])=>`<option value="${v}"${v===rt?' selected':''}>${l}</option>`).join('')}</select>`+
-      `<span class="hrooms" data-hrooms="${r.sid}">${roomCount(pax,rt)}객실</span>`;   // 「실」→「룸」(사장님 2026-09-11) → 「객실」로 통일(2026-10-05)
+      /* 트윈·싱글·트리플 객실 수를 각각 적는다(사장님 2026-10-06). 0은 빈칸으로 둔다 */
+      `<span class="hmix">${ROOM_KINDS.map(([k,l])=>`<label><small>${l}</small><input type="number" min="0" max="99" inputmode="numeric" data-hmix="${r.sid}" data-kind="${k}" value="${mx[k]||''}"></label>`).join('')}</span>`+
+      `<span class="hrooms" data-hrooms="${r.sid}">${roomTagHtml(pax,mx)}</span>`;   // 「실」→「룸」(사장님 2026-09-11) → 「객실」로 통일(2026-10-05)
     wrap.appendChild(row);
   });
 }
 // 인원수·룸타입이 바뀌면 실수 표시만 다시 맞춘다(칸을 다시 그리면 입력 포커스가 날아간다)
 function updateRoomTags(pax){
   document.querySelectorAll('[data-hrooms]').forEach(el=>{
-    const reg=el.dataset.hrooms;
-    el.textContent=roomCount(pax,hotelRoom[reg]||'twin')+'객실';
+    const sid=el.dataset.hrooms, m=roomMix(pax,sid);
+    /* 아직 안 만진 줄은 인원에 맞춘 자동값을 칸에도 다시 적는다 */
+    if(!(hotelRoom[sid]&&typeof hotelRoom[sid]==='object'))
+      document.querySelectorAll('[data-hmix]').forEach(x=>{ if(x.dataset.hmix===sid&&x!==document.activeElement) x.value=m[x.dataset.kind]||''; });
+    el.innerHTML=roomTagHtml(pax,m);
   });
 }
 
@@ -1737,29 +1763,29 @@ function calc(){
     if(idx===undefined||idx==='') return;
     const h=(H[r.region]||[])[+idx]; if(!h) return;
     const nn=hotelNightsOf(r); if(!nn) return;
-    const rt=hotelRoom[r.sid]||'twin';
-    const rms=roomCount(pax,rt);
+    const m=roomMix(pax,r.sid), rms=mixRooms(m), ml=mixLabel(m);
+    if(!rms){ lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · 객실 수를 적어 주세요`,v:0,warn:1}); return; }
     /* 객실 요금표(사이트 기준)가 있으면 그 객실 타입으로 밤마다 센다 — 주말·성수기·써차지가 밤마다 다르다 */
     const rws=roomsWithRates(h);
     if(rws.length){
       const rm=rws.find(x=>x.t===hotelRoomT[r.sid])||rws[0];
-      /* 싱글은 1인 사용 값(없으면 더블·트윈 값), 트리플은 더블·트윈 값 + 3인째 엑스트라 베드(성인) 값(사장님 2026-09-19).
-         엑스트라 베드 수 = 방마다 2명씩 채우고 남는 사람 수 — 3명 1실이면 1개, 4명 2실이면 0개, 5명 2실이면 1개 */
-      const beds=rt==='triple'?Math.max(0,Math.min(rms,pax-rms*2)):0;
-      let sum=0, bedSum=0, miss='';
+      /* 트윈은 더블·트윈 값, 싱글은 1인 사용 값(없으면 더블·트윈 값), 트리플은 더블·트윈 값 + 엑스트라 베드(성인) 1개(사장님 2026-09-19).
+         객실 구성이 섞이면 타입마다 따로 세서 더한다(2026-10-06) */
+      let sum=0, sumS=0, bedSum=0, miss='';
       stayDates(r,nn).forEach(d=>{
         if(miss) return;
         const we=isWeekend(new Date(d+'T00:00:00'))||isHoliday(d);
-        const v=roomOn(rm,h,d,we,rt==='single');
-        if(v==null) miss=d; else { sum+=v; if(beds) bedSum+=extraBedOn(rm,d,we); }
+        const v=roomOn(rm,h,d,we,false), vs=m.single?roomOn(rm,h,d,we,true):0;
+        if(v==null||vs==null) miss=d; else { sum+=v; sumS+=vs; if(m.triple) bedSum+=(+extraBedOn(rm,d,we)||0); }
       });
       if(miss){ lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${miss} 요금 미등록`,v:0,warn:1}); return; }
-      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`
-        +(beds&&bedSum?` + 엑스트라 베드 ${beds}개`:''),v:sum*rms+bedSum*beds});   // 「2트윈」꼴로 표기(사장님)
+      const v=sum*(m.twin+m.triple)+sumS*m.single+bedSum*m.triple;
+      lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${ml} × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`
+        +(m.triple&&bedSum?` + 엑스트라 베드 ${m.triple}개`:''),v});   // 「2트윈 · 1싱글」꼴로 표기
       return;
     }
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
-    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${rms}${ROOM_SHORT[rt]} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
+    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ml} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
   });
   /* 7) 기타투어(사장님 2026-09-19) — 1인 밧 × 참가 인원. 마진 없음(관리에 적는 값이 파는 값) */
   TOUR_PICKS.forEach(t=>{ const k=Math.max(1,+t.times||1);   // 횟수 — 맛사지 2회·3회 같은 요청(사장님 2026-09-19)
@@ -1981,8 +2007,8 @@ function hotelByDate(){
     const nn=hotelNightsOf(r); if(!nn) return;
     const nm=String(h.name||'').replace(new RegExp('\\s*'+String(r.region||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim()||h.name;
     /* 룸타입도 같이 — 「미트호텔 (3트윈)」(사장님 2026-09-14) */
-    const pax=Math.max(1,+$('#pax').value||1), rt=hotelRoom[r.sid]||'twin';
-    const rooms=`${roomCount(pax,rt)}${ROOM_SHORT[rt]||''}`;
+    const pax=Math.max(1,+$('#pax').value||1);
+    const rooms=mixLabel(roomMix(pax,r.sid));   // 「2트윈 · 1싱글」(2026-10-06)
     /* 객실 타입(디럭스 등)도 — 「홀리데이 인 (스탠다드 씨뷰 · 3트윈)」. 견적서·수배요청서·인보이스가 모두 이 글을 쓴다(사장님 2026-10-03) */
     const rws=roomsWithRates(h), rtn=rws.length?(hotelRoomT[r.sid]||rws[0].t):'';
     stayDates(r,nn).forEach(d=>{ m[d]=`${nm} (${rtn?rtn+' · ':''}${rooms})`; });
@@ -2807,10 +2833,9 @@ function stepSummary(id){
         const idx=hotelPick[r.sid];
         if(!(+r.nights||0)||idx===undefined||idx==='') return;
         const h=((P.hotels||{})[r.region]||[])[+idx]; if(!h) return;
-        const rt=hotelRoom[r.sid]||'twin';
         /* 호텔 이름 끝에 지역명이 또 있으면(「브라이튼 그랜드 호텔 파타야」) 요약에서는 뒤의 것을 뗀다 — 지역 이중 노출(사장님 2026-09-14) */
         const hn=String(h.name||'').replace(new RegExp('\\s*'+String(r.region||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$'),'').trim()||h.name;
-        out.push(`${r.region} ${hn}${DOT}${hotelNightsOf(r)}박${DOT}${roomCount(pax,rt)}${ROOM_SHORT[rt]}`);   // 호텔명 · 3박 · 3트윈(사장님 2026-09-14)
+        out.push(`${r.region} ${hn}${DOT}${hotelNightsOf(r)}박${DOT}${mixLabel(roomMix(pax,r.sid))}`);   // 호텔명 · 3박 · 3트윈(사장님 2026-09-14) / 섞이면 「2트윈 · 1싱글」(2026-10-06)
       });
       return out.join(DOT);   // 아직 안 고른 상태는 제목에 아무것도 안 적는다(초기 화면에 「미선택」이 뜨지 않게)
     }
@@ -2957,6 +2982,12 @@ document.addEventListener('input',e=>{
   }
   // 숙소 박수는 손으로 고친 값을 그대로 기억한다(지역 박수와 달라도 된다)
   if(t.dataset.hn!==undefined){ hotelNights[t.dataset.hn]=t.value; calc(); return; }
+  /* 객실 구성 — 그 줄의 세 칸을 함께 읽어 기억한다(한 번 만지면 인원이 바뀌어도 자동으로 안 바꾼다) */
+  if(t.dataset.hmix!==undefined){
+    const sid=t.dataset.hmix, o={twin:0,single:0,triple:0};
+    document.querySelectorAll('[data-hmix]').forEach(x=>{ if(x.dataset.hmix===sid) o[x.dataset.kind]=Math.max(0,Math.floor(+x.value||0)); });
+    hotelRoom[sid]=o; calc(); return;
+  }
   /* 인원이 바뀌면 차량 드롭다운·짐밴 칸을 다시 거른다(사장님 2026-09-15 인원별 노출) */
   if(t.id==='pax'){ syncVehShown(); calc(); return; }
   if(t.id==='teamName'||t.id==='guideCnt') calc();   // 가이드 인원(사장님 2026-09-15)
