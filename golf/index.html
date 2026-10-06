@@ -472,12 +472,11 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
        목록(투어 제목·1인 밧 금액)은 사이트 관리 「기타투어」 탭 맨 위 «실시간 견적 7번 목록»(golf_site.quoteTours)에 적는다 — 손님 사이트용 묶음과 따로다.
        안 골라도 견적은 나온다(선택 사항). 자료가 하나도 없으면 이 칸은 아예 감춘다. -->
   <div class="card step" id="s7" style="display:none">
-    <h2 class="steph">7. 기타투어<span class="csum" id="sum7"></span><span class="cedit">수정</span></h2>
+    <h2 class="steph">7. 기타<span class="csum" id="sum7"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
       <div class="f"><select id="tourSel" style="font-size:14px;"></select></div>
       <div id="tourPicked"></div>
       <div id="tourEmptyHint" style="display:none;margin-top:8px;font-size:12.5px;font-weight:700;color:#b23b3b;">아직 등록된 기타투어가 없습니다 — 사이트 관리 → 「💰 실시간 요금표&amp;코드관리」 → 「🎫 기타투어」에서 제목과 금액을 넣고 저장하세요. (이 안내는 직원에게만 보입니다)</div>
-      <div class="hint" style="margin-top:8px;font-weight:700;">* 확정 시 원하는 날짜와 시간대를 알려 주셔야 합니다.</div>
     </div>
   </div>
 
@@ -1379,7 +1378,7 @@ function buildTourSelOptions(){
      (한때 「금액은 노출 X」로 뺐다가, 실제 화면을 보시고 「금액 노출합시다」로 되돌림 — 사장님 2026-09-19)
      → 다시 「금액노출 삭제」(사장님 2026-09-21): 선택 목록에는 제목(내용)만 나온다. 금액은 아래 견적 결과 총액에만 반영 */
   const price=p=>'';
-  sel.innerHTML='<option value="">기타투어 선택</option>'
+  sel.innerHTML='<option value="">기타 선택</option>'
     /* 두 지역 이상을 도는 일정이면(또는 아직 지역을 안 골랐으면) 어느 지역 투어인지 앞에 붙인다 — 「[파타야] 알카자쇼」 */
     +SITE_TOURS.map((it,i)=>`<option value="${i}">${e((it.r&&new Set(regs).size!==1)?`[${it.r}] `:'')}${e(it.n)}${e(it.d?` (${it.d})`:'')}${e(price(it.p))}</option>`).join('');
 }
@@ -1393,9 +1392,9 @@ function renderTourPicks(){
     /* 지역 / 투어 종류 / 인원 / 횟수 (사장님 2026-09-19) — 금액은 위 선택 목록에 1인 원화로 나온다 */
     +(t.r?`<span style="flex:none;padding:2px 8px;border-radius:999px;background:#eef3ea;font-size:12px;font-weight:800;color:#2e5a43;">${e(t.r)}</span>`:'')
     +`<span style="flex:1;min-width:0;">${e(t.n)}${t.d?`<small style="display:block;font-size:11.5px;font-weight:600;color:#5E6F66;margin-top:1px;">${e(t.d)}</small>`:''}</span>`
-    +`<div class="unit" style="flex:none;"><input type="number" min="1" inputmode="numeric" data-tourcnt="${i}" value="${t.cnt}" style="width:70px;"><span>명</span></div>`
+    +`<div class="unit" style="flex:none;"><input type="number" min="1" inputmode="numeric" data-tourcnt="${i}" value="${t.cnt}" style="width:56px;height:36px;box-sizing:border-box;font-size:15px;"><span>명</span></div>`
     /* 횟수(사장님 2026-09-19) — 맛사지 2시간을 2회·3회 받겠다는 팀이 있다. 금액 = 1인 밧 × 인원 × 횟수 */
-    +`<div class="unit" style="flex:none;"><input type="number" min="1" inputmode="numeric" data-tourtimes="${i}" value="${t.times||1}" style="width:60px;"><span>회</span></div>`
+    +`<div class="unit" style="flex:none;"><input type="number" min="1" inputmode="numeric" data-tourtimes="${i}" value="${t.times||1}" style="width:56px;height:36px;box-sizing:border-box;font-size:15px;"><span>회</span></div>`
     +`<button type="button" data-tourdel="${i}" title="이 투어 빼기" style="flex:none;border:0;background:none;color:#c0492f;font-size:15px;font-weight:900;cursor:pointer;">✕</button>`
     +`</div>`).join('');
 }
@@ -1822,8 +1821,8 @@ function quoteIncludes(mode){
   if(busGuideName()) gparts.push(`${gdoc(busGuideName())} 1명`);
   if(useGuideOn()&&$('#guide').value) gparts.push(`${gdoc($('#guide').value)} ${guideCount()}명`);   // 명수는 1명이어도 적는다(사장님 2026-09-15)
   if(gparts.length) out.push(`가이드 - ${gparts.join(', ')}`);
-  /* 기타투어 — 「기타투어 - 알카자쇼 4명, 농눅빌리지 4명 (확정 시 원하는 날짜·시간대를 알려 주세요)」(사장님 2026-09-19) */
-  if(TOUR_PICKS.length) out.push(`기타투어 - ${TOUR_PICKS.map(tourPickLabel).join(', ')} (확정 시 원하는 날짜·시간대를 알려 주세요)`);
+  /* 기타투어 — 「기타투어 - 알카자쇼 4명, 농눅빌리지 4명」. 「확정 시 날짜·시간대」 안내는 견적서엔 안 적고 수배요청서에만(사장님 2026-10-06) */
+  if(TOUR_PICKS.length) out.push(`기타투어 - ${TOUR_PICKS.map(tourPickLabel).join(', ')}`);
   /* 숙소 줄은 포함 사항에 적지 않는다 — 일정표 「지역/호텔」 칸에 호텔명·룸타입이 날짜별로 나온다(사장님 2026-09-14) */
   return out;
 }
@@ -2443,7 +2442,8 @@ function bookRows(Q){
   const inc=(Q.includes&&Array.isArray(Q.includes.customer))?Q.includes.customer:[];
   [['차량','veh',''],['가이드','guide',''],['기타투어','tour','원하는 날짜와 시간대']].forEach(([name,k,ph])=>{
     const hit=inc.find(x=>new RegExp('^'+name+'\\s*-').test(String(x||''))); if(!hit) return;
-    rows.push({k,head:name,kind:'',txt:String(hit).replace(/^[^-]+-\s*/,'').replace(/\s*\(확정 시[^)]*\)\s*$/,''),ph});
+    rows.push({k,head:name,kind:'',txt:String(hit).replace(/^[^-]+-\s*/,'').replace(/\s*\(확정 시[^)]*\)\s*$/,''),ph,
+      note:k==='tour'?'* 확정 시 원하는 날짜와 시간대를 알려 주셔야 합니다.':''});   // 견적서엔 없고 수배요청서에만(사장님 2026-10-06)
   });
   return rows;
 }
@@ -2475,7 +2475,7 @@ function bookAgencyQuote(idx){
       <div class="bkrow bkhead"><span>날짜 · 구분</span><span>내용</span><span>비고 (요청사항)</span></div>
       ${rows.map(r=>`<div class="bkrow${r.head?' first':''}">
         <span class="bkh">${esc(r.head)}</span>
-        <span class="bkt">${r.kind?`<em>${esc(r.kind)}</em>`:''}${esc(r.txt)}</span>
+        <span class="bkt">${r.kind?`<em>${esc(r.kind)}</em>`:''}${esc(r.txt)}${r.note?`<small style="display:block;margin-top:3px;font-size:11.5px;font-weight:700;color:#D32F2F;">${esc(r.note)}</small>`:''}</span>
         <input type="text" data-bk="${esc(r.k)}" maxlength="300" placeholder="${again?'':esc(r.ph)}" value="${esc(had[r.k]||'')}"${again?' readonly':''} style="${IN}${again?'background:#f6f4ee;':''}">
       </div>`).join('')}
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin:16px 0 6px;">기타 요청사항 <span style="font-weight:600;color:#5E6F66;">— 항공편, 명단, 그 밖에 전하실 말씀</span></div>
