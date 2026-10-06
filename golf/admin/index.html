@@ -502,9 +502,9 @@ function normalize(d){
     (g.vehicleGroups||[]).forEach(v=>{ if(v&&v.busGuideType==='로컬가이드') v.busGuideType=LG_KO; });
   }
   if(!g.guideTypes.includes(LG_EN)) g.guideTypes.push(LG_EN);
-  /* 배열 순서(사장님 2026-09-15): 한국인가이드 → 로컬(한국어) → 로컬(영어) → 그 외. 견적기 guideTypesOrdered와 같은 규칙 */
+  /* 배열 순서(사장님 2026-10-06): 한국인가이드 → 로컬(영어) → 로컬 한국어(밴) → 로컬 한국어(버스) → 그 외. 견적기 guideOrder와 같은 규칙 */
   {
-    const rank=t=>{ const s=String(t||''); if(/한국인|korean/i.test(s)) return 0; if(/로컬|local/i.test(s)) return /영어|english|eng/i.test(s)?2:1; return 3; };
+    const rank=t=>{ const s=String(t||''); if(/한국인|korean/i.test(s)) return 0; if(/로컬|local/i.test(s)) return /영어|english|eng/i.test(s)?1:(/버스|bus/i.test(s)?3:2); return 4; };
     g.guideTypes=g.guideTypes.map((t,i)=>({t,i})).sort((a,b)=>(rank(a.t)-rank(b.t))||(a.i-b.i)).map(x=>x.t);
   }
   g.guideTypes.forEach(t=>{ if(!g.guidePeriods[t]) g.guidePeriods[t]={}; GUIDE_ROWS.forEach(p=>{ if(!g.guidePeriods[t][p]) g.guidePeriods[t][p]={bkk:null,remark:''}; }); });

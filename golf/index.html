@@ -724,9 +724,15 @@ function guideCodeLabel(t){
          ||GUIDE_CODES.find(c=>guideRank(c.label)===r);
   return hit?String(hit.label).trim():'';
 }
+/* 한국어 가능 로컬가이드는 밴용·버스용 요금이 따로다(사장님 2026-10-06) — 이름에 「버스/bus」가 들면 버스용, 「밴/van」이면 밴용.
+   버스면 5번 동승 칸에 버스용만, 밴이면 6번에 밴용만 띄워 고른 차량에 맞는 요금이 들어가게 한다. */
+function guideIsBus(t){ return guideRank(t)===1&&/버스|bus/i.test(String(t||'')); }
+function guideIsVan(t){ return guideRank(t)===1&&/밴|van/i.test(String(t||'')); }
+/* 보이는 차례(사장님 2026-10-06): 한국인 → 로컬(영어) → 로컬 한국어(밴) → 로컬 한국어(버스) → 그 외. 관리 normalize와 같은 규칙 */
+function guideOrder(t){ const r=guideRank(t); return r===0?0:r===2?1:r===1?(guideIsBus(t)?3:2):4; }
 function guideTypesOrdered(){
   const types=((P.guideTypes&&P.guideTypes.length)?P.guideTypes:Object.keys(P.guidePeriods||{})).filter(Boolean);
-  return types.map((t,i)=>({t,i})).sort((a,b)=>(guideRank(a.t)-guideRank(b.t))||(a.i-b.i)).map(x=>x.t);
+  return types.map((t,i)=>({t,i})).sort((a,b)=>(guideOrder(a.t)-guideOrder(b.t))||(a.i-b.i)).map(x=>x.t);
 }
 function tierValue(obj, N, key, full){
   const NORMAL=[['1일',0],['1박2일',1],['2박3일',2],['3박4일',3]];
@@ -1036,7 +1042,9 @@ function syncBusGuide(){
   if(ex){ if(on){ if(w.nextElementSibling!==ex) w.after(ex); } else if(pb&&pb.parentElement&&pb.parentElement.nextElementSibling!==ex) pb.parentElement.after(ex); }
   if(!on) return;
   /* 동승 가이드는 로컬(한국어/영어)만 — 한국인가이드는 6번에서 추가(사장님 2026-09-15). 로컬 종류가 없으면 전부 */
-  const all=guideTypesOrdered(), locals=all.filter(t=>guideRank(t)===1||guideRank(t)===2);
+  /* 한국어 로컬은 버스용 요금 열이 있으면 그것만(밴용은 뺀다, 사장님 2026-10-06) */
+  const all0=guideTypesOrdered(), all=all0.some(guideIsBus)?all0.filter(t=>!guideIsVan(t)):all0;
+  const locals=all.filter(t=>guideRank(t)===1||guideRank(t)===2);
   /* 저렴한 영어 로컬을 앞에 두고 기본 선택으로(사장님 2026-09-15) */
   const types=(locals.length?locals:all).slice().sort((a,b)=>(guideRank(a)===2?0:1)-(guideRank(b)===2?0:1));
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
@@ -1332,7 +1340,9 @@ function buildGuideSelOptions(){
   /* 버스면 로컬가이드 1명(한국어/영어)은 5번에서 의무 동승이므로, 6번에는 한국인가이드와 「가이드 필요 없습니다」만 띄운다(사장님 2026-09-15).
      밴이면 종류 전부 + 노가이드 가능. */
   const bus=(typeof vehPlan==='function')&&vehPlan().kind==='bus';
-  const types=guideTypesOrdered().filter(t=>!bus||guideRank(t)===0);
+  /* 밴이면 한국어 로컬은 밴용 요금만(버스용 열은 5번 버스 동승 칸 전용, 사장님 2026-10-06) */
+  const all=guideTypesOrdered(), hasVan=all.some(guideIsVan);
+  const types=all.filter(t=>bus?guideRank(t)===0:!(hasVan&&guideIsBus(t)));
   const cur=sel.value;
   /* 6번도 코드관리 가이드 라벨(비용 안내 포함)이 있으면 그 글자 — 손님이 비용을 대략 알고 고르게(사장님 2026-09-15) */
   sel.innerHTML=`<option value="">가이드 선택</option>`
