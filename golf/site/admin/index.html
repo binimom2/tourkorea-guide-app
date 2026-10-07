@@ -2080,6 +2080,19 @@ function syncPriceNames(){
       const nm=String(x&&x.n||'').trim(); if(!nm) return;
       const h=priceHomeOf(k,x);
       if(h&&h.name!==nm){ h.name=nm; n++; }
+      /* 지역도 관리 지역칸이 정본 — 파타야 줄을 복사해 「방콕」으로 고쳐도 요금 자리는 파타야에 남아
+         실시간 견적에 파타야로 뜨던 것(사장님 2026-10-07 람 룩카). 요금 자리를 사이트 지역으로 옮긴다 */
+      const reg=String(x&&x.r||'').trim();
+      const hit=h&&(PIDX[k]||{})[nm.replace(/\s+/g,'').toLowerCase()];
+      if(hit&&reg&&hit.reg!==reg){
+        const a=P.regions[hit.reg]&&P.regions[hit.reg][k], i=Array.isArray(a)?a.indexOf(h):-1;
+        if(i>=0){
+          a.splice(i,1);
+          const to=P.regions[reg]||(P.regions[reg]={});
+          (to[k]||(to[k]=[])).push(h);
+          buildPriceIndex(); n++;
+        }
+      }
     });
   });
   return n;
