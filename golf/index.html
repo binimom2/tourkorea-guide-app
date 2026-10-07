@@ -223,6 +223,10 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .res tfoot td.n{font-size:21px;color:var(--fairway)}
 .perp{padding-top:7px;font-size:12.5px;opacity:.8}
 /* 견적서 내려받기 버튼 */
+.agmk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:13px;font-weight:700}
+.agmk[hidden]{display:none}
+.agmk input{width:110px;padding:6px 8px;border:1px solid #cfd8d3;border-radius:6px;font-size:14px;text-align:right}
+.agmk-out{margin-left:auto;color:#1f6b3f;font-weight:800}
 .dlrow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(18,58,43,.18)}   /* 단추는 오른쪽 줄 맞춤(사장님 2026-09-14) */
 .dlbtn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--fairway);background:var(--fairway);color:var(--sand);cursor:pointer}
 /* 견적서 미리보기 창 — 「견적서 보기」는 파일을 바로 받지 않고 여기에 띄운다(사장님 2026-09-11) */
@@ -490,6 +494,12 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <!-- 상세 내역 없이 «1인 요금 × 인원수 = 총액»만 보여준다 -->
     <div id="sumBox"></div>
     <div class="perp" id="perp"></div>
+    <!-- 추가금(사장님 2026-10-07) — 여행사 수익·FIT 손님 핸들링. 손님 견적서 1인 요금에 합쳐질 뿐 따로 적히지 않는다. 손님 사이트 팝업에는 없다 -->
+    <div class="agmk" id="agMkRow" hidden>
+      <label for="agMk">추가금 (1인당)</label>
+      <input id="agMk" inputmode="numeric" autocomplete="off" placeholder="예) 20,000"><span>원</span>
+      <span class="agmk-out" id="agMkOut"></span>
+    </div>
     <div class="dlrow">
       <button type="button" class="dlbtn" id="dlCustomer" onclick="downloadQuote('customer')">📷 견적서 보기</button>
       <button type="button" class="dlbtn ghost" id="dlInternal" onclick="downloadQuote('internal')">📷 내부용 견적서</button>
@@ -583,6 +593,18 @@ const EMBED=/[?&]embed=site\b/.test(location.search);   // 손님 사이트 팝�
    정책이 닫혀 있으면 요금표가 안 읽혀 예전처럼 로그인 화면이 뜬다 — 코드를 되돌릴 필요가 없다.
    손님 모드에서는: 견적 이력 저장 없음 · 견적번호는 이 브라우저 기준 S번호 · 관리 링크 없음. */
 let GUEST=false;
+/* 추가금(1인당 원화, 사장님 2026-10-07) — 손님 견적서의 1인 요금에만 더한다. 수배 요청·정산 금액(per)에는 안 들어간다 */
+let AG_MK=0, LAST_PERKRW=0;
+function agMkOn(){ return !EMBED&&!GUEST; }
+function setAgMk(v){
+  AG_MK=Math.max(0,Math.round(+String(v==null?'':v).replace(/[^\d]/g,'')||0));
+  const el=$('#agMk'); if(el) el.value=AG_MK?AG_MK.toLocaleString('ko-KR'):'';
+  showAgMk();
+}
+function showAgMk(){
+  const o=$('#agMkOut'); if(!o) return;
+  o.textContent=(AG_MK&&LAST_PERKRW)?`→ 손님 견적서 1인 ${(LAST_PERKRW+AG_MK).toLocaleString('ko-KR')}원`:'';
+}
 const posNum=v=>{ const n=+v; return Number.isFinite(n)&&n>0?n:null; };
 const blank=v=>v===''||v==null;
 const partOf=v=>(v==='주말'||v==='태국휴일'||v==='주말·휴일')?'we':'wd';
@@ -986,6 +1008,7 @@ let EDIT_BASE='';   // 보관함에서 「수정」으로 불러온 견적의 �
 var AGENCY_NAME='';   // 로그인한 여행사 이름(가입 때 적은 company) — 여행사명 칸의 기본값. var: startApp이 먼저 불려도 오류가 안 나게
 function resetQuote(){
   EDIT_BASE='';
+  setAgMk(0);
   const tn=$('#teamName'); if(tn) tn.value=AGENCY_NAME||'';   // 여행사는 자기 이름이 미리 들어간다(고칠 수 있음, 사장님 2026-09-21)
   // 출발일자는 비워 둔다 — 날짜를 미리 넣어 두면 안 된다(사장님 2026-09-11). 달력은 이번 달로 열린다.
   const sd=$('#startDate'); if(sd) sd.value='';
@@ -1814,6 +1837,7 @@ function calc(){
   LAST={lines,total,per,pax,nights};   // 견적서 내려받기가 이 값을 그대로 쓴다
   const box=$('#sumBox');
   if(!lines.length){
+    LAST_PERKRW=0; showAgMk();
     box.innerHTML=ROUTE.length?'<div class="sum-empty">라운딩할 날을 체크하면 견적이 나옵니다.</div>':'';   // 지역 고르기 전엔 아무 말도 안 띄운다(사장님 2026-09-16)
     $('#perp').textContent='';
     return;
@@ -1826,6 +1850,7 @@ function calc(){
      환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. 등록 전에는 어쩔 수 없이
      밧으로 보여주고 크게 경고한다 — 금액이 아예 안 보이면 상담을 못 하니까. */
   const perKrw=(FX_RATE>0)?krwUp(per*FX_RATE):0;
+  LAST_PERKRW=perKrw; showAgMk();
   const totKrw=perKrw*pax;
   const cur=perKrw?'원':'THB';
   box.innerHTML=
@@ -1982,7 +2007,8 @@ function quoteSnapshot(){
     fxSrc: FX_SRC||'',              // 환율 출처(자동이면 '하나은행 고시 현찰 살때 날짜', 코드관리 값이면 빈 칸)
     lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
     total: LAST.total, per: LAST.per,
-    state: quoteState()              // 입력 상태 — 보관함에서 「수정」으로 다시 불러올 때 쓴다(2026-09-19)
+    agMk: agMkOn()?AG_MK:0,          // 추가금(1인 원화) — 손님 견적서 1인 요금에만 더한다. per·total(수배·정산 금액)에는 없다
+    state: quoteState()             // 입력 상태 — 보관함에서 「수정」으로 다시 불러올 때 쓴다(2026-09-19)
   };
 }
 /* ── 입력 상태 얼리기(사장님 2026-09-19 「다시 보기로 불러오면 수정 기능이 있으면 좋겠다」) ──
@@ -2002,7 +2028,8 @@ function quoteState(){
     veh:{choice:vehChoice, busName:isBusChoice()?vehName((P.vehicleGroups||[])[busIdx]):'', extraVan:chk('extraVan'), extraLug:chk('extraLug'),
          busGuide:($('#busGuide')||{}).value||''},
     guide:{sel:($('#guideSel')||{}).value||'', cnt:guideCount()},
-    tours:TOUR_PICKS.map(t=>({n:t.n,cnt:t.cnt,times:t.times||1}))
+    tours:TOUR_PICKS.map(t=>({n:t.n,cnt:t.cnt,times:t.times||1})),
+    agMk:agMkOn()?AG_MK:0
   };
 }
 /* 옛 견적(입력 상태 없이 저장된 것)은 남아 있는 결과에서 되짚는다 — 날짜·팀·인원·경로·날짜별 골프장까지.
@@ -2069,7 +2096,9 @@ function buildQuoteHtml(mode, Q){
   /* 손님용 견적서에는 밧을 한 글자도 적지 않는다 — 전부 원화다.
      «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이라, 손님이 직접 곱해도 딱 맞는다.
      환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. */
-  const perKrw=(FX>0)?krwUp(Q.per*FX):0;
+  /* 추가금(Q.agMk, 1인 원화)은 손님용에서만 1인 요금에 합친다 — 따로 적지 않는다(사장님 2026-10-07) */
+  const mk=Math.max(0,+Q.agMk||0);
+  const perKrw=(FX>0)?krwUp(Q.per*FX)+(mode==='internal'?0:mk):0;
   const totKrw=perKrw*pax;
   const moneyRow=(k,v,opt)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;${(opt&&opt.top)||''}">
       <span style="font-size:${(opt&&opt.big)?15:13}px;${(opt&&opt.big)?'font-weight:800':'opacity:.85'}">${k}</span>
@@ -2085,6 +2114,7 @@ function buildQuoteHtml(mode, Q){
       +moneyRow('인원수',`× ${pax}명`,{top:DASH})
       +moneyRow('총액',`${won(Q.total)} <span style="font-size:13px">THB</span>`,{top:RULE,big:1})
       +(perKrw?sub(`한화 ${won(totKrw)} 원`):'')
+      +((perKrw&&mk)?sub(`추가금 1인 ${won(mk)} 원 → 손님 견적서 1인 ${won(perKrw+mk)} 원 · 총 ${won((perKrw+mk)*pax)} 원`):'')
     : moneyRow('1인 요금',`${won(perKrw)} <span style="font-size:12px;opacity:.7">원</span>`)
       +moneyRow('인원수',`× ${pax}명`,{top:DASH})
       +moneyRow('총액',`${won(totKrw)} <span style="font-size:13px">원</span>`,{top:RULE,big:1});
@@ -2354,7 +2384,8 @@ function renderQuoteHistory(){
         <div style="font-weight:800;font-size:13px;">${esc(r.quoteNo)} <span style="font-weight:600;color:#5E6F66;">${esc(r.team||'-')}</span>${r.via==='site'?' <span style="font-size:10.5px;font-weight:800;color:#2A1A00;background:#E8A33D;border-radius:999px;padding:1px 7px;vertical-align:middle">사이트 견적</span>':''}</div>
         <div style="font-size:11.5px;color:#5E6F66;margin-top:2px;">${esc(r.start)} · ${esc(r.route)} · ${r.pax}명 · ${r.nights}박</div>
         <div style="font-size:12px;font-weight:700;margin-top:3px;">${/* 여행사에는 바트 금액을 안 보인다(사장님 2026-10-03) — 원화만 */
-          GROLE==='agency'?(krw?`${won(krw)} 원`:''):`${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}`}</div>
+          GROLE==='agency'?(krw?`${won(krw)} 원`:''):`${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}`}${
+          (krw&&+r.agMk>0)?` <span style="color:#1f6b3f;font-weight:700">· 손님가 ${won(krw+(+r.agMk)*r.pax)} 원 (추가금 1인 ${won(+r.agMk)})</span>`:''}</div>
         ${(GROLE==='agency'&&r.book)?bookStepsHtml(r.book):''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
@@ -2487,6 +2518,7 @@ async function editQuote(idx){
   (S.tours||[]).forEach(t=>{ const it=SITE_TOURS.find(x=>x.n===t.n); if(!it){ missing.push(`기타투어 ${t.n}`); return; }
     TOUR_PICKS.push({n:it.n,d:it.d||'',r:it.r||'',p:it.p,cnt:Math.max(1,+t.cnt||1),times:Math.max(1,+t.times||1)}); });
   renderTourPicks();
+  setAgMk(agMkOn()?(S.agMk||Q.agMk||0):0);
   EDIT_BASE=(QNO_REV.exec(String(Q.quoteNo||''))||[])[1]||String(Q.quoteNo||'');
   STEPS.forEach(id=>touched.add(id));
   calc(); autoFold(null);
@@ -3200,6 +3232,9 @@ async function startApp(user){
     AGENCY_NAME=String(((user&&user.user_metadata)||{}).company||'').trim();
     const tn=$('#teamName'); if(tn&&!tn.value) tn.value=AGENCY_NAME;
   }
+  { const row=$('#agMkRow'), inp=$('#agMk');
+    if(row) row.hidden=!agMkOn();
+    if(inp&&!inp.dataset.on){ inp.dataset.on='1'; inp.addEventListener('input',()=>setAgMk(inp.value)); } }
   if(!GUEST&&GROLE!=='agency'){ const sl=document.getElementById('siteLink'); sl.style.display=''; if(GROLE==='manager2') sl.textContent='🌐 사이트 관리 (예약·견적)'; }
   if(wb) wb.textContent=GUEST?'':(GROLE==='agency'?`${((user&&user.user_metadata)||{}).company||loginIdOf(user)||''} · 여행사`:`${loginIdOf(user)||''} · ${GROLE_LABEL[GROLE]}`);
   // 출발일자는 빈 칸으로 시작한다(사장님 2026-09-11) — 예전엔 2주 뒤 날짜를 미리 넣었다
