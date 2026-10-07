@@ -704,6 +704,20 @@ async function applySiteExposure(all){
     const cs=names(d.courses), hs=names(d.hotels);
     if(cs.size) Object.keys(COURSES).forEach(reg=>{ COURSES[reg]=(COURSES[reg]||[]).filter(c=>cs.has(nk(c.n))); });
     if(hs.size&&P.hotels) Object.keys(P.hotels).forEach(reg=>{ P.hotels[reg]=(P.hotels[reg]||[]).filter(h=>hs.has(nk(h.name))); });
+    /* 지역은 사이트 관리 지역칸이 정본 — 요금표 자리가 다른 지역에 남아 있어도 사이트 지역으로 옮겨 보인다
+       (파타야 줄을 복사해 「방콕」으로 고친 람 룩카가 파타야에 뜨던 것, 사장님 2026-10-07) */
+    const regMove=(bag,arr,nameOf)=>{
+      const want={}; (Array.isArray(arr)?arr:[]).forEach(x=>{ if(x&&x.n&&String(x.r||'').trim()) want[nk(x.n)]=String(x.r).trim(); });
+      Object.keys(bag).forEach(reg=>{
+        bag[reg]=(bag[reg]||[]).filter(o=>{
+          const to=want[nk(nameOf(o))];
+          if(!to||to===reg) return true;
+          (bag[to]||(bag[to]=[])).push(o); return false;
+        });
+      });
+    };
+    regMove(COURSES,d.courses,c=>c.n);
+    if(P.hotels) regMove(P.hotels,d.hotels,h=>h.name);
   }catch(e){}
 }
 function ganada(a,b){ return a.n.localeCompare(b.n,'ko'); }
