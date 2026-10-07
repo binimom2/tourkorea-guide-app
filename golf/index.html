@@ -223,8 +223,8 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 .res tfoot td.n{font-size:21px;color:var(--fairway)}
 .perp{padding-top:7px;font-size:12.5px;opacity:.8}
 /* 견적서 내려받기 버튼 */
-.agmk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:13px;font-weight:700}
-.agmk[hidden]{display:none}
+.agmk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;font-weight:700}
+#agMkRow[hidden]{display:none}
 .agmk input{width:110px;padding:6px 8px;border:1px solid #cfd8d3;border-radius:6px;font-size:14px;text-align:right}
 .agmk-out{margin-left:auto;color:#1f6b3f;font-weight:800}
 .dlrow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(18,58,43,.18)}   /* 단추는 오른쪽 줄 맞춤(사장님 2026-09-14) */
@@ -489,17 +489,22 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     </div>
   </div>
 
+  <!-- 8. 여행사 수수료(사장님 2026-10-07) — 1인당 원화. 손님 견적서 1인 요금에 합쳐질 뿐 따로 적히지 않고, 수배·정산 금액에는 안 들어간다.
+       로그인한 여행사·직원만(로그인 안 한 손님엔 없음). 접기 단계(STEPS)에는 넣지 않는다 — 늘 펼쳐 둔다 -->
+  <div class="card" id="agMkRow" hidden>
+    <h2>8. 여행사 수수료</h2>
+    <div class="agmk">
+      <label for="agMk">1인당</label>
+      <input id="agMk" inputmode="numeric" autocomplete="off" placeholder="예) 20,000"><span>원</span>
+      <span class="agmk-out" id="agMkOut"></span>
+    </div>
+  </div>
+
   <section class="card res">
     <h2>견적 결과</h2>
     <!-- 상세 내역 없이 «1인 요금 × 인원수 = 총액»만 보여준다 -->
     <div id="sumBox"></div>
     <div class="perp" id="perp"></div>
-    <!-- 추가금(사장님 2026-10-07) — 여행사 수익·FIT 손님 핸들링. 손님 견적서 1인 요금에 합쳐질 뿐 따로 적히지 않는다. 손님 사이트 팝업에는 없다 -->
-    <div class="agmk" id="agMkRow" hidden>
-      <label for="agMk">추가금 (1인당)</label>
-      <input id="agMk" inputmode="numeric" autocomplete="off" placeholder="예) 20,000"><span>원</span>
-      <span class="agmk-out" id="agMkOut"></span>
-    </div>
     <div class="dlrow">
       <button type="button" class="dlbtn" id="dlCustomer" onclick="downloadQuote('customer')">📷 견적서 보기</button>
       <button type="button" class="dlbtn ghost" id="dlInternal" onclick="downloadQuote('internal')">📷 내부용 견적서</button>
@@ -2096,7 +2101,7 @@ function buildQuoteHtml(mode, Q){
   /* 손님용 견적서에는 밧을 한 글자도 적지 않는다 — 전부 원화다.
      «1인 요금을 천원 단위로 올린 값 × 인원수»가 총액이라, 손님이 직접 곱해도 딱 맞는다.
      환율(1밧당 원화)은 코드관리 '환율'에서 읽는다. */
-  /* 추가금(Q.agMk, 1인 원화)은 손님용에서만 1인 요금에 합친다 — 따로 적지 않는다(사장님 2026-10-07) */
+  /* 8번 여행사 수수료(Q.agMk, 1인 원화)는 손님용에서만 1인 요금에 합친다 — 견적서 양식 어디에도 따로 적지 않는다(사장님 2026-10-07) */
   const mk=Math.max(0,+Q.agMk||0);
   const perKrw=(FX>0)?krwUp(Q.per*FX)+(mode==='internal'?0:mk):0;
   const totKrw=perKrw*pax;
@@ -2114,7 +2119,6 @@ function buildQuoteHtml(mode, Q){
       +moneyRow('인원수',`× ${pax}명`,{top:DASH})
       +moneyRow('총액',`${won(Q.total)} <span style="font-size:13px">THB</span>`,{top:RULE,big:1})
       +(perKrw?sub(`한화 ${won(totKrw)} 원`):'')
-      +((perKrw&&mk)?sub(`추가금 1인 ${won(mk)} 원 → 손님 견적서 1인 ${won(perKrw+mk)} 원 · 총 ${won((perKrw+mk)*pax)} 원`):'')
     : moneyRow('1인 요금',`${won(perKrw)} <span style="font-size:12px;opacity:.7">원</span>`)
       +moneyRow('인원수',`× ${pax}명`,{top:DASH})
       +moneyRow('총액',`${won(totKrw)} <span style="font-size:13px">원</span>`,{top:RULE,big:1});
@@ -2385,7 +2389,7 @@ function renderQuoteHistory(){
         <div style="font-size:11.5px;color:#5E6F66;margin-top:2px;">${esc(r.start)} · ${esc(r.route)} · ${r.pax}명 · ${r.nights}박</div>
         <div style="font-size:12px;font-weight:700;margin-top:3px;">${/* 여행사에는 바트 금액을 안 보인다(사장님 2026-10-03) — 원화만 */
           GROLE==='agency'?(krw?`${won(krw)} 원`:''):`${won(r.total)} THB${krw?` <span style="color:#5E6F66;font-weight:600">· ${won(krw)} 원</span>`:''}`}${
-          (krw&&+r.agMk>0)?` <span style="color:#1f6b3f;font-weight:700">· 손님가 ${won(krw+(+r.agMk)*r.pax)} 원 (추가금 1인 ${won(+r.agMk)})</span>`:''}</div>
+          (krw&&+r.agMk>0)?` <span style="color:#1f6b3f;font-weight:700">· 손님가 ${won(krw+(+r.agMk)*r.pax)} 원 (수수료 1인 ${won(+r.agMk)})</span>`:''}</div>
         ${(GROLE==='agency'&&r.book)?bookStepsHtml(r.book):''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
