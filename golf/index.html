@@ -279,7 +279,11 @@ body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important} 
 #qhBody>div:not(#qhList){padding:12px 22px!important}
 #qhList>div{padding:16px 22px!important}
 #qhList{padding-bottom:10px}
-@media (min-width:900px){ #qhModal>div{zoom:1.18} }
+/* zoom 1.18 은 높이도 1.18배로 키워 창 위·아래가 화면 밖으로 잘렸다(사장님 2026-10-08) — 높이 한도를 zoom 만큼 나눠 화면 안에 맞춘다 */
+@media (min-width:900px){
+  #qhModal>div{zoom:1.18;max-height:calc(88vh / 1.18)!important;min-height:calc(60vh / 1.18)}
+  body.boxonly #qhModal>div{max-height:calc(94vh / 1.18)!important}
+}
 #golfLogin{position:fixed;inset:0;background:var(--fairway-deep);display:none;align-items:center;justify-content:center;z-index:50}
 #golfLogin .box{background:#fff;border-radius:18px;padding:30px 26px;width:340px;max-width:90vw}
 #golfLogin h1{margin:0 0 4px;font-size:20px;font-weight:800;color:var(--fairway)}
