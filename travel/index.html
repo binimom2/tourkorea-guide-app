@@ -3083,7 +3083,23 @@ function wrapRemark(id,tag){
   el.value=el.value.slice(0,s)+`[${tag}]`+sel+`[/${tag}]`+el.value.slice(e);
   el.focus();
   el.selectionStart=s+3; el.selectionEnd=s+3+sel.length;
+  autoGrowTa(el);
 }
+// 편집창(#soBody) 글칸은 내용만큼 자동으로 늘어난다 — 창 바닥의 손잡이를 끌지 않아도 되게(사장님 1008)
+function autoGrowTa(el){
+  if(!el||el.tagName!=='TEXTAREA') return;
+  el.style.height='auto';
+  if(!el.scrollHeight){ el.style.height=''; return; }   // 창이 아직 안 보이면(높이 0) 기본 높이 유지
+  el.style.height=(el.scrollHeight+3)+'px';
+}
+(function(){
+  const init=()=>{
+    const host=document.getElementById('soBody'); if(!host) return;
+    host.addEventListener('input',e=>autoGrowTa(e.target));
+    new MutationObserver(()=>host.querySelectorAll('textarea').forEach(autoGrowTa)).observe(host,{childList:true,subtree:true});
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
 // 비고칸 위 색상 버튼 바
 function remarkColorBar(id){
   return `<div style="display:flex;gap:5px;align-items:center;margin:2px 0 4px;flex-wrap:wrap;">
