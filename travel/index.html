@@ -1235,7 +1235,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 22;   // 배포마다 +1 (구버전 탭 저장차단 기준). v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 23;   // 배포마다 +1 (구버전 탭 저장차단 기준). v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -2891,13 +2891,14 @@ function downloadCostExcel(){
       const row=Object.assign({},base,s);
       // 관광·식당외에서 「비고 공통 사용」을 켠 항목은 화면처럼 공통 비고가 나가게(기간에 남아 있는 옛 비고가 덮지 않게)
       if(costTab==='attraction'&&top.remarkCommon) row.remark=top.remark||'';
+      if(costTab==='golf') row.remark=golfRemarkCommon(top)?(top.remark||''):(s.remark||'');
       flat.push(row);
     });
     else flat.push(base);
   });
   // 실제 데이터에 등장하는 모든 키 수집(상위→시즌), 보기 좋은 순서로 정렬
   const seen=new Set(), keys=[], collect=k=>{ if(!seen.has(k)){ seen.add(k); keys.push(k); } };
-  rows.forEach(t=>Object.keys(t).forEach(k=>{ if(k!=='seasons') collect(k); }));
+  rows.forEach(t=>Object.keys(t).forEach(k=>{ if(k!=='seasons'&&k!=='remarkCommon') collect(k); }));
   rows.forEach(t=>(t.seasons||[]).forEach(s=>Object.keys(s).forEach(collect)));
   const PREF=['name','nameKr','region','category','season','period','dateFrom','dateTo','gf18wd','gf18we','caddy','cart','gf9wd','gf9we','caddy9','cart9','roomType','twin','amount','extbed','rooms','joiners','adult','child','remark'];
   keys.sort((a,b)=>{ let ia=PREF.indexOf(a),ib=PREF.indexOf(b); if(ia<0)ia=99; if(ib<0)ib=99; return ia-ib; });
@@ -3181,6 +3182,8 @@ function migrateGolf(rows){
   return out;
 }
 function getGolfCourses(){ return migrateGolf(getCostRows('golf')); }
+// 골프 비고는 원래 골프장당 한 칸이었으므로 값이 없으면 '공통'으로 본다(기존 데이터 그대로 보이게)
+function golfRemarkCommon(c){ return !c || c.remarkCommon!==false; }
 async function saveGolfCourses(arr){ await saveCostRows('golf',arr); }
 
 /* ── 요금표 표시 정렬 헬퍼(원본 데이터 순서는 안 건드림 — idx 그대로 유지) ── */
@@ -3231,9 +3234,14 @@ function renderGolfTable(){
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum18we(s)))}</td>`
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum27wd(s)))}</td>`
            +`<td class="cost-sum-col num">${escapeHtml(fmtSum(golfSum27we(s)))}</td>`;
+      // 비고: 공통이면 시즌 수만큼 한 칸으로 병합, 끄면 시즌마다 비고(관광 탭과 같은 방식 · 사장님 2026-10-08)
+      if(golfRemarkCommon(c)){
+        if(si===0) html+=`<td rowspan="${n}" class="remark-col" style="vertical-align:middle;">${c.remark?renderRemark(c.remark):'-'}</td>`;
+      }else{
+        html+=`<td class="remark-col">${s.remark?renderRemark(s.remark):'-'}</td>`;
+      }
       if(si===0){
-        html+=`<td rowspan="${n}" class="remark-col" style="vertical-align:middle;">${c.remark?renderRemark(c.remark):'-'}</td>`
-             +`<td rowspan="${n}" class="name-col" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div>${costUpdNote(c)}</td>`;
+        html+=`<td rowspan="${n}" class="name-col" style="vertical-align:middle;"><div class="row-actions"><a class="act-edit" onclick="openGolfEditor(${idx})">수정</a><a class="act-edit" onclick="openGolfDetail(${idx})">상세보기</a><a class="act-del" onclick="delGolfCourse(${idx})">삭제</a></div>${costUpdNote(c)}</td>`;
       }
       html+='</tr>';
     });
@@ -3271,12 +3279,29 @@ function syncGolfDraftFromDom(){
   // 영문명 입력칸은 없앴으므로(한글만 사용) 기존 영문명 값은 그대로 보존 — 없다고 지우면 안 됨
   const nEl=document.getElementById('g-name'); if(nEl) _golfDraft.name=nEl.value;
   _golfDraft.nameKr=gv('g-nameKr');
-  _golfDraft.region=gv('g-region'); _golfDraft.remark=gv('g-remark');
+  _golfDraft.region=gv('g-region');
+  const cr=document.getElementById('g-remark'); if(cr) _golfDraft.remark=cr.value;   // 공통을 끄면 칸이 없어 기존 공통 비고가 그대로 보존된다
   _golfDraft.seasons=_golfDraft.seasons.map((s,i)=>{
     const o={season:golfSelText(i,'season'),dateFrom:golfSelText(i,'dateFrom'),dateTo:golfSelText(i,'dateTo')};
     GOLF_MONEY.forEach(f=>{ const el=document.getElementById(`g-${i}-${f.k}`); o[f.k]=el?el.value:(s[f.k]||''); });
+    const rm=document.getElementById(`g-${i}-remark`); o.remark=rm?rm.value:(s.remark||'');
     return o;
   });
+}
+// 비고 공통 사용 켜기/끄기 — 켜면 골프장당 비고 한 칸(표에서 합쳐짐), 끄면 시즌마다 비고
+function toggleGolfRemarkCommon(){
+  syncGolfDraftFromDom();
+  const c=_golfDraft; if(!c) return;
+  c.remarkCommon=!golfRemarkCommon(c);
+  const ss=c.seasons||[];
+  if(c.remarkCommon){
+    // 켤 때 공통 비고가 비어 있으면 시즌 비고를 끌어옴(사라진 것처럼 보이지 않게)
+    if(!String(c.remark||'').trim()){ const first=ss.map(s=>String(s.remark||'').trim()).filter(Boolean)[0]; if(first) c.remark=first; }
+  }else{
+    // 끌 때 시즌 비고가 전부 비어 있으면 공통 비고를 각 시즌에 복사해 두고 고치게
+    if(String(c.remark||'').trim() && !ss.some(s=>String(s.remark||'').trim())) ss.forEach(s=>{ s.remark=c.remark; });
+  }
+  renderGolfEditorBody();
 }
 function addGolfSeason(){ syncGolfDraftFromDom(); _golfDraft.seasons.push({}); renderGolfEditorBody(); }
 function delGolfSeason(i){
@@ -3301,7 +3326,7 @@ function updateGolfSums(i){
   const rows=[['주중18홀 합',golfSum18wd(s)],['주말18홀 합',golfSum18we(s)],['주중27홀 합',golfSum27wd(s)],['주말27홀 합',golfSum27we(s)]];
   host.innerHTML=rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:#4a5570;">${r[0]}</span><b style="color:#1f4a85;">${fmtSum(r[1])}</b></div>`).join('');
 }
-function golfSeasonBlockHtml(s,i){
+function golfSeasonBlockHtml(s,i,common){   // common=true면 시즌별 비고 칸을 감춘다(위 공통 비고 한 칸을 쓴다)
   const money=GOLF_MONEY.map(f=>`<div class="f-row" style="flex:1 1 calc(25% - 8px);margin-bottom:0;min-width:0;"><label>${f.label}</label><input type="text" id="g-${i}-${f.k}" value="${escapeAttr(s[f.k]||'')}" oninput="updateGolfSums(${i})"/></div>`).join('');
   return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -3317,21 +3342,28 @@ function golfSeasonBlockHtml(s,i){
       <div class="f-row" style="flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;"><label>종료일</label>${golfSelTextHtml(i,'dateTo',s.dateTo||'',seasonDateOptions('to'),'예: 2026-09-30')}</div>
       ${money}
       <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;gap:4px;margin-bottom:0;"><label>자동 합계 (자동 계산)</label><div id="g-${i}-sums" style="background:#fff9c4;border:1px solid #e6dd7a;border-radius:8px;padding:8px 12px;font-size:13px;"></div></div>
+      ${common?'':`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('g-'+i+'-remark')}<textarea id="g-${i}-remark">${escapeHtml(s.remark||'')}</textarea></div>`}
     </div>
   </div>`;
 }
 function renderGolfEditorBody(){
   const c=_golfDraft;
+  const common=golfRemarkCommon(c);
   const head=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;">
     <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>골프장명</label><input type="text" id="g-nameKr" value="${escapeAttr(c.nameKr||c.name||'')}"/></div>
     <div class="f-row" style="flex:1 1 calc(50% - 5px);margin-bottom:0;min-width:0;"><label>지역</label><input type="text" id="g-region" value="${escapeAttr(c.region||'')}" placeholder="예: 방콕, 파타야"/></div>
-    <div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고</label>${remarkColorBar('g-remark')}<textarea id="g-remark">${escapeHtml(c.remark||'')}</textarea></div>
+    ${common?`<div class="f-row" style="flex:1 1 100%;flex-direction:column;align-items:stretch;margin-bottom:0;"><label>비고 (공통 — 시즌 ${c.seasons.length}개에 함께 적용)</label>${remarkColorBar('g-remark')}<textarea id="g-remark">${escapeHtml(c.remark||'')}</textarea></div>`:''}
   </div>
   <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
     <b style="font-size:13px;color:#1f2a44;">시즌 요금 (${c.seasons.length}개)</b>
-    <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addGolfSeason()">＋ 시즌 추가</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5570;cursor:pointer;user-select:none;">
+        <input type="checkbox" ${common?'checked':''} onchange="toggleGolfRemarkCommon()" style="cursor:pointer;"/> 비고 공통 사용
+      </label>
+      <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addGolfSeason()">＋ 시즌 추가</button>
+    </div>
   </div>`;
-  document.getElementById('soBody').innerHTML=head+`<div id="golfSeasons">${c.seasons.map((s,i)=>golfSeasonBlockHtml(s,i)).join('')}</div>`;
+  document.getElementById('soBody').innerHTML=head+`<div id="golfSeasons">${c.seasons.map((s,i)=>golfSeasonBlockHtml(s,i,common)).join('')}</div>`;
   c.seasons.forEach((s,i)=>updateGolfSums(i));
 }
 function openGolfEditor(index){
@@ -3384,7 +3416,8 @@ function openGolfDetail(i){
       ${c.region?`<span style="font-size:11.5px;color:#3c5a86;background:#e8effa;border-radius:999px;padding:2px 10px;">${escapeHtml(c.region)}</span>`:''}
       ${(c.name&&c.nameKr)?`<span style="font-size:11px;color:#9aa1af;">${escapeHtml(c.name)}</span>`:''}
     </div>
-    ${c.remark?`<div style="font-size:12.5px;color:#4a5570;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;padding:8px 10px;white-space:pre-wrap;">${renderRemark(c.remark)}</div>`:''}`;
+    ${(golfRemarkCommon(c)&&c.remark)?`<div style="font-size:12.5px;color:#4a5570;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;padding:8px 10px;white-space:pre-wrap;">${renderRemark(c.remark)}</div>`:''}`;
+  const seasonRemark=s=>(!golfRemarkCommon(c)&&s.remark)?`<div style="margin-top:9px;padding:7px 9px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;">${renderRemark(s.remark)}</div>`:'';
 
   const TH='padding:6px 8px;font-size:11px;font-weight:700;color:#6b7484;background:#f4f6fa;border-bottom:1px solid #e5e9f0;text-align:right;';
   const TD='padding:7px 8px;text-align:right;font-size:13px;color:#1f2a44;font-variant-numeric:tabular-nums;';
@@ -3417,7 +3450,7 @@ function openGolfDetail(i){
         <span style="font-size:11.5px;font-weight:700;color:${sh.fg};background:#fff;border-radius:999px;padding:2px 9px;">${escapeHtml(s.season||'시즌')}</span>
         <span style="font-size:12px;color:#4a5570;">${escapeHtml(costPeriod(s))}</span>
       </div>
-      <div style="padding:10px;">${rate}${sums}</div>
+      <div style="padding:10px;">${rate}${sums}${seasonRemark(s)}</div>
     </div>`;
   }).join('');
 
