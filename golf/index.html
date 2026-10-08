@@ -227,6 +227,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 #agMkRow[hidden]{display:none}
 .agmk input{width:110px;padding:6px 8px;border:1px solid #cfd8d3;border-radius:6px;font-size:14px;text-align:right}
 .agmk-out{margin-left:auto;color:#1f6b3f;font-weight:800}
+.agmk-note{margin:8px 0 0;font-size:12px;color:#6b7484}
 .dlrow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(18,58,43,.18)}   /* 단추는 오른쪽 줄 맞춤(사장님 2026-09-14) */
 .dlbtn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--fairway);background:var(--fairway);color:var(--sand);cursor:pointer}
 /* 견적서 미리보기 창 — 「견적서 보기」는 파일을 바로 받지 않고 여기에 띄운다(사장님 2026-09-11) */
@@ -499,9 +500,10 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
     <h2>8. 여행사 수수료</h2>
     <div class="agmk">
       <label for="agMk">1인당</label>
-      <input id="agMk" inputmode="numeric" autocomplete="off" placeholder="예) 20,000"><span>원</span>
+      <input id="agMk" inputmode="numeric" autocomplete="off"><span>원</span>
       <span class="agmk-out" id="agMkOut"></span>
     </div>
+    <p class="agmk-note">*견적에서는 8번포함 요금으로 산출되며 수배확정시 1~7번까지 요금만 청구됩니다.</p>
   </div>
 
   <section class="card res">
