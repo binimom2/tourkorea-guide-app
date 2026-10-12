@@ -6163,6 +6163,8 @@ async function openGuideLedger() {
   document.getElementById('ledgerModal').style.display='flex';
 }
 function closeGuideLedger() {
+  // 가이드 한 명을 보고 있었으면 창을 닫지 않고 전체 가이드 목록으로 돌아간다.
+  if (currentRole !== 'guide' && window._ledgerSelected) { backToLedgerList(); return; }
   document.getElementById('ledgerModal').style.display='none';
   window._ledgerSelected = null;
 }
