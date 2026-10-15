@@ -834,7 +834,7 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
    없어서, 그 탭에서 저장하는 순간 다른 사람이 넣은 예약이 통째로 사라진다
    (7/29~31, 7/30~31 소실 사고의 유력 원인). 탭으로 돌아올 때마다 배포된 버전과
    대조해서, 다르면 저장 전에 강제로 새로고침한다. */
-const APP_VERSION='2026-09-22-costsearch';
+const APP_VERSION='2026-10-15-cancelreopen';
 let _verAt=0, _verBusy=false, _verStale=false, _verBanner=null;
 // 예약 수정창이 열려 있으면 입력 중일 수 있다 — 그때는 새로고침을 미룬다(입력 유실 방지)
 function _isEditingRes(){ const el=document.getElementById('rov'); return !!(el&&el.classList.contains('open')); }
@@ -1235,7 +1235,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 23;   // 배포마다 +1 (구버전 탭 저장차단 기준). v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 24;   // 배포마다 +1 (구버전 탭 저장차단 기준). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -4072,6 +4072,17 @@ function loadData(){
   try{ reservations=JSON.parse(localStorage.getItem('trv_reservations')||'[]'); }catch{ reservations=[]; }
 }
 
+/* 충돌 확인창에서 [취소]하면 목록과 병합 기준(_sbBase)은 최신본으로 바뀌는데, 열려 있는 예약창(workingRes)만
+   옛 내용으로 남았다. 그 상태로 다시 저장하면 「옛 화면 = 내가 지운 것」으로 병합돼 그 사이 남이 넣은
+   호텔 줄·리마크·CFM이 조용히 사라졌다(1015 11/22 팀 SWISSOTEL W/L 줄). → 창도 최신본으로 다시 연다. */
+function _reopenEditorLatest(){
+  if(!_isEditingRes()||modalMode!=='edit'||!editingId) return;
+  if(!reservations.some(r=>r.id===editingId)) return;
+  try{ closeBahtModal(true); }catch(e){}
+  openReservation(editingId);
+  clearDraft();
+  showToast('↩ 저장을 취소해 예약창을 최신 내용으로 다시 열었습니다 — 넣으려던 내용은 다시 입력해 주세요');
+}
 // 예약 저장. 병합·충돌확인·백업은 sbSaveSafe가 담당하고, 여기선 화면 상태만 맞춘다.
 async function saveData(){
   const out=await sbSaveSafe('trv_reservations',reservations,{
@@ -4080,7 +4091,7 @@ async function saveData(){
     keyFn:r=>r.id || (r.createdAt?('C:'+r.createdAt):(r.code?('K:'+r.code):'')),
     itemMerge:_mergeReservation,   // 같은 예약을 여러 명이 서로 다른 섹션 편집 시 둘 다 살리는 중첩 병합
     labelFn:r=>`${r.datein||''} ${r.name||r.code||''}`.trim(),
-    onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); },
+    onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); _reopenEditorLatest(); },
   });
   if(out===false){
     // 통신·로그인 때문에 못 저장한 것이면, 로그인이 살아날 때 자동으로 다시 저장한다
