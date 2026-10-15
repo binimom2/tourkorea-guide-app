@@ -65,10 +65,12 @@ const isWeekendDate = (ds) => [0, 6].includes(new Date(ds + 'T00:00:00Z').getUTC
    요금표에 마진을 따로 적어 둔 골프장은 그 값이 18홀 기준이 되고, 9홀은 그 절반이 된다. */
 /* ★ 2026-09-19 사장님: 「모든 호텔·골프 +100밧 → +200밧」. 골프장(18홀)·호텔(1실 1박)의 기본 마진을 200으로 올렸다.
      18홀 +200 · 9홀 +100 · 27홀 +300 · 36홀 +400 · 호텔 1실 1박 +200.
-   스파·티켓·차량 같은 메뉴 요금은 말씀이 없어 예전 그대로 100이다(MENU_MARGIN).
+   (스파·티켓·차량 메뉴는 그때 100이었고, 2026-10-15부터 같이 200 — 아래 MENU_MARGIN)
    요금표에 마진을 따로 적어 둔 곳(margin 칸)은 여전히 그 값이 우선한다. */
 const DEFAULT_MARGIN = 200;
-const MENU_MARGIN = 100;
+/* 2026-10-15 사장님 「단품목도 전부 공통」 — 스파·티켓·차량 등 메뉴 요금도 골프·호텔과 같이 기본 +200(티어2·비회원), 티어1 +100.
+   그 전(~10-15) 메뉴 마진은 100이었다 — 관리 화면 원가 계산이 예약 날짜로 구분한다(MENU_M200_FROM) */
+const MENU_MARGIN = 200;
 const marginOf = (v, d) => (Number.isFinite(+v) && +v >= 0 && !blank(v) ? +v : (d == null ? DEFAULT_MARGIN : d));
 const margin9Of = (m) => Math.round(m / 2);
 
@@ -330,7 +332,7 @@ export async function onRequestGet({ request, env }) {
       if (k === 'courses' || k === 'hotels' || !Array.isArray(rv[k])) return;
       rv[k].forEach((o) => {
         if (!o || !o.name) return;
-        const m = marginOf(o.margin, MENU_MARGIN);   // 스파·티켓…은 예전 그대로 기본 100밧
+        const m = Math.max(0, marginOf(o.margin, MENU_MARGIN) - adj);   // 티어 공통(2026-10-15): 기본 200, 티어1 −100
         const menu = [];
         (Array.isArray(o.menu) ? o.menu : []).forEach((r) => {
           const p = r ? +r.p : NaN;
@@ -597,8 +599,8 @@ export const onRequestOptions = () =>
 
 /* ── 티어(사장님 2026-10-15) ──
    여행사 회원이 로그인한 채로 부르면(Authorization: Bearer <토큰>) 그 계정의 티어를 본다.
-   티어1(랜드사) = 골프·호텔 마진 100밧(18홀·1실1박 기준 −100) · 티어2(여행사)·로그인 없음 = 지금 그대로(기본 200).
-   스파·티켓 같은 메뉴 요금(MENU_MARGIN)은 건드리지 않는다.
+   티어1(랜드사) = 마진 −100(골프 18홀·호텔 1실1박·메뉴 1인 기준, 9홀 −50) · 티어2(여행사)·로그인 없음 = 기본 200.
+   단품목 전부 공통(골프·호텔·스파·티켓·차량 메뉴, 사장님 2026-10-15).
    토큰은 Supabase에 직접 물어 확인한다(브라우저가 보낸 티어 값은 믿지 않는다). 실패하면 0 = 기본 요금. */
 async function tierAdj(request, env) {
   const auth = request.headers.get('Authorization') || '';

@@ -1163,8 +1163,8 @@ function drawAgencies(){
         +'<div>'
           +'<div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:6px">처리</div>'
           +'<div style="margin-bottom:8px"><select data-tier '+(canDecide?'':'disabled')+' style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-weight:700">'
-            +'<option value="1"'+(+a.tier===1?' selected':'')+'>티어1 · 랜드사 (골프·호텔 +100밧)</option>'
-            +'<option value="2"'+(+a.tier===1?'':' selected')+'>티어2 · 여행사 (골프·호텔 +200밧)</option></select></div>'
+            +'<option value="1"'+(+a.tier===1?' selected':'')+'>티어1 · 랜드사 (단품목 +100밧)</option>'
+            +'<option value="2"'+(+a.tier===1?'':' selected')+'>티어2 · 여행사 (단품목 +200밧)</option></select></div>'
           +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+btn('approved','✔ 승인','#2E7D4F')+btn('rejected','거절','#B23B3B')+btn('suspended','정지','#9AA5A0')+btn('pending','대기로','#E8A33D')+'</div>'
           +(canDecide?'':'<p class="hint">승인·거절은 어드민·매니저1만 할 수 있습니다.</p>')
           +'<div style="margin-top:12px;font-size:12px;font-weight:800;color:var(--fairway)">직원 메모</div>'
@@ -1179,7 +1179,7 @@ function drawAgencies(){
   const fbtn=(k,t)=>'<button data-flt="'+k+'" class="'+(agFilter===k?'on':'')+'">'+t+(k==='all'?' ('+all.length+')':' ('+cnt(k)+')')+'</button>';
   p.innerHTML='<div class="card">'
     +'<h2>🏢 여행사 회원 <span class="bkcnt">대기 '+cnt('pending')+'건</span></h2>'
-    +'<p class="desc">손님 사이트에서 들어온 여행사 가입 신청입니다. 줄을 누르면 명함이 펼쳐집니다. 티어를 선택하고 <b>승인</b>하세요. 티어1(랜드사)은 골프·호텔 +100밧, 티어2(여행사)는 +200밧입니다.</p>'
+    +'<p class="desc">손님 사이트에서 들어온 여행사 가입 신청입니다. 줄을 누르면 명함이 펼쳐집니다. 티어를 선택하고 <b>승인</b>하세요. 단품목(골프·호텔·스파·티켓·차량)은 티어1(랜드사) +100밧, 티어2(여행사) +200밧입니다.</p>'
     +'<div class="subtabs">'+fbtn('pending','대기')+fbtn('approved','승인')+fbtn('rejected','거절')+fbtn('suspended','정지')+fbtn('all','전부')+'<button data-f="reload">↻ 새로고침</button></div>'
     +(list.length?'<div style="overflow:auto"><table style="min-width:820px"><thead><tr>'+th('상태')+th('여행사 · 아이디')+th('담당자 · 연락처')+th('신청일시')+th('티어')+th('메모')+th('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>'
       :'<p class="desc" style="padding:18px 0">'+(agFilter==='pending'?'대기 중인 신청이 없습니다.':'해당하는 여행사가 없습니다.')+'</p>')
@@ -1736,7 +1736,7 @@ function openBookDoc(no){
 function closeBookDoc(){ const ov=document.getElementById('bkDocOv'); if(ov) ov.remove(); document.body.classList.remove('bkdoc-open'); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('bkDocOv')) closeBookDoc(); });
 /* ══ 원가·송금(사장님 2026-10-02) — 「바우처 발급」 옆 단추. 줄마다 요금표 원가·실제 원가·송금액·송금일.
-   사이트 예약은 판매가(손님가)만 저장돼 있어 요금표 원가 = 판매가 − 마진(지금 요금표의 마진 칸, 비면 골프·호텔 200 · 메뉴 100, /api/golf-price 와 같은 규칙).
+   사이트 예약은 판매가(손님가)만 저장돼 있어 요금표 원가 = 판매가 − 마진(지금 요금표의 마진 칸, 비면 200(메뉴는 10-15 전 예약 100), 티어1 회원 예약은 −100, /api/golf-price 와 같은 규칙).
    여행사 실시간 견적 건은 줄 금액이 곧 원가(견적기 마진 0) — 「핸들링 차지」는 우리 수익이라 원가 0.
    저장은 rec.cost(서버 action 'cost') — 손님·여행사 화면엔 안 나간다 ══ */
 const cmOf=(v,d)=>(v!==''&&v!=null&&Number.isFinite(+v)&&+v>=0)?+v:d;
@@ -1756,9 +1756,11 @@ function listCostOf(b,it){
     const hit=PIDX.hotels[key(it.name)], h=hit&&hit.h, rm=h&&(h.rooms||[]).find(r=>r&&key(r.t)===key(it.option));
     return B-Math.max(0,cmOf(rm&&rm.margin,cmOf(h&&h.margin,200))-adj)*Math.max(1,+it.rooms||1)*Math.max(1,+it.nights||1);
   }
-  const hit=(PIDX[it.kind]||{})[key(it.name)];
-  return B-cmOf(hit&&hit.o.margin,100)*Math.max(1,+it.pax||1);
+  /* 메뉴(스파·티켓·차량…): 2026-10-15 배포부터 골프·호텔과 같은 규칙(기본 200, 티어1 −100). 그 전 예약은 100·티어 없음 */
+  const hit=(PIDX[it.kind]||{})[key(it.name)], newRule=String((b&&b.at)||'')>=MENU_M200_FROM;
+  return B-(newRule?Math.max(0,cmOf(hit&&hit.o.margin,200)-adj):cmOf(hit&&hit.o.margin,100))*Math.max(1,+it.pax||1);
 }
+const MENU_M200_FROM='2026-10-15T10:35:00Z';
 function costBtnHtml(b){
   const its=b.items||[], L=(b.cost&&b.cost.lines)||{};
   const need=its.map((it,i)=>i).filter(i=>listCostOf(b,its[i])!==0);
