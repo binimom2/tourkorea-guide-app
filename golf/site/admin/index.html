@@ -1146,7 +1146,7 @@ function drawAgencies(){
       +td('<b>'+esc(a.company||'')+'</b><div style="color:var(--muted);font-size:11.5px">'+esc(a.id)+'</div>')
       +td(esc(a.contact||'')+'<div style="color:var(--muted);font-size:11.5px">'+esc(a.tel||'')+(a.email?' · '+esc(a.email):'')+'</div>')
       +td(esc((a.at||'').replace('T',' ').slice(0,16)),'white-space:nowrap;color:var(--muted)')
-      +td(a.margin==null?'<span style="color:var(--muted)">기본</span>':'<b>'+esc(a.margin)+'밧</b>','white-space:nowrap')
+      +td('<b style="color:'+(+a.tier===1?'#1C5B42':'#8A6D1F')+'">'+(+a.tier===1?'티어1':'티어2')+'</b>','white-space:nowrap')
       +td(esc(a.note||''),'max-width:220px;color:var(--muted)')
       +td(open?'▲':'▼','text-align:center;color:var(--muted)')
       +'</tr>';
@@ -1162,11 +1162,11 @@ function drawAgencies(){
         +'<div><div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:6px">명함</div>'+cardHtml+'</div>'
         +'<div>'
           +'<div style="font-size:12px;font-weight:800;color:var(--fairway);margin-bottom:6px">처리</div>'
+          +'<div style="margin-bottom:8px"><select data-tier '+(canDecide?'':'disabled')+' style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-weight:700">'
+            +'<option value="1"'+(+a.tier===1?' selected':'')+'>티어1 · 랜드사 (골프·호텔 +100밧)</option>'
+            +'<option value="2"'+(+a.tier===1?'':' selected')+'>티어2 · 여행사 (골프·호텔 +200밧)</option></select></div>'
           +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+btn('approved','✔ 승인','#2E7D4F')+btn('rejected','거절','#B23B3B')+btn('suspended','정지','#9AA5A0')+btn('pending','대기로','#E8A33D')+'</div>'
           +(canDecide?'':'<p class="hint">승인·거절은 어드민·매니저1만 할 수 있습니다.</p>')
-          +'<div style="margin-top:12px;font-size:12px;font-weight:800;color:var(--fairway)">마진 예외 (밧, 비우면 기본)</div>'
-          +'<div style="display:flex;gap:6px;margin-top:4px"><input data-margin type="number" min="0" step="1" value="'+(a.margin==null?'':esc(a.margin))+'" placeholder="기본" '+(canDecide?'':'disabled')+' style="width:110px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit">'
-          +'<button data-f="margin" '+(canDecide?'':'disabled')+' class="add">저장</button></div>'
           +'<div style="margin-top:12px;font-size:12px;font-weight:800;color:var(--fairway)">직원 메모</div>'
           +'<div style="display:flex;gap:6px;margin-top:4px"><input data-note type="text" value="'+esc(a.note||'')+'" placeholder="예: 모두투어 협력사 · 담당 김OO" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit">'
           +'<button data-f="note" class="add">저장</button></div>'
@@ -1179,9 +1179,9 @@ function drawAgencies(){
   const fbtn=(k,t)=>'<button data-flt="'+k+'" class="'+(agFilter===k?'on':'')+'">'+t+(k==='all'?' ('+all.length+')':' ('+cnt(k)+')')+'</button>';
   p.innerHTML='<div class="card">'
     +'<h2>🏢 여행사 회원 <span class="bkcnt">대기 '+cnt('pending')+'건</span></h2>'
-    +'<p class="desc">손님 사이트에서 들어온 여행사 가입 신청입니다. 줄을 누르면 명함이 펼쳐집니다. <b>승인</b>하면 그 아이디로 로그인해 실시간 견적을 바로 쓸 수 있습니다. 레벨은 하나이고, 특정 여행사만 마진을 달리 줄 때 「마진 예외」에 적습니다.</p>'
+    +'<p class="desc">손님 사이트에서 들어온 여행사 가입 신청입니다. 줄을 누르면 명함이 펼쳐집니다. 티어를 선택하고 <b>승인</b>하세요. 티어1(랜드사)은 골프·호텔 +100밧, 티어2(여행사)는 +200밧입니다.</p>'
     +'<div class="subtabs">'+fbtn('pending','대기')+fbtn('approved','승인')+fbtn('rejected','거절')+fbtn('suspended','정지')+fbtn('all','전부')+'<button data-f="reload">↻ 새로고침</button></div>'
-    +(list.length?'<div style="overflow:auto"><table style="min-width:820px"><thead><tr>'+th('상태')+th('여행사 · 아이디')+th('담당자 · 연락처')+th('신청일시')+th('마진')+th('메모')+th('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +(list.length?'<div style="overflow:auto"><table style="min-width:820px"><thead><tr>'+th('상태')+th('여행사 · 아이디')+th('담당자 · 연락처')+th('신청일시')+th('티어')+th('메모')+th('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>'
       :'<p class="desc" style="padding:18px 0">'+(agFilter==='pending'?'대기 중인 신청이 없습니다.':'해당하는 여행사가 없습니다.')+'</p>')
     +'</div>';
   p.querySelectorAll('.subtabs button[data-flt]').forEach(b=>b.onclick=()=>{ agFilter=b.dataset.flt; drawAgencies(); });
@@ -1199,15 +1199,24 @@ function drawAgencies(){
       e.stopPropagation();
       const st=b.dataset.st, t=agSt(st).t;
       if(st===a.status) return;
-      if(!confirm('['+(a.company||a.id)+'] 을(를) 「'+t+'」 상태로 바꿉니다.'+(st==='approved'?'\n승인하면 이 아이디로 로그인해 실시간 견적을 볼 수 있습니다.':'')+'\n\n계속할까요?')) return;
+      const tSel=openRow.querySelector('select[data-tier]'), tier=tSel?+tSel.value:2;
+      if(!confirm('['+(a.company||a.id)+'] 을(를) 「'+t+'」 상태로 바꿉니다.'+(st==='approved'?'\n티어'+tier+'로 승인합니다.':'')+'\n\n계속할까요?')) return;
       b.disabled=true;
-      const j=await agencyApi('status',{id:a.id,status:st});
+      const j=await agencyApi('status',st==='approved'?{id:a.id,status:st,tier}:{id:a.id,status:st});
       if(j.error){ alert(j.error); b.disabled=false; return; }
-      a.status=st; a.history=(a.history||[]).concat([{at:new Date().toISOString(),status:st,by:'나'}]);
+      a.status=st; if(st==='approved') a.tier=tier; a.history=(a.history||[]).concat([{at:new Date().toISOString(),status:st,by:'나'}]);
       drawAgencies();
     });
-    const mBtn=openRow.querySelector('button[data-f="margin"]');
-    if(mBtn) mBtn.onclick=async(e)=>{ e.stopPropagation(); const v=openRow.querySelector('input[data-margin]').value.trim(); const j=await agencyApi('margin',{id:a.id,margin:v===''?'':+v}); if(j.error){ alert(j.error); return; } a.margin=j.margin; drawAgencies(); };
+    /* 티어 바꾸기 — 이미 승인된 회원은 고르는 즉시 저장. 승인 전이면 「승인」 누를 때 같이 저장된다 */
+    const tSel=openRow.querySelector('select[data-tier]');
+    if(tSel){ tSel.onclick=e=>e.stopPropagation(); tSel.onchange=async()=>{
+      if(a.status!=='approved') return;
+      const v=+tSel.value;
+      if(!confirm('['+(a.company||a.id)+'] 을(를) 티어'+v+'로 바꿉니다.\n\n계속할까요?')){ tSel.value=String(+a.tier===1?1:2); return; }
+      const j=await agencyApi('tier',{id:a.id,tier:v});
+      if(j.error){ alert(j.error); tSel.value=String(+a.tier===1?1:2); return; }
+      a.tier=j.tier; drawAgencies();
+    }; }
     const nBtn=openRow.querySelector('button[data-f="note"]');
     if(nBtn) nBtn.onclick=async(e)=>{ e.stopPropagation(); const v=openRow.querySelector('input[data-note]').value.trim(); const j=await agencyApi('note',{id:a.id,note:v}); if(j.error){ alert(j.error); return; } a.note=v; drawAgencies(); };
     const rBtn=openRow.querySelector('button[data-f="remove"]');
@@ -1733,17 +1742,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElemen
 const cmOf=(v,d)=>(v!==''&&v!=null&&Number.isFinite(+v)&&+v>=0)?+v:d;
 function listCostOf(b,it){
   if(!it) return null;
-  if(it.kind==='quote') return /^핸들링/.test(it.name||'')?0:(+it.baht||0);
+  /* 실시간 견적 줄: 골프·호텔엔 티어 마진(mg)이 얹혀 있다(2026-10-15) — 원가 = 금액 − mg. 옛 건은 mg 없음 = 금액이 원가 */
+  if(it.kind==='quote') return /^핸들링/.test(it.name||'')?0:Math.max(0,(+it.baht||0)-(+it.mg||0));
   if(it.asked||!(+it.baht>0)) return null;
   const key=s=>String(s||'').replace(/\s+/g,'').toLowerCase();
   const B=+it.baht;
+  const adj=(b&&b.from&&+b.from.tier===1)?100:0;   // 티어1(랜드사) 회원 예약은 골프·호텔 마진이 100 적다
   if(it.kind==='courses'){
-    const hit=PIDX.courses[key(it.name)], m=cmOf(hit&&hit.c.margin,200), m9=Math.round(m/2), h=parseInt(it.option,10)||18;
+    const hit=PIDX.courses[key(it.name)], m=Math.max(0,cmOf(hit&&hit.c.margin,200)-adj), m9=Math.round(m/2), h=parseInt(it.option,10)||18;
     return B-(h===9?m9:h===27?m+m9:h===36?2*m:m)*Math.max(1,+it.pax||1);
   }
   if(it.kind==='hotels'){
     const hit=PIDX.hotels[key(it.name)], h=hit&&hit.h, rm=h&&(h.rooms||[]).find(r=>r&&key(r.t)===key(it.option));
-    return B-cmOf(rm&&rm.margin,cmOf(h&&h.margin,200))*Math.max(1,+it.rooms||1)*Math.max(1,+it.nights||1);
+    return B-Math.max(0,cmOf(rm&&rm.margin,cmOf(h&&h.margin,200))-adj)*Math.max(1,+it.rooms||1)*Math.max(1,+it.nights||1);
   }
   const hit=(PIDX[it.kind]||{})[key(it.name)];
   return B-cmOf(hit&&hit.o.margin,100)*Math.max(1,+it.pax||1);

@@ -506,7 +506,8 @@ export async function onRequest(context) {
       try {
         const u = await getUser(request);
         const um = (u && u.user_metadata) || {};
-        if (u && um.kind === 'agency') rec.from = { id: loginIdOf(u), company: s(um.company, 60) };
+        /* tier = 그때 적용된 요금 티어(1 랜드사 = 골프·호텔 마진 −100). 관리 화면 원가 계산이 이 값을 본다(2026-10-15) */
+        if (u && um.kind === 'agency') rec.from = { id: loginIdOf(u), company: s(um.company, 60), tier: (um.approved === true && +um.tier === 1) ? 1 : 2 };
       } catch (e) {}
       await srUpsert(KEY, { data_key: PREFIX + rec.no, data: rec, updated_at: rec.at });
       /* 손님에게는 접수번호만 돌려준다 */

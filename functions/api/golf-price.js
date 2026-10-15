@@ -90,16 +90,17 @@ const partOf = (v) => (v === '주말' || v === '태국휴일' || v === '주말·
 const rateCovers = (r, date) => (blank(r.from) || date >= r.from) && (blank(r.to) || date <= r.to);
 /* 트와일라잇·나이트 줄(2026-09-18)은 손님 최저가·날짜 요금에서 뺀다 — 손님이 시간을 안 고르는데 나이트 값이 «~»로 잡히면 안 된다 */
 const dayTime = (r) => blank(r.time) || r.time === '종일' || r.time === '오전' || r.time === '오후';
-function rateUnits(r, c) {
-  const m = pickMargin(r.margin, c && c.margin);
+/* adj = 티어 할인(밧, 18홀·1실1박 기준) — 티어1(랜드사) 로그인이면 100, 아니면 0. 마진에서 빼고 0 밑으로는 안 내려간다 */
+function rateUnits(r, c, adj) {
+  const m = Math.max(0, pickMargin(r.margin, c && c.margin) - (adj || 0));
   const p18 = posNum(r.p18), p9 = posNum(r.p9);
   return { u18: p18 == null ? null : p18 + m, u9: p9 == null ? null : p9 + margin9Of(m) };
 }
 /* 여러 줄 중 가장 싼 값 — 카드의 «~»와 오전·오후가 갈린 곳의 표시가가 이 뜻이다 */
-function lowestOf(list, c) {
+function lowestOf(list, c, adj) {
   let u18 = null, u9 = null;
   list.forEach((r) => {
-    const u = rateUnits(r, c);
+    const u = rateUnits(r, c, adj);
     if (u.u18 != null && (u18 == null || u.u18 < u18)) u18 = u.u18;
     if (u.u9 != null && (u9 == null || u.u9 < u9)) u9 = u.u9;
   });
@@ -161,7 +162,7 @@ function kindBaht(r, p, we) {
   const wd = posNum(r[p + 'Wd']), wk = posNum(r[p + 'We']);
   return we ? (wk != null ? wk : wd) : (wd != null ? wd : wk);
 }
-const roomMargin = (rm, h) => marginOf(blank(rm && rm.margin) ? (h && h.margin) : rm.margin);
+const roomMargin = (rm, h, adj) => Math.max(0, marginOf(blank(rm && rm.margin) ? (h && h.margin) : rm.margin) - (adj || 0));
 /* ── 추가 인원 요금 (2026-09-03 사장님 요청) ──
    `extraAdult` = 추가 성인 한 사람 1박당 · `extraChild` = 추가 어린이 한 사람 1박당 (밧).
    엑스트라베드 값과 3인 요금이 같은 말이라(사장님 확인) 두 칸을 성인·어린이로 나눴다.
@@ -175,7 +176,7 @@ function extraOf(rm, k) {
   return v != null ? v : posNum(rm[EXTRA_OLD[k]]);
 }
 /* 그 객실의 최저가 — 기본요금 줄만 본다(써차지는 「~」에 안 넣는다) */
-function roomLowest(rm, h) {
+function roomLowest(rm, h, adj) {
   let lo = null;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
     if (isSur(r) || minNOf(r) > 1) return;
@@ -184,11 +185,11 @@ function roomLowest(rm, h) {
       if (v != null && (lo == null || v < lo)) lo = v;
     });
   });
-  return lo == null ? null : lo + roomMargin(rm, h);
+  return lo == null ? null : lo + roomMargin(rm, h, adj);
 }
 /* 그 날짜의 값 — 기본요금은 겹치면 싼 쪽, 써차지는 걸리는 것을 모두 더한다 */
 /* single=true면 1인 사용(싱글) 값 — 그 줄에 싱글 값이 없으면 더블·트윈 값으로 본다 */
-function roomOn(rm, h, date, we, single, nights) {
+function roomOn(rm, h, date, we, single, nights, adj) {
   let base = null, add = 0, sur = false;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
     if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
@@ -200,7 +201,7 @@ function roomOn(rm, h, date, we, single, nights) {
     else if (base == null || v < base) base = v;
   });
   if (base == null) return null;             // 기본요금이 없으면 값을 내지 않는다
-  return { baht: base + add + roomMargin(rm, h), sur };
+  return { baht: base + add + roomMargin(rm, h, adj), sur };
 }
 /* 그 날짜의 추가 인원 값(p = 'ea' 엑스트라 성인 · 'ec' 엑스트라 아동 · 'cb' 아동 조식) — 마진 없이.
    기본요금 줄은 겹치면 싼 쪽, 써차지 줄은 걸리는 것을 모두 더한다(객실 값과 같은 규칙).
@@ -247,7 +248,8 @@ function extraLowest(rm, p) {
 }
 
 /* ── GET: 카드에 붙는 최저가 ── */
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
+  const adj = await tierAdj(request, env);
   let P, fx;
   try {
     const got = await Promise.all([readPricing(env), cashBuyRate()]);
@@ -266,7 +268,7 @@ export async function onRequestGet({ env }) {
         if (u.u18 != null && (lo18 == null || u.u18 < lo18)) lo18 = u.u18;
         if (u.u9 != null && (lo9 == null || u.u9 < lo9)) lo9 = u.u9;
       };
-      if (Array.isArray(c.rates)) take(lowestOf(c.rates.filter(dayTime), c));
+      if (Array.isArray(c.rates)) take(lowestOf(c.rates.filter(dayTime), c, adj));
       if (lo18 == null && lo9 == null) return;   // 요금이 하나도 없는 골프장은 값을 안 내보낸다
       /* 밧도 같이 내려보낸다(사장님 지시) — 카드에 「94,700원~ (฿2,150~)」로 붙는다.
          내려보내는 밧은 **손님가**(합산가+마진)다. 그린피·캐디·카트 내역은 여전히 안 보낸다. */
@@ -297,7 +299,7 @@ export async function onRequestGet({ env }) {
           const v2 = extraLowest(rm, p);
           if (v2 != null) { ex[nm + 'Krw'] = krwUp(v2 * fx.rate); ex[nm + 'Baht'] = v2; }
         });
-        const lo = roomLowest(rm, h);
+        const lo = roomLowest(rm, h, adj);
         if (lo == null) { rooms.push(Object.assign({ t: rm.t }, ex)); return; }   // 요금 미등록 객실은 이름만
         rooms.push(Object.assign({ t: rm.t, fromKrw: krwUp(lo * fx.rate), fromBaht: lo }, ex));
         if (v == null || lo < v) v = lo;                        // 카드의 「~」는 제일 싼 객실 값
@@ -372,7 +374,7 @@ export async function onRequestGet({ env }) {
   return json(
     { ok: true, courses, hotels, items, airportTip, fx: { rate: fx.rate, date: fx.date, basis: '현찰 살때 (하나은행 고시)' } },
     200,
-    'public, max-age=60'
+    adj ? 'private, no-store' : 'public, max-age=60'   // 티어1 값은 그 회원에게만 — 캐시에 남기지 않는다
   );
 }
 
@@ -382,7 +384,8 @@ export async function onRequestPost({ request, env }) {
   try { B = await request.json(); }
   catch (e) { return json({ ok: false, error: '요청을 읽지 못했습니다' }, 400); }
 
-  if (String(B.kind || '') === 'hotel') return hotelPost(B, env);
+  const adj = await tierAdj(request, env);
+  if (String(B.kind || '') === 'hotel') return hotelPost(B, env, adj);
 
   const region = String(B.region || '');
   const name = String(B.course || '');
@@ -416,7 +419,7 @@ export async function onRequestPost({ request, env }) {
     const want = we ? 'we' : 'wd';
     const hit = rates.filter((r) => dayTime(r) && rateCovers(r, date) && partOf(r.part) === want);
     if (hit.length) {
-      u = lowestOf(hit, course);
+      u = lowestOf(hit, course, adj);
       const r0 = hit[0];
       seasonLabel = (blank(r0.from) && blank(r0.to)) ? '' : (r0.from || '') + '~' + (r0.to || '');
     }
@@ -463,7 +466,7 @@ const addDays = (ds, n) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-async function hotelPost(B, env) {
+async function hotelPost(B, env, adj) {
   const region = String(B.region || '');
   const name = String(B.hotel || '');
   const want = String(B.room || '');
@@ -527,12 +530,12 @@ async function hotelPost(B, env) {
   for (let i = 0; i < nights; i++) {
     const d = addDays(date, i);
     const we = weOn && (weDays.includes(new Date(d + 'T00:00:00Z').getUTCDay()) || holidays.includes(d));
-    const got = roomOn(room, hotel, d, we, false, nights);
+    const got = roomOn(room, hotel, d, we, false, nights, adj);
     if (got == null) {
       return json({ ok: false, needAsk: true,
         error: (nights > 1 ? d + ' 밤의 ' : '') + '요금이 아직 등록되어 있지 않습니다' }, 200);
     }
-    const sgl = singles ? (roomOn(room, hotel, d, we, true, nights) || got) : got;
+    const sgl = singles ? (roomOn(room, hotel, d, we, true, nights, adj) || got) : got;
     const v = got.baht;
     if (sgl.baht !== v) sglDiff = true;      // 싱글 값이 따로 적힌 호텔 — 손님 화면이 「싱글 ○실」을 알린다
     if (got.sur) anySur = true;              // 특별일 추가요금이 붙은 밤이 있다
@@ -588,6 +591,25 @@ export const onRequestOptions = () =>
     headers: {
       'access-control-allow-origin': '*',
       'access-control-allow-methods': 'GET, POST, OPTIONS',
-      'access-control-allow-headers': 'content-type',
+      'access-control-allow-headers': 'content-type, authorization',
     },
   });
+
+/* ── 티어(사장님 2026-10-15) ──
+   여행사 회원이 로그인한 채로 부르면(Authorization: Bearer <토큰>) 그 계정의 티어를 본다.
+   티어1(랜드사) = 골프·호텔 마진 100밧(18홀·1실1박 기준 −100) · 티어2(여행사)·로그인 없음 = 지금 그대로(기본 200).
+   스파·티켓 같은 메뉴 요금(MENU_MARGIN)은 건드리지 않는다.
+   토큰은 Supabase에 직접 물어 확인한다(브라우저가 보낸 티어 값은 믿지 않는다). 실패하면 0 = 기본 요금. */
+async function tierAdj(request, env) {
+  const auth = request.headers.get('Authorization') || '';
+  if (!/^Bearer\s+\S+/.test(auth)) return 0;
+  try {
+    const r = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      headers: { apikey: env.SUPABASE_ANON_KEY || 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl', Authorization: auth },
+    });
+    if (!r.ok) return 0;
+    const u = await r.json();
+    const m = (u && u.user_metadata) || {};
+    return (m.kind === 'agency' && m.approved === true && +m.tier === 1) ? 100 : 0;
+  } catch (e) { return 0; }
+}

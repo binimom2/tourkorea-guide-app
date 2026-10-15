@@ -1316,9 +1316,20 @@ function timeLabelOf(kind){
 const unitOf = (kind) => (isMenuKind(kind) && (catOf(kind) || {}).u === "대") ? "대" : "인";
 const cntUnit = (kind) => unitOf(kind) === "대" ? "대" : "명";
 /* 요금은 화면을 먼저 그린 뒤에 붙는다 — 요금 서버가 느리거나 죽어도 사이트는 그대로 보인다 */
+/* 요금 서버에 회원 로그인을 같이 보낸다 — 서버가 티어를 보고 값을 정한다(티어1 랜드사는 골프·호텔 −100밧, 2026-10-15).
+   승인 안 된 사람·로그인 없음은 빈 헤더 = 기본 요금 */
+async function priceAuth(){
+  try{
+    if(!(agency && agency.approved)) return {};
+    const c = await agClient();
+    const { data } = await c.auth.getSession();
+    const tk = data && data.session && data.session.access_token;
+    return tk ? { Authorization: "Bearer " + tk } : {};
+  }catch(e){ return {}; }
+}
 async function loadPrices(){
   try{
-    const r = await fetch(API + "/api/golf-price");
+    const r = await fetch(API + "/api/golf-price", { headers: await priceAuth(), cache: "no-store" });
     const j = await r.json();
     if(!j || !j.ok) return;
     (j.courses || []).forEach(c => { PRICE.courses[pkey(c.region, c.name)] = c;
@@ -2707,7 +2718,7 @@ async function qpCalc(){
   try{
     const r = await fetch(API + "/api/golf-price", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: Object.assign({ "content-type": "application/json" }, await priceAuth()),
       body: JSON.stringify(qpKind === "hotels"
         /* extraChild = 엑스트라 베드 수(3인째), extraAdult = 조식 쿠폰 수(4인째, 아동 2명일 때).
            서버는 각각 «값 × 수 × 박수»로 셈한다. 자리 이름은 예전 그대로(저장값 보존). */
@@ -3360,7 +3371,7 @@ async function repriceCart(){
         : { region:c.region, course:c.name, date:c.date, pax:c.pax,
             holes: (String(c.option || "").replace(/[^0-9]/g, "") || "18") };
       const r = await fetch(API + "/api/golf-price", {
-        method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(body) });
+        method:"POST", headers:Object.assign({ "content-type":"application/json" }, await priceAuth()), body: JSON.stringify(body) });
       const j = await r.json();
       if(j && j.ok){ c.krw = j.totalKrw || 0; c.baht = j.totalBaht || 0; c.asked = false; }
       else { c.krw = 0; c.baht = 0; c.asked = true; }   // 그 날짜 요금이 없어졌으면 「문의」로
@@ -3635,9 +3646,14 @@ function agSet(user){
   if(m && m.kind === "agency"){
     agency = { id: String(m.acc_id || m.login_name || (user.email || "").split("@")[0] || ""),
                company: m.company || "", contact: m.contact || "",
-               approved: m.approved === true, status: m.status || (m.approved === true ? "approved" : "pending") };
+               approved: m.approved === true, status: m.status || (m.approved === true ? "approved" : "pending"),
+               tier: +m.tier === 1 ? 1 : 2 };
   }else agency = null;
   agPaint();
+  /* 티어1(랜드사)은 요금이 다르다 — 로그인·로그아웃으로 티어가 바뀌면 카드 요금을 다시 받는다(2026-10-15) */
+  const tr = (agency && agency.approved) ? agency.tier : 0;
+  if(agSet._tier === undefined ? tr === 1 : agSet._tier !== tr) loadPrices();   // 첫 화면 요금은 로그인 확인 전에 받으므로 티어1이면 한 번 더
+  agSet._tier = tr;
   /* 로그인한 여행사가 바뀌면(로그인·로그아웃) 이미 열어 둔 견적 창을 비운다 — 안 비우면 앞 사람 로그인으로 계속 돈다.
      그리고 상단 「내 견적 보관함」 아이콘과 숫자를 맞춘다 */
   const who = agency ? agency.id + "|" + agency.approved : "";

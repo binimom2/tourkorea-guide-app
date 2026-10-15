@@ -585,7 +585,12 @@ const krwUp=n=>Math.ceil(n/1000)*1000;
    수익 조정은 핸들링 차지에서 한다. 손님 사이트 카드·상세 요금(/api/golf-price)은 +200밧(2026-09-19부터 · 요금표 '마진' 칸, 비면 200)이라
    두 곳 금액이 일부러 다르다 — 카드는 참고가, 실시간은 정산가.
    예전 규칙(카드와 같게)으로 되돌리려면: const MG=v=>(Number.isFinite(+v)&&+v>=0)?+v:100; */
-const MG=v=>0;
+/* 티어(사장님 2026-10-15) — 여행사 회원이 실시간 견적을 낼 때만 골프·호텔에 마진을 얹는다.
+   티어1(랜드사) +100 · 티어2(여행사) +200 (요금표 '마진' 칸에 값이 있으면 그 값이 티어2, 티어1은 거기서 −100).
+   18홀·1실1박 기준이고 9홀은 절반. 직원 견적(AG_TIER 0)은 예전처럼 원가. 카드 요금(/api/golf-price)과 같은 규칙 */
+let AG_TIER=0;
+const MG=v=>{ if(!AG_TIER) return 0; const b=(v!==''&&v!=null&&Number.isFinite(+v)&&+v>=0)?+v:200; return Math.max(0,AG_TIER===1?b-100:b); };
+let BEST_MG=0;   // bestUnit()이 고른 값에 들어 있는 1인 마진 — 견적 줄에 mg로 남긴다(관리 화면 원가 = 금액 − mg)
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
@@ -643,16 +648,16 @@ function ratesToSeasons(c){
 function bestUnit(course,dateStr,wk,holes){
   let ss=(course.s||[]).filter(x=>dateStr>=x.from && dateStr<=x.to);
   if(ss.some(x=>x.src==='rates')) ss=ss.filter(x=>x.src==='rates');
-  let best=null;
+  let best=null; BEST_MG=0;
   ss.forEach(s=>{
     const m=MG(s.margin);
     const u18=s.g18&&s.g18[wk]!=null ? s.g18[wk]+s.cad+s.crt+m : null;
     const u9 =s.g9 &&s.g9 [wk]!=null ? s.g9 [wk]+s.cad9+s.crt9+margin9(m) : null;
-    let u=null;
-    if(holes==='18') u=u18; else if(holes==='9') u=u9;
-    else if(holes==='27') u=(u18!=null&&u9!=null)?u18+u9:null;
-    else if(holes==='36') u=u18!=null?u18*2:null;
-    if(u!=null&&(best==null||u<best)) best=u;
+    let u=null, um=0;
+    if(holes==='18'){ u=u18; um=m; } else if(holes==='9'){ u=u9; um=margin9(m); }
+    else if(holes==='27'){ u=(u18!=null&&u9!=null)?u18+u9:null; um=m+margin9(m); }
+    else if(holes==='36'){ u=u18!=null?u18*2:null; um=2*m; }
+    if(u!=null&&(best==null||u<best)){ best=u; BEST_MG=um; }
   });
   return best;
 }
@@ -1735,7 +1740,7 @@ function calc(){
     /* 손님가(원가+마진) — 사이트 요금 API와 같은 규칙(bestUnit). 새 요금줄이 있으면 그쪽, 홀수별 마진 */
     const gU=bestUnit(c,st.date,wk,String(st.holes||'18'));
     if(gU==null){ lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} 요금 미등록`,v:0,warn:1}); return; }
-    lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(gU)} × ${pax}명`,v:gU*pax});
+    lines.push({t:nm,s:`${dl} · ${we?'주말':'주중'} · ${won(gU)} × ${pax}명`,v:gU*pax,mg:BEST_MG*pax});
   });
   // 2) 차량 (선택한 지역 조합의 기간값 + 1박추가 확장)
   const amDep=!!($('#amDep')&&$('#amDep').checked);   // 오전 출발 = 첫날부터 온종일
@@ -1831,12 +1836,13 @@ function calc(){
       });
       if(miss){ lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${miss} 요금 미등록`,v:0,warn:1}); return; }
       const v=sum*(m.twin+m.triple)+sumS*m.single+bedSum*m.triple;
+      const mg=MG(blank(rm.margin)?h.margin:rm.margin)*nn*(m.twin+m.triple+m.single);   // 1실 1박마다 한 번(roomOn과 같다)
       lines.push({t:`숙소 · ${h.name} · ${rm.t}`,s:`${r.region} · ${ml} × ${nn}박 · 객실 요금표 (1박 평균 ${won(Math.round(sum/nn))})`
-        +(m.triple&&bedSum?` + 엑스트라 베드 ${m.triple}개`:''),v});   // 「2트윈 · 1싱글」꼴로 표기
+        +(m.triple&&bedSum?` + 엑스트라 베드 ${m.triple}개`:''),v,mg});   // 「2트윈 · 1싱글」꼴로 표기
       return;
     }
     const hU=(+h.perNight||0)+MG(h.margin);   // 1실 1박 손님가 = 원가 + 마진(인원과 무관)
-    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ml} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms});
+    lines.push({t:`숙소 · ${h.name}`,s:`${r.region} · ${ml} × ${nn}박 × ${won(hU)}`,v:hU*nn*rms,mg:MG(h.margin)*nn*rms});
   });
   /* 7) 기타투어(사장님 2026-09-19) — 1인 밧 × 참가 인원. 마진 없음(관리에 적는 값이 파는 값) */
   TOUR_PICKS.forEach(t=>{ const k=Math.max(1,+t.times||1);   // 횟수 — 맛사지 2회·3회 같은 요청(사장님 2026-09-19)
@@ -2016,7 +2022,7 @@ function quoteSnapshot(){
     noVeh: !useVehOn(),
     fx: FX_RATE||0,
     fxSrc: FX_SRC||'',              // 환율 출처(자동이면 '하나은행 고시 현찰 살때 날짜', 코드관리 값이면 빈 칸)
-    lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0})),
+    lines: (LAST.lines||[]).map(l=>({t:l.t,s:l.s,v:l.v,warn:l.warn?1:0,mg:l.mg||0})),
     total: LAST.total, per: LAST.per,
     agMk: agMkOn()?AG_MK:0,          // 추가금(1인 원화) — 손님 견적서 1인 요금에만 더한다. per·total(수배·정산 금액)에는 없다
     state: quoteState()             // 입력 상태 — 보관함에서 「수정」으로 다시 불러올 때 쓴다(2026-09-19)
@@ -3240,6 +3246,9 @@ async function startApp(user){
     const ht=document.querySelector('#qhModal b'); if(ht) ht.textContent='🗂 내 견적 보관함';
     /* 여행사명 칸에 가입한 여행사 이름을 미리 넣어 둔다 — 고쳐 써도 된다(사장님 2026-09-21). 새 견적(resetQuote)에서도 다시 채운다 */
     AGENCY_NAME=String(((user&&user.user_metadata)||{}).company||'').trim();
+    /* 티어 — 로그인 정보에 적힌 값을 먼저 쓰고, 서버 명단(최신, 직원이 방금 바꿨을 수 있다)으로 한 번 더 맞춘다 */
+    AG_TIER=+(((user&&user.user_metadata)||{}).tier)===1?1:2;
+    try{ const j=await agencyApi({action:'me'}); if(j&&j.agency) AG_TIER=+j.agency.tier===1?1:2; }catch(e){}
     const tn=$('#teamName'); if(tn&&!tn.value) tn.value=AGENCY_NAME;
   }
   { const row=$('#agMkRow'), inp=$('#agMk');
