@@ -4083,6 +4083,20 @@ function _reopenEditorLatest(){
   clearDraft();
   showToast('↩ 저장을 취소해 예약창을 최신 내용으로 다시 열었습니다 — 넣으려던 내용은 다시 입력해 주세요');
 }
+/* 예약창을 연 채로 다른 저장(순번 재부여·복사)을 하면 병합 기준은 최신본으로 넘어가는데 창은 옛 사본이다.
+   → 남이 그 사이 바꾼 부분을 창에 3-way로 얹는다(내가 아직 저장 안 한 입력은 그대로 둔다). */
+function _syncEditorAfterSave(){
+  if(!_isEditingRes()||modalMode!=='edit'||!editingId||!workingRes) return;
+  const latest=reservations.find(r=>r.id===editingId);
+  if(!latest||latest===workingRes) return;
+  if(_draftBase&&_sbSnap(latest)===_sbSnap(_draftBase)) return;   // 그 사이 아무도 안 바꿈
+  try{ syncFormToRes(); }catch(e){}
+  if(_sbSnap(latest)===_sbSnap(workingRes)) return;
+  const merged=_mergeReservation(_draftBase||latest,workingRes,latest).res;
+  try{ closeBahtModal(true); }catch(e){}
+  openReservation(editingId,null,merged,JSON.parse(JSON.stringify(latest)));
+  window._resBaselineSnap=_sbSnap(latest);   // 아직 저장 안 한 내 입력은 닫을 때 경고되게
+}
 // 예약 저장. 병합·충돌확인·백업은 sbSaveSafe가 담당하고, 여기선 화면 상태만 맞춘다.
 async function saveData(){
   const out=await sbSaveSafe('trv_reservations',reservations,{
@@ -4673,6 +4687,7 @@ async function renumberCode(){
   document.getElementById('rmCode').textContent=newCode;
   document.getElementById('r-code').value=newCode;
   window._resBaselineSnap=_sbSnap(workingRes);   // 닫을 때 오탐 방지
+  _syncEditorAfterSave();
   renderFilters();renderAll();
   showToast(`🔢 순번을 ${newCode} 로 재부여했습니다 (Code renumbered)`);
 }
@@ -5662,6 +5677,7 @@ async function confirmCopyReservation(){
   });
   if(await saveData()) await resolveCodeCollisions(clones);
   closeCopyModal();
+  _syncEditorAfterSave();
   renderFilters();renderAll();
   showToast(`✅ ${dates.length}건 복사 완료 (${clones.map(c=>c.code).join(', ')}) — 원본 ${copyOrigCode} 유지`);
 }
