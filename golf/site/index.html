@@ -450,6 +450,7 @@ table.rooms td.rsub{color:var(--muted);white-space:nowrap}
 table.rooms td.rbed{white-space:pre}
 /* 스파·티켓 메뉴표의 「코스」 칸 — 「스크럽+아로마오일+허브볼」처럼 길어서 줄바꿈을 허용한다 */
 table.rooms td.rmenu{white-space:normal;word-break:keep-all}
+table.rooms td.rmc{white-space:nowrap}
 table.rooms td.rp{text-align:right;font-weight:900;white-space:nowrap;letter-spacing:-.03em}
 table.rooms td.rp b{display:block;font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:0}
 table.rooms td.rp .ask{font-weight:800;font-size:12.5px;color:var(--muted)}
@@ -973,7 +974,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
         <!-- 스파·티켓… 전용 — 메뉴별 요금. 관리 화면의 「메뉴별 요금」이 여기 한 줄씩 선다(2026-09-09) -->
         <div class="dsect" id="dMenuBox" style="display:none"><b>메뉴 · 요금</b>
           <div class="rwrap"><table class="rooms"><thead><tr>
-            <th>메뉴</th><th>코스</th><th style="text-align:right" id="dMenuUnit">1인 요금</th>
+            <th>메뉴</th><th id="dMenuC">코스</th><th id="dMenuD">내용</th><th style="text-align:right" id="dMenuUnit">1인 요금</th>
           </tr></thead><tbody id="dMenu"></tbody></table></div>
         </div>
       </div>
@@ -2046,10 +2047,16 @@ function drawMenu(x, kind, date){
   box.style.display = "";
   $("#dMenuUnit").textContent = "1" + unitOf(kind) + " 요금";     // 차량은 「1대 요금」
   /* 날짜를 골랐으면 그 날짜에 사는 줄(기간 요금이 기본 요금을 덮는다), 아니면 오늘 기준 */
-  $("#dMenu").innerHTML = menuFor(p, date || "").map(m =>
+  /* 코스(c)·내용(d)은 따로 한 칸씩(2026-10-16) — 어느 줄에도 안 적힌 칸은 머리글째 뺀다 */
+  const rows = menuFor(p, date || "");
+  const hasC = rows.some(m => String(m.c || "").trim()), hasD = rows.some(m => String(m.d || "").trim());
+  $("#dMenuC").style.display = hasC ? "" : "none";
+  $("#dMenuD").style.display = hasD ? "" : "none";
+  $("#dMenu").innerHTML = rows.map(m =>
     '<tr><td class="rt">' + esc(m.n)
       + (menuPeriod(m) ? "<i class='rinc mprom'>" + esc(menuPeriod(m)) + "</i>" : "") + '</td>'
-    + '<td class="rsub rmenu">' + esc(mSub(m)) + '</td>'
+    + (hasC ? '<td class="rsub rmc">' + esc(m.c || "") + '</td>' : '')
+    + (hasD ? '<td class="rsub rmenu">' + esc(m.d || "") + '</td>' : '')
     + '<td class="rp">' + (m.krw || 0).toLocaleString("ko-KR") + '원'
     + BT(m.baht ? '<b>' + m.baht.toLocaleString("ko-KR") + '바트</b>' : '') + '</td></tr>').join("");
 }
