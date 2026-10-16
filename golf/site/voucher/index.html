@@ -275,7 +275,17 @@ function render(v){
   const shown = pick.length ? pick : all;
   /* 호텔이 없는 바우처(골프 등)는 「호텔 체크인 시」 → 「체크인 시」, 호텔 바우처는 그대로(사장님 2026-10-03) */
   const noHotel = !shown.some(x => x[0].kind === "hotels");
-  const terms = String(c.terms || "").split(/\n/).map(t => t.trim()).map(t => noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
+  /* 차량만 담긴 바우처는 호텔용 줄(체크인·객실 요금·침대 타입)을 빼고 차량에 맞게 바꾼다(사장님 2026-10-16).
+     회사 정보의 약관 글(c.terms)은 그대로 두고, 보여 줄 때만 줄마다 고친다 */
+  const carOnly = shown.length > 0 && shown.every(x => x[0].kind === "car" || /차량/.test(x[0].kindT || ""));
+  const carTerm = t => {
+    if(/프론트|여권|체크인\s*시|객실\s*요금|디파짓|침대\s*타입|객실\s*배정/.test(t)) return "";
+    if(/추가\s*인원/.test(t)) return "바우처에 표기된 인원 외에 추가 인원은 탑승이 불가능할 수 있습니다.";
+    if(/도착하지\s*못할|위약금/.test(t)) return "예약된 미팅 시간·장소에 나오지 않으시면 예약은 취소되며 규정에 따라 위약금이 부과됩니다.";
+    return t.replace(/호텔\s*/g, "");
+  };
+  const terms = String(c.terms || "").split(/\n/).map(t => t.trim())
+    .map(t => carOnly ? carTerm(t) : noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
   const co = enName(c.name);
   /* Confirm No.(빨강) — 품목마다 업체 컨펌번호를 적는다(사장님 2026-10-03, 골프도 호텔과 똑같이).
      호텔은 확정 칸(teeOk)이 곧 컨펌번호, 골프 등은 teeOk가 티업이라 따로 cfNo. 아무것도 안 적었으면 우리 확정번호 */
