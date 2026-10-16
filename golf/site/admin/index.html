@@ -211,9 +211,10 @@ tr.subrow td{padding:0 6px 11px}
 /* 한 기간 = 왼쪽(날짜 + 구분) · 가운데(요금표: 주중·주말 두 줄 × 다섯 칸) · ✕ (사장님 2026-09-19) */
 .rmhd,.rmrate{display:grid;grid-template-columns:330px auto auto;gap:6px;align-items:center;justify-content:start}
 /* 부킹일(2026-10-16) — 줄 끝 단추로 펼치고, 적어 둔 줄은 늘 보인다 */
-.rmrbtn{display:flex;align-items:center;gap:2px}
-.rmrbk{background:#fff;border:1px solid #B9C9BF;border-radius:5px;color:#55705F;font-size:11px;font-weight:700;padding:2px 5px;cursor:pointer;white-space:nowrap}
-.rmrbk.on{background:#1F5FA8;border-color:#1F5FA8;color:#fff}
+.rmrbtn{display:flex;align-items:center;gap:8px}
+.rmrbk{background:none;border:1px dashed #7FA3C9;border-radius:5px;color:#1F5FA8;font-size:11px;font-weight:700;padding:2px 5px;cursor:pointer;white-space:nowrap}
+.rmrbtn .rmrdel{border-left:1px solid #C9D3CD;padding-left:8px;border-radius:0}
+.rmbkdel{margin-left:auto;background:none;border:0;color:var(--muted);font-size:11px;text-decoration:underline;cursor:pointer;white-space:nowrap}
 .rmbk{grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:12px;color:#1F5FA8}
 .rmbk .rdate{width:270px;grid-template-columns:1fr 8px 1fr;gap:2px}
 .rmbk input[type=date]{padding:4px 2px 4px 4px}
@@ -3068,14 +3069,16 @@ function roomRateHTML(r,j,pr,weOn){
       +'</div>'
       +'</div>'
     +'<div class="rmgrid'+(weOn?'':' nolbl')+'">'+line(false)+(two?line(true):'')+'</div>'
-    +'<div class="rmrbtn"><button type="button" class="rmrbk'+(bkOn?' on':'')+'" title="예약하는 날짜로 이 요금을 제한">부킹일</button>'
-    +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button></div>'
+    /* 줄 끝: 「＋부킹일」(펼치기만) | ✕(이 기간 줄 삭제) — 부킹일 지우기는 펼친 줄 안에 따로 둔다(사장님 2026-10-16 「헷갈림」) */
+    +'<div class="rmrbtn">'+(bkOn||RBK_OPEN.has(r)?'':'<button type="button" class="rmrbk" title="예약하는 날짜로 이 요금을 제한">＋부킹일</button>')
+    +'<button type="button" class="rmrdel" title="이 기간 줄 삭제">✕</button></div>'
     /* 부킹일(2026-10-16) — 이 날짜 사이에 예약할 때만 이 요금(예: 2026-12-31 이후 부킹). 서버 golf-price.js bookOk */
     +(bkOn||RBK_OPEN.has(r)?'<div class="rmbk"><b>부킹일</b><div class="rdate">'
       +'<input type="date" data-rmf="bkFrom" value="'+esc(n(r.bkFrom))+'" title="이 날부터 예약 시">'
       +'<span class="rtil">~</span>'
       +'<input type="date" data-rmf="bkTo" value="'+esc(n(r.bkTo))+'" title="이 날까지 예약 시">'
-      +'</div><span>이 날짜에 예약할 때만 이 요금 · 한쪽만 적으면 그 날 이후/까지</span></div>':'')
+      +'</div><span>이 날짜에 예약할 때만 이 요금 · 한쪽만 적으면 그 날 이후/까지</span>'
+      +'<button type="button" class="rmbkdel">부킹일 빼기</button></div>':'')
     +'</div>';
 }
 const RBK_OPEN=new WeakSet();   // 부킹일 칸을 펼쳐 둔 요금줄
@@ -3371,12 +3374,16 @@ document.getElementById('pane').addEventListener('click',e=>{
     pr.rates.push({from:last.from||'',to:last.to||'',wd:'',we:''});
     markDirty('rates');
     redrawRoomRates(row,x); return;          // 요금칸만 — 옆 사진칸은 그대로 둔다
-  }else if(e.target.closest('.rmrbk')){
+  }else if(e.target.closest('.rmrbk')||e.target.closest('.rmbkdel')){
     const rr=e.target.closest('.rmrate');
     if(!rm||!rr) return;
     const r=priceRoomOf(x,rm.t).rates[Number(rr.dataset.ri)]; if(!r) return;
-    if(r.bkFrom||r.bkTo){ if(!confirm('이 요금의 부킹일 제한을 지울까요?')) return; delete r.bkFrom; delete r.bkTo; RBK_OPEN.delete(r); markDirty('rates'); }
-    else if(RBK_OPEN.has(r)) RBK_OPEN.delete(r); else RBK_OPEN.add(r);
+    if(e.target.closest('.rmrbk')) RBK_OPEN.add(r);
+    else{
+      if((r.bkFrom||r.bkTo)&&!confirm('이 요금의 부킹일 제한만 뺄까요?\n(요금 줄은 그대로 남습니다)')) return;
+      if(r.bkFrom||r.bkTo){ delete r.bkFrom; delete r.bkTo; markDirty('rates'); }
+      RBK_OPEN.delete(r);
+    }
     redrawRoomRates(row,x); return;
   }else if(e.target.closest('.rmrdel')){
     const rr=e.target.closest('.rmrate');
