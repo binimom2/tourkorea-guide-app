@@ -174,7 +174,7 @@ function confRow(it, i){
 }
 /* 손님 요청(하이플로어 등) — 직원이 영어로 적는다. 손님이 적은 원문은 노란 칸 예시 글로만 보인다 */
 function reqRow(v, it, i){
-  if(EDIT) return ["Guest Request", { html: '<input class="ed wide" data-req="' + i + '" value="' + esc(it.req || "") + '" placeholder="' + esc(v.req ? "손님: " + v.req : "예: High floor") + '" maxlength="200">' }];
+  if(EDIT) return ["Guest Request", { html: '<input class="ed wide" data-req="' + i + '" value="' + esc(it.req || "") + '" placeholder="" maxlength="200">' }];   // 예시 글 뺌(사장님 2026-10-16)
   return it.req ? ["Guest Request", it.req] : null;
 }
 /* 줄 차례 호텔 → 골프 → 기타, 같은 종류는 날짜순(사장님 2026-10-03) — [줄, 원래 번호]. 노란 칸은 원래 번호로 저장한다 */
@@ -282,11 +282,14 @@ function render(v){
   const cfs = shown.map(([it, i]) => ({ it, i, h: it.kind === "hotels", val: it.kind === "hotels" ? it.teeOk : it.cfNo }));
   const many = cfs.length > 1;
   const nm = x => many ? esc(x.it.venue && x.it.venue.en || x.it.name) + ' ' : '';
+  /* 차량은 컨펌번호 대신 차량 번호(Car No.) — 사장님 2026-10-16 */
+  const isCar = it => it.kind === "car" || /차량/.test(it.kindT || "");
+  const cfLb = x => isCar(x.it) ? "Car No. " : "Confirm No. ";
   const cfHtml = EDIT
-    ? cfs.map(x => '<span class="cfno">Confirm No. ' + nm(x) + '</span>'
-        + '<input class="ed" ' + (x.h ? 'data-tee' : 'data-cf') + '="' + x.i + '" value="' + esc(x.val || "") + '" placeholder="' + (x.h ? '호텔' : '업체') + ' 컨펌번호" maxlength="60">').join("<br>")
+    ? cfs.map(x => '<span class="cfno">' + cfLb(x) + nm(x) + '</span>'
+        + '<input class="ed" ' + (x.h ? 'data-tee' : 'data-cf') + '="' + x.i + '" value="' + esc(x.val || "") + '" placeholder="' + (x.h ? '호텔 컨펌번호' : isCar(x.it) ? '차량 번호' : '업체 컨펌번호') + '" maxlength="60">').join("<br>")
     : (cfs.some(x => x.val)
-        ? cfs.filter(x => x.val).map(x => '<span class="cfno">Confirm No. ' + (many ? nm(x) + ': ' : '') + esc(x.val) + '</span>').join("<br>")
+        ? cfs.filter(x => x.val).map(x => '<span class="cfno">' + cfLb(x) + (many ? nm(x) + ': ' : '') + esc(x.val) + '</span>').join("<br>")
         : '<span class="cfno">Confirm No. ' + esc(v.cno) + '</span>');
   $("#app").innerHTML = '<div class="sheet">'
     + '<div class="brand">' + esc(co) + '</div>'
