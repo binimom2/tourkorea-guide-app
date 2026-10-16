@@ -633,7 +633,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-pxrow{display:flex;gap:14px;align-items:flex-end}
 .qp-pxrow>div{flex:1;min-width:0}
 .qp-pxrow .qp-riders input{width:100%;min-width:0}
-.qp-pxrow #qpRidersWrap:not([style*="none"]) ~ #qpPaxWrap .qp-pax{grid-template-columns:38px 1fr 38px;gap:6px}
+.qp-pxrow #qpRidersWrap:not([style*="none"]) ~ #qpPaxWrap .qp-pax,.qp-pxrow #qpRidersWrap .qp-pax{grid-template-columns:38px 1fr 38px;gap:6px}
 .qp-riders input{width:120px;text-align:right;-moz-appearance:textfield;appearance:textfield}
 .qp-riders input::-webkit-inner-spin-button,.qp-riders input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .qp-riders span{font-size:14px;font-weight:800}   /* 예시 글은 연하고 가늘게 — 적은 글과 헷갈리지 않게(사장님 2026-09-11) */
@@ -1015,7 +1015,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
           <!-- 차량(단위 「대」)에서만 — «탑승 인원수»를 적는다(사장님 2026-09-11). 장바구니 문구·예약요청·바우처에 실린다 -->
           <div id="qpRidersWrap" style="display:none">
             <div class="qp-lab">탑승 인원수</div>
-            <div class="qp-riders"><input type="number" class="qp-time" id="qpRiders" inputmode="numeric" min="1" max="99"> <span>명</span></div>
+            <!-- 차량 대수와 같은 −/＋ 모양(사장님 2026-10-16). 값은 숨은 칸 #qpRiders에 둔다(읽는 곳이 그대로) -->
+            <div class="qp-pax">
+              <button type="button" id="qpRMinus" aria-label="탑승 인원 줄이기">−</button>
+              <span id="qpRidersN">0명</span>
+              <button type="button" id="qpRPlus" aria-label="탑승 인원 늘리기">＋</button>
+            </div>
+            <input type="hidden" id="qpRiders" value="">
           </div>
           <div id="qpPaxWrap">
             <div class="qp-lab" id="qpPaxLab">인원</div>
@@ -2337,7 +2343,7 @@ function openPanel(x, kind){
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
   $("#qpRidersWrap").style.display = unitOf(kind) === "대" ? "" : "none";   // 차량에서만 탑승 인원수
-  $("#qpRiders").value = "";
+  $("#qpRiders").value = ""; $("#qpRidersN").textContent = "0명";
   const tl = timeLabelOf(kind);
   $("#qpTimeLab").textContent = tl.lab;
   $("#qpPaxLab").textContent  = unitOf(kind) === "대" ? "차량 대수" : "인원";
@@ -3652,6 +3658,15 @@ $("#qName").addEventListener("change", remember);
 $("#qTel").addEventListener("change", remember);
 /* 차량 탑승 인원수를 적으면 공항 미팅 아따비가 바로 합계에 반영된다 */
 $("#qpRiders").addEventListener("input", () => { try{ qpCalc(); }catch(e){} });
+/* 탑승 인원 −/＋ (0~99) — 숨은 칸에 넣고 input을 보내 위 처리기가 다시 계산한다 */
+function ridersStep(d){
+  const n = Math.max(0, Math.min(99, (Number($("#qpRiders").value) || 0) + d));
+  $("#qpRiders").value = n ? String(n) : "";
+  $("#qpRidersN").textContent = n + "명";
+  $("#qpRiders").dispatchEvent(new Event("input"));
+}
+$("#qpRMinus").onclick = () => ridersStep(-1);
+$("#qpRPlus").onclick  = () => ridersStep(1);
 paint();
 
 /* ══════════════════════════════════════════════════════════════════
