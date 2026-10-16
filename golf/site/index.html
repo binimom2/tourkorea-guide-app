@@ -630,6 +630,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-time::placeholder{color:rgba(94,111,102,.5);font-weight:400;font-size:13px}
 /* 차량 탑승 인원수 — 숫자칸 + 「명」, 화살표는 없이 숫자만 */
 .qp-riders{display:flex;align-items:center;gap:8px}
+.qp-pxrow{display:flex;gap:14px;align-items:flex-end}
+.qp-pxrow>div{flex:1;min-width:0}
+.qp-pxrow .qp-riders input{width:100%;min-width:0}
+.qp-pxrow #qpRidersWrap:not([style*="none"]) ~ #qpPaxWrap .qp-pax{grid-template-columns:38px 1fr 38px;gap:6px}
 .qp-riders input{width:120px;text-align:right;-moz-appearance:textfield;appearance:textfield}
 .qp-riders input::-webkit-inner-spin-button,.qp-riders input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .qp-riders span{font-size:14px;font-weight:800}   /* 예시 글은 연하고 가늘게 — 적은 글과 헷갈리지 않게(사장님 2026-09-11) */
@@ -1006,6 +1010,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
               <div class="qp-calfoot" id="qpCalFoot"></div>
             </div>
           </div>
+          <!-- 차량은 「탑승 인원수 │ 차량 대수」 한 줄(사장님 2026-10-16). 차량 아니면 탑승 인원수 칸이 감춰져 인원 칸만 남는다 -->
+          <div class="qp-pxrow" id="qpPxRow">
+          <!-- 차량(단위 「대」)에서만 — «탑승 인원수»를 적는다(사장님 2026-09-11). 장바구니 문구·예약요청·바우처에 실린다 -->
+          <div id="qpRidersWrap" style="display:none">
+            <div class="qp-lab">탑승 인원수</div>
+            <div class="qp-riders"><input type="number" class="qp-time" id="qpRiders" inputmode="numeric" min="1" max="99"> <span>명</span></div>
+          </div>
           <div id="qpPaxWrap">
             <div class="qp-lab" id="qpPaxLab">인원</div>
             <div class="qp-pax">
@@ -1014,13 +1025,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
               <button type="button" id="qpPlus" aria-label="늘리기">＋</button>
             </div>
           </div>
+          </div>
           <!-- 스파·마사지 같은 종류만 — 날짜 다음에 «원하는 시간»을 적는다(사장님 2026-09-09).
                자유롭게 적는 칸이다(「14:00」·「오후 2시쯤」). 장바구니 문구와 예약요청에 같이 실린다. -->
-          <!-- 차량(단위 「대」)에서만 — 대수 다음에 «탑승 인원수»를 적는다(사장님 2026-09-11). 장바구니 문구·예약요청·바우처에 실린다 -->
-          <div id="qpRidersWrap" style="display:none">
-            <div class="qp-lab">탑승 인원수</div>
-            <div class="qp-riders"><input type="number" class="qp-time" id="qpRiders" inputmode="numeric" min="1" max="99"> <span>명</span></div>
-          </div>
           <div id="qpTimeWrap" style="display:none">
             <div class="qp-lab" id="qpTimeLab">희망 시간</div>
             <input type="text" class="qp-time" id="qpTime" placeholder="예: 14:00 또는 오후 2시쯤" maxlength="80">
@@ -2324,8 +2331,9 @@ function openPanel(x, kind){
   const box = $("#qpFields");
   /* 골프장·스파는 (라운드/메뉴) → 인원 → 날짜 → 원하는 시간 순이다(사장님 2026-09-09).
      시간은 자유롭게 적는 요청사항이고 호텔에는 없다. 골프장은 「원하는 티타임」이라 부른다. */
-  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPaxWrap", "qpRidersWrap", "qpTimeWrap"]
-       : ["qpHoleWrap", "qpPaxWrap", "qpRidersWrap", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
+  /* qpPxRow = 「탑승 인원수 │ 차량 대수(인원)」 한 줄 묶음(2026-10-16) */
+  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPxRow", "qpTimeWrap"]
+       : ["qpHoleWrap", "qpPxRow", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
   $("#qpRidersWrap").style.display = unitOf(kind) === "대" ? "" : "none";   // 차량에서만 탑승 인원수
