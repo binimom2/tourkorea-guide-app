@@ -81,6 +81,8 @@ td textarea{resize:vertical;min-height:34px;line-height:1.45}
 td textarea.big{min-height:80px}
 /* 지역 · 이름 · 영문 · 등급 한 줄, 그 아래 안내사항을 넓게(사장님 2026-09-23 — 사진칸 때문에 줄 높이가 남는다) */
 .infogrid{display:grid;grid-template-columns:86px minmax(180px,1.4fr) minmax(160px,1.2fr) 60px;gap:6px}
+/* 호텔은 지역 옆에 「세부지역」(sr — 스쿰빗(아속-프롬퐁) 등) 한 칸 더(사장님 2026-10-16) */
+.infogrid.sr5{grid-template-columns:86px 130px minmax(170px,1.4fr) minmax(150px,1.2fr) 60px}
 .infogrid>.infod{grid-column:1/-1}
 .infogrid>.infod textarea{min-height:120px}
 .infohd>span{white-space:nowrap}
@@ -2583,7 +2585,7 @@ function itemBadge(k){
 function itemRows(k){
   const arr=itemsArr(k), q=iSearch[k]||'', rg=iRegion[k]||'';
   const rows=arr.map((x,i)=>({x,i})).filter(o=>!q
-    ||((o.x.n||'')+(o.x.r||'')+(o.x.e||'')+(o.x.d||'')).toLowerCase().includes(q.toLowerCase()))
+    ||((o.x.n||'')+(o.x.r||'')+(o.x.sr||'')+(o.x.e||'')+(o.x.d||'')).toLowerCase().includes(q.toLowerCase()))
     /* 지역 칩으로 고른 지역만(사장님 2026-09-17). '__none'은 지역 칸이 빈 줄 */
     .filter(o=>!rg||(rg==='__none'?!(o.x.r||'').trim():(o.x.r||'').trim()===rg));
   /* 「지역」 머리글을 누르면 지역끼리 모아서 보여 준다 — 보기만 바뀌고 저장되는 순서는 그대로다.
@@ -3412,8 +3414,9 @@ function itemBodyHTML(k){
     return grp+'<tr class="mainrow'+off+(o.x===hotItem?' hotmove':'')+'">'
       +'<td style="text-align:center"><input type="checkbox" data-p="'+esc(p)+'.on" data-bool="1" data-itemon="1"'
         +(o.x.on===false?'':' checked')+' title="끄면 손님 화면에서 감춰집니다"></td>'
-      +'<td><div class="infogrid">'
+      +'<td><div class="infogrid'+(k==='hotels'?' sr5':'')+'">'
         +inp(p+'.r',o.x.r||'',S.regionOrder&&S.regionOrder[0]||'파타야')
+        +(k==='hotels'?inp(p+'.sr',o.x.sr||'','세부지역'):'')
         +inp(p+'.n',o.x.n||'').replace('<input','<input data-pname="1"')
         +inp(p+'.e',o.x.e||'','Siam Country Club')
         +inp(p+'.'+bk,o.x[bk]||'',bp)
@@ -3540,9 +3543,9 @@ function subItems(k){
     +'<th style="width:58px">보이기</th>'
     /* 지역·이름·영문·등급은 한 칸 안의 격자(.infogrid) — 그 아래 안내사항(호텔)·소개 문구가 넓게 깔린다.
        포함·불포함사항은 바로 아래 줄에 넓게 깔리고, 호텔은 그 자리가 「객실 타입별 요금」이다. */
-    +'<th><div class="infogrid infohd"><span><button class="sortth'+(sortR?' on':'')+'" id="iSortR" type="button"'
+    +'<th><div class="infogrid infohd'+(k==='hotels'?' sr5':'')+'"><span><button class="sortth'+(sortR?' on':'')+'" id="iSortR" type="button"'
       +' title="지역끼리 모아 보기 ⇄ 넣은 차례대로 보기 (보기만 바뀝니다)">지역 '+(sortR?'▲':'⇅')+'</button></span>'
-    +'<span>이름</span><span>영문 이름</span><span>'+bl+'</span></div></th>'
+    +(k==='hotels'?'<span>세부지역</span>':'')+'<span>이름</span><span>영문 이름</span><span>'+bl+'</span></div></th>'
     /* 호텔은 이 칸이 «공통 사진»이다 — 손님 상세에서 공통 사진 다음에 객실 타입별 사진이 이어 붙는다 */
     +'<th style="width:175px">'+(k==='hotels'?'공통 사진 <span class="rhint">객실 사진과 같이 나온다</span>':'사진')+'</th><th style="width:74px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
