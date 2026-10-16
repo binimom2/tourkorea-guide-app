@@ -663,6 +663,8 @@ function bestUnit(course,dateStr,wk,holes){
 }
 /* 호텔 객실 요금표 — /api/golf-price 의 roomOn()과 같다 */
 const isSur=r=>r&&(r.sur===true||r.sur===1||r.sur==='1');
+/* 부킹일(2026-10-16) — 요금줄 bkFrom·bkTo 사이에 예약(오늘, 방콕 날짜)할 때만 그 줄을 쓴다. 서버 bookOk와 같다 */
+const bookOk=r=>{ const t=new Date(Date.now()+7*3600e3).toISOString().slice(0,10); return (blank(r.bkFrom)||t>=r.bkFrom)&&(blank(r.bkTo)||t<=r.bkTo); };
 function roomsWithRates(h){ return (Array.isArray(h&&h.rooms)?h.rooms:[]).filter(r=>r&&String(r.t||'').trim()&&Array.isArray(r.rates)&&r.rates.some(x=>x&&(posNum(x.wd)||posNum(x.we)))); }
 function roomBaht(r,we){ const wd=posNum(r.wd), wk=posNum(r.we); return we?(wk!=null?wk:wd):(wd!=null?wd:wk); }
 /* 한 기간 줄의 다섯 가지 값(2026-09-19) — 더블·트윈 wd·we · 싱글 sgWd·sgWe · 엑스트라(성인) eaWd·eaWe · 엑스트라(아동) ecWd·ecWe · 아동 조식 cbWd·cbWe */
@@ -671,7 +673,7 @@ function kindBaht(r,p,we){ const wd=posNum(r[p+'Wd']), wk=posNum(r[p+'We']); ret
 function roomOn(rm,h,date,we,single){
   let base=null, add=0;
   (rm.rates||[]).forEach(r=>{
-    if(!rateCovers(r,date)) return;
+    if(!rateCovers(r,date)||!bookOk(r)) return;
     let v=single?kindBaht(r,'sg',we):null;
     if(v==null) v=roomBaht(r,we);
     if(v==null) return;
@@ -684,7 +686,7 @@ function roomOn(rm,h,date,we,single){
 function extraBedOn(rm,date,we){
   const scan=q=>{ let base=null, add=0;
     (rm.rates||[]).forEach(r=>{
-      if(!rateCovers(r,date)) return;
+      if(!rateCovers(r,date)||!bookOk(r)) return;
       const v=kindBaht(r,q,we); if(v==null) return;
       if(isSur(r)) add+=v; else if(base==null||v<base) base=v;
     });

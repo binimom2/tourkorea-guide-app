@@ -209,7 +209,15 @@ tr.subrow td{padding:0 6px 11px}
 .rmhd .hdsplit>span:first-child{width:100px}
 .rmhd .hdsplit>span:last-child{flex:1}
 /* 한 기간 = 왼쪽(날짜 + 구분) · 가운데(요금표: 주중·주말 두 줄 × 다섯 칸) · ✕ (사장님 2026-09-19) */
-.rmhd,.rmrate{display:grid;grid-template-columns:330px auto 22px;gap:6px;align-items:center;justify-content:start}
+.rmhd,.rmrate{display:grid;grid-template-columns:330px auto auto;gap:6px;align-items:center;justify-content:start}
+/* 부킹일(2026-10-16) — 줄 끝 단추로 펼치고, 적어 둔 줄은 늘 보인다 */
+.rmrbtn{display:flex;align-items:center;gap:2px}
+.rmrbk{background:#fff;border:1px solid #B9C9BF;border-radius:5px;color:#55705F;font-size:11px;font-weight:700;padding:2px 5px;cursor:pointer;white-space:nowrap}
+.rmrbk.on{background:#1F5FA8;border-color:#1F5FA8;color:#fff}
+.rmbk{grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:12px;color:#1F5FA8}
+.rmbk .rdate{width:270px;grid-template-columns:1fr 8px 1fr;gap:2px}
+.rmbk input[type=date]{padding:4px 2px 4px 4px}
+.rmbk>span{color:var(--muted);font-size:11px}
 /* 구분 · 기간을 한 줄로 나란히(사장님 2026-09-23) — 줄 높이를 줄인다. 달력 칸은 날짜가 딱 들어갈 만큼만 */
 .rmrate .rper{flex-direction:row;align-items:center;gap:5px}
 .rmrate .rper select{flex:none;width:100px;padding-left:4px;padding-right:2px}
@@ -3037,7 +3045,7 @@ function roomRateHTML(r,j,pr,weOn){
   const n=v=>(v===''||v==null)?'':v;
   const sur=isSurRate(r), minN=Math.max(1,Math.round(+r.minN||1));
   /* 주말·휴일 줄은 호텔에 주말 요일을 고른 때만, 써차지 줄은 기간 요금이라 늘 한 줄(사장님 2026-09-23 · 서버도 써차지는 주중 값만 본다) */
-  const two=weOn&&!sur;
+  const two=weOn&&!sur, bkOn=!!(r.bkFrom||r.bkTo);
   /* 주말 요일을 안 고른 호텔은 「주중/주말」 글자 칸 자체를 뺀다(폭 절약, 사장님 2026-09-23) — 써차지 줄도 그 호텔 칸 모양을 따른다 */
   const line=we=>(weOn?'<span>'+(sur?'＋추가':(we?'주말·휴일':'주중'))+'</span>':'')
     +ROOM_COLS.map(c=>{
@@ -3060,9 +3068,17 @@ function roomRateHTML(r,j,pr,weOn){
       +'</div>'
       +'</div>'
     +'<div class="rmgrid'+(weOn?'':' nolbl')+'">'+line(false)+(two?line(true):'')+'</div>'
-    +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button>'
+    +'<div class="rmrbtn"><button type="button" class="rmrbk'+(bkOn?' on':'')+'" title="예약하는 날짜로 이 요금을 제한">부킹일</button>'
+    +'<button type="button" class="rmrdel" title="이 기간 지우기">✕</button></div>'
+    /* 부킹일(2026-10-16) — 이 날짜 사이에 예약할 때만 이 요금(예: 2026-12-31 이후 부킹). 서버 golf-price.js bookOk */
+    +(bkOn||RBK_OPEN.has(r)?'<div class="rmbk"><b>부킹일</b><div class="rdate">'
+      +'<input type="date" data-rmf="bkFrom" value="'+esc(n(r.bkFrom))+'" title="이 날부터 예약 시">'
+      +'<span class="rtil">~</span>'
+      +'<input type="date" data-rmf="bkTo" value="'+esc(n(r.bkTo))+'" title="이 날까지 예약 시">'
+      +'</div><span>이 날짜에 예약할 때만 이 요금 · 한쪽만 적으면 그 날 이후/까지</span></div>':'')
     +'</div>';
 }
+const RBK_OPEN=new WeakSet();   // 부킹일 칸을 펼쳐 둔 요금줄
 /* 요금줄 묶음만 따로 그린다 — 이름을 적거나 줄을 더할 때 이 칸만 갈아 끼운다.
    객실칸 전체를 다시 그리면 옆 사진칸이 새로 만들어져 「올렸습니다」 알림이 사라지고,
    위 이름칸에서 탭으로 옮겨 가던 손가락이 갈 곳을 잃는다. */
@@ -3271,6 +3287,7 @@ document.getElementById('pane').addEventListener('input',e=>{
      : e.target.value;
   if(f==='sur'){ const m=/^n(\d+)$/.exec(e.target.value); if(m) r.minN=Number(m[1]); else delete r.minN; }
   if(f==='from'||f==='to') rememberPeriod(r.from,r.to);
+  if((f==='bkFrom'||f==='bkTo')&&!r[f]) delete r[f];
   markDirty('rates');
   /* 기본요금 ⇄ 써차지를 바꾸면 줄 색과 안내 글자가 같이 바뀌어야 한다 */
   if(f==='sur') redrawRoomRates(row,x);
@@ -3354,6 +3371,13 @@ document.getElementById('pane').addEventListener('click',e=>{
     pr.rates.push({from:last.from||'',to:last.to||'',wd:'',we:''});
     markDirty('rates');
     redrawRoomRates(row,x); return;          // 요금칸만 — 옆 사진칸은 그대로 둔다
+  }else if(e.target.closest('.rmrbk')){
+    const rr=e.target.closest('.rmrate');
+    if(!rm||!rr) return;
+    const r=priceRoomOf(x,rm.t).rates[Number(rr.dataset.ri)]; if(!r) return;
+    if(r.bkFrom||r.bkTo){ if(!confirm('이 요금의 부킹일 제한을 지울까요?')) return; delete r.bkFrom; delete r.bkTo; RBK_OPEN.delete(r); markDirty('rates'); }
+    else if(RBK_OPEN.has(r)) RBK_OPEN.delete(r); else RBK_OPEN.add(r);
+    redrawRoomRates(row,x); return;
   }else if(e.target.closest('.rmrdel')){
     const rr=e.target.closest('.rmrate');
     if(!rm||!rr) return;

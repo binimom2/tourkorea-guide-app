@@ -132,6 +132,12 @@ const isSur = (r) => r && (r.sur === true || r.sur === 1 || r.sur === '1');
    최저가(「~」)는 1박 줄만 본다. */
 const minNOf = (r) => Math.max(1, Math.round(+(r && r.minN) || 1));
 const nightsOk = (r, nights) => isSur(r) || minNOf(r) <= (nights || 1);
+/* ── 부킹일 (2026-10-16 사장님 요청) ── 요금줄 bkFrom·bkTo = «그 날짜 사이에 예약할 때만» 쓰는 줄(예: 2026-12-31 이후 부킹).
+   투숙 기간(from·to)과 따로다. 예약일 = 오늘(방콕 날짜). 비어 있으면 언제 예약하든 쓴다. 최저가·날짜 요금 모두 오늘 못 쓰는 줄은 뺀다 */
+const bookOk = (r) => {
+  const t = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+  return (blank(r.bkFrom) || t >= r.bkFrom) && (blank(r.bkTo) || t <= r.bkTo);
+};
 /* ── 최소 숙박 (2026-09-23) ── 호텔마다 minStay:[{from,to,n}] — 그 기간에 걸린 밤이 하나라도 있으면 n박 이상만 받는다 */
 function minStayHit(h, date, nights) {
   let hit = null;
@@ -181,7 +187,7 @@ function extraOf(rm, k) {
 function roomLowest(rm, h, adj) {
   let lo = null;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-    if (isSur(r) || minNOf(r) > 1) return;
+    if (isSur(r) || minNOf(r) > 1 || !bookOk(r)) return;
     [false, true].forEach((we) => {
       const v = roomBaht(r, we);
       if (v != null && (lo == null || v < lo)) lo = v;
@@ -194,7 +200,7 @@ function roomLowest(rm, h, adj) {
 function roomOn(rm, h, date, we, single, nights, adj) {
   let base = null, add = 0, sur = false;
   (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-    if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
+    if (!rateCovers(r, date) || !nightsOk(r, nights) || !bookOk(r)) return;
     const w = isSur(r) ? false : we;         // 써차지는 기간 요금 — 주중·주말 구분 없음(2026-09-23)
     let v = single ? kindBaht(r, 'sg', w) : null;
     if (v == null) v = roomBaht(r, w);
@@ -215,7 +221,7 @@ function extraOn(rm, date, we, p, nights) {
   const scan = (q) => {
     let base = null, add = 0;
     (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-      if (!rateCovers(r, date) || !nightsOk(r, nights)) return;
+      if (!rateCovers(r, date) || !nightsOk(r, nights) || !bookOk(r)) return;
       const v = kindBaht(r, q, isSur(r) ? false : we);
       if (v == null) return;
       if (isSur(r)) add += v;
@@ -236,7 +242,7 @@ function extraLowest(rm, p) {
   const scan = (q) => {
     let lo = null;
     (Array.isArray(rm.rates) ? rm.rates : []).forEach((r) => {
-      if (isSur(r) || minNOf(r) > 1) return;
+      if (isSur(r) || minNOf(r) > 1 || !bookOk(r)) return;
       [false, true].forEach((we) => {
         const v = kindBaht(r, q, we);
         if (v != null && (lo == null || v < lo)) lo = v;
