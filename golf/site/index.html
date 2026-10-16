@@ -2049,7 +2049,7 @@ function drawMenu(x, kind, date){
   $("#dMenu").innerHTML = menuFor(p, date || "").map(m =>
     '<tr><td class="rt">' + esc(m.n)
       + (menuPeriod(m) ? "<i class='rinc mprom'>" + esc(menuPeriod(m)) + "</i>" : "") + '</td>'
-    + '<td class="rsub rmenu">' + esc(m.d || "") + '</td>'
+    + '<td class="rsub rmenu">' + esc(mSub(m)) + '</td>'
     + '<td class="rp">' + (m.krw || 0).toLocaleString("ko-KR") + '원'
     + BT(m.baht ? '<b>' + m.baht.toLocaleString("ko-KR") + '바트</b>' : '') + '</td></tr>').join("");
 }
@@ -2068,11 +2068,13 @@ let golfPax = 4;
 let qpMenu = -1, qpMenuRows = [], qpMenuSig = "";
 /* 그 날짜에 사는 메뉴 줄 — 기간이 없는 줄은 늘 살고, 기간이 든 줄(프로모션)은 그 기간에만 산다.
    같은 이름+코스가 둘이면 기간 줄이 기본 줄을 덮어쓴다. 날짜를 아직 안 골랐으면 오늘 기준. */
+/* 메뉴의 코스(c, 편도·왕복…)와 내용(d)을 한 줄로 — 「편도 · 공항 피켓 미팅…」 (2026-10-16 둘로 나눔) */
+function mSub(m){ return [m && m.c, m && m.d].map(v => String(v || "").trim()).filter(Boolean).join(" · "); }
 function menuFor(p, date){
   if(!p || !Array.isArray(p.menu)) return [];
   const d = date || todayStr();
   const on = p.menu.filter(m => !(m.from && d < m.from) && !(m.to && d > m.to));
-  const keyOf = m => m.n + "|" + (m.d || "");
+  const keyOf = m => m.n + "|" + mSub(m);
   const pick = {};
   on.forEach(m => {
     const k = keyOf(m), cur = pick[k], spec = !!(m.from || m.to);
@@ -2099,10 +2101,10 @@ function menuPeriod(m){
 }
 /* 견적 패널의 메뉴 단추를 그린다 — 고른 것이 있으면 이름+코스로 다시 찾아 그대로 켜 둔다 */
 function renderMenuBtns(rows){
-  const was = qpMenu >= 0 && qpMenuRows[qpMenu] ? qpMenuRows[qpMenu].n + "|" + (qpMenuRows[qpMenu].d || "") : "";
+  const was = qpMenu >= 0 && qpMenuRows[qpMenu] ? qpMenuRows[qpMenu].n + "|" + mSub(qpMenuRows[qpMenu]) : "";
   qpMenuRows = rows;
-  qpMenuSig = rows.map(m => m.n + "|" + (m.d || "") + "|" + m.baht).join(",");
-  qpMenu = was ? rows.findIndex(m => m.n + "|" + (m.d || "") === was) : -1;
+  qpMenuSig = rows.map(m => m.n + "|" + mSub(m) + "|" + m.baht).join(",");
+  qpMenu = was ? rows.findIndex(m => m.n + "|" + mSub(m) === was) : -1;
   $("#qpHoles").innerHTML = rows.map((m, i) =>
     '<button type="button" data-m="' + i + '" class="' + (i === qpMenu ? "on" : "") + '">'
     + '<b>' + esc(m.n) + '</b><span>'
@@ -2648,7 +2650,7 @@ async function qpCalc(){
   if(isMenuKind(qpKind) && (p.menu || []).length){
     /* 날짜를 고르면 그 날짜에 사는 메뉴(기간 요금 포함)로 단추와 안내 표를 다시 그린다 */
     const rows = menuFor(p, date);
-    const sig = rows.map(m => m.n + "|" + (m.d || "") + "|" + m.baht).join(",");
+    const sig = rows.map(m => m.n + "|" + mSub(m) + "|" + m.baht).join(",");
     if(sig !== qpMenuSig){ renderMenuBtns(rows); drawMenu(qpItem, qpKind, date); }
     const m = qpMenu >= 0 ? qpMenuRows[qpMenu] : null;
     if(!m){
@@ -3058,7 +3060,7 @@ function cartItem(){
   const mSel = mp && qpMenu >= 0 ? (qpMenuRows[qpMenu] || null) : null;
   const option = isH ? qpRoom : (qpKind === "courses" ? qpHoles + "홀"
                /* 장바구니에는 코스도 같이 적는다 — 이름이 같고 코스만 다른 메뉴가 서로 덮어쓰지 않게 */
-               : mSel ? (mSel.n + (mSel.d ? " (" + mSel.d + ")" : "")) : "");
+               : mSel ? (mSel.n + (mSub(mSel) ? " (" + mSub(mSel) + ")" : "")) : "");
   /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
   const yl = s => dparse(s).getFullYear() + "." + dlabel(s);
   const parts = [yl(date) + (end ? " ~ " + yl(end) : "")];

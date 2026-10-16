@@ -120,7 +120,7 @@ tr.subrow td{padding:0 6px 11px}
   gap:5px;align-items:center}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
 /* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 적용 기간 · 밧 네 칸 */
-.mhead,.mrow{grid-template-columns:1fr 1.1fr 258px 100px 44px 26px}   /* …밧 · 복사 · ✕ */
+.mhead,.mrow{grid-template-columns:1fr 72px 1.5fr 258px 100px 44px 26px}   /* 메뉴 · 코스(짧게) · 내용(넓게) · 기간 · 밧 · 복사 · ✕ */
 /* 메뉴 요금 줄 「복사」 — 호텔 객실 「복사」 단추와 같은 모양(사장님 2026-09-19) */
 .rcpy{background:none;border:1px solid var(--line);border-radius:6px;color:var(--fairway);
   font-size:11px;font-weight:800;padding:4px 5px;cursor:pointer;white-space:nowrap}
@@ -2728,6 +2728,8 @@ function menuRowHTML(idx,m){
     /* 시간은 프로그램 이름에 같이 적는다(「타이마사지 2시간」) — 시간 칸은 뺐다(사장님 2026-09-09).
        예전에 u 칸에 적어 둔 값은 저장 자료에 남아 있을 뿐 보이지 않는다. */
     +'<input data-rf="n" value="'+esc(n(m.n))+'" placeholder="아로마스파맛사지 2시간">'
+    /* 코스(c) = 「편도」「왕복」 같은 짧은 패턴, 내용(d) = 긴 설명 — 사장님 2026-10-16 둘로 나눔 */
+    +'<input data-rf="c" value="'+esc(n(m.c))+'" placeholder="편도">'
     +'<input data-rf="d" value="'+esc(n(m.d))+'" placeholder="스크럽+아로마오일+허브볼">'
     /* 적용 기간(사장님 2026-09-09) — 비우면 늘 쓰는 기본 요금. 기간을 넣으면 그 기간에만 살고,
        같은 메뉴 이름의 기본 요금을 그 기간 동안 덮어쓴다(프로모션·성수기 요금). */
@@ -2753,7 +2755,7 @@ function priceCell(k,x){
     else if(menu===null) body='<div class="pbox"><span class="pno">요금표에 「'+esc(x.n||'이름 없음')
       +'」이 없습니다 — 아래 ＋를 누르면 만들어집니다</span></div>';
     else body='<div class="rlist">'
-      +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스 · 내용</span>'
+      +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스</span><span>내용</span>'
         +'<span>적용 기간 <span class="rhint">비우면 늘 · 넣으면 그 기간만(프로모션)</span>'
           +'<span class="rdate rdhd"><span>시작일</span><span></span><span>끝일</span></span></span><span>밧 (원가)</span></div>'
       +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')

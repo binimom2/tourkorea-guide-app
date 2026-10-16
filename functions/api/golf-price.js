@@ -355,6 +355,8 @@ export async function onRequestGet({ request, env }) {
           /* 적용 기간(from·to) — 비우면 늘 쓰는 기본 요금, 넣으면 그 기간에만 살아 같은 이름의
              기본 요금을 덮어쓴다(프로모션). 어느 줄이 그 날 사는지는 손님 화면이 날짜로 고른다. */
           const row = { n, d, krw: krwUp(v * fx.rate), baht: v };
+          const c = String(r.c || '').trim();               // 코스(편도·왕복…) — 2026-10-16 내용과 나눔
+          if (c) row.c = c;
           if (/^\d{4}-\d{2}-\d{2}$/.test(r.from || '')) row.from = r.from;
           if (/^\d{4}-\d{2}-\d{2}$/.test(r.to || '')) row.to = r.to;
           menu.push(row);
