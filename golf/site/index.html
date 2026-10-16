@@ -1910,7 +1910,9 @@ function ro(w){
    앞말이 없으면 그냥 한 줄로 나간다. 주소 안의 「:」(https://)까지 앞말로 보면 안 되므로
    앞말에는 「/」를 못 넣고, https·http는 앞말로 치지 않는다. */
 /* 「**글자**」로 감싼 부분만 진한 검은색 — 한 줄 안에서 일부만 강조할 때(사장님 2026-09-17). 별표는 화면에 안 나온다 */
-function noteLine(s){ return String(noteLine0(s)).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'); }
+/* 전각 글자(「２」「～」「：」 — 한글 입력기 전각 모드)는 보통 폭으로 바꿔 보여 준다. 물결이 크고 칸이 안 맞던 것(사장님 2026-10-16) */
+function halfW(s){ return String(s == null ? "" : s).replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/　/g, " "); }
+function noteLine(s){ return String(noteLine0(halfW(s))).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'); }
 function noteLine0(s){
   /* 줄 맨 앞에 「!」를 붙이면 그 줄 전체를 진한 검은색으로 세운다 — 「!매주 월요일 휴장」(사장님 2026-09-17). ! 는 화면에 안 나온다 */
   /* 앞말이 없는 줄은 통째로 .nv(뒷말 칸)에 담는다 — li가 flex라서 글자와 <b>가 따로 놀며 「매주 월요일 휴/장」처럼 잘렸다(사장님 2026-09-17) */
