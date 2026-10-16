@@ -216,7 +216,11 @@ function itemHtml(v, it, i, pos){
   } else {
     rows.push(["Date", date]);
     rows.push(["Guest Name", v.guest]);
-    if(it.option) rows.push(["Item", it.option]);
+    /* 메뉴 · 코스 · 내용을 줄마다(사장님 2026-10-16 「바우처에도 줄 조정」) — 인보이스와 같은 menuParts */
+    const mp = menuParts(it);
+    if(mp.mn) rows.push(["Item", mp.mn]);
+    if(mp.mc) rows.push(["Course", mp.mc]);
+    if(mp.md) rows.push(["Details", mp.md]);
     if(it.pax) rows.push(["Qty", String(it.pax)]);
     if(it.riders) rows.push(["Passengers", it.riders + " pax"]);   // 차량 탑승 인원수(2026-09-11)
     if(it.time) rows.push(["Note", it.time]);
@@ -484,6 +488,15 @@ function bankHtml(bank, memo){
   return '<div class="box bank">입금계좌안내 : <b class="acct">' + t + '</b>'
     + '<p class="banknote">* 에이전트명 또는 담당자명으로 송금 부탁 드립니다.</p>' + mm + '</div>';   // 사장님 2026-10-03
 }
+/* 스파·차량… 메뉴 이름(mn)·코스(mc)·내용(md) — 새 예약은 따로 오고, 옛 예약은 option 「메뉴 (코스 · 내용)」을 괄호로 뗀다(2026-10-16) */
+function menuParts(it){
+  let mn = it.mn || "", mc = it.mc || "", md = it.md || "";
+  if(!mn && it.option){
+    const m = /^(.*?)\s*\((.*)\)\s*$/.exec(it.option);
+    if(m && m[1].trim()){ mn = m[1].trim(); md = m[2].trim(); } else mn = it.option;
+  }
+  return { mn, mc, md };
+}
 function renderItemInvoice(v){
   const c = v.company || {}, to = v.to || {};
   /* 호텔은 한 줄에 몰아 쓰면 글자가 밀린다 — 구분·내용 표로 나눠 적는다(사장님 2026-10-03) */
@@ -508,11 +521,7 @@ function renderItemInvoice(v){
     }
     /* 스파·차량… 은 메뉴 · 코스 · 내용 · 수량을 줄마다 나눈다(사장님 2026-10-16 차량 인보이스).
        새 예약은 mn·mc·md가 따로 온다. 옛 예약은 option 「메뉴 (코스 · 내용)」을 괄호로 뗀다 */
-    let mn = it.mn || "", mc = it.mc || "", md = it.md || "";
-    if(!mn && it.option){
-      const m = /^(.*?)\s*\((.*)\)\s*$/.exec(it.option);
-      if(m && m[1].trim()){ mn = m[1].trim(); md = m[2].trim(); } else mn = it.option;
-    }
+    const { mn, mc, md } = menuParts(it);
     const rest = (it.option ? lb.split(it.option).join("") : lb).split(" · ")
       .map(p => p.trim()).filter(p => p && !/^\d{4}\./.test(p)).join(" · ");
     const L = [[esc(it.kindT || "상품"), '<b>' + esc(it.name) + '</b>'],
