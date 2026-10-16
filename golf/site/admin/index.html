@@ -3639,12 +3639,13 @@ function subCats(){
           ? '<span class="cnt">'+esc(c.k)+' (고정)</span>'
           : inp('cats.'+i+'.k',c.k||'','spa'))+'</td>'
       +'<td><span class="cnt">'+itemsArr(c.k).length+(c.u||'곳')+'</span></td>'
-      +'<td><label style="display:flex;align-items:center;gap:7px;font-size:13px">'
+      +'<td><label style="display:flex;align-items:center;gap:7px;font-size:13px;white-space:nowrap">'
         +'<input type="checkbox" data-p="cats.'+i+'.on" data-bool="1"'+(c.on!==false?' checked':'')+'> 보이기</label></td>'
       /* 여기 적힌 차례가 곧 손님 화면의 차례다 — 메뉴·섹터 단추·섹션이 모두 이 순서로 선다 */
       +'<td><div class="ordbtns">'
-        +'<button class="ord" data-mv="up" data-i="'+i+'"'+(i===0?' disabled':'')+' title="위로">▲</button>'
-        +'<button class="ord" data-mv="dn" data-i="'+i+'"'+(i===cs.length-1?' disabled':'')+' title="아래로">▼</button>'
+        /* data-cmv — 항목 줄 차례 단추(data-mv, bindRowBtns)와 이름이 겹쳐 그쪽 처리기가 덮어써서 안 먹던 것(2026-10-16) */
+        +'<button class="ord" data-cmv="up" data-i="'+i+'"'+(i===0?' disabled':'')+' title="위로">▲</button>'
+        +'<button class="ord" data-cmv="dn" data-i="'+i+'"'+(i===cs.length-1?' disabled':'')+' title="아래로">▼</button>'
       +'</div></td>'
       +'<td>'+(c.k==='courses'||c.k==='hotels' ? ''
           : '<button class="del" data-delcat="'+esc(c.k)+'">삭제</button>')+'</td></tr>').join('')
@@ -3656,8 +3657,8 @@ function subCats(){
     +'바꾸면 그 종류에 넣어 둔 항목이 사라진 것처럼 보입니다. 골프장·호텔은 바꿀 수 없습니다.</p>'
     +'</div>';
   /* 위아래로 옮기기 — 자리만 바꾼다(내용은 그대로). 저장을 눌러야 실제로 반영된다. */
-  document.getElementById('subpane').querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{
-    const i=Number(b.dataset.i), j=b.dataset.mv==='up'?i-1:i+1;
+  document.getElementById('subpane').querySelectorAll('[data-cmv]').forEach(b=>b.onclick=()=>{
+    const i=Number(b.dataset.i), j=b.dataset.cmv==='up'?i-1:i+1;
     const L=catsAll();
     if(j<0||j>=L.length) return;
     const t=L[i]; L[i]=L[j]; L[j]=t;
