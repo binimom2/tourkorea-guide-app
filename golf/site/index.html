@@ -568,6 +568,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-holes button span i{font-style:normal;font-size:11.5px;opacity:.85;margin-left:4px;white-space:nowrap}
 /* 기간 요금(프로모션) 표시 — 메뉴 단추와 안내 표에서 금색 작은 글씨 */
 .qp-holes button span i.mprom{display:block;margin:2px 0 0;color:var(--marigold);font-weight:800;opacity:1}
+.qp-holes button span i.mtipn{display:block;margin:2px 0 0;color:#2E7D4F;font-weight:700;opacity:1}   /* 공항 미팅 아따비 줄 */
 .rinc.mprom{color:var(--marigold);font-weight:800}
 /* 예약 패널에서 고른 것은 주황(사장님 2026-09-29 「다 초록 초록함」) — 초록은 담기 단추에만 */
 .qp-holes button.on{border-color:var(--marigold);background:#FFF6E6}
@@ -2107,18 +2108,30 @@ function menuPeriod(m){
   return (m.from && m.to) ? f(m.from) + "~" + f(m.to) + " 요금" : m.from ? f(m.from) + "부터 요금" : f(m.to) + "까지 요금";
 }
 /* 견적 패널의 메뉴 단추를 그린다 — 고른 것이 있으면 이름+코스로 다시 찾아 그대로 켜 둔다 */
+/* 공항 미팅 아따비(2026-10-16) — 공항에서 미팅하는 차량 줄(m.tip) 단추 금액에도 넣는다(사장님 「요금이 달라야」).
+   탑승 인원을 적었으면 그 인원만큼 더한 값, 아직이면 「＋아따비 1인 ○원」 */
+function tipNow(){
+  const tip = unitOf(qpKind) === "대" ? PRICE.airportTip : null;
+  return tip ? { tip, riders: Math.max(0, Math.min(99, Number($("#qpRiders").value) || 0)) } : null;
+}
+function menuSigOf(rows){ const t = tipNow(); return rows.map(m => m.n + "|" + mSub(m) + "|" + m.baht).join(",") + "|r" + (t ? t.riders : ""); }
 function renderMenuBtns(rows){
   const was = qpMenu >= 0 && qpMenuRows[qpMenu] ? qpMenuRows[qpMenu].n + "|" + mSub(qpMenuRows[qpMenu]) : "";
   qpMenuRows = rows;
-  qpMenuSig = rows.map(m => m.n + "|" + mSub(m) + "|" + m.baht).join(",");
+  qpMenuSig = menuSigOf(rows);
   qpMenu = was ? rows.findIndex(m => m.n + "|" + mSub(m) === was) : -1;
-  $("#qpHoles").innerHTML = rows.map((m, i) =>
-    '<button type="button" data-m="' + i + '" class="' + (i === qpMenu ? "on" : "") + '">'
+  const t = tipNow();
+  $("#qpHoles").innerHTML = rows.map((m, i) => {
+    const on = t && m.tip, add = on ? t.riders : 0;
+    const krw = (m.krw || 0) + (on ? (t.tip.krw || 0) * add : 0), baht = (m.baht || 0) + (on ? (t.tip.baht || 0) * add : 0);
+    return '<button type="button" data-m="' + i + '" class="' + (i === qpMenu ? "on" : "") + '">'
     + '<b>' + esc(m.n) + '</b><span>'
-    + (m.krw || 0).toLocaleString("ko-KR") + '원'
-    + BT(m.baht ? '<i>(' + m.baht.toLocaleString("ko-KR") + '바트)</i>' : '')
+    + krw.toLocaleString("ko-KR") + '원'
+    + BT(m.baht ? '<i>(' + baht.toLocaleString("ko-KR") + '바트)</i>' : '')
+    + (on ? '<i class="mtipn">' + (add ? '공항 미팅 아따비 ' + add + '명 포함'
+        : '＋공항 미팅 아따비 1인 ' + (t.tip.krw || 0).toLocaleString("ko-KR") + '원') + '</i>' : '')
     + (menuPeriod(m) ? '<i class="mprom">' + esc(menuPeriod(m)) + '</i>' : '')
-    + '</span></button>').join("");
+    + '</span></button>'; }).join("");
   $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
     qpMenu = Number(b.dataset.m);
     $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
@@ -2657,7 +2670,7 @@ async function qpCalc(){
   if(isMenuKind(qpKind) && (p.menu || []).length){
     /* 날짜를 고르면 그 날짜에 사는 메뉴(기간 요금 포함)로 단추와 안내 표를 다시 그린다 */
     const rows = menuFor(p, date);
-    const sig = rows.map(m => m.n + "|" + mSub(m) + "|" + m.baht).join(",");
+    const sig = menuSigOf(rows);
     if(sig !== qpMenuSig){ renderMenuBtns(rows); drawMenu(qpItem, qpKind, date); }
     const m = qpMenu >= 0 ? qpMenuRows[qpMenu] : null;
     if(!m){
