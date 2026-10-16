@@ -299,6 +299,7 @@ section{padding:64px 0}
 .thumb .holes{position:absolute;top:9px;right:9px;background:var(--marigold);color:#2A1A00;font-size:11px;font-weight:900;border-radius:999px;padding:3px 9px;z-index:2}
 .card .body{padding:13px 15px 15px;flex:1;display:flex;flex-direction:column;gap:5px}
 .card h3{margin:0;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
+.nsub{font-weight:500;color:#7A8580;font-size:.88em}   /* 이름 속 괄호 글자(차종 등) 연하게 */
 .card .reg{font-size:11.5px;font-weight:800;color:var(--marigold);letter-spacing:.06em}
 .card p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.55}
 /* 관리 화면에서 줄을 나눠 적은 소개 문구는 그 줄바꿈을 살린다 */
@@ -1420,13 +1421,15 @@ function thumbOf(x, badge, kind){
 }
 /* 지역 줄 — 호텔은 세부지역(sr)이 있으면 「방콕 › 스쿰빗(아속-프롬퐁)」 (사장님 2026-10-16) */
 function regLine(x){ return [x.r, x.sr].map(v => String(v || "").trim()).filter(Boolean).join(" › "); }
+/* 이름 속 괄호 글자는 연하게 — 「1 Day 투어 (토요타신형밴)」의 (토요타신형밴). 관리 화면 이름칸에 괄호로 적으면 그 부분만 연해진다(사장님 2026-10-16) */
+function nameHtml(n){ return esc(n || "").replace(/\s*[(（][^()（）]*[)）]/g, s => '<span class="nsub">' + s + '</span>'); }
 /* 카드는 눌러서 상세를 여는 버튼이다 — 올렸을 때 떠오르기만 하고 안 눌리면 안 된다 */
 function cardOf(x, kind, idx){
   const p = priceOf(x, kind);
   return '<button type="button" class="card" data-k="' + esc(kind) + '" data-i="' + idx + '">'
     + thumbOf(x, badgeOf(x), kind)
     + '<div class="body"><div class="reg">' + esc(regLine(x)) + '</div>'
-    + '<h3>' + esc(x.n) + '</h3>'
+    + '<h3>' + nameHtml(x.n) + '</h3>'
     /* 골프장·호텔 카드는 「이름 · 포함사항 · 최저가」 셋만 둔다(사장님 지시).
        영문 이름과 소개 문구는 카드를 누르면 열리는 상세에 그대로 남아 있다.
        다른 종류(스파·투어…)는 예전처럼 설명을 보여 주고, 메뉴별 요금이 들어온 곳은
@@ -1987,7 +1990,7 @@ function openDetail(x, kind){
   drawFavLine();
   const cat = catOf(kind), bd = badgeOf(x);
   $("#dReg").textContent  = regLine(x);
-  $("#dName").textContent = x.n || "";
+  $("#dName").innerHTML = nameHtml(x.n);
   $("#dEn").textContent   = x.e || "";
   $("#dEn").style.display = x.e ? "" : "none";
   /* 사진 — 큰 것 한 장 + 옆에 네 장, 그보다 많으면 마지막 칸에 「+N」이 뜨고 눌러서 넘겨 본다.
