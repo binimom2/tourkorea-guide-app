@@ -305,6 +305,7 @@ function itemInvoiceView(request, rec, site) {
     to: { company: s(rec.from && rec.from.company, 60) || s((rec.customer && rec.customer.name) || '', 80), contact: '' },
     guest: (rec.customer && rec.customer.name) || '',
     items: (rec.items || []).map(it => ({ kind: it.kind, kindT: it.kindT || '', region: it.region, name: it.name, option: it.option,
+      mn: it.mn || '', mc: it.mc || '', md: it.md || '',   // 메뉴·코스·내용 줄 나눔(2026-10-16)
       date: it.date, dateEnd: it.dateEnd, label: it.label, krw: it.asked ? 0 : num(it.krw), asked: !!it.asked,
       nights: num(it.nights), rooms: num(it.rooms), pax: num(it.pax), adult: num(it.adult), child: num(it.child) })),   // 호텔 줄을 구분·내용 표로(2026-10-03)
     total: num(rec.total),
@@ -426,6 +427,9 @@ function cleanItem(x) {
     region:  s(x.region, 40),
     name,
     option:  s(x.option, 120),       // 18홀 · 디럭스 씨뷰 …
+    mn:      s(x.mn, 120),           // 스파·차량… 메뉴 이름 · 코스 · 내용(2026-10-16, 인보이스 줄 나눔)
+    mc:      s(x.mc, 60),
+    md:      s(x.md, 300),
     date:    s(x.date, 10),
     dateEnd: s(x.dateEnd, 10),
     time:    s(x.time, 80),          // 희망 시간·티타임·차량 미팅장소 — 손님이 자유롭게 적은 요청사항(2026-09-09, 차량은 장소까지 09-10)

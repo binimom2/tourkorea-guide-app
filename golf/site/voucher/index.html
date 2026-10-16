@@ -506,10 +506,23 @@ function renderItemInvoice(v){
       return [["골프장", '<b>' + esc(it.name) + '</b>'], ["날짜", esc(dl(it.date))],
         ["총인원수 / 홀수", p + '명' + (holes ? ' / ' + esc(holes) : '')]];
     }
-    const rest = lb.split(" · ").filter(p => !/^\d{4}\./.test(p)).join(" · ");
-    return [[esc(it.kindT || "상품"), '<b>' + esc(it.name) + '</b>'],
-      ["날짜", esc(dl(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? ' ~ ' + esc(dl(it.dateEnd)) : '')],
-      ["내용", esc(rest || it.option || "-")]];
+    /* 스파·차량… 은 메뉴 · 코스 · 내용 · 수량을 줄마다 나눈다(사장님 2026-10-16 차량 인보이스).
+       새 예약은 mn·mc·md가 따로 온다. 옛 예약은 option 「메뉴 (코스 · 내용)」을 괄호로 뗀다 */
+    let mn = it.mn || "", mc = it.mc || "", md = it.md || "";
+    if(!mn && it.option){
+      const m = /^(.*?)\s*\((.*)\)\s*$/.exec(it.option);
+      if(m && m[1].trim()){ mn = m[1].trim(); md = m[2].trim(); } else mn = it.option;
+    }
+    const rest = (it.option ? lb.split(it.option).join("") : lb).split(" · ")
+      .map(p => p.trim()).filter(p => p && !/^\d{4}\./.test(p)).join(" · ");
+    const L = [[esc(it.kindT || "상품"), '<b>' + esc(it.name) + '</b>'],
+      ["날짜", esc(dl(it.date)) + (it.dateEnd && it.dateEnd !== it.date ? ' ~ ' + esc(dl(it.dateEnd)) : '')]];
+    if(mn) L.push(["메뉴", esc(mn)]);
+    if(mc) L.push(["코스", esc(mc)]);
+    if(md) L.push(["내용", esc(md)]);
+    if(rest) L.push(["수량", esc(rest)]);
+    if(L.length === 2) L.push(["내용", esc(it.option || "-")]);
+    return L;
   };
   const body = kindSorted(v.items).map(([it]) => {
     const L = linesOf(it), amt = it.asked ? '<span class="mut">문의</span>' : won(it.krw);

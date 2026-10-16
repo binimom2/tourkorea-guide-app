@@ -3084,6 +3084,8 @@ function cartItem(){
   return {
     kind: qpKind, kindT: (catOf(qpKind) || {}).t || "", region: dCur.r || "", name: dCur.n,
     option, bed: isH ? roomsListLabel() : "", beds: isH ? Object.assign({}, qpBeds) : null, date, dateEnd: end, time, riders,
+    /* 메뉴 이름·코스·내용을 따로 — 인보이스가 줄을 나눠 적는다(2026-10-16) */
+    mn: mSel ? mSel.n || "" : "", mc: mSel ? mSel.c || "" : "", md: mSel ? mSel.d || "" : "",
     nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
