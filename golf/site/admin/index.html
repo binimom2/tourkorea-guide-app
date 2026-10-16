@@ -121,6 +121,10 @@ tr.subrow td{padding:0 6px 11px}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
 /* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 적용 기간 · 밧 네 칸 */
 .mhead,.mrow{grid-template-columns:1fr 72px 1.5fr 258px 100px 44px 26px}   /* 메뉴 · 코스(짧게) · 내용(넓게) · 기간 · 밧 · 복사 · ✕ */
+/* 차량(단위 「대」)은 밧 뒤에 「아따비」 체크 한 칸(2026-10-16 공항 미팅만) */
+.vtip .mhead,.vtip .mrow{grid-template-columns:1fr 72px 1.5fr 258px 100px 50px 44px 26px}
+.mtip{display:flex;align-items:center;justify-content:center}
+.mtip input{width:18px;height:18px;accent-color:#2E7D4F;cursor:pointer}
 /* 메뉴 요금 줄 「복사」 — 호텔 객실 「복사」 단추와 같은 모양(사장님 2026-09-19) */
 .rcpy{background:none;border:1px solid var(--line);border-radius:6px;color:var(--fairway);
   font-size:11px;font-weight:800;padding:4px 5px;cursor:pointer;white-space:nowrap}
@@ -2722,7 +2726,12 @@ function rateRowHTML(k,idx,r){
     +'</div>';
 }
 /* 메뉴 한 줄 — 프로그램 이름 · 시간(단위) · 밧. 스파·티켓처럼 기간 요금이 아닌 종류가 쓴다 */
-function menuRowHTML(idx,m){
+/* 공항 미팅 아따비(2026-10-16) — 공항 미팅에만 붙는다. 줄의 tip을 안 정했으면 메뉴 이름 «출발 쪽»(-> 앞)에 공항이 있는지로 본다.
+   서버 golf-price.js tipAuto와 같은 규칙 */
+const TIP_AIR=/공항|airport|bkk|dmk|수완나[폼품]|돈[므무]앙/i;
+function tipAuto(n){ const s=String(n||''), m=/->|→|=>|~/.exec(s); return TIP_AIR.test(m?s.slice(0,m.index):s); }
+function tipOf(m){ return m&&m.tip!=null ? !!m.tip : tipAuto(m&&m.n); }
+function menuRowHTML(idx,m,vt){
   const n=v=>(v===''||v==null)?'':v;
   return '<div class="rrow mrow" data-ri="'+idx+'">'
     /* 시간은 프로그램 이름에 같이 적는다(「타이마사지 2시간」) — 시간 칸은 뺐다(사장님 2026-09-09).
@@ -2739,6 +2748,7 @@ function menuRowHTML(idx,m){
       +'<input type="date" data-rf="to" value="'+esc(n(m.to))+'" title="적용 끝 (비우면 늘)">'
     +'</div>'
     +'<input type="number" data-rf="p" value="'+esc(n(m.p))+'" placeholder="밧" min="0">'
+    +(vt?'<label class="mtip" title="체크한 줄만 공항 미팅 아따비(1인당)가 탑승 인원수만큼 붙습니다 — 출발이 공항인 줄은 저절로 체크"><input type="checkbox" data-rf="tip"'+(tipOf(m)?' checked':'')+'></label>':'')
     /* 이 줄을 그대로 한 줄 더 — 차량처럼 구간만 다르고 나머지가 같은 줄을 잇달아 넣을 때(사장님 2026-09-19) */
     +'<button type="button" class="rcpy" title="이 줄을 바로 아래에 그대로 하나 더 (이름·내용·기간·요금)">복사</button>'
     +'<button type="button" class="rdel" title="이 줄 지우기">✕</button>'
@@ -2750,15 +2760,17 @@ function priceCell(k,x){
        저장 자리는 골프장과 같은 요금표(golf_pricing) — 손님에게는 서버가 마진(기본 100밧)을
        얹어 원화로 내려보낸다. 여기 적는 밧은 원가라 손님 화면엔 안 간다. */
     const menu=menuOf(k,x);
+    const vt=((catsAll().filter(c=>c.k===k)[0]||{}).u)==='대';   // 차량 — 아따비 체크칸
     let body;
     if(P===null) body='<div class="pbox"><span class="pmute">요금표를 못 읽었습니다</span></div>';
     else if(menu===null) body='<div class="pbox"><span class="pno">요금표에 「'+esc(x.n||'이름 없음')
       +'」이 없습니다 — 아래 ＋를 누르면 만들어집니다</span></div>';
-    else body='<div class="rlist">'
+    else body='<div class="rlist'+(vt?' vtip':'')+'">'
       +'<div class="rhead mhead"><span>메뉴 (시간을 같이 적는다)</span><span>코스</span><span>내용</span>'
         +'<span>적용 기간 <span class="rhint">비우면 늘 · 넣으면 그 기간만(프로모션)</span>'
-          +'<span class="rdate rdhd"><span>시작일</span><span></span><span>끝일</span></span></span><span>밧 (원가)</span></div>'
-      +(menu.length?menu.map((m,i)=>menuRowHTML(i,m)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
+          +'<span class="rdate rdhd"><span>시작일</span><span></span><span>끝일</span></span></span><span>밧 (원가)</span>'
+          +(vt?'<span style="text-align:center" title="공항 미팅 아따비">아따비</span>':'')+'</div>'
+      +(menu.length?menu.map((m,i)=>menuRowHTML(i,m,vt)).join(''):'<div class="rnone">아직 요금이 없습니다</div>')
       +'</div>';
     return '<div class="iecell pcell" data-pk="'+esc(k)+'" data-pn="'+esc(x.n||'')+'">'
       +'<b>메뉴별 요금 <span class="rhint">1인 기준 밧(종류 단위가 「대」면 1대 기준) — 손님에게는 마진(기본 100밧)을 얹어 원화로 보입니다</span></b>'
@@ -2867,7 +2879,8 @@ document.getElementById('pane').addEventListener('input',e=>{
   const item=(itemsArr(k)||[]).filter(z=>String(z.n||'')===name)[0]; if(!item) return;
   const o=ensureRateHome(k,item);
   const r=(isMenuKind(k)?o.menu:o.rates)[Number(row.dataset.ri)]; if(!r) return;
-  r[f]=(f==='p18'||f==='p9'||f==='p') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
+  r[f]=(f==='tip') ? e.target.checked
+     : (f==='p18'||f==='p9'||f==='p') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
   if(f==='from'||f==='to'){
     if(isMenuKind(k)){ const dbox=e.target.closest('.rdate'); if(dbox) dbox.classList.toggle('mprom',!!(r.from||r.to)); }
     else rememberPeriod(r.from,r.to);

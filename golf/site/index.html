@@ -2672,7 +2672,7 @@ async function qpCalc(){
     /* 차량(단위 「대」)은 공항 미팅 아따비가 탑승 인원수만큼 붙는다(사장님 2026-09-14) — 실시간 견적과 같은 규칙.
        탑승 인원수를 아직 안 적었으면 붙일 수 없으니 안내만 한다. */
     let tipHtml = "";
-    if(unitOf(qpKind) === "대" && PRICE.airportTip){
+    if(unitOf(qpKind) === "대" && PRICE.airportTip && m.tip){   // 공항에서 미팅하는 줄만(서버가 tip 표시, 2026-10-16)
       const riders = Math.max(0, Math.min(99, Number($("#qpRiders").value) || 0));
       const tip = PRICE.airportTip;
       if(riders > 0){

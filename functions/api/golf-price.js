@@ -134,6 +134,8 @@ const minNOf = (r) => Math.max(1, Math.round(+(r && r.minN) || 1));
 const nightsOk = (r, nights) => isSur(r) || minNOf(r) <= (nights || 1);
 /* ── 부킹일 (2026-10-16 사장님 요청) ── 요금줄 bkFrom·bkTo = «그 날짜 사이에 예약할 때만» 쓰는 줄(예: 2026-12-31 이후 부킹).
    투숙 기간(from·to)과 따로다. 예약일 = 오늘(방콕 날짜). 비어 있으면 언제 예약하든 쓴다. 최저가·날짜 요금 모두 오늘 못 쓰는 줄은 뺀다 */
+const TIP_AIR = /공항|airport|bkk|dmk|수완나[폼품]|돈[므무]앙/i;
+const tipAuto = (n) => { const s = String(n || ''), m = /->|→|=>|~/.exec(s); return TIP_AIR.test(m ? s.slice(0, m.index) : s); };
 const bookOk = (r) => {
   const t = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
   return (blank(r.bkFrom) || t >= r.bkFrom) && (blank(r.bkTo) || t <= r.bkTo);
@@ -357,6 +359,9 @@ export async function onRequestGet({ request, env }) {
           const row = { n, d, krw: krwUp(v * fx.rate), baht: v };
           const c = String(r.c || '').trim();               // 코스(편도·왕복…) — 2026-10-16 내용과 나눔
           if (c) row.c = c;
+          /* 공항 미팅 아따비는 «공항에서 미팅하는» 줄에만(사장님 2026-10-16 — 도착지가 공항이면 안 붙는다).
+             관리 화면 체크칸(tip)이 우선, 안 정했으면 메뉴 이름 출발 쪽(-> 앞)에 공항이 있는지. 관리 화면 tipAuto와 같다 */
+          if (r.tip != null ? !!r.tip : tipAuto(r.n)) row.tip = true;
           if (/^\d{4}-\d{2}-\d{2}$/.test(r.from || '')) row.from = r.from;
           if (/^\d{4}-\d{2}-\d{2}$/.test(r.to || '')) row.to = r.to;
           menu.push(row);
