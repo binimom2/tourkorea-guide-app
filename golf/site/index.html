@@ -561,6 +561,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-name{font-size:19px;font-weight:900;letter-spacing:-.04em;margin-top:3px}
 .qp-en{font-size:12.5px;color:var(--muted);margin-bottom:14px}
 .qp-lab{font-size:12.5px;font-weight:800;margin:12px 0 6px}
+#qpTimeLab{white-space:pre-line}   /* 차량 미팅장소 안내 두 줄 */
 .qp-holes{display:grid;gap:7px}
 .qp-holes button{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:9px;font:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .qp-holes button b{display:block;font-size:14.5px;font-weight:800}
@@ -1018,7 +1019,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
           <!-- 차량(단위 「대」)에서만 — 대수 다음에 «탑승 인원수»를 적는다(사장님 2026-09-11). 장바구니 문구·예약요청·바우처에 실린다 -->
           <div id="qpRidersWrap" style="display:none">
             <div class="qp-lab">탑승 인원수</div>
-            <div class="qp-riders"><input type="number" class="qp-time" id="qpRiders" inputmode="numeric" min="1" max="99" placeholder="예: 8"> <span>명</span></div>
+            <div class="qp-riders"><input type="number" class="qp-time" id="qpRiders" inputmode="numeric" min="1" max="99"> <span>명</span></div>
           </div>
           <div id="qpTimeWrap" style="display:none">
             <div class="qp-lab" id="qpTimeLab">희망 시간</div>
@@ -1310,7 +1311,8 @@ const isMenuKind = (kind) => kind !== "courses" && kind !== "hotels";
    도착 항공편명과 도착시간을 적게 한다. 골프장은 티타임, 나머지는 원래대로 희망 시간. */
 function timeLabelOf(kind){
   if(kind === "courses") return { lab:"희망 티타임", ph:"예: 오전 7시대 또는 07:30", pre:"희망 티타임 " };
-  if(unitOf(kind) === "대") return { lab:"미팅장소와 시간을 적어주세요 (공항미팅일경우 항공편명도 꼭 기재해주세요)", ph:"예: 수완나폼공항 TG657 15:30 도착 / 파타야 힐튼호텔 로비 14:00", pre:"미팅 " };   // 사장님 2026-09-11
+  /* 두 줄로, 예시 글은 뺌(사장님 2026-10-16) — #qpTimeLab은 줄바꿈(\n)을 그대로 보여 준다 */
+  if(unitOf(kind) === "대") return { lab:"미팅장소와 시간을 적어주세요\n(공항미팅일 경우 항공편명도 꼭 기재해주세요)", ph:"", pre:"미팅 " };   // 사장님 2026-09-11
   if(/패스트트랙/.test((catOf(kind) || {}).t || "")) return { lab:"도착항공편명과 도착시간을 정확히 적어주세요", ph:"예: TG657 15:30 도착", pre:"항공편 " };
   return { lab:"희망 시간", ph:"예: 14:00 또는 오후 2시쯤", pre:"희망 시간 " };
 }
