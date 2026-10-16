@@ -310,8 +310,7 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
 <div class="wrap" id="golfApp" style="display:none">
   <header class="head">
     <div>
-      <div class="eyebrow">THAILAND GOLF</div>
-      <h1>골프 견적 내기</h1>
+      <h1>견적서 작성하기</h1>
     </div>
     <div class="top">
       <span class="who" id="whoBadge"></span>
@@ -3231,7 +3230,7 @@ async function startApp(user){
   if(!GROLE){
     $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
     document.getElementById('golfApp').innerHTML=
-      `<header class="head"><div><div class="eyebrow">THAILAND GOLF</div><h1>골프 견적 내기</h1></div>
+      `<header class="head"><div><h1>견적서 작성하기</h1></div>
         <div class="top"><span class="who">${loginIdOf(user)||''}</span>
         <button class="link" onclick="doLogout()">로그아웃</button></div></header>
        <div class="card" style="text-align:center;padding:36px 20px">
