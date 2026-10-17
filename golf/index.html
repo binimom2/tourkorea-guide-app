@@ -306,11 +306,19 @@ body.boxonly #qhModal>div{max-width:1000px!important;max-height:94vh!important} 
 </div></div>
 
 <script>/* 손님 사이트 팝업 안(?embed=site)이면 화면이 그려지기 전에 표시를 붙인다 — 단추가 잠깐 보였다 사라지지 않게 */
-if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.add('embed');</script>
+if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.add('embed');
+/* ?only=car — 차량만 견적 내는 창(사장님 2026-10-17). 호텔·골프·가이드·기타 칸을 감추고 1·2·차량만 쓴다 */
+if(/[?&]only=car\b/.test(location.search)) document.documentElement.classList.add('carmode');</script>
+<style>
+html.carmode #s3,html.carmode #s4,html.carmode #s6,html.carmode #s7{display:none!important}
+.cm-only{display:none} html.carmode .cm-only{display:inline} html.carmode .gm-only{display:none}
+</style>
 <div class="wrap" id="golfApp" style="display:none">
   <header class="head">
     <div>
-      <h1>견적서 작성하기</h1>
+      <!-- 「견적서 작성하기」로 바꿨던 것(10-16)을 되돌림(사장님 2026-10-17) — 차량은 따로 「차량 견적 내기」 창 -->
+      <div class="eyebrow gm-only">THAILAND GOLF</div>
+      <h1><span class="gm-only">골프 견적 내기</span><span class="cm-only">차량 견적 내기</span></h1>
     </div>
     <div class="top">
       <span class="who" id="whoBadge"></span>
@@ -975,7 +983,7 @@ function hotelNextTarget(){
   return null;
 }
 function golfNextTarget(){
-  if(vehPicked()) return null;                                   // 골프는 선택 사항 — 차량까지 넘어갔으면 다시 묻지 않는다
+  if(CARMODE||vehPicked()) return null;                                  // 골프는 선택 사항 — 차량까지 넘어갔으면 다시 묻지 않는다
   const half=dayState.findIndex(st=>st.round&&!st.course);
   if(half>=0) return document.querySelector(`[data-c="${half}"]`);
   if(dayState.some(st=>st.round&&st.course)) return null;
@@ -1058,8 +1066,22 @@ function resetQuote(){
 
   touched.clear();                                  // 접힘 상태도 처음처럼
   STEPS.forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('folded'); });
+  carModeApply();
   refreshAll();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+/* 차량 견적 창(?only=car) — 호텔 「필요 없음」, 가이드 「필요 없음」으로 두고 칸은 CSS가 감춘다. 새 견적·처음 열 때 다시 건다 */
+var CARMODE=/[?&]only=car\b/.test(location.search);
+function carModeApply(){
+  if(!CARMODE) return;
+  const nh=$('#noHotel'); if(nh) nh.checked=true;
+  const ug=$('#useGuide'); if(ug) ug.checked=false;
+  const gs=$('#guideSel'); if(gs) gs.value='';
+  guideNone=true;
+  TOUR_PICKS.length=0;
+  /* 보이는 칸 번호를 1·2·3·4로 */
+  const h5=document.querySelector('#s5 .steph'); if(h5&&h5.firstChild&&h5.firstChild.nodeType===3) h5.firstChild.nodeValue='3. 차량';
+  document.querySelectorAll('h2').forEach(h=>{ if(/^8\. 여행사 수수료/.test(h.textContent)) h.textContent='4. 여행사 수수료'; });
 }
 
 /* ── 날짜 행 렌더 ── */
@@ -3230,7 +3252,7 @@ async function startApp(user){
   if(!GROLE){
     $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
     document.getElementById('golfApp').innerHTML=
-      `<header class="head"><div><h1>견적서 작성하기</h1></div>
+      `<header class="head"><div><div class="eyebrow">THAILAND GOLF</div><h1>골프 견적 내기</h1></div>
         <div class="top"><span class="who">${loginIdOf(user)||''}</span>
         <button class="link" onclick="doLogout()">로그아웃</button></div></header>
        <div class="card" style="text-align:center;padding:36px 20px">
@@ -3263,6 +3285,7 @@ async function startApp(user){
   buildGuideSelOptions();
   buildTourSelOptions();     // 7번 기타투어 — 요금 적힌 투어가 있으면 칸이 나타난다
   window._ready=true;
+  carModeApply();
   refreshAll();
   $('#golfLogin').style.display='none'; $('#golfApp').style.display='block';
   /* 사이트 상단의 「견적 보관함」 아이콘으로 들어온 경우 — 화면이 준비되는 대로 보관함을 연다 */

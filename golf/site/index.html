@@ -1604,7 +1604,13 @@ function drawTabsOf(k){
   if(box && note){
     box.insertAdjacentHTML("beforeend", '<span class="tabnote"><i>💬</i>'
       + esc(note).replace("실시간 견적", '<button type="button" class="tnq">⚡ 실시간 견적</button>') + '</span>');
-    const q = box.querySelector(".tnq"); if(q) q.onclick = () => goQuote();
+    /* 차량 안내의 견적 글자는 차량 전용 견적 창(?only=car)으로(사장님 2026-10-17), 다른 종류는 보통 견적 */
+    const q = box.querySelector(".tnq");
+    if(q) q.onclick = () => {
+      const u = quoteHref();
+      if(k !== "car" || u.charAt(0) === "#") return goQuote();
+      openQuoteModal(u + (u.indexOf("?") < 0 ? "?" : "&") + "only=car");
+    };
   }
 }
 function drawItemsOf(k){
