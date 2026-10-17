@@ -1293,7 +1293,7 @@ function carLines(lines,pax,nights,amDep){
   }
   /* 공항 미팅 아따비 — 공항 미팅을 뺀 게 아니면 */
   const tip=+P.airportTip||0;
-  if(tip>0&&!CAR_NOAIR.in) lines.push({t:'공항 미팅 아따비',s:`${won(tip)} × ${pax}명`,v:tip*pax});
+  if(tip>0) lines.push({t:'공항 미팅 아따비',s:`${won(tip)} × ${pax}명`,v:tip*pax});   // 공항 미팅은 늘 포함(「일정 제외」 없앰, 2026-10-17)
 }
 document.addEventListener('change',e=>{
   const t=e.target; if(!CARMODE||!t||!t.dataset) return;
@@ -1302,7 +1302,6 @@ document.addEventListener('change',e=>{
     CAR_VEH.n=carNeed(carVehicles().find(x=>x.id===CAR_VEH.id));   // 인원(골프면 골프 시 최대)에 맞춰 대수를 먼저 넣어 둔다(＋로 더 늘림)
     carRender(); calc(); return;
   }
-  if(t.dataset.cmair!==undefined){ CAR_NOAIR[t.dataset.cmair]=t.checked; calc(); return; }
   if(t.dataset.cmgolf!==undefined){
     CAR_GOLF=t.dataset.cmgolf;
     if(CAR_GOLF==='n') Object.keys(CAR_PICKS).forEach(i=>{ CAR_PICKS[i]=(CAR_PICKS[i]||[]).filter(key=>{ const [r,id]=key.split('|'); const x=carTours(r).find(z=>z.id===id); return !(x&&/골프/.test(x.n)); }); });
