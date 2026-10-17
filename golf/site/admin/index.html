@@ -572,7 +572,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'gs-a
 
 const SITE_KEY='golf_site';
 /* 이 화면이 가진 요금 칸 — 나머지(차량·핸들링·가이드…)는 /golf/admin/ 것이라 손대지 않는다 */
-const RATE_MINE=['regions','holidays'];
+const RATE_MINE=['regions','holidays','carQuote'];   // carQuote = 「🚐 차량 견적 요금」 탭(2026-10-17)
 async function mergeRatesForSave(cur){
   let server=null;
   try{ server=await loadRaw(PRICE_KEY); }catch(e){ return null; }   // 못 읽으면 저장하지 않는다
@@ -2104,6 +2104,7 @@ function subs(){
              {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'},
              /* 견적 계산기가 읽는 차량·핸들링·가이드 요금과 코드 — 상단 탭에서 이리로 내렸다(사장님 2026-09-11) */
              /* 코드관리는 요금표 안(끼워 넣은 /golf/admin/)에 이미 있어 따로 노출하지 않는다(사장님 2026-09-14) */
+             {k:'carq',label:'🚐 차량 견적 요금'},
              {k:'rates',label:'💰 실시간 요금표&코드관리'}]);
 }
 let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보기」를 켰는지 */
@@ -2244,7 +2245,7 @@ function drawSite(){
     S=deepCopy(window.SITE_DEFAULT); markDirty('site'); drawTabs();
   };
   if(sub.indexOf('cat:')===0) subItems(sub.slice(4));
-  else ({hero:subHero,cats:subCats,holiday:subHoliday,tours:subTours,board:subBoard,foot:subFoot}[sub]||subHero)();
+  else ({hero:subHero,cats:subCats,holiday:subHoliday,tours:subTours,board:subBoard,foot:subFoot,carq:subCarQ}[sub]||subHero)();
 }
 
 /* 첫 화면 글자색 고르기 한 줄 — 윗줄·큰 제목·설명 문구가 같은 모양을 쓴다(사장님 2026-09-11: 전에는 윗줄만 됐다).
@@ -3725,6 +3726,100 @@ function subCats(){
 /* ※ 같은 날 자리를 옮겼다 — 사장님이 「💰 실시간 요금표&코드관리 → 실시간견적 요금표 관리」(차량·핸들링·가이드 옆)에서 찾으셔서
      입력표는 그쪽 「🎫 기타투어」 탭(golf_pricing.quoteTours, /golf/admin/ toursCard)으로 갔다. 입력 자리는 한 군데만 둔다.
      여기(손님 사이트용 기타투어 탭)에는 어디서 넣는지 한 줄만 알려 준다. */
+/* ── 🚐 차량 견적 요금(사장님 2026-10-17) ──
+   차량 견적 창(/golf/?only=car)이 쓰는 요금 — 요금표(golf_pricing)의 carQuote 칸 하나에만 담긴다(골프·호텔·기간 차량 요금과 따로).
+     items  [{id, n:이름, r:지역, w:''|'first'|'last', p:{차량 표시명: 밧}}]
+     extras {'그룹:선택지': {차량 표시명: 밧}}
+   차량 칸(열)은 「💰 실시간 요금표 → 차량」에 등록된 차량 표시명 그대로다 — 견적 창이 그 이름으로 요금을 찾는다.
+   견적 창(golf/index.html)의 CAR_ITEMS_DEFAULT·CAR_TIME_GROUPS와 같은 내용이어야 한다. */
+const CQ_ITEMS_DEFAULT=[
+  {id:'airIn',n:'수완나폼 공항 미팅',r:'방콕',w:'first'},
+  {id:'bkkHotel',n:'방콕 호텔 이동',r:'방콕'},
+  {id:'bkkTour',n:'방콕 시내 투어',r:'방콕'},
+  {id:'ptyHotel',n:'파타야 호텔 이동',r:'파타야'},
+  {id:'ptyTour',n:'파타야 시내 투어',r:'파타야'},
+  {id:'bkkGolf',n:'방콕 골프',r:'방콕'},
+  {id:'ptyGolf',n:'파타야 골프',r:'파타야'},
+  {id:'airOut',n:'수완나폼 공항 샌딩',r:'',w:'last'}
+];
+const CQ_TIME_GROUPS=[
+  {id:'airIn',t:'수완나폼 공항 미팅',o:[['pre18','18시 이전 미팅'],['post18','18시 이후 미팅']]},
+  {id:'bkkMeet',t:'방콕 시내 호텔',o:[['pre12','12시 이전 미팅'],['post12','12시 이후 미팅'],['post20','20시 이후 미팅']]},
+  {id:'ptyMeet',t:'파타야 호텔',o:[['pre12','12시 이전 미팅'],['post12','12시 이후 미팅'],['post20','20시 이후 미팅']]},
+  {id:'airOut',t:'수완나폼 공항 샌딩',o:[['pre12','12시 이전 샌딩'],['post18','18시 이후 샌딩']]}
+];
+function cqData(){
+  const cq=P.carQuote&&typeof P.carQuote==='object'?P.carQuote:(P.carQuote={});
+  if(!Array.isArray(cq.items)||!cq.items.length) cq.items=deepCopy(CQ_ITEMS_DEFAULT);
+  if(!cq.extras||typeof cq.extras!=='object') cq.extras={};
+  return cq;
+}
+/* 견적 창 vehName()과 같은 규칙 — 표시명(+좌석), 없으면 「12인승 밴」 */
+function cqVehName(g){
+  const nm=String((g&&g.name)||'').trim();
+  if(!nm) return '12인승 밴';
+  return (g.seats&&nm.indexOf(g.seats+'인승')<0)?nm+' ('+g.seats+'인승)':nm;
+}
+function cqCols(){ return [...new Set((P.vehicleGroups||[]).map(cqVehName))]; }
+function subCarQ(){
+  const pane=document.getElementById('subpane');
+  if(!P){ pane.innerHTML='<div class="card"><p class="desc">요금표를 읽지 못했습니다 — 새로고침해 주세요.</p></div>'; return; }
+  const cq=cqData(), cols=cqCols();
+  const num=(path,v)=>'<input type="number" min="0" data-cq="'+path+'" value="'+((v===''||v==null)?'':esc(v))+'" placeholder="밧" style="width:84px;text-align:right">';
+  const head=cols.map(c=>'<th style="width:96px">'+esc(c)+'</th>').join('');
+  const regs=['','방콕','파타야'].concat((S.regionOrder||[]).filter(r=>r&&r!=='방콕'&&r!=='파타야'));
+  pane.innerHTML='<div class="card"><h2>🚐 차량 견적 요금</h2>'
+    +'<p class="desc">손님 사이트 차량 안내의 <b>⚡ 실시간 견적</b>(차량 견적 창)이 이 표로 계산합니다. '
+    +'<b>금액 = 일정 항목 요금 × 체크한 날 수 × 차량 대수</b> + 시간 추가요금. 적은 금액(밧)이 그대로 견적에 들어갑니다.<br>'
+    +'차량 칸은 「💰 실시간 요금표&amp;코드관리 → 차량」에 등록된 차량 이름입니다. 빈 칸은 견적에 「요금 미입력」으로 나옵니다.</p>'
+    +(cols.length?'':'<p class="desc" style="color:var(--danger)">등록된 차량이 없습니다 — 실시간 요금표의 차량부터 등록해 주세요.</p>')
+    +'<h3 style="margin:14px 0 6px;font-size:14px">일정 항목 <span class="rhint" style="font-size:11.5px">손님이 날마다 체크하는 메뉴 · 지역은 그날 잘 곳(가이드 지방 숙박비·짐밴에 씀)</span></h3>'
+    +'<div class="tblwrap"><table><thead><tr><th style="width:70px">순서</th><th style="width:190px">일정 항목</th><th style="width:96px">지역</th><th style="width:110px">보이는 날</th>'+head+'<th style="width:40px"></th></tr></thead><tbody>'
+    +cq.items.map((it,i)=>'<tr>'
+      +'<td><div class="ordbtns"><button class="ord" data-cqmv="-1" data-i="'+i+'"'+(i===0?' disabled':'')+'>▲</button><button class="ord" data-cqmv="1" data-i="'+i+'"'+(i===cq.items.length-1?' disabled':'')+'>▼</button></div></td>'
+      +'<td><input data-cq="items.'+i+'.n" value="'+esc(it.n||'')+'" placeholder="방콕 시내 투어"></td>'
+      +'<td><select data-cq="items.'+i+'.r">'+regs.map(r=>'<option value="'+esc(r)+'"'+((it.r||'')===r?' selected':'')+'>'+(r||'—')+'</option>').join('')+'</select></td>'
+      +'<td><select data-cq="items.'+i+'.w">'+[['','매일'],['first','첫날만'],['last','마지막 날만']].map(([v,t])=>'<option value="'+v+'"'+((it.w||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></td>'
+      +cols.map(c=>'<td>'+num('items.'+i+'.p.'+c,(it.p||{})[c])+'</td>').join('')
+      +'<td><button class="del" data-cqdel="'+i+'" title="이 줄 지우기">✕</button></td></tr>').join('')
+    +'</tbody></table></div>'
+    +'<div class="rowbtns"><button class="add" id="cqAdd">＋ 일정 항목 추가</button></div>'
+    +'<h3 style="margin:18px 0 6px;font-size:14px">시간 추가요금 <span class="rhint" style="font-size:11.5px">미팅·샌딩 시간대를 체크하면 1회 더해짐 · 비우면 0</span></h3>'
+    +'<div class="tblwrap"><table><thead><tr><th style="width:190px">장소</th><th style="width:140px">시간</th>'+head+'</tr></thead><tbody>'
+    +CQ_TIME_GROUPS.map(g=>g.o.map(([v,t],j)=>'<tr><td>'+(j===0?'<b>'+esc(g.t)+'</b>':'')+'</td><td>'+esc(t)+'</td>'
+      +cols.map(c=>'<td>'+num('extras.'+g.id+':'+v+'.'+c,((cq.extras[g.id+':'+v])||{})[c])+'</td>').join('')+'</tr>').join('')).join('')
+    +'</tbody></table></div>'
+    +'<p class="desc" style="margin-top:10px">※ 저장을 눌러야 견적 창에 반영됩니다.</p></div>';
+  pane.querySelectorAll('[data-cqmv]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i, j=i+(+b.dataset.cqmv), L=cq.items; if(j<0||j>=L.length) return;
+    const t=L[i]; L[i]=L[j]; L[j]=t; markDirty('rates'); subCarQ();
+  });
+  pane.querySelectorAll('[data-cqdel]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.cqdel, it=cq.items[i]; if(!it) return;
+    if(!confirm('「'+(it.n||'이름 없음')+'」 줄을 지웁니다.\n(저장을 눌러야 실제로 반영됩니다)')) return;
+    cq.items.splice(i,1); markDirty('rates'); subCarQ();
+  });
+  document.getElementById('cqAdd').onclick=()=>{
+    cq.items.push({id:'c'+Date.now().toString(36),n:'',r:'',w:'',p:{}}); markDirty('rates'); subCarQ();
+    const ins=pane.querySelectorAll('input[data-cq$=".n"]'); if(ins.length) ins[ins.length-1].focus();
+  };
+  /* 칸 고치기 — 경로(items.0.p.차량이름 / extras.그룹:선택지.차량이름)에 바로 쓴다. 차량 이름에 점이 있어도 되게 앞 몇 토막만 나눈다 */
+  const put=el=>{
+    const path=el.dataset.cq, isNum=el.type==='number', v=isNum?(el.value===''?'':Number(el.value)):el.value;
+    const seg=path.split('.');
+    if(seg[0]==='items'){
+      const it=cq.items[+seg[1]]; if(!it) return;
+      if(seg[2]==='p'){ it.p=it.p||{}; const c=seg.slice(3).join('.'); if(v==='') delete it.p[c]; else it.p[c]=v; }
+      else it[seg[2]]=v;
+    } else if(seg[0]==='extras'){
+      const key=seg[1], c=seg.slice(2).join('.');
+      const o=cq.extras[key]||(cq.extras[key]={});
+      if(v==='') delete o[c]; else o[c]=v;
+    }
+    markDirty('rates');
+  };
+  pane.querySelectorAll('[data-cq]').forEach(el=>{ el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>put(el)); });
+}
 function quoteToursCard(){
   return '<p class="desc" style="margin:0 0 12px;padding:9px 12px;border:1px dashed var(--line);border-radius:9px">'
     +'⚡ 실시간 견적 <b>「7. 기타투어」</b>에 나오는 목록은 여기가 아니라 '

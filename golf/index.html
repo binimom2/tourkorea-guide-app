@@ -310,8 +310,20 @@ if(/[?&]embed=site\b/.test(location.search)) document.documentElement.classList.
 /* ?only=car — 차량만 견적 내는 창(사장님 2026-10-17). 호텔·골프·가이드·기타 칸을 감추고 1·2·차량만 쓴다 */
 if(/[?&]only=car\b/.test(location.search)) document.documentElement.classList.add('carmode');</script>
 <style>
-html.carmode #s3,html.carmode #s4,html.carmode #s6,html.carmode #s7{display:none!important}
-.cm-only{display:none} html.carmode .cm-only{display:inline} html.carmode .gm-only{display:none}
+html.carmode #s2,html.carmode #s3,html.carmode #s4,html.carmode #s7{display:none!important}
+.cm-only,.cm-block,.cm-note{display:none} html.carmode .cm-only{display:inline} html.carmode .gm-only{display:none}
+html.carmode .cm-block,html.carmode .cm-note{display:block}
+.cm-note{margin:0 0 8px;padding:9px 13px;border-radius:10px;background:#FFF6E6;border:1px solid #F1D9A8;font-size:13px;font-weight:700;color:#7A5A1E}
+.cm-note a{color:var(--marigold);font-weight:900;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.cm-meet{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.cm-mg{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--paper)}
+.cm-mg b{display:block;font-size:13.5px;margin-bottom:5px}
+.cm-ck{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;padding:3px 0;cursor:pointer;white-space:nowrap}
+.cm-ck input{width:17px;height:17px;cursor:pointer;margin:0;accent-color:var(--marigold)}
+.cm-day{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper)}
+.cm-day .dlabel{font-weight:700;font-size:14.5px;min-width:150px;white-space:nowrap}
+.cm-day .dlabel small{font-weight:600;font-size:12px;color:var(--muted);margin-left:5px}
+.cm-day.on{border-color:var(--marigold);background:#FFFBF2}
 </style>
 <div class="wrap" id="golfApp" style="display:none">
   <header class="head">
@@ -330,6 +342,7 @@ html.carmode #s3,html.carmode #s4,html.carmode #s6,html.carmode #s7{display:none
     </div>
   </header>
 
+  <div class="cm-note">💬 골프, 기타 지역 등 별도 차량 문의는 <a onclick="location.search=location.search.replace(/[?&]only=car\b/,'').replace(/^&/,'?')">⚡ 실시간 견적</a>에서 요청해 주세요.</div>
   <div class="card step" id="s1">
     <h2 class="steph"><span class="mustTag" style="color:#c62828;font-weight:900;margin-right:1px;font-size:1.7em;line-height:0;vertical-align:-0.28em" title="필수">*</span>1. 기본 정보<span class="qno" id="qnoTag"></span><span class="csum" id="sum1"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
@@ -373,6 +386,15 @@ html.carmode #s3,html.carmode #s4,html.carmode #s6,html.carmode #s7{display:none
     </div>
   </div>
 
+  <!-- 차량 견적 창(?only=car) 전용 두 칸(사장님 2026-10-17) — 미팅·샌딩 시간, 일차별 일정. 요금은 관리 「🚐 차량 견적 요금」(golf_pricing.carQuote) -->
+  <div class="card cm-block" id="cmMeet">
+    <h2 class="steph">2. 미팅 · 샌딩 장소와 시간 <span class="sublab tip">해당하는 곳만 체크해 주세요. 호텔 미팅은 공항 미팅이 아닐 때만 체크합니다.</span></h2>
+    <div class="cm-meet" id="cmMeetBox"></div>
+  </div>
+  <div class="card cm-block" id="cmDaysCard">
+    <h2 class="steph"><span class="mustTag" style="color:#c62828;font-weight:900;margin-right:1px;font-size:1.7em;line-height:0;vertical-align:-0.28em" title="필수">*</span>3. 여행 일정 <span class="sublab tip">날짜마다 이용하실 일정을 체크해 주세요. (여러 개 가능)</span></h2>
+    <div id="cmDays"></div>
+  </div>
   <div class="card step" id="s2">
     <h2 class="steph"><span class="mustTag" style="color:#c62828;font-weight:900;margin-right:1px;font-size:1.7em;line-height:0;vertical-align:-0.28em" title="필수">*</span>2. 지역선택<span class="sublab tip">머무르실 곳을 방문 순서대로 선택해 주세요. <span style="font-weight:600">(재방문 시 한 번 더 선택)</span></span><!-- 문구(사장님 2026-09-15 저녁) --><span class="csum" id="sum2"></span><span class="cedit">수정</span></h2>
     <div class="cbody">
@@ -965,7 +987,7 @@ function renderRegions(){
       <input type="number" min="0" max="14" value="${numval(r.nights)}" data-reg-n="${i}"><small>박</small>
       <span class="x" data-reg-del="${i}" title="빼기">✕</span></span>`).join('');
 }
-function refreshAll(){ renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); buildTourSelOptions(); calc(); }   // 7번 기타투어 목록은 2번에서 고른 지역을 따라간다
+function refreshAll(){ if(CARMODE) carSyncRoute(); renderRegions(); syncTripInput(); renderVehicleUI(); renderHotels(); buildDays(); buildTourSelOptions(); if(CARMODE) carRender(); calc(); }   // 7번 기타투어 목록은 2번에서 고른 지역을 따라간다
 /* 다음에 채울 칸 깜빡이기(사장님 2026-10-05 「다음에 어디로 가야 할지 표시가 없다」) —
    날짜 → 인원수 → 지역 → 지역별 박수 → 호텔(호텔 → 객실 구성 → 객실 타입, 지역마다) → 골프장 → 차량 → 가이드 차례로,
    아직 안 채운 첫 칸 하나만 주황 테두리로 깜빡인다. 「필요 없음」을 고른 큰 칸은 건너뛴다.
@@ -994,6 +1016,7 @@ function markNext(){
   let t=null;
   if(!$('#startDate').value) t=$('#dateBtn');
   else if(!(+$('#pax').value>0)) t=$('#pax');
+  else if(CARMODE&&!Object.values(CAR_PICKS).some(a=>a&&a.length)) t=$('#cmDays');   // 차량 창 — 일정부터
   else if(!ROUTE.length) t=$('#regChips');
   else if(!splitOk()){ const k=ROUTE.findIndex(r=>!(+r.nights>0)); t=document.querySelector(`[data-reg-n="${k>=0?k:ROUTE.length-1}"]`); }
   else if(useHotelOn()&&(t=hotelNextTarget())){}
@@ -1074,15 +1097,130 @@ function resetQuote(){
 var CARMODE=/[?&]only=car\b/.test(location.search);
 function carModeApply(){
   if(!CARMODE) return;
-  const nh=$('#noHotel'); if(nh) nh.checked=true;
-  const ug=$('#useGuide'); if(ug) ug.checked=false;
-  const gs=$('#guideSel'); if(gs) gs.value='';
-  guideNone=true;
+  const nh=$('#noHotel'); if(nh) nh.checked=true;   // 호텔은 이 창에 없다
   TOUR_PICKS.length=0;
-  /* 보이는 칸 번호를 1·2·3·4로 */
-  const h5=document.querySelector('#s5 .steph'); if(h5&&h5.firstChild&&h5.firstChild.nodeType===3) h5.firstChild.nodeValue='3. 차량';
-  document.querySelectorAll('h2').forEach(h=>{ if(/^8\. 여행사 수수료/.test(h.textContent)) h.textContent='4. 여행사 수수료'; });
+  Object.keys(CAR_PICKS).forEach(k=>delete CAR_PICKS[k]);
+  Object.keys(CAR_TIME).forEach(k=>delete CAR_TIME[k]);
+  /* 보이는 칸 번호: 1 기본 · 2 미팅샌딩 · 3 일정 · 4 차량 · 5 가이드 · 6 수수료 */
+  const relabel=(sel,t)=>{ const h=document.querySelector(sel); if(h&&h.firstChild&&h.firstChild.nodeType===3) h.firstChild.nodeValue=t; };
+  relabel('#s5 .steph','4. 차량'); relabel('#s6 .steph','5. 가이드');
+  document.querySelectorAll('h2').forEach(h=>{ if(/^\d\. 여행사 수수료/.test(h.textContent)) h.textContent='6. 여행사 수수료'; });
+  carRender();
 }
+/* ── 차량 견적(사장님 2026-10-17) ──
+   요금은 관리 「🚐 차량 견적 요금」 = golf_pricing.carQuote
+     items  [{id, n:이름, r:지역(방콕·파타야·빈칸), w:''(매일)|'first'(첫날만)|'last'(마지막 날만), p:{차량 표시명: 밧}}]
+     extras {'그룹:선택지': {차량 표시명: 밧}}  — 미팅·샌딩 시간 추가요금(비우면 0)
+   금액 = 일정 항목 요금 × 체크한 날 수 × 대수(밴은 대수, 버스 1대) + 시간 추가요금 × 대수 */
+const CAR_ITEMS_DEFAULT=[
+  {id:'airIn',n:'수완나폼 공항 미팅',r:'방콕',w:'first'},
+  {id:'bkkHotel',n:'방콕 호텔 이동',r:'방콕'},
+  {id:'bkkTour',n:'방콕 시내 투어',r:'방콕'},
+  {id:'ptyHotel',n:'파타야 호텔 이동',r:'파타야'},
+  {id:'ptyTour',n:'파타야 시내 투어',r:'파타야'},
+  {id:'bkkGolf',n:'방콕 골프',r:'방콕'},
+  {id:'ptyGolf',n:'파타야 골프',r:'파타야'},
+  {id:'airOut',n:'수완나폼 공항 샌딩',r:'',w:'last'}
+];
+const CAR_TIME_GROUPS=[
+  {id:'airIn',t:'수완나폼 공항 미팅',o:[['pre18','18시 이전 미팅'],['post18','18시 이후 미팅']]},
+  {id:'bkkMeet',t:'방콕 시내 호텔',o:[['pre12','12시 이전 미팅'],['post12','12시 이후 미팅'],['post20','20시 이후 미팅']]},
+  {id:'ptyMeet',t:'파타야 호텔',o:[['pre12','12시 이전 미팅'],['post12','12시 이후 미팅'],['post20','20시 이후 미팅']]},
+  {id:'airOut',t:'수완나폼 공항 샌딩',o:[['pre12','12시 이전 샌딩'],['post18','18시 이후 샌딩']]}
+];
+const CAR_PICKS={};   // {일차 번호: [항목 id…]}
+const CAR_TIME={};    // {그룹 id: 선택지 id}
+function carItems(){ const cq=P.carQuote||{}; return (Array.isArray(cq.items)&&cq.items.length)?cq.items.filter(x=>x&&String(x.n||'').trim()):CAR_ITEMS_DEFAULT; }
+/* 날짜로 정한 총 박수(tripGoal)가 기준 — 일정 경로(ROUTE)는 여기서 다시 만들어진다 */
+function carDayCount(){ const n=tripGoal>0?tripGoal:totalNights(); return $('#startDate').value&&n>0?n+1:0; }
+function carItemOnDay(it,i,days){ return it.w==='first'?i===0:it.w==='last'?i===days-1:true; }
+function carRender(){
+  if(!CARMODE) return;
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const mb=$('#cmMeetBox');
+  if(mb) mb.innerHTML=CAR_TIME_GROUPS.map(g=>'<div class="cm-mg"><b>'+esc(g.t)+'</b>'
+    +g.o.map(([v,t])=>'<label class="cm-ck"><input type="checkbox" data-cmt="'+g.id+'" value="'+v+'"'+(CAR_TIME[g.id]===v?' checked':'')+'> '+esc(t)+'</label>').join('')+'</div>').join('');
+  const box=$('#cmDays'); if(!box) return;
+  const days=carDayCount(), start=$('#startDate').value;
+  Object.keys(CAR_PICKS).forEach(k=>{ if(+k>=days) delete CAR_PICKS[k]; });   // 날짜를 줄이면 넘친 날은 버린다
+  if(!days){ box.innerHTML='<div class="hint">1번에서 출발 일자와 박수를 먼저 선택해 주세요.</div>'; return; }
+  const items=carItems();
+  let h='';
+  for(let i=0;i<days;i++){
+    const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+i);
+    const picks=CAR_PICKS[i]||[];
+    h+='<div class="cm-day'+(picks.length?' on':'')+'"><div class="dlabel">'+(i+1)+'일차<small>'+iso(d).slice(5).replace('-','/')+' '+['일','월','화','수','목','금','토'][d.getDay()]+'</small></div>'
+      +items.filter(it=>carItemOnDay(it,i,days)).map(it=>'<label class="cm-ck"><input type="checkbox" data-cmd="'+i+'" value="'+esc(it.id)+'"'+(picks.includes(it.id)?' checked':'')+'> '+esc(it.n)+'</label>').join('')
+      +'</div>';
+  }
+  box.innerHTML=h;
+}
+/* 일정에서 지역 경로를 만든다 — 지역 칸(2번)이 없으니 차량 요금 열·가이드 지방 숙박비·짐밴이 이 경로를 쓴다.
+   그날 체크한 항목 중 마지막 지역 항목의 지역에서 잔다고 본다(없으면 전날 지역) */
+function carSyncRoute(){
+  if(!CARMODE) return;
+  const days=carDayCount(), nights=Math.max(0,days-1), items=carItems();
+  const regOf=id=>((items.find(x=>x.id===id)||{}).r||'').trim();
+  const any=Object.values(CAR_PICKS).some(a=>a&&a.length);
+  if(!days||!any){ if(ROUTE.length){ ROUTE.length=0; } return; }
+  let cur='';
+  for(let i=0;i<days&&!cur;i++) (CAR_PICKS[i]||[]).forEach(id=>{ if(!cur&&regOf(id)) cur=regOf(id); });
+  cur=cur||'방콕';
+  const seq=[];
+  for(let i=0;i<Math.max(1,nights);i++){
+    (CAR_PICKS[i]||[]).forEach(id=>{ const r=regOf(id); if(r) cur=r; });
+    seq.push(cur);
+  }
+  const out=[];
+  seq.forEach(r=>{ const last=out[out.length-1]; if(last&&last.region===r) last.nights++; else out.push({region:r,nights:1}); });
+  if(!nights) out[0].nights=0;
+  ROUTE.length=0;
+  out.forEach((r,k)=>ROUTE.push({region:r.region,nights:r.nights,sid:'c'+k}));
+  tripGoal=nights;
+}
+function carHasPick(id){ return Object.values(CAR_PICKS).some(a=>a&&a.includes(id)); }
+/* 계산 — calc()의 차량 칸 대신. plan: vehPlan() */
+function carVehLines(lines,plan){
+  const items=carItems(), cq=P.carQuote||{}, ex=cq.extras||{};
+  const cols=[];
+  if(plan.kind==='bus'){ const g=vehColOf('bus'); cols.push({nm:g?vehName(g):'버스',u:1}); }
+  if(plan.vans>0){ const g=vehColOf('van'); cols.push({nm:g?vehName(g):VEH_DEFAULT_NAME,u:plan.vans}); }
+  const days=carDayCount();
+  cols.forEach(c=>{
+    items.forEach(it=>{
+      let cnt=0; const ds=[];
+      for(let i=0;i<days;i++) if((CAR_PICKS[i]||[]).includes(it.id)){ cnt++; ds.push(i+1); }
+      if(!cnt) return;
+      const p=+(((it.p||{})[c.nm]))||0;
+      const t=`${it.n} · ${c.nm}${c.u>1?` ${c.u}대`:''}`;
+      if(!p){ lines.push({t,s:'요금 미입력 — 관리 「🚐 차량 견적 요금」에서 입력 필요',v:0,warn:1}); return; }
+      lines.push({t,s:`${ds.join('·')}일차 · ${won(p)} × ${cnt}회${c.u>1?` × ${c.u}대`:''}`,v:p*cnt*c.u});
+    });
+    CAR_TIME_GROUPS.forEach(g=>{
+      const v=CAR_TIME[g.id]; if(!v) return;
+      const p=+(((ex[g.id+':'+v])||{})[c.nm])||0; if(!p) return;   // 추가요금이 없는 시간대는 줄을 안 만든다
+      const o=g.o.find(x=>x[0]===v)||['',''];
+      lines.push({t:`${o[1]} 추가요금 (${g.t}) · ${c.nm}${c.u>1?` ${c.u}대`:''}`,s:`${won(p)}${c.u>1?` × ${c.u}대`:''}`,v:p*c.u});
+    });
+  });
+}
+document.addEventListener('change',e=>{
+  const t=e.target; if(!CARMODE||!t||!t.dataset) return;
+  if(t.dataset.cmt!==undefined){
+    /* 한 그룹에 한 시간대만 — 다른 것을 체크하면 앞의 것은 풀린다, 다시 누르면 해제 */
+    const g=t.dataset.cmt;
+    if(t.checked) CAR_TIME[g]=t.value; else delete CAR_TIME[g];
+    document.querySelectorAll(`[data-cmt="${g}"]`).forEach(x=>{ if(x!==t) x.checked=false; });
+    calc(); return;
+  }
+  if(t.dataset.cmd!==undefined){
+    const i=+t.dataset.cmd, a=CAR_PICKS[i]||(CAR_PICKS[i]=[]);
+    const k=a.indexOf(t.value);
+    if(t.checked&&k<0) a.push(t.value); else if(!t.checked&&k>=0) a.splice(k,1);
+    const row=t.closest('.cm-day'); if(row) row.classList.toggle('on',a.length>0);
+    carSyncRoute(); renderVehicleUI(); calc();
+  }
+});
 
 /* ── 날짜 행 렌더 ── */
 let dayState=[];  // {date, region, round:bool, course:idx, holes}
@@ -1773,13 +1911,14 @@ function calc(){
     const vGroup=vehColOf(plan.kind==='bus'?'bus':'van');   // 주 차량 열(버스 동승 가이드 판정용)
     const tierTxt=t=>`${won(t.value)}${t.extra?` (기본 ${won(t.base)} +1박추가 ${won(t.oneMore)}×${t.extra})`:''}`;
     // 내부 화면·내부용 견적서에만 요금기준 라벨을 붙인다(라벨에 내부 메모가 섞여 있음)
-    if(plan.kind==='bus'){
+    if(CARMODE) carVehLines(lines,plan);   // 차량 견적 창 — 기간 요금 대신 일정 항목별 요금
+    else if(plan.kind==='bus'){
       const bCol=vehColOf('bus');
       const bt2=bCol?tierValue(bCol.periods||{},nights,'amount',amDep):null;
       if(bt2) lines.push({t:`${vehName(bCol)}${bCol.label?' · '+bCol.label:''}`,s:`${tierTxt(bt2)} × 1대`,v:bt2.value});
       else lines.push({t:'버스',s:'요금 미입력 — 관리에서 입력 필요',v:0,warn:1});
     }
-    if(plan.vans>0){
+    if(!CARMODE&&plan.vans>0){
       const vCol=vehColOf('van');
       const vt=vCol?tierValue(vCol.periods||{},nights,'amount',amDep):null;
       if(vt) lines.push({t:`${vehName(vCol)}${vCol.label?' · '+vCol.label:''}`,s:`${tierTxt(vt)} × ${plan.vans}대`,v:vt.value*plan.vans});
@@ -1799,7 +1938,7 @@ function calc(){
     }
     /* 공항 미팅 아따비 — 차량이 들어가면 공항 미팅이 있으므로 1인당 금액 × 인원을 자동으로 붙인다(사장님 2026-09-14) */
     const tip=+P.airportTip||0;
-    if(tip>0) lines.push({t:'공항 미팅 아따비',s:`${won(tip)} × ${pax}명`,v:tip*pax});
+    if(tip>0&&(!CARMODE||carHasPick('airIn'))) lines.push({t:'공항 미팅 아따비',s:`${won(tip)} × ${pax}명`,v:tip*pax});   // 차량 창은 공항 미팅을 체크했을 때만
     /* 미팅샌딩 짐밴 — 체크했을 때만, 경로 구간마다 1회 요금(사장님 2026-09-15). 요금 없는 구간은 빨간 줄로 알린다 */
     if(useLugOn()){
       const legs=lugLegsOfRoute();
@@ -3168,6 +3307,7 @@ async function loadPricing(){
         ? d.vehicleGroups
         : [{id:'vg1',label:'기본',periods:d.vehiclePeriods||{}}],
       vehicleNotes:Array.isArray(d.vehicleNotes)?d.vehicleNotes:[],
+      carQuote:(d.carQuote&&typeof d.carQuote==='object')?d.carQuote:{},   // 차량 견적 창 요금(관리 → 🚐 차량 견적 요금, 사장님 2026-10-17)
       quoteTours:Array.isArray(d.quoteTours)?d.quoteTours:[],   // 7번 기타투어 목록(관리 → 🎫 기타투어, 사장님 2026-09-19)
       transfers:Array.isArray(d.transfers)?d.transfers:[],
       // 미팅샌딩 짐밴(구간별 1회 요금 + 노출 인원) — 관리 → 차량 요금(사장님 2026-09-15)

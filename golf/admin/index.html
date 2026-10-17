@@ -578,7 +578,7 @@ function collapse(o){ // {wd,we} 둘 다 비면 null
    저장하면 다른 화면의 작업이 통째로 사라졌다 — 2026-09-08에 골프장 12곳의 요금줄이
    이렇게 날아갔다(백업으로 복구함).
    이제는 저장 직전에 서버 최신본을 다시 읽어 **남의 칸은 서버 것을 그대로 살려** 둔다. */
-const NOT_MINE=['regions','holidays'];
+const NOT_MINE=['regions','holidays','carQuote'];   // carQuote = 차량 견적 요금(사이트 관리 「🚐 차량 견적 요금」, 2026-10-17)
 async function mergeKeepOthers(cur){
   let server=null;
   try{ server=await gsLoadRaw(PRICING_KEY); }catch(e){ return null; }   // 못 읽으면 저장하지 않는다
