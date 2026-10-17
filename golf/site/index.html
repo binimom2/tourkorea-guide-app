@@ -1774,7 +1774,10 @@ function openQuoteModal(go){
   let sameOrigin = true;
   try{ sameOrigin = new URL(go, location.href).origin === location.origin; }catch(e){}
   if(!sameOrigin){ window.open(go, "_blank", "noopener"); return; }
-  if(f.getAttribute("src") !== go) f.setAttribute("src", go);   /* 주소는 처음 한 번만 넣는다(다시 열 때 또 받아오지 않게) */
+  /* 주소는 처음 한 번만 넣는다(다시 열 때 또 받아오지 않게).
+     주소가 바뀌면(차량 견적 창 ↔ 보통 견적) 새로 읽는 중이므로 「다 읽음」 표시를 지운다 — 안 지우면 보관함 열기 신호가
+     읽기 전의 옛 창으로 가서 사라지고, 보관함 대신 견적기 화면이 통째로 보였다(2026-10-17) */
+  if(f.getAttribute("src") !== go){ f.dataset.loaded = "0"; f.setAttribute("src", go); }
   m.classList.remove("boxmode");   /* 보통 열기는 견적기 틀이 보인다 — 보관함 열기(openQuoteBox)만 이 뒤에 boxmode를 켠다 */
   m.hidden = false; document.body.classList.add("qopen");
 }
