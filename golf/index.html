@@ -1275,7 +1275,8 @@ function carLines(lines,pax,nights,amDep){
     const [r,id]=key.split('|'), t=carTours(r).find(x=>x.id===id); if(!t) return;
     const ds=agg[key].sort((a,b)=>a-b), p=+((t.p||{})[v.id])||0;
     const nm=`${t.n}${u>1?` · ${u}대`:''}`;
-    if(!p) lines.push({t:nm,s:`${ds.join('·')}일차 · 요금 미입력`,v:0,warn:1});
+    /* 요금 칸이 비면 「기본 차량비 포함」 — 미등록 경고를 띄우지 않는다(사장님 2026-10-17) */
+    if(!p) lines.push({t:nm,s:`${ds.join('·')}일차 · 기본 차량비 포함`,v:0});
     else lines.push({t:nm,s:`${ds.join('·')}일차 · ${won(p)} × ${ds.length}회${u>1?` × ${u}대`:''}`,v:p*ds.length*u});
   });
   /* 버스 — 로컬가이드 1명. 관리 차종표의 「가이드 3박4일·4박5일·1박 추가」 칸(g3·g4·gadd, 사장님 2026-10-17) — 버스 대수와 무관하게 1명 */

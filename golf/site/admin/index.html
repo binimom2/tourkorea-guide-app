@@ -3780,7 +3780,7 @@ function subCarQ(){
       +'<td><button class="del" data-cqdel="veh" data-i="'+i+'" title="이 차종 지우기">✕</button></td></tr>').join('')
     +'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-cqadd="veh">＋ 차종 추가</button></div>'
-    +'<h3 style="margin:18px 0 6px;font-size:14px">② 추가 일정 (지역별) <span class="rhint" style="font-size:11.5px">손님이 그 지역에 있는 날 체크하는 메뉴 · 옮기는 날은 두 지역 메뉴가 다 나옴 · 금액은 1회 · 1대 기준</span></h3>'
+    +'<h3 style="margin:18px 0 6px;font-size:14px">② 추가 일정 (지역별) <span class="rhint" style="font-size:11.5px">손님이 그 지역에 있는 날 체크하는 메뉴 · 옮기는 날은 두 지역 메뉴가 다 나옴 · 금액은 1회 · 1대 기준 · 비우면 기본 차량비 포함(추가요금 없음)</span></h3>'
     +CQ_REGIONS.map(r=>{ const L=cq.tours[r];
       return '<div style="margin:10px 0 4px;font-weight:800">'+esc(r)+'</div>'
         +'<div class="tblwrap"><table><thead><tr><th style="width:70px">순서</th><th style="width:200px">일정</th>'
