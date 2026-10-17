@@ -2067,6 +2067,7 @@ function drawRates(){
 /* 골프장·호텔·스파·차량… 「종류」는 데이터(S.cats)에서 온다 — 종류를 추가하면 여기 메뉴도 늘어난다 */
 /* 저장 이름이 망가진 줄 되살리기(사장님 2026-10-17 — 스파→티켓으로 바꾸며 저장 이름 칸까지 「spa,show,ticket..」로 바뀌어 2곳이 끊김).
    영문 소문자가 아닌 줄이 하나, 어느 줄과도 안 이어진 항목 묶음(S.items)이 하나뿐일 때만 둘을 다시 잇는다. 손님 화면에도 같은 함수가 있다 */
+const CAR_NOTE='밴 3박 이상 · 버스 1박 이상 · 타 지역 이용은 실시간 견적에서 요청해 주세요.';
 function fixCatKeys(cats,items){
   const bad=cats.filter(c=>c&&!/^[a-z][a-z0-9_]*$/.test(c.k||''));
   const used=cats.map(c=>c&&c.k);
@@ -3663,6 +3664,7 @@ function subCats(){
     +'<div class="tblwrap"><table><thead><tr>'
     +'<th style="width:64px">그림</th><th style="width:150px">이름</th><th style="width:70px">단위</th>'
     +'<th style="width:130px">저장 이름</th><th style="width:110px">항목 수</th>'
+    +'<th style="width:260px">지역 탭 옆 안내 <span class="rhint" style="font-size:11px">비우면 안 나옴</span></th>'
     +'<th style="width:120px">손님에게 보이기</th><th style="width:74px">순서</th><th style="width:62px"></th>'
     +'</tr></thead><tbody>'
     +cs.map((c,i)=>'<tr><td>'+inp('cats.'+i+'.ic',c.ic||'','⛳')+'</td>'
@@ -3674,6 +3676,9 @@ function subCats(){
       +'<td><span class="cnt">'+(c.k==='tours'
           ? (S.tours||[]).reduce((n,t)=>n+((t&&t.items)||[]).length,0)
           : itemsArr(c.k).length)+(c.u||'곳')+'</span></td>'
+      /* 손님 화면 지역 탭 옆 안내 한 줄(사장님 2026-10-17). 차량은 안 적었으면 기본 문구(손님 화면 CAR_NOTE 와 같은 글) */
+      +'<td>'+(c.k==='tours' ? ''
+          : inp('cats.'+i+'.note', c.note!=null ? c.note : (c.k==='car' ? CAR_NOTE : ''), '예) 타 지역은 실시간 견적에서 요청해 주세요.'))+'</td>'
       +'<td><label style="display:flex;align-items:center;gap:7px;font-size:13px;white-space:nowrap">'
         +(c.k==='tours'
           ? '<input type="checkbox" data-p="toursOn" data-bool="1"'+(S.toursOn===true?' checked':'')+'>'

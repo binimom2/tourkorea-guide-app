@@ -284,6 +284,12 @@ section{padding:64px 0}
 
 /* ── 지역 탭 ── */
 .tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.tabs .tabnote{align-self:center;margin-left:6px;display:inline-block;
+  padding:7px 14px;border-radius:999px;background:#FFF6E6;border:1px solid #F1D9A8;
+  font-size:13px;font-weight:700;color:#7A5A1E;line-height:1.4}
+.tabs .tabnote i{font-style:normal;margin-right:5px}
+.tabs .tabnote .tnq{background:none;border:0;padding:0;font:inherit;font-weight:900;color:var(--marigold);
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .tabs button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 18px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer}
 .tabs button.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
 .tabs button b{font-weight:800;opacity:.5;font-size:12.5px;margin-left:2px}
@@ -1421,6 +1427,9 @@ function catList(){
   const on = cs.filter(c => c && c.k && c.k !== "tours" && c.on !== false && itemsOf(c.k).length);
   return on.length ? on : CATS_FALLBACK.filter(c => itemsOf(c.k).length);
 }
+/* 종류별 안내 문구 — 한 번도 안 적은 차량 줄(note 없음)은 기본 문구, 비워 저장하면 안 나온다 */
+const CAR_NOTE = "밴 3박 이상 · 버스 1박 이상 · 타 지역 이용은 실시간 견적에서 요청해 주세요.";
+function catNote(c){ return String(c && (c.note != null ? c.note : c.k === "car" ? CAR_NOTE : "") || "").trim(); }
 function catOf(k){ return catList().filter(c => c.k === k)[0] || catList()[0] || CATS_FALLBACK[0]; }
 /* 골프장은 h(홀 수), 호텔은 g(등급) 칸을 쓰던 것을 그대로 살린다 */
 function badgeOf(x){ return x.b || x.h || x.g || ""; }
@@ -1588,6 +1597,15 @@ function drawTabsOf(k){
   tabber("#tabs-" + k, itemsOf(k), regOf(k), r => {
     curRegs[k] = r; drawTabsOf(k); drawItemsOf(k);
   });
+  /* 지역 탭 옆 안내 한 줄 — 관리 「종류 관리」의 안내 칸(사장님 2026-10-17, 차량 「밴 3박 이상…」) */
+  const note = catNote(catOf(k));
+  const box = document.getElementById("tabs-" + k);
+  /* 문구 속 「실시간 견적」은 누르면 견적 창이 열리는 글자로 */
+  if(box && note){
+    box.insertAdjacentHTML("beforeend", '<span class="tabnote"><i>💬</i>'
+      + esc(note).replace("실시간 견적", '<button type="button" class="tnq">⚡ 실시간 견적</button>') + '</span>');
+    const q = box.querySelector(".tnq"); if(q) q.onclick = () => goQuote();
+  }
 }
 function drawItemsOf(k){
   const box = document.getElementById("cards-" + k);
