@@ -2044,7 +2044,8 @@ function calc(){
     }
   }
   // 3) 핸들링
-  const ht=tierValue(P.handlingPeriods||{},nights,'amount');
+  /* 차량 견적은 핸들링 차지를 안 붙인다 — 골프는 손님이 직접 수배하고 차량만 맡는다(사장님 2026-10-17) */
+  const ht=CARMODE?null:tierValue(P.handlingPeriods||{},nights,'amount');
   /* 핸들링 차지는 «있으면» 붙고, 요금표에 없거나 0이면 조용히 빠진다.
      수익은 품목마다 +100밧(골프장 라운드·호텔 1실 1박)으로 잡기로 해서 핸들링은 안 쓴다(사장님 2026-09-17, B안).
      예전엔 없으면 「핸들링 요금 미입력」 경고를 띄웠다 — 이제는 경고 없음. 다시 쓰려면 요금 관리에 금액만 넣으면 된다. */
@@ -2186,7 +2187,7 @@ function quoteIncludes(mode){
     if(lugTxt){ if(vehLines.length) vehLines[vehLines.length-1]+=` · ${lugTxt}`; else vehLines.push(`차량 - ${lugTxt}`); }
     out.push(...vehLines);
   }
-  if(mode==='internal' && tierValue(P.handlingPeriods||{},totalNights(),'amount')) out.push('핸들링 차지');   // 핸들링이 요금표에 있을 때만(2026-09-17)
+  if(mode==='internal' && !CARMODE && tierValue(P.handlingPeriods||{},totalNights(),'amount')) out.push('핸들링 차지');   // 핸들링이 요금표에 있을 때만(2026-09-17)
   /* 가이드는 한 줄로 — 「가이드 - 로컬가이드(영어사용) 1명, 한국인가이드 1명」(버스 동승 로컬 + 6번 가이드, 사장님 2026-09-15).
      견적서 글자에서는 「(영어만)」을 「(영어사용)」으로 바꿔 적는다(요금표 종류 이름은 그대로) */
   const gdoc=t=>guideLabel(t).replace(/영어만/g,'영어사용');
