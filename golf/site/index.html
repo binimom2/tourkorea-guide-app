@@ -562,7 +562,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .qp-en{font-size:12.5px;color:var(--muted);margin-bottom:14px}
 .qp-lab{font-size:12.5px;font-weight:800;margin:12px 0 6px}
 #qpTimeLab{white-space:pre-line}   /* 차량 미팅장소 안내 두 줄 */
-.qp-holes{display:grid;gap:7px}
+.qp-holes{display:grid;gap:7px;grid-template-columns:minmax(0,1fr)}   /* 한 줄 메뉴 이름이 칸을 밀어 넓히지 않게 — 넘치면 fitMenuText 가 글자를 줄인다 */
+.qp-holes button{min-width:0}
+.qp-holes button[data-m] b{overflow:hidden}
 .qp-holes button{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:9px;font:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .qp-holes button b{display:block;font-size:14.5px;font-weight:800}
 .qp-holes button span{font-size:12px;color:var(--muted);display:block}
@@ -2162,7 +2164,9 @@ function fitMenuText(){
     b.style.whiteSpace = "nowrap"; b.style.fontSize = "";
     if(!b.clientWidth) return;
     let fs = parseFloat(getComputedStyle(b).fontSize);
-    while(b.scrollWidth > b.clientWidth && fs > 10){ fs -= 0.5; b.style.fontSize = fs + "px"; }
+    while(b.scrollWidth > b.clientWidth && fs > 11){ fs -= 0.5; b.style.fontSize = fs + "px"; }
+    /* 11px로도 안 들어가는 아주 긴 이름은 잘리지 않게 두 줄로 */
+    if(b.scrollWidth > b.clientWidth){ b.style.whiteSpace = "normal"; b.style.fontSize = "12.5px"; }
   });
 }
 window.addEventListener("resize", fitMenuText);
