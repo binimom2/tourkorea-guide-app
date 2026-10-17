@@ -2156,6 +2156,16 @@ function tipNow(){
   return tip ? { tip, riders: Math.max(0, Math.min(99, Number($("#qpRiders").value) || 0)) } : null;
 }
 function menuSigOf(rows){ const t = tipNow(); return rows.map(m => m.n + "|" + mSub(m) + "|" + m.baht).join(",") + "|r" + (t ? t.riders : ""); }
+/* 메뉴 이름은 한 줄로 — 칸보다 길면 글자를 줄여 맞춘다(사장님 2026-10-17, 최소 10px) */
+function fitMenuText(){
+  document.querySelectorAll("#qpHoles button[data-m] b").forEach(b => {
+    b.style.whiteSpace = "nowrap"; b.style.fontSize = "";
+    if(!b.clientWidth) return;
+    let fs = parseFloat(getComputedStyle(b).fontSize);
+    while(b.scrollWidth > b.clientWidth && fs > 10){ fs -= 0.5; b.style.fontSize = fs + "px"; }
+  });
+}
+window.addEventListener("resize", fitMenuText);
 function renderMenuBtns(rows){
   const was = qpMenu >= 0 && qpMenuRows[qpMenu] ? qpMenuRows[qpMenu].n + "|" + mSub(qpMenuRows[qpMenu]) : "";
   qpMenuRows = rows;
@@ -2172,6 +2182,7 @@ function renderMenuBtns(rows){
     /* 아따비라는 글자는 손님에게 안 보인다(사장님 2026-10-16 「노출 금지」) — 금액에만 들어간다 */
     + (menuPeriod(m) ? '<i class="mprom">' + esc(menuPeriod(m)) + '</i>' : '')
     + '</span></button>'; }).join("");
+  fitMenuText(); requestAnimationFrame(fitMenuText);   // 창이 막 열리는 중이면 폭이 0이라 한 번 더
   $("#qpHoles").querySelectorAll("button").forEach(b => b.onclick = () => {
     qpMenu = Number(b.dataset.m);
     $("#qpHoles").querySelectorAll("button").forEach(o => o.classList.toggle("on", o === b));
