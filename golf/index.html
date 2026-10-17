@@ -315,7 +315,9 @@ html.carmode #s3,html.carmode #s4,html.carmode #s5,html.carmode #s6,html.carmode
 .cm-vrow{border:1px solid var(--line);border-radius:8px;padding:8px 11px;background:var(--paper)}
 .cm-vrow.on{border-color:var(--marigold);background:#FFFBF2}
 .cm-vrow small{color:#2E7D4F;font-weight:700;margin-left:6px}
-.cm-cnt{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;margin-top:4px}
+.cm-cnt{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700}
+.cm-vinfo{display:flex;flex-direction:column;gap:6px;margin:0 0 4px 26px;padding:8px 10px;border-left:3px solid var(--marigold);background:#FFFBF2;border-radius:0 8px 8px 0}
+.cm-day .cm-air{color:#2E7D4F;font-weight:700}
 .cm-cnt button{width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:16px;cursor:pointer}
 .cm-day .cm-reg{margin-left:8px;font-size:12px;font-weight:800;color:#fff;background:var(--fairway);border-radius:999px;padding:2px 9px}
 .cm-day .cm-air small{color:var(--muted);font-weight:600}
@@ -1175,6 +1177,14 @@ function carDayRegions(){
 }
 function carRender(){
   if(!CARMODE) return;
+  try{ carRenderInner(); }
+  catch(err){
+    console.error('carRender',err);
+    /* 그래도 멈추면 화면에 알린다 — 손님이 빈 칸만 보지 않게 */
+    const box=$('#cmDays'); if(box&&!box.innerHTML) box.innerHTML='<div class="hint" style="color:#c62828;font-weight:800">일정을 불러오지 못했습니다. 새로고침 후 다시 선택해 주세요.</div>';
+  }
+}
+function carRenderInner(){
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   /* 2번 지역 칩은 방콕·파타야·후아힌만 */
   document.querySelectorAll('[data-reg-pick]').forEach(b=>{ b.style.display=CAR_REGIONS.includes(b.dataset.regPick)?'':'none'; });
@@ -1183,19 +1193,25 @@ function carRender(){
   if(vb){
     const pax=curPax(), cv=carVehicles().find(x=>x.id===CAR_VEH.id);
     if(cv&&CAR_VEH.n<carNeed(cv)) CAR_VEH.n=carNeed(cv);   // 골프를 넣거나 인원이 늘면 대수를 맞춰 올린다
-    const g=carGroupOf(cv), desc=g&&g.desc?String(g.desc).trim():'', pics=g?vehImgs(g).length:0;
-    const notes=(P.vehicleNotes||[]).filter(Boolean);
+    /* 설명·사진은 실시간 요금표 차량 열에서 빌려 온다 — 그쪽 자료 모양이 달라 오류가 나도 차량 칸·4번 일정은 그려지게(2026-10-17 「밴 클릭 시 일정 안 펼쳐짐」) */
+    let g=null, desc='', pics=0;
+    try{ g=carGroupOf(cv); desc=g&&g.desc?String(g.desc).trim():''; pics=g?vehImgs(g).length:0; }catch(err){ console.warn('carGroupOf',err); }
+    const notes=(Array.isArray(P.vehicleNotes)?P.vehicleNotes:[]).filter(Boolean);
     const cap=carCap(cv), golfCap=cv&&carHasGolf()&&cap!==(+cv.seats||0)?cap:0;
-    vb.innerHTML=carVehicles().map(v=>'<label class="cm-ck cm-vrow'+(CAR_VEH.id===v.id?' on':'')+'"><input type="radio" name="cmVeh" data-cmv="'+esc(v.id)+'"'+(CAR_VEH.id===v.id?' checked':'')+'> <b>'+esc(v.n)+'</b>'
-      +(v.bus?'<small>영어 로컬가이드 1명 포함</small>':'')+'</label>').join('')
-      +(cv?'<div class="cm-cnt">차량 대수 <button type="button" data-cmn="-1">−</button><b>'+CAR_VEH.n+'대</b><button type="button" data-cmn="1">＋</button>'
+    /* 고른 차종 바로 아래에 설명·사진·대수·안내(골프 견적 5번처럼), 나머지 차종은 그 아래(사장님 2026-10-17) */
+    const info=cv?'<div class="cm-vinfo">'
+        +(desc?'<div class="hint" style="margin:0;font-size:13.5px;color:var(--ink,#1f2a25);font-weight:600;line-height:1.4;white-space:pre-wrap">'+esc(desc)+'</div>':'')
+        +(pics?'<a class="cmphoto" style="font-size:13.5px;font-weight:700;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap"><span style="font-size:24px;vertical-align:-5px;text-decoration:none;display:inline-block;margin-right:4px">🚐</span>사진 보기</a>':'')
+        +'<div class="cm-cnt">차량 대수 <button type="button" data-cmn="-1">−</button><b>'+CAR_VEH.n+'대</b><button type="button" data-cmn="1">＋</button>'
         +(golfCap?' <span style="color:#c62828;font-weight:800">골프 포함 — 1대 최대 '+golfCap+'명</span>'
           :cap&&pax>cap*CAR_VEH.n?' <span style="color:#c62828;font-weight:800">'+pax+'명은 '+CAR_VEH.n+'대에 다 못 탑니다</span>':'')+'</div>'
-        /* 골프 견적 5번과 같은 안내 — 차량 설명(관리 실시간 요금표 차량 「설명」) · 사진 보기 · ※ 차량 안내 문구 */
-        +(desc?'<div class="hint" style="margin-top:4px;font-size:13.5px;color:var(--ink,#1f2a25);font-weight:600;line-height:1.4;white-space:pre-wrap">'+esc(desc)+'</div>':'')
-        +(pics?'<a class="cmphoto" style="font-size:13.5px;font-weight:700;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap;margin-top:4px"><span style="font-size:24px;vertical-align:-5px;text-decoration:none;display:inline-block;margin-right:4px">🚐</span>사진 보기</a>':'')
-        +(notes.length?'<div class="hint" style="margin-top:6px;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.55">'+notes.map(t=>'※ '+esc(t)).join('<br>')+'</div>':'')
-      :'');
+        +(notes.length?'<div class="hint" style="margin:0;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.55">'+notes.map(t=>'※ '+esc(t)).join('<br>')+'</div>':'')
+      +'</div>':'';
+    const html=carVehicles().map(v=>'<label class="cm-ck cm-vrow'+(CAR_VEH.id===v.id?' on':'')+'"><input type="radio" name="cmVeh" data-cmv="'+esc(v.id)+'"'+(CAR_VEH.id===v.id?' checked':'')+'> <b>'+esc(v.n)+'</b>'
+      +(v.bus?'<small>영어 로컬가이드 1명 포함</small>':'')+'</label>'+(CAR_VEH.id===v.id?info:'')).join('');
+    /* 같은 내용이면 다시 그리지 않는다 — 인원 칸에서 손을 떼는 순간 다시 그리면 누르던 단추가 바뀌어 클릭이 사라졌다
+       (「밴 처음 누르면 안 열림」「−/＋ 안 먹음」, 2026-10-17) */
+    if(vb._h!==html){ vb._h=html; vb.innerHTML=html; }
   }
   /* 4. 추가 일정 */
   const box=$('#cmDays'); if(!box) return;
@@ -1212,14 +1228,15 @@ function carRender(){
     const picks=CAR_PICKS[i]||[], regs=dr[i];
     const ck=(key,label)=>'<label class="cm-ck"><input type="checkbox" data-cmd="'+i+'" value="'+esc(key)+'"'+(picks.includes(key)?' checked':'')+'> '+esc(label)+'</label>';
     let body='';
-    if(i===0) body+='<label class="cm-ck cm-air"><input type="checkbox" data-cmair="in"'+(CAR_NOAIR.in?' checked':'')+'> 수완나폼 공항 미팅 → '+esc(regs[regs.length-1])+' 호텔 <small>(일정 제외 시 체크)</small></label>';
+    /* 첫날 공항 미팅·마지막 날 샌딩은 늘 포함(기본요금) — 「일정 제외」 체크는 뺐다(사장님 2026-10-17) */
+    if(i===0) body+='<span class="cm-ck cm-air">✔ 수완나폼 공항 미팅 → '+esc(regs[regs.length-1])+' 호텔</span>';
     /* 첫날은 한국에서 오전 출발(낮 도착)일 때만 투어 메뉴를 띄운다 */
     /* 「골프 없음」이면 골프 메뉴는 안 띄운다 */
     if(i>0||amDep) regs.forEach(r=>carTours(r).filter(t=>CAR_GOLF!=='n'||!/골프/.test(t.n)).forEach(t=>{ body+=ck(r+'|'+t.id,t.n); }));
-    if(i===days-1) body+='<label class="cm-ck cm-air"><input type="checkbox" data-cmair="out"'+(CAR_NOAIR.out?' checked':'')+'> '+esc(regs[regs.length-1])+' 호텔 → 수완나폼 공항 샌딩 <small>(일정 제외 시 체크)</small></label>';
+    if(i===days-1) body+='<span class="cm-ck cm-air">✔ 수완나폼 공항 샌딩</span>';   // 「○○ 호텔 →」은 뺐다(사장님 2026-10-17)
     h+='<div class="cm-day'+(picks.length?' on':'')+'"><div class="dlabel">'+(i+1)+'일차<small>'+iso(d).slice(5).replace('-','/')+' '+['일','월','화','수','목','금','토'][d.getDay()]+'</small><span class="cm-reg">'+esc(regs.join('-'))+'</span></div>'+body+'</div>';
   }
-  box.innerHTML=h;
+  if(box._h!==h){ box._h=h; box.innerHTML=h; }   // 같으면 다시 그리지 않는다(체크하려던 클릭이 사라지지 않게)
 }
 /* 차량 기본요금 — 3박4일(n3) · 4박5일(n4) · 그 뒤 1박마다 add. 4박 칸이 비었으면 3박 + 1박 추가 */
 function carBaseOf(v,nights){
@@ -1308,6 +1325,11 @@ document.addEventListener('change',e=>{
 document.addEventListener('click',e=>{
   if(!CARMODE||!e.target.closest) return;
   if(e.target.closest('.cmphoto')){ openVehPhotos('',carGroupOf(carVehicles().find(x=>x.id===CAR_VEH.id))); return; }
+  /* 차종 줄을 누르면 늘 그 차종으로 — 동그라미가 이미 찍혀 보이면 change가 안 일어나 아래(대수·안내·일정)가 안 그려졌다(2026-10-17) */
+  const vr=e.target.closest('label.cm-vrow');
+  if(vr){ const ip=vr.querySelector('[data-cmv]');
+    if(ip&&ip.dataset.cmv!==CAR_VEH.id) setTimeout(()=>{ if(ip.dataset.cmv!==CAR_VEH.id){ ip.checked=true; ip.dispatchEvent(new Event('change',{bubbles:true})); } },0);
+    return; }
   const b=e.target.closest('[data-cmn]'); if(!b) return;
   const v=carVehicles().find(x=>x.id===CAR_VEH.id);
   CAR_VEH.n=Math.max(carNeed(v),Math.min(20,CAR_VEH.n+(+b.dataset.cmn)));   // 인원·골프 제한 아래로는 못 줄인다
