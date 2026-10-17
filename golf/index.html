@@ -381,13 +381,15 @@ html.carmode .cm-block,html.carmode .cm-note{display:block}
         <label class="amdep" title="태국에서 오전에 출국하면 그날 한국에 도착합니다 — 3박4일처럼 박수+1일이 되고, 마지막 날은 라운딩을 할 수 없습니다">
           <input type="checkbox" id="amRet"> 태국에서 오전 출국 시 체크
         </label>
+        <!-- 차량 견적 창에서만(사장님 2026-10-17) -->
+        <span class="cm-only" style="align-self:center;font-size:12.5px;font-weight:800;color:#c62828">(공항 미팅·샌딩일 때만 체크)</span>
       </div>
     </div>
   </div>
 
   <!-- 차량 견적 창(?only=car) 전용 두 칸(사장님 2026-10-17) — 미팅·샌딩 시간, 일차별 일정. 요금은 관리 「🚐 차량 견적 요금」(golf_pricing.carQuote) -->
   <div class="card cm-block" id="cmMeet">
-    <h2 class="steph">2. 미팅 · 샌딩 장소와 시간 <span class="sublab tip">해당하는 곳만 체크해 주세요. 호텔 미팅은 공항 미팅이 아닐 때만 체크합니다.</span></h2>
+    <h2 class="steph">2. 미팅 · 샌딩 장소와 시간 <span class="sublab tip">해당하는 곳만 체크해 주세요.</span></h2>
     <div class="cm-meet" id="cmMeetBox"></div>
   </div>
   <div class="card cm-block" id="cmDaysCard">
