@@ -1405,8 +1405,16 @@ const CATS_FALLBACK = [
   { k:"courses", ic:"⛳", t:"골프장", u:"곳" },
   { k:"hotels",  ic:"🏨", t:"호텔",   u:"곳" }
 ];
+/* 저장 이름이 망가진 종류 줄 되살리기 — 관리 화면 fixCatKeys 와 같은 규칙(2026-10-17 스파→티켓 때 끊긴 것) */
+function fixCatKeys(cats, items){
+  const bad = cats.filter(c => c && !/^[a-z][a-z0-9_]*$/.test(c.k || ""));
+  const used = cats.map(c => c && c.k);
+  const orphan = Object.keys(items || {}).filter(k => used.indexOf(k) < 0 && (items[k] || []).length);
+  if(bad.length === 1 && orphan.length === 1) bad[0].k = orphan[0];
+}
 function catList(){
   const cs = (Array.isArray(SITE.cats) && SITE.cats.length) ? SITE.cats : CATS_FALLBACK;
+  if(cs !== CATS_FALLBACK) fixCatKeys(cs, SITE.items);
   /* k:'tours'(기타투어)는 종류 관리에서 차례만 잡는 줄 — 카탈로그 종류가 아니라 섹터 띠에서 따로 넣는다 */
   const on = cs.filter(c => c && c.k && c.k !== "tours" && c.on !== false && itemsOf(c.k).length);
   return on.length ? on : CATS_FALLBACK.filter(c => itemsOf(c.k).length);

@@ -2057,11 +2057,20 @@ function drawRates(){
 
 /* ══════════════ 사이트 내용 ══════════════ */
 /* 골프장·호텔·스파·차량… 「종류」는 데이터(S.cats)에서 온다 — 종류를 추가하면 여기 메뉴도 늘어난다 */
+/* 저장 이름이 망가진 줄 되살리기(사장님 2026-10-17 — 스파→티켓으로 바꾸며 저장 이름 칸까지 「spa,show,ticket..」로 바뀌어 2곳이 끊김).
+   영문 소문자가 아닌 줄이 하나, 어느 줄과도 안 이어진 항목 묶음(S.items)이 하나뿐일 때만 둘을 다시 잇는다. 손님 화면에도 같은 함수가 있다 */
+function fixCatKeys(cats,items){
+  const bad=cats.filter(c=>c&&!/^[a-z][a-z0-9_]*$/.test(c.k||''));
+  const used=cats.map(c=>c&&c.k);
+  const orphan=Object.keys(items||{}).filter(k=>used.indexOf(k)<0&&(items[k]||[]).length);
+  if(bad.length===1&&orphan.length===1) bad[0].k=orphan[0];
+}
 function catsAll(){
   if(!Array.isArray(S.cats) || !S.cats.length)
     S.cats=[{k:'courses',ic:'⛳',t:'골프장',u:'곳',on:true},{k:'hotels',ic:'🏨',t:'호텔',u:'곳',on:true}];
   /* 기타투어도 종류 관리의 한 줄(k:'tours', 고정) — 그림·이름·차례는 여기서, 보이기는 S.toursOn 하나로(사장님 2026-10-17).
      항목은 S.items 가 아니라 S.tours(묶음) 그대로 쓴다. 없으면 맨 뒤에 붙인다 */
+  fixCatKeys(S.cats,S.items);
   if(!S.cats.some(c=>c&&c.k==='tours')){
     const sc=S.sector||{};
     S.cats.push({k:'tours',ic:sc.toursIc||'✈',t:sc.toursT||'기타투어',u:'개'});
@@ -3638,9 +3647,8 @@ function subCats(){
     +cs.map((c,i)=>'<tr><td>'+inp('cats.'+i+'.ic',c.ic||'','⛳')+'</td>'
       +'<td>'+inp('cats.'+i+'.t',c.t||'','스파·마사지')+'</td>'
       +'<td>'+inp('cats.'+i+'.u',c.u||'곳','곳')+'</td>'
-      +'<td>'+(c.k==='courses'||c.k==='hotels'||c.k==='tours'
-          ? '<span class="cnt">'+esc(c.k)+' (고정)</span>'
-          : inp('cats.'+i+'.k',c.k||'','spa'))+'</td>'
+      /* 저장 이름은 고칠 수 없게(2026-10-17) — 바꾸면 항목과 끊긴다. 새 종류는 cat1·cat2… 로 자동 */
+      +'<td><span class="cnt">'+esc(c.k)+(c.k==='courses'||c.k==='hotels'||c.k==='tours'?' (고정)':'')+'</span></td>'
       /* 기타투어는 묶음 안 항목 수를 센다, 보이기는 기타투어 탭 맨 위 체크와 같은 값(S.toursOn) */
       +'<td><span class="cnt">'+(c.k==='tours'
           ? (S.tours||[]).reduce((n,t)=>n+((t&&t.items)||[]).length,0)
@@ -3661,8 +3669,7 @@ function subCats(){
     +'<div class="rowbtns"><button class="add" data-add="cat">＋ 종류 추가</button></div>'
     +'<p class="desc" style="margin-top:12px">※ <b>▲▼로 차례를 바꾸면 손님 화면의 차례도 그대로 바뀝니다</b> — '
     +'맨 위 메뉴 · 히어로 아래 섹터 단추 · 골프장/호텔 섹션이 모두 이 순서로 섭니다.<br>'
-    +'※ 「저장 이름」은 영문 소문자로 짓고 한 번 정하면 바꾸지 마세요 — '
-    +'바꾸면 그 종류에 넣어 둔 항목이 사라진 것처럼 보입니다. 골프장·호텔은 바꿀 수 없습니다.</p>'
+    +'※ 이름은 「이름」 칸에서만 바꿉니다. 「저장 이름」은 항목과 이어진 고정 값이라 바꿀 수 없습니다.</p>'
     +'</div>';
   /* 위아래로 옮기기 — 자리만 바꾼다(내용은 그대로). 저장을 눌러야 실제로 반영된다. */
   document.getElementById('subpane').querySelectorAll('[data-cmv]').forEach(b=>b.onclick=()=>{
