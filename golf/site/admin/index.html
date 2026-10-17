@@ -2067,7 +2067,7 @@ function drawRates(){
 /* 골프장·호텔·스파·차량… 「종류」는 데이터(S.cats)에서 온다 — 종류를 추가하면 여기 메뉴도 늘어난다 */
 /* 저장 이름이 망가진 줄 되살리기(사장님 2026-10-17 — 스파→티켓으로 바꾸며 저장 이름 칸까지 「spa,show,ticket..」로 바뀌어 2곳이 끊김).
    영문 소문자가 아닌 줄이 하나, 어느 줄과도 안 이어진 항목 묶음(S.items)이 하나뿐일 때만 둘을 다시 잇는다. 손님 화면에도 같은 함수가 있다 */
-const CAR_NOTE='밴 3박 이상 · 버스 1박 이상 · 타 지역 이용은 실시간 견적에서 요청해 주세요.';
+const CAR_NOTE='3박 이상 밴·버스 견적은 차량 실시간 견적에서 요청해 주세요.';
 function fixCatKeys(cats,items){
   const bad=cats.filter(c=>c&&!/^[a-z][a-z0-9_]*$/.test(c.k||''));
   const used=cats.map(c=>c&&c.k);

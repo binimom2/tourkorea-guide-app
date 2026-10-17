@@ -1428,7 +1428,7 @@ function catList(){
   return on.length ? on : CATS_FALLBACK.filter(c => itemsOf(c.k).length);
 }
 /* 종류별 안내 문구 — 한 번도 안 적은 차량 줄(note 없음)은 기본 문구, 비워 저장하면 안 나온다 */
-const CAR_NOTE = "밴 3박 이상 · 버스 1박 이상 · 타 지역 이용은 실시간 견적에서 요청해 주세요.";
+const CAR_NOTE = "3박 이상 밴·버스 견적은 차량 실시간 견적에서 요청해 주세요.";
 function catNote(c){ return String(c && (c.note != null ? c.note : c.k === "car" ? CAR_NOTE : "") || "").trim(); }
 function catOf(k){ return catList().filter(c => c.k === k)[0] || catList()[0] || CATS_FALLBACK[0]; }
 /* 골프장은 h(홀 수), 호텔은 g(등급) 칸을 쓰던 것을 그대로 살린다 */
@@ -1603,7 +1603,7 @@ function drawTabsOf(k){
   /* 문구 속 「실시간 견적」은 누르면 견적 창이 열리는 글자로 */
   if(box && note){
     box.insertAdjacentHTML("beforeend", '<span class="tabnote"><i>💬</i>'
-      + esc(note).replace("실시간 견적", '<button type="button" class="tnq">⚡ 실시간 견적</button>') + '</span>');
+      + esc(note).replace(/(차량\s*)?실시간\s*견적/, m => '<button type="button" class="tnq">⚡ ' + m + '</button>') + '</span>');
     /* 차량 안내의 견적 글자는 차량 전용 견적 창(?only=car)으로(사장님 2026-10-17), 다른 종류는 보통 견적 */
     const q = box.querySelector(".tnq");
     if(q) q.onclick = () => {
