@@ -120,9 +120,9 @@ tr.subrow td{padding:0 6px 11px}
   gap:5px;align-items:center}
 .rhead{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 1px}
 /* 메뉴별 요금(스파·티켓…) — 메뉴(시간 포함) · 코스·내용 · 적용 기간 · 밧 네 칸 */
-.mhead,.mrow{grid-template-columns:1fr 72px 1.5fr 258px 100px 50px 44px 26px}   /* 메뉴 · 코스(짧게) · 내용(넓게) · 기간 · 밧 · ▲▼ · 복사 · ✕ */
+.mhead,.mrow{grid-template-columns:1.3fr 64px 1fr 258px 90px 50px 44px 26px}   /* 메뉴 · 코스(짧게) · 내용(넓게) · 기간 · 밧 · ▲▼ · 복사 · ✕ */
 /* 차량(단위 「대」)은 밧 뒤에 「아따비」 체크 한 칸(2026-10-16 공항 미팅만) */
-.vtip .mhead,.vtip .mrow{grid-template-columns:1fr 72px 1.5fr 258px 100px 50px 50px 44px 26px}
+.vtip .mhead,.vtip .mrow{grid-template-columns:1.3fr 64px 1fr 258px 90px 50px 50px 44px 26px}
 /* 메뉴 요금 줄 위아래 옮기기(사장님 2026-10-17) — 손님 화면 메뉴 단추도 이 차례 */
 .rmv{display:flex;gap:2px}
 .rmv button{flex:1;background:none;border:1px solid var(--line);border-radius:5px;color:var(--fairway);font-size:10px;padding:4px 0;cursor:pointer}
@@ -148,6 +148,9 @@ tr.subrow td{padding:0 6px 11px}
 .rrow input,.rrow select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
 .rrow input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
+/* 메뉴·내용 칸은 글이 길면 줄을 바꿔 다 보이게(사장님 2026-10-17 「메뉴를 한눈에」) — 엔터로 줄바꿈은 안 들어간다 */
+.rrow textarea.mta{padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:#fff;width:100%;
+  resize:none;overflow:hidden;line-height:1.4;field-sizing:content;min-height:28px;display:block}
 /* 방금 더했거나 마지막으로 손댄 요금 줄 — 정렬로 자리가 바뀌어도 찾기 쉽게 노랗게(사장님 2026-09-18) */
 .rrow.hot{background:#FFE9A8;border-radius:8px;box-shadow:0 0 0 4px #FFE9A8}
 .rtil{text-align:center;color:var(--muted);font-size:11px}
@@ -2753,10 +2756,10 @@ function menuRowHTML(idx,m,vt,last){
   return '<div class="rrow mrow" data-ri="'+idx+'">'
     /* 시간은 프로그램 이름에 같이 적는다(「타이마사지 2시간」) — 시간 칸은 뺐다(사장님 2026-09-09).
        예전에 u 칸에 적어 둔 값은 저장 자료에 남아 있을 뿐 보이지 않는다. */
-    +'<input data-rf="n" value="'+esc(n(m.n))+'" placeholder="아로마스파맛사지 2시간">'
+    +'<textarea class="mta" rows="1" data-rf="n" placeholder="아로마스파맛사지 2시간">'+esc(n(m.n))+'</textarea>'
     /* 코스(c) = 「편도」「왕복」 같은 짧은 패턴, 내용(d) = 긴 설명 — 사장님 2026-10-16 둘로 나눔 */
     +'<input data-rf="c" value="'+esc(n(m.c))+'" placeholder="편도">'
-    +'<input data-rf="d" value="'+esc(n(m.d))+'" placeholder="스크럽+아로마오일+허브볼">'
+    +'<textarea class="mta" rows="1" data-rf="d" placeholder="스크럽+아로마오일+허브볼">'+esc(n(m.d))+'</textarea>'
     /* 적용 기간(사장님 2026-09-09) — 비우면 늘 쓰는 기본 요금. 기간을 넣으면 그 기간에만 살고,
        같은 메뉴 이름의 기본 요금을 그 기간 동안 덮어쓴다(프로모션·성수기 요금). */
     +'<div class="rdate'+((m.from||m.to)?' mprom':'')+'">'
@@ -2890,14 +2893,19 @@ document.getElementById('pane').addEventListener('click',e=>{
   markDirty('rates'); redrawRateCell(cell);
   if(focusRi>=0){
     const fresh=[...document.querySelectorAll('#pane .pcell')].filter(c=>c.dataset.pk===k&&c.dataset.pn===name)[0];
-    const el=fresh&&fresh.querySelector('.rrow[data-ri="'+focusRi+'"] input[data-rf="n"]');
+    const el=fresh&&fresh.querySelector('.rrow[data-ri="'+focusRi+'"] [data-rf="n"]');
     if(el){ el.focus(); el.select(); }
   }
   const cnt=document.getElementById('iCnt');       // 「요금 없음 N곳」도 같이 고친다
   if(cnt) cnt.innerHTML=itemCntHTML(cnt.dataset.k);
 });
+/* 메뉴·내용 칸(textarea)은 한 줄 값 — 엔터는 줄바꿈 대신 막는다 */
+document.getElementById('pane').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.isComposing&&e.target.matches&&e.target.matches('textarea.mta')) e.preventDefault();
+});
 document.getElementById('pane').addEventListener('input',e=>{
   const f=e.target.dataset&&e.target.dataset.rf; if(!f) return;
+  if(e.target.matches('textarea.mta')&&/\n/.test(e.target.value)) e.target.value=e.target.value.replace(/\s*\n\s*/g,' ');   // 붙여넣은 줄바꿈
   const cell=e.target.closest('.pcell'), row=e.target.closest('.rrow');
   if(!cell||!row) return;
   const k=cell.dataset.pk, name=cell.dataset.pn;
