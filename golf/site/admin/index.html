@@ -2060,6 +2060,12 @@ function drawRates(){
 function catsAll(){
   if(!Array.isArray(S.cats) || !S.cats.length)
     S.cats=[{k:'courses',ic:'⛳',t:'골프장',u:'곳',on:true},{k:'hotels',ic:'🏨',t:'호텔',u:'곳',on:true}];
+  /* 기타투어도 종류 관리의 한 줄(k:'tours', 고정) — 그림·이름·차례는 여기서, 보이기는 S.toursOn 하나로(사장님 2026-10-17).
+     항목은 S.items 가 아니라 S.tours(묶음) 그대로 쓴다. 없으면 맨 뒤에 붙인다 */
+  if(!S.cats.some(c=>c&&c.k==='tours')){
+    const sc=S.sector||{};
+    S.cats.push({k:'tours',ic:sc.toursIc||'✈',t:sc.toursT||'기타투어',u:'개'});
+  }
   return S.cats;
 }
 /* courses·hotels는 원래 쓰던 자리에, 새로 만든 종류는 items 아래에 담긴다 */
@@ -2073,10 +2079,10 @@ function itemsArr(k){
 function itemsPath(k,i){ return (k==='courses'||k==='hotels') ? k+'.'+i : 'items.'+k+'.'+i; }
 function subs(){
   return [{k:'hero',label:'첫 화면'}]
-    .concat(catsAll().map(c=>({k:'cat:'+c.k, label:(c.ic?c.ic+' ':'')+(c.t||c.k)+(c.on===false?' (숨김)':'')})))
-    /* 기타투어는 종류(cats) 바로 뒤 — 패스트트랙 다음에 온다(사장님 2026-09-11) */
-    .concat([{k:'tours',label:'✈ 기타투어'},
-             {k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
+    .concat(catsAll().map(c=>c.k==='tours'
+      ? {k:'tours', label:(c.ic?c.ic+' ':'')+(c.t||'기타투어')+(S.toursOn!==true?' (숨김)':'')}
+      : {k:'cat:'+c.k, label:(c.ic?c.ic+' ':'')+(c.t||c.k)+(c.on===false?' (숨김)':'')}))
+    .concat([{k:'cats',label:'＋ 종류 관리'},{k:'holiday',label:'📅 공휴일'},
              {k:'board',label:'게시판'},{k:'foot',label:'연락처 · 푸터'},
              /* 견적 계산기가 읽는 차량·핸들링·가이드 요금과 코드 — 상단 탭에서 이리로 내렸다(사장님 2026-09-11) */
              /* 코드관리는 요금표 안(끼워 넣은 /golf/admin/)에 이미 있어 따로 노출하지 않는다(사장님 2026-09-14) */
@@ -2332,14 +2338,11 @@ function subHero(){
     +'<p class="desc">골프장·호텔 같은 종류 칸은 <b>「종류 관리」</b>에서 그림·이름·순서·보이기를 고칩니다. '
       +'항목이 하나도 없는 종류는 손님 화면에 안 나옵니다.</p>'
     +'<div class="thpick" style="margin-bottom:12px">'
-      +catsAll().filter(c=>c.on!==false&&itemsArr(c.k).length).map(c=>'<span class="th" style="cursor:default">'+esc((c.ic||'')+' '+(c.t||c.k))+'</span>').join('')
-      +((S.tours||[]).length?'<span class="th" style="cursor:default">'+esc((sc.toursIc||'🚌')+' '+(sc.toursT||'기타투어'))+'</span>':'')
+      +catsAll().filter(c=>c.k==='tours' ? S.toursOn===true&&(S.tours||[]).length : c.on!==false&&itemsArr(c.k).length).map(c=>'<span class="th" style="cursor:default">'+esc((c.ic||'')+' '+(c.t||c.k))+'</span>').join('')
       +'<span class="th on" style="cursor:default">'+esc((sc.quoteIc||'⚡')+' '+(sc.quoteT||'실시간 견적'))+'</span>'
       +'<button type="button" class="th" id="goCats">종류 관리로 가기 →</button>'
     +'</div>'
     +'<div class="grid2">'
-    +'<div class="f"><label>기타투어 칸 — 그림 / 이름 (투어가 있을 때만 보임)</label>'
-      +'<div class="pwbox">'+inp('sector.toursIc',sc.toursIc||'','🚌')+inp('sector.toursT',sc.toursT||'','기타투어')+'</div></div>'
     +'<div class="f"><label>실시간 견적 칸 — 그림 / 이름 (금색 고정)</label>'
       +'<div class="pwbox">'+inp('sector.quoteIc',sc.quoteIc||'','⚡')+inp('sector.quoteT',sc.quoteT||'','실시간 견적')+'</div></div>'
     /* 견적 단추가 여는 곳 — 맨 위 메뉴·섹터 띠·첫 화면 단추가 다 같이 따른다. 비우면 기존 견적 계산기(/golf/) */
@@ -3635,19 +3638,24 @@ function subCats(){
     +cs.map((c,i)=>'<tr><td>'+inp('cats.'+i+'.ic',c.ic||'','⛳')+'</td>'
       +'<td>'+inp('cats.'+i+'.t',c.t||'','스파·마사지')+'</td>'
       +'<td>'+inp('cats.'+i+'.u',c.u||'곳','곳')+'</td>'
-      +'<td>'+(c.k==='courses'||c.k==='hotels'
+      +'<td>'+(c.k==='courses'||c.k==='hotels'||c.k==='tours'
           ? '<span class="cnt">'+esc(c.k)+' (고정)</span>'
           : inp('cats.'+i+'.k',c.k||'','spa'))+'</td>'
-      +'<td><span class="cnt">'+itemsArr(c.k).length+(c.u||'곳')+'</span></td>'
+      /* 기타투어는 묶음 안 항목 수를 센다, 보이기는 기타투어 탭 맨 위 체크와 같은 값(S.toursOn) */
+      +'<td><span class="cnt">'+(c.k==='tours'
+          ? (S.tours||[]).reduce((n,t)=>n+((t&&t.items)||[]).length,0)
+          : itemsArr(c.k).length)+(c.u||'곳')+'</span></td>'
       +'<td><label style="display:flex;align-items:center;gap:7px;font-size:13px;white-space:nowrap">'
-        +'<input type="checkbox" data-p="cats.'+i+'.on" data-bool="1"'+(c.on!==false?' checked':'')+'> 보이기</label></td>'
+        +(c.k==='tours'
+          ? '<input type="checkbox" data-p="toursOn" data-bool="1"'+(S.toursOn===true?' checked':'')+'>'
+          : '<input type="checkbox" data-p="cats.'+i+'.on" data-bool="1"'+(c.on!==false?' checked':'')+'>')+' 보이기</label></td>'
       /* 여기 적힌 차례가 곧 손님 화면의 차례다 — 메뉴·섹터 단추·섹션이 모두 이 순서로 선다 */
       +'<td><div class="ordbtns">'
         /* data-cmv — 항목 줄 차례 단추(data-mv, bindRowBtns)와 이름이 겹쳐 그쪽 처리기가 덮어써서 안 먹던 것(2026-10-16) */
         +'<button class="ord" data-cmv="up" data-i="'+i+'"'+(i===0?' disabled':'')+' title="위로">▲</button>'
         +'<button class="ord" data-cmv="dn" data-i="'+i+'"'+(i===cs.length-1?' disabled':'')+' title="아래로">▼</button>'
       +'</div></td>'
-      +'<td>'+(c.k==='courses'||c.k==='hotels' ? ''
+      +'<td>'+(c.k==='courses'||c.k==='hotels'||c.k==='tours' ? ''
           : '<button class="del" data-delcat="'+esc(c.k)+'">삭제</button>')+'</td></tr>').join('')
     +'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="cat">＋ 종류 추가</button></div>'

@@ -1407,7 +1407,8 @@ const CATS_FALLBACK = [
 ];
 function catList(){
   const cs = (Array.isArray(SITE.cats) && SITE.cats.length) ? SITE.cats : CATS_FALLBACK;
-  const on = cs.filter(c => c && c.k && c.on !== false && itemsOf(c.k).length);
+  /* k:'tours'(기타투어)는 종류 관리에서 차례만 잡는 줄 — 카탈로그 종류가 아니라 섹터 띠에서 따로 넣는다 */
+  const on = cs.filter(c => c && c.k && c.k !== "tours" && c.on !== false && itemsOf(c.k).length);
   return on.length ? on : CATS_FALLBACK.filter(c => itemsOf(c.k).length);
 }
 function catOf(k){ return catList().filter(c => c.k === k)[0] || catList()[0] || CATS_FALLBACK[0]; }
@@ -1758,8 +1759,15 @@ function drawSectors(){
   const sc = SITE.sector || {};
   /* 기타투어 칸 — 섹션을 감춘 뒤로는(2026-09-10) 띠에서도 뺀다. 되살리려면 위 CSS의 #tours 와 이 줄을 같이 */
   /* 2026-09-19부터는 관리 화면 「기타투어」 탭의 노출 체크(SITE.toursOn)를 따른다 — 기본은 꺼짐(지금까지 감춰 온 그대로) */
+  /* 2026-10-17부터 기타투어도 종류 관리의 한 줄(k:'tours') — 그 줄의 그림·이름, 그 줄의 차례 자리에 선다. 줄이 없으면 맨 뒤 */
   const TOURS_HIDDEN = !toursShown().length;
-  if(!TOURS_HIDDEN) items.push({ ic: sc.toursIc || "🚌", t: sc.toursT || "기타투어", go:"#tours" });
+  if(!TOURS_HIDDEN){
+    const all = Array.isArray(SITE.cats) ? SITE.cats : [];
+    const ti = all.findIndex(c => c && c.k === "tours"), tc = all[ti] || {};
+    const before = ti < 0 ? null : all.slice(0, ti).map(c => c && c.k);
+    const pos = before ? items.filter(x => before.indexOf(x.go.slice(4)) >= 0).length : items.length;
+    items.splice(pos, 0, { ic: tc.ic || sc.toursIc || "🚌", t: tc.t || sc.toursT || "기타투어", go:"#tours" });
+  }
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 «맨 앞»에 금색으로 도드라지게 둔다(사장님 2026-09-11, 전에는 맨 뒤) */
   items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true });
   /* 종류 칸은 감싸는 칸(.secw) 안에 넣고 아래에 지역 하위메뉴(.secdd)를 붙인다(사장님 2026-09-17).
