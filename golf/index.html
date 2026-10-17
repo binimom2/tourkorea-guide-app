@@ -2274,7 +2274,9 @@ function quoteSnapshot(){
     pax: LAST.pax, nights: n, tripDays: tripDays(n),
     route: ROUTE.map(r=>`${r.region} ${+r.nights||0}박`).join(' → ')||'-',
     flight: [amDepOn()?'한국 오전 출발':'한국 오후 출발', amRetOn()?'태국 오전 출국':''].filter(Boolean).join(' · '),   // 「야간」→「오후」(사장님 2026-09-11)
-    days: (()=>{ const hb=hotelByDate(); return dayState.map(st=>({
+    /* 차량 견적은 날마다 「지역 · 일정」 — plan 칸에 담아 수배요청서·관리 화면이 그대로 쓴다(사장님 2026-10-17) */
+    days: CARMODE ? carDaysForQuote(start).map(d=>({date:d.date,region:d.reg,hotel:'',course:'',holes:'',round:false,plan:d.items.join(' · ')||'자유 일정',we:false}))
+      : (()=>{ const hb=hotelByDate(); return dayState.map(st=>({
       date:st.date, region:st.region||'', course:st.course||'', holes:st.holes||'', round:!!st.round,
       hotel: hb[st.date]||'',   // 그날 자는 호텔(마지막 날은 빈칸)
       we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
@@ -2829,8 +2831,10 @@ function bookRows(Q){
   (Q.days||[]).forEach(d=>{
     const head=`${fmtDay(d.date)} ${d.region||''}`.trim();
     const mine=[];
+    /* 차량 견적 — 그날 일정 한 줄(공항 미팅·투어·샌딩) */
+    if(d.plan!=null&&d.plan!=='') mine.push({k:'d:'+d.date,kind:'',txt:d.plan,ph:'픽업 시간·장소 등'});
     /* 칸 안 예시 글(사장님 2026-09-21): 호텔·차량·가이드는 비움, 골프는 희망 티타임, 기타투어는 날짜·시간대 */
-    if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel,ph:''});
+    else if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel,ph:''});
     if(d.round&&d.course) mine.push({k:'g:'+d.date,kind:'골프',txt:`${d.course} ${d.holes||'18'}홀`,ph:'희망 티타임 (예: 9시 이전, 11시 이후 등)'});
     if(!mine.length) mine.push({k:'d:'+d.date,kind:'',txt:'라운딩 없음',ph:'이날 요청사항'});
     mine.forEach((m,i)=>rows.push(Object.assign(m,{head:i?'':head})));
@@ -2857,8 +2861,8 @@ function bookAgencyQuote(idx){
   m.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:860px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);">
     <div style="flex:1;overflow:auto;padding:22px 24px 8px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px;">
-        <div><div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700;">THAILAND GOLF</div>
-          <div style="font-size:23px;font-weight:800;letter-spacing:-.03em;margin-top:2px;">수배요청서</div></div>
+        <div><div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700;">${Q.kind==='car'?'THAILAND VEHICLE':'THAILAND GOLF'}</div>
+          <div style="font-size:23px;font-weight:800;letter-spacing:-.03em;margin-top:2px;">${Q.kind==='car'?'차량 수배요청서':'수배요청서'}</div></div>
         <div style="text-align:right;font-size:11.5px;color:#5E6F66;"><div style="font-size:13px;font-weight:800;color:#15211C;">${esc(Q.quoteNo)}</div>요청일 ${esc(again?String(Q.book.at||'').slice(0,10):iso(new Date()))}</div>
       </div>
       ${again?`<div style="margin-top:10px;padding:8px 11px;border-radius:8px;background:#e3f3e8;color:#1f6b3f;font-size:12.5px;font-weight:700;">✅ 접수된 수배요청서입니다 — 내용은 고칠 수 없습니다. 더 전하실 말씀은 보관함의 「💬 1:1 메시지 보내기」로 보내 주세요.${bookStepsHtml(Q.book)}</div>`:''}

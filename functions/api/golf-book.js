@@ -214,7 +214,8 @@ async function quoteOfRec(key, rec) {
     quoteNo: rec.agency.quoteNo, team: s(Q && Q.team, 60), start: s(Q && Q.start, 10), end: s(Q && Q.end, 10), pax,
     nights: num(Q && Q.nights), tripDays: num(Q && Q.tripDays), route: s(Q && Q.route, 120), flight: s(Q && Q.flight, 80),
     days: ((Q && Array.isArray(Q.days)) ? Q.days : []).slice(0, 40).map(d => ({
-      date: s(d.date, 10), region: s(d.region, 40), hotel: s(d.hotel, 120), course: s(d.course, 120), holes: s(d.holes, 4), round: !!d.round })),
+      date: s(d.date, 10), region: s(d.region, 40), hotel: s(d.hotel, 120), course: s(d.course, 120), holes: s(d.holes, 4), round: !!d.round, plan: s(d.plan, 200) })),
+    kind: (Q && Q.kind === 'car') ? 'car' : '',
     includes: ((Q && Q.includes && Array.isArray(Q.includes.customer)) ? Q.includes.customer : []).slice(0, 30).map(x => s(x, 300)).filter(Boolean),
     noHotel: !!(Q && Q.noHotel), noGuide: !!(Q && Q.noGuide), noVeh: !!(Q && Q.noVeh),
     perKrw, totalKrw: perKrw ? perKrw * pax : num(rec.total),
@@ -237,7 +238,7 @@ function cleanInv(x) {
       perKrw: amt(q.perKrw), totalKrw: amt(q.totalKrw),
       includes: lines(q.includes, 30), requests: lines(q.requests, 80),
       days: (Array.isArray(q.days) ? q.days : []).slice(0, 40).map(d => ({
-        date: day(d && d.date), region: s(d && d.region, 40), hotel: s(d && d.hotel, 120), course: s(d && d.course, 120), holes: s(d && d.holes, 4), round: !!(d && d.course) })),
+        date: day(d && d.date), region: s(d && d.region, 40), hotel: s(d && d.hotel, 120), course: s(d && d.course, 120), holes: s(d && d.holes, 4), round: !!(d && d.course), plan: s(d && d.plan, 200) })),
     },
     bank: s(x.bank, 600),
     dep: { per: amt(x.dep && x.dep.per), due: day(x.dep && x.dep.due) },

@@ -1696,7 +1696,8 @@ function bookDocHtml(b){
   const rows=[];
   (q.days||[]).forEach(d=>{
     const head=(dshort(d.date)+' '+(d.region||'')).trim(), mine=[];
-    if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel});
+    if(d.plan) mine.push({k:'d:'+d.date,kind:'',txt:d.plan});   // 차량 견적 — 그날 일정(2026-10-17)
+    else if(d.hotel) mine.push({k:'h:'+d.date,kind:'호텔',txt:d.hotel});
     if(d.round&&d.course) mine.push({k:'g:'+d.date,kind:'골프',txt:d.course+' '+(d.holes||'18')+'홀'});
     if(!mine.length) mine.push({k:'d:'+d.date,kind:'',txt:'라운딩 없음'});
     mine.forEach((m,i)=>rows.push(Object.assign(m,{head:i?'':head})));
@@ -1706,7 +1707,7 @@ function bookDocHtml(b){
     rows.push({k:x[1],head:x[0],kind:'',txt:String(hit).replace(/^[^-]+-\s*/,'').replace(/\s*\(확정 시[^)]*\)\s*$/,'')});
   });
   return '<div class="bkdoc">'
-    +'<div class="bkdoc-hd"><div><small>THAILAND GOLF</small><h2>수배요청서</h2></div>'
+    +'<div class="bkdoc-hd"><div><small>'+(q.kind==='car'?'THAILAND VEHICLE':'THAILAND GOLF')+'</small><h2>'+(q.kind==='car'?'차량 수배요청서':'수배요청서')+'</h2></div>'
       +'<div class="r"><b>'+esc(q.quoteNo||'')+'</b>접수 '+esc(bookWhen(b.at))+'<br>'+esc(b.no)+'</div></div>'
     +'<div class="bkdoc-info">'
       +'<span>여행사</span><b>'+esc((b.agency&&b.agency.company)||c.name||'')+((b.agency&&b.agency.contact)?' · '+esc(b.agency.contact):'')+'</b>'
