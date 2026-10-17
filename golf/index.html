@@ -1193,7 +1193,20 @@ function carBaseOf(v,nights){
   const b4=n4||(add?n3+add:0); if(!b4) return 0;
   return b4+add*(nights-4);
 }
-function carHasPick(){ return !CAR_NOAIR.in; }
+/* 견적서 일정표 줄 — [{date, reg:'방콕-파타야', items:['수완나폼 공항 미팅','방콕 시내투어',…]}] */
+function carDaysForQuote(start){
+  const dr=carDayRegions(); if(!start||!dr.length) return [];
+  return dr.map((regs,i)=>{
+    const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+i);
+    const items=[];
+    if(i===0&&!CAR_NOAIR.in) items.push('수완나폼 공항 미팅');
+    (CAR_PICKS[i]||[]).forEach(key=>{ const [r,id]=key.split('|'), t=carTours(r).find(x=>x.id===id); if(t) items.push(t.n); });
+    if(i===dr.length-1&&!CAR_NOAIR.out) items.push('수완나폼 공항 샌딩');
+    return {date:iso(d), reg:regs.join('-'), items};
+  });
+}
+/* 차량 견적서 불포함 사항 — 버스가 아니면 가이드도 */
+const CAR_EXCLUDES=['호텔','골프 그린피','관광지 입장료','식사','기사팁','기타 개인경비','항공','여행자보험'];
 /* 계산 — calc()의 차량 칸 대신 */
 function carLines(lines,pax,nights,amDep){
   if(carShort()) return;
@@ -2092,7 +2105,8 @@ function quoteIncludes(mode){
   if(CARMODE){
     /* 차량 견적 창 — 차종·대수 + 풀 사용 조건, 추가 일정은 이름만(사장님 2026-10-17) */
     const v=carVehicles().find(x=>x.id===CAR_VEH.id);
-    if(v) out.push(`차량 - ${v.n}${CAR_VEH.n>1?` ${CAR_VEH.n}대`:''} (풀 사용 조건, 공항 미팅·샌딩 포함${CAR_NOAIR.in||CAR_NOAIR.out?' · '+[CAR_NOAIR.in?'미팅':'',CAR_NOAIR.out?'샌딩':''].filter(Boolean).join('·')+' 제외':''})`);
+    const air=[CAR_NOAIR.in?'':'미팅',CAR_NOAIR.out?'':'샌딩'].filter(Boolean);
+    if(v) out.push(`차량 - ${v.n}${CAR_VEH.n>1?` ${CAR_VEH.n}대`:''} (풀 사용 조건, ${air.length?'공항 '+air.join('·')+' 포함':'공항 미팅·샌딩 없음'})`);
     const names=[];
     Object.keys(CAR_PICKS).sort((a,b)=>a-b).forEach(i=>(CAR_PICKS[i]||[]).forEach(key=>{ const [r,id]=key.split('|'), t=carTours(r).find(x=>x.id===id); if(t&&!names.includes(t.n)) names.push(t.n); }));
     if(names.length) out.push(`추가 일정 - ${names.join(', ')}`);
@@ -2209,9 +2223,13 @@ function quoteSnapshot(){
       we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
     })); })(),
     includes: { customer: quoteIncludes('customer'), internal: quoteIncludes('internal') },
+    /* 차량 견적서(사장님 2026-10-17) — 일정표를 「날짜 · 지역 · 일정」으로, 불포함은 차량용 목록 */
+    kind: CARMODE?'car':'',
+    carDays: CARMODE?carDaysForQuote(start):null,
+    carBus: CARMODE?!!(carVehicles().find(x=>x.id===CAR_VEH.id)||{}).bus:false,
     /* 밴(차량 없음 포함)인데 가이드를 안 골랐을 때만 불포함 사항에 빨간 「가이드」 — 버스는 로컬가이드가 늘 있으므로 제외(사장님 2026-09-15) */
-    noGuide: vehPlan().kind!=='bus' && !busGuideName() && !(useGuideOn()&&$('#guide').value),
-    noHotel: !useHotelOn(),   // 호텔·차량도 안 골랐으면 불포함 사항 맨 앞에 빨갛게(사장님 2026-09-15)
+    noGuide: !CARMODE && vehPlan().kind!=='bus' && !busGuideName() && !(useGuideOn()&&$('#guide').value),
+    noHotel: !CARMODE && !useHotelOn(),   // 호텔·차량도 안 골랐으면 불포함 사항 맨 앞에 빨갛게(사장님 2026-09-15) — 차량 견적서는 불포함 목록에 그냥 적는다
     noVeh: CARMODE?!CAR_VEH.id:!useVehOn(),
     fx: FX_RATE||0,
     fxSrc: FX_SRC||'',              // 환율 출처(자동이면 '하나은행 고시 현찰 살때 날짜', 코드관리 값이면 빈 칸)
@@ -2278,7 +2296,13 @@ function buildQuoteHtml(mode, Q){
   const route=Q.route, flight=Q.flight;
   const FX=Q.fx||0, QNO=Q.quoteNo||'';
 
-  const days=(Q.days||[]).map(st=>{
+  const CAR=Q.kind==='car';
+  const TDc='padding:7px 8px;border-bottom:1px solid #e7e3d8;font-weight:700;color:#15211C;';
+  const days=CAR ? (Q.carDays||[]).map(d=>`<tr>
+      <td style="${TDc}white-space:nowrap">${fmtDay(d.date)}</td>
+      <td style="${TDc}white-space:nowrap">${esc(d.reg)}</td>
+      <td style="${TDc}">${d.items.length?d.items.map(esc).join(' · '):'<span style="color:#7c867f">자유 일정</span>'}</td>
+    </tr>`).join('') : (Q.days||[]).map(st=>{
     const we=st.we;
     /* 인쇄해 보니 지역·호텔·「라운딩 없음」이 연해서 안 보임 → 골프장 이름과 같은 크기·진하기·색(사장님 2026-09-16) */
     const play=(st.round&&st.course)?`${esc(st.course)} <b>${esc(st.holes)}홀</b>`:'라운딩 없음';
@@ -2331,8 +2355,8 @@ function buildQuoteHtml(mode, Q){
   return `<div style="width:760px;box-sizing:border-box;background:#fff;padding:30px 32px 26px;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:#15211C;line-height:1.5">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #123A2B;padding-bottom:9px">
       <div>
-        <div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700">THAILAND GOLF</div>
-        <div style="font-size:25px;font-weight:800;letter-spacing:-.03em;margin-top:2px">골프 견적서</div>
+        <div style="font-size:10px;letter-spacing:.2em;color:#5E6F66;font-weight:700">${CAR?'THAILAND VEHICLE':'THAILAND GOLF'}</div>
+        <div style="font-size:25px;font-weight:800;letter-spacing:-.03em;margin-top:2px">${CAR?'차량 견적서':'골프 견적서'}</div>
       </div>
       <div style="text-align:right;font-size:11.5px;color:#5E6F66">
         ${QNO?`<div style="font-size:13px;font-weight:800;color:#15211C;letter-spacing:.02em">${esc(QNO)}</div>`:''}
@@ -2365,8 +2389,9 @@ function buildQuoteHtml(mode, Q){
         <thead><tr style="background:#F7F3E9">
           <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">날짜</th>
           <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">지역</th><!-- 지역·호텔 칸 분리(사장님 2026-09-15) -->
-          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">호텔</th>
-          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>
+          ${CAR?`<th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">일정</th>`
+          :`<th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">호텔</th>
+          <th style="padding:6px 8px;text-align:left;font-size:12.5px;letter-spacing:.1em;color:#5E6F66">골프장</th>`}
         </tr></thead>
         <tbody>${days}</tbody>
       </table>
@@ -2382,7 +2407,7 @@ function buildQuoteHtml(mode, Q){
     <div style="margin-top:12px">
       <div style="font-size:12px;font-weight:800;color:#123A2B;margin-bottom:6px">불포함 사항</div>
       <div style="font-size:13.5px;font-weight:700;color:#15211C"><!-- +1·진하게(사장님 2026-09-16) -->
-        <div style="padding:3px 0">${[Q.noHotel?'호텔':'',Q.noGuide?'가이드':'',Q.noVeh?'차량':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(', ')}</div>   <!-- 한 줄 가로 표기, 쉼표로(사장님 2026-09-15 저녁) · 안 고른 호텔·가이드·차량은 맨 앞에 빨갛게 -->
+        <div style="padding:3px 0">${CAR ? (Q.carBus?[]:['가이드']).concat(CAR_EXCLUDES).map(t=>esc(t)).join(', ') : [Q.noHotel?'호텔':'',Q.noGuide?'가이드':'',Q.noVeh?'차량':''].filter(Boolean).map(t=>`<span style="color:#c62828;font-weight:800">${t}</span>`).concat((Array.isArray(P.excludeNotes)?P.excludeNotes:QUOTE_EXCLUDES).filter(Boolean).map(t=>esc(t))).join(', ')}</div>   <!-- 한 줄 가로 표기, 쉼표로(사장님 2026-09-15 저녁) · 안 고른 호텔·가이드·차량은 맨 앞에 빨갛게 -->
       </div>
     </div>
     <!-- 추가 선택 사항(사장님 2026-10-06) — 포함 → 불포함 → 추가 선택 차례. 7번 기타(식사·투어)를 따로 보인다. 금액은 총액에 들어 있다 -->
@@ -2402,7 +2427,7 @@ function buildQuoteHtml(mode, Q){
         ? `${FX>0?`※ 한화는 1밧 = ${FX} 원${Q.fxSrc?`(${Q.fxSrc})`:''}으로 환산해 1인 요금을 천원 단위로 올린 뒤 인원수를 곱한 금액입니다.<br>`:''}※ 표시 금액은 THB 기준이며 항공료는 포함되지 않습니다.<br>`
         /* 손님용 안내 세 줄(사장님 2026-10-03, 첫 줄 문구 2026-10-05) */
         : `※ 표시 금액은 태국 바트 견적을 실시간 환율 적용한 원화 기준입니다.<br>`}
-      ※ 골프는 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>
+      ${CAR?'':'※ 골프는 태국 공휴일 · 토 · 일은 주말 요금이 적용됩니다.<br>'}
       ※ 최종 수배 요청 시 수배 당일 환율 적용으로 인보이스가 발급됩니다.
     </div>
   </div>`;
