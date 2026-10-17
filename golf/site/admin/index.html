@@ -3732,7 +3732,7 @@ function subCats(){
      tours    {지역: [{id, n:이름, p:{차량 id: 밧}}]}  — 날마다 고르는 추가 일정
    견적 창(golf/index.html)의 CAR_VEH_DEFAULT·CAR_TOURS_DEFAULT와 같은 기본값이어야 한다. */
 const CQ_VEH_DEFAULT=[
-  {id:'van9',n:'밴 9인승',seats:9},
+  {id:'van9',n:'밴 9인승',seats:9,golfMax:6},
   {id:'bus35',n:'버스 35인승',seats:35,bus:true},
   {id:'bus45',n:'버스 45인승',seats:45,bus:true}
 ];
@@ -3760,7 +3760,9 @@ function subCarQ(){
     +'<p class="desc">손님 사이트 차량 안내의 <b>⚡ 실시간 견적</b>(차량 견적 창)이 이 표로 계산합니다. 3박 미만은 견적이 나가지 않습니다.<br>'
     +'<b>금액 = 차량 기본요금 × 대수 + 체크한 추가 일정 × 대수</b> + (버스면) 로컬가이드 1명 비용. 적은 밧이 그대로 견적에 들어갑니다.</p>'
     +'<h3 style="margin:14px 0 6px;font-size:14px">① 차량 기본요금 <span class="rhint" style="font-size:11.5px">풀 사용 조건 · 공항 미팅·샌딩 포함 · 1대 기준 · 4박5일을 비우면 3박4일 + 1박 추가로 계산</span></h3>'
-    +'<div class="tblwrap"><table><thead><tr><th style="width:70px">순서</th><th style="width:170px">차종</th><th style="width:70px">좌석</th><th style="width:60px">버스</th>'
+    +'<div class="tblwrap"><table><thead><tr><th style="width:70px">순서</th><th style="width:170px">차종</th><th style="width:70px">좌석</th>'
+      /* 골프가 하루라도 들어가면 1대에 태우는 최대 인원(골프백 적재) — 비우면 밴 6명, 버스는 제한 없음(사장님 2026-10-17) */
+      +'<th style="width:80px" title="골프가 하루라도 포함되면 1대 최대 인원">골프 시 최대</th><th style="width:60px">버스</th>'
       +'<th style="width:110px">3박4일</th><th style="width:110px">4박5일</th><th style="width:110px">1박 추가</th>'
       /* 버스 + 로컬가이드 비용(사장님 2026-10-17) — 버스 줄만 쓴다. 가이드 1명 · 같은 박수 규칙 */
       +'<th style="width:110px;background:#EAF5EE">가이드 3박4일</th><th style="width:110px;background:#EAF5EE">가이드 4박5일</th><th style="width:110px;background:#EAF5EE">가이드 1박 추가</th>'
@@ -3768,6 +3770,7 @@ function subCarQ(){
     +V.map((v,i)=>'<tr><td>'+ord('veh',i,V.length)+'</td>'
       +'<td><input data-cq="vehicles.'+i+'.n" value="'+esc(v.n||'')+'" placeholder="밴 9인승"></td>'
       +'<td>'+num('vehicles.'+i+'.seats',v.seats,60,'9')+'</td>'
+      +'<td>'+num('vehicles.'+i+'.golfMax',v.golfMax,64,v.bus?'-':'6')+'</td>'
       +'<td style="text-align:center"><input type="checkbox" data-cq="vehicles.'+i+'.bus"'+(v.bus?' checked':'')+' title="버스 — 영어 로컬가이드 1명 자동" style="width:auto"></td>'
       +'<td>'+num('vehicles.'+i+'.n3',v.n3)+'</td><td>'+num('vehicles.'+i+'.n4',v.n4)+'</td><td>'+num('vehicles.'+i+'.add',v.add)+'</td>'
       +(v.bus
