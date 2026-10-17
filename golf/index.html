@@ -1212,17 +1212,11 @@ function carLines(lines,pax,nights,amDep){
     if(!p) lines.push({t:nm,s:`${ds.join('·')}일차 · 요금 미입력`,v:0,warn:1});
     else lines.push({t:nm,s:`${ds.join('·')}일차 · ${won(p)} × ${ds.length}회${u>1?` × ${u}대`:''}`,v:p*ds.length*u});
   });
-  /* 버스 — 영어 로컬가이드 1명(가이드 요금표, 지방 숙박비 포함). 기존 버스 동승 규칙과 같다 */
+  /* 버스 — 로컬가이드 1명. 관리 차종표의 「가이드 3박4일·4박5일·1박 추가」 칸(g3·g4·gadd, 사장님 2026-10-17) — 버스 대수와 무관하게 1명 */
   if(v.bus){
-    const types=guideTypesOrdered();
-    const gt=types.find(t=>guideRank(t)===2)||types.find(t=>/로컬|local/i.test(t))||'';
-    const G=(P.guidePeriods||{})[gt], gv=G?tierValue(G,nights,'bkk',amDep):null;
-    if(gv){
-      lines.push({t:`${gt} 1명 (버스 동승)`,s:`${won(gv.value)}${gv.extra?` (기본 ${won(gv.base)} +1박추가 ${won(gv.oneMore)}×${gv.extra})`:''}`,v:gv.value});
-      const lodge=+(((G||{})[GUIDE_LODGING_KEY]||{}).bkk)||0;
-      const regN=ROUTE.reduce((a,r)=>a+(isBkkRegion(r.region)?0:(+r.nights||0)),0);
-      if(lodge>0&&regN>0) lines.push({t:`${gt} · 지방 숙박비`,s:`방콕 외 ${regN}박 × ${won(lodge)}`,v:lodge*regN});
-    } else lines.push({t:'영어 로컬가이드 (버스 동승)',s:'요금 미입력',v:0,warn:1});
+    const g=carBaseOf({n3:v.g3,n4:v.g4,add:v.gadd},nights);
+    if(g) lines.push({t:'영어 로컬가이드 1명 (버스 동승)',s:`${nights}박 기준 · ${won(g)}`,v:g});
+    else lines.push({t:'영어 로컬가이드 1명 (버스 동승)',s:'요금 미입력 — 관리 「🚐 차량 견적 요금」 가이드 칸',v:0,warn:1});
   }
   /* 공항 미팅 아따비 — 공항 미팅을 뺀 게 아니면 */
   const tip=+P.airportTip||0;
