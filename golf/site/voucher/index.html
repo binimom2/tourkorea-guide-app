@@ -284,8 +284,23 @@ function render(v){
     if(/도착하지\s*못할|위약금/.test(t)) return "예약된 미팅 시간·장소에 나오지 않으시면 예약은 취소되며 규정에 따라 위약금이 부과됩니다.";
     return t.replace(/호텔\s*/g, "");
   };
-  const terms = String(c.terms || "").split(/\n/).map(t => t.trim())
-    .map(t => carOnly ? carTerm(t) : noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
+  /* 티켓·쇼·스파처럼 메뉴로 파는 종류만 담긴 바우처(사장님 2026-10-17) — 호텔용 줄을 입장·이용에 맞게 바꾼다 */
+  const tkOnly = !carOnly && shown.length > 0
+    && shown.every(x => ["hotels", "courses", "car"].indexOf(x[0].kind) < 0 && !/차량|골프|호텔/.test(x[0].kindT || ""));
+  const tkTerm = t => {
+    if(/프론트|여권/.test(t)) return "이용 당일 매장(입장) 카운터에 바우처를 제시해 주세요.";
+    if(/객실\s*요금|디파짓|침대\s*타입|객실\s*배정/.test(t)) return "";
+    if(/추가\s*인원/.test(t)) return "바우처에 표기된 인원·메뉴 외 추가 이용은 현장에서 별도로 결제하셔야 합니다.";
+    if(/도착하지\s*못할|위약금/.test(t)) return "예약된 날짜·시간에 방문하지 않으시면 예약은 취소되며 규정에 따라 위약금이 부과됩니다.";
+    return t.replace(/호텔\s*/g, "");
+  };
+  let terms = String(c.terms || "").split(/\n/).map(t => t.trim())
+    .map(t => carOnly ? carTerm(t) : tkOnly ? tkTerm(t) : noHotel ? t.replace(/^호텔\s*체크인\s*시/, "체크인 시") : t).filter(Boolean);
+  if(tkOnly){
+    /* 늦으면 이용 시간이 줄어든다는 줄은 원래 약관에 없어 하나 더 — 제시 줄 바로 뒤 */
+    const at = terms.findIndex(t => /카운터에 바우처/.test(t));
+    terms.splice(at < 0 ? 0 : at + 1, 0, "예약 시간 10분 전까지 도착해 주세요. 늦게 도착하시면 이용 시간이 줄어들 수 있습니다.");
+  }
   const co = enName(c.name);
   /* Confirm No.(빨강) — 품목마다 업체 컨펌번호를 적는다(사장님 2026-10-03, 골프도 호텔과 똑같이).
      호텔은 확정 칸(teeOk)이 곧 컨펌번호, 골프 등은 teeOk가 티업이라 따로 cfNo. 아무것도 안 적었으면 우리 확정번호 */
