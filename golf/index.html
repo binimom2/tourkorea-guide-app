@@ -1490,7 +1490,8 @@ function renderVehChoices(){
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const r=vehRuleFor(curPax()), ri=vehRules().indexOf(r);
   const hasVan=vehColumn('van')>=0, busCols=busColumns(), hasLugTable=((P.luggageVan||{}).legs||[]).length>0;
-  const vans=r?(+r.vans||1):1;
+  /* 「밴 대수」 0 = 그 인원 구간엔 밴 선택지를 안 띄운다(버스만, 사장님 2026-10-19). 비어 있으면 예전처럼 1대 */
+  const vans=r?((r.vans===0||r.vans==='0')?0:(+r.vans||1)):1;
   const opts=[];
   if(hasVan&&vans>0){
     opts.push({v:'van',t:vanLabel(vans)+((r&&r.lug&&hasLugTable)?' + 밴 1대 추가 (미·샌딩, 지역이동 날만)':''),rec:!(r&&r.rec==='bus')});   // 문구(사장님 2026-09-15 저녁)
