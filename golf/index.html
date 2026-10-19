@@ -3288,6 +3288,8 @@ function autoFold(activeId){
   const toTop=()=>{
     if(window.scrollY<=0) return;
     const a=(activeId&&document.getElementById(activeId))||document.activeElement;
+    /* 차량 견적 「4. 추가 일정」 체크는 칸(step)이 아니라 activeId가 없다 — 체크 하나 누를 때마다 맨 위로 튀었다(사장님 2026-10-19) */
+    if(!activeId&&a&&a.closest&&a.closest('.cm-block')) return;
     const bottom=(a&&a!==document.body)?a.getBoundingClientRect().bottom+window.scrollY:Infinity;
     if(bottom<=window.innerHeight) window.scrollTo({top:0});
   };
