@@ -937,7 +937,7 @@ function drawTripCal(){
   const y=tcMonth.getFullYear(), m=tcMonth.getMonth();
   $('#tcTitle').textContent=`${y}년 ${m+1}월`;
   const first=new Date(y,m,1), last=new Date(y,m+1,0);
-  const s=$('#startDate').value, e=$('#endDate').value;
+  const s=$('#startDate').value, e=$('#endDate').value, tdy=iso(new Date());
   const cells=[];
   for(let i=0;i<first.getDay();i++) cells.push('<span></span>');
   for(let d=1;d<=last.getDate();d++){
@@ -946,9 +946,10 @@ function drawTripCal(){
     if(tcHalf){ if(ds===tcHalf) cls.push('edge'); }
     else if(s&&e){ if(ds===s||ds===e) cls.push('edge'); else if(ds>s&&ds<e) cls.push('mid'); }
     else if(ds===s) cls.push('edge');
-    cells.push(`<button type="button" data-td="${ds}" class="${cls.join(' ')}">${d}</button>`);
+    cells.push(`<button type="button" data-td="${ds}" class="${cls.join(' ')}"${ds<tdy?' disabled':''}>${d}</button>`);   // 지난 날은 막는다(사장님 2026-10-19)
   }
   $('#tcGrid').innerHTML=cells.join('');
+  const pv=$('#tcPrev'); if(pv){ const t=new Date(); pv.disabled=(y*12+m)<=(t.getFullYear()*12+t.getMonth()); }   // 이번 달 앞으로는 넘기지 않는다
   $('#tcFoot').textContent=tcHalf?'한국에 돌아오는 날(도착일)을 선택해 주세요':'출발일을 선택해 주세요';
 }
 /* 두 날을 누르면 앞날=출발일, 뒷날=귀국일 — 뒷날을 먼저 눌러도 된다(사장님 2026-10-19) */
@@ -3367,7 +3368,7 @@ document.addEventListener('click',e=>{
   // 출발·귀국 달력판 — 단추로 열고 닫고, 날짜를 누르고, 바깥을 누르면 닫힌다
   if(e.target.closest('#dateBtn')){ const c=$('#tripCal'); if(c.hidden) openTripCal(); else closeTripCal(); return; }
   const td=e.target.closest('[data-td]');
-  if(td){ tripCalPick(td.dataset.td); return; }
+  if(td){ if(!td.disabled) tripCalPick(td.dataset.td); return; }
   if(e.target.id==='tcPrev'){ tcMonth.setMonth(tcMonth.getMonth()-1); drawTripCal(); return; }
   if(e.target.id==='tcNext'){ tcMonth.setMonth(tcMonth.getMonth()+1); drawTripCal(); return; }
   if(!e.target.closest('#tripCal')) closeTripCal();

@@ -2279,8 +2279,7 @@ function drawCal(){
   $("#qpCalTitle").textContent = y + "년 " + (m + 1) + "월";
   const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
   const tdy = today(), inn = $("#qpDate").value;
-  /* 체크아웃을 고르는 중이면 체크인 다음날부터 고를 수 있다 */
-  const min = calHalf ? dadd(calHalf, 1) : tdy;
+  const min = tdy;   // 지난 날만 막는다 — 체크인 앞날도 눌러 기간을 잡을 수 있게(사장님 2026-10-19)
   const cells = [];
   for(let i = 0; i < first.getDay(); i++) cells.push("<span></span>");
   /* 골프장 휴장 요일(관리 화면에서 체크, courses[].closed = [0 일 … 6 토]) — 그 요일은 ✕로 막는다(사장님 2026-09-17) */
