@@ -1002,7 +1002,7 @@ function vehicleCard(){
      견적기는 경로에서 공항→첫 지역→…→마지막 지역→공항 구간을 뽑아 줄마다 요금을 더한다(방향 무시).
      견적 인원이 「노출 인원」 범위일 때만 견적기 차량 칸 아래에 「＋ 미팅샌딩 짐밴」 체크가 나온다.
      옛 「수송밴」 단건 요금(G.transfers)은 어디서도 안 쓰여 화면에서 뺐다(자료는 그대로 둠). */
-  c.appendChild(el('div','mini','· 미팅샌딩 짐밴 (구간별 1회 요금)'));
+  { const t=el('div','mini'); t.innerHTML='· <b style="color:#c62828">미팅샌딩 짐밴</b> (구간별 1회 요금)'; c.appendChild(t); }   // 빨간 글자(사장님 2026-10-19)
   const LV=(G.luggageVan=G.luggageVan||{legs:[],paxMin:null,paxMax:null});
   const lbox=el('div');
   const lhint=el('div'); lhint.style.cssText='font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.5;';
