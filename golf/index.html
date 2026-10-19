@@ -1217,7 +1217,8 @@ function carRenderInner(){
     const lugRec=carLugRec(cv), lugN=lugLegsOfRoute().length;
     const lugRow=lugRec?'<label class="cm-ck" style="font-size:13.5px;font-weight:800"><input type="checkbox" data-cmlug'+(carLugOn(cv)?' checked':'')+'> 밴 1대 추가 (미·샌딩, 지역이동 날만)'
         +(lugN?' <span style="color:#0b3d91">('+lugN+'회)</span>':'')+' <span style="color:#c62828">추천</span></label>':'';
-    const busGRow=cv&&cv.bus?'<div class="cm-cnt">로컬가이드 1명 '
+    const busGRow=cv&&cv.bus?'<div style="color:#c62828;font-weight:800;font-size:13.5px">* 태국 법규상 버스 운행 시 로컬 가이드 1명이 의무적으로 동승해야 합니다.</div>'   // 골프 견적 5번과 같은 문구(사장님 2026-10-19)
+        +'<div class="cm-cnt">로컬가이드 1명 '
         +[['en','영어 가능'],['ko','한국어 가능']].map(([k,l])=>'<label class="cm-ck" style="display:inline-flex"><input type="radio" name="cmBusG" data-cmbg="'+k+'"'+(CAR_OPT.busG===k?' checked':'')+'> '+l+'</label>').join(' ')+'</div>':'';
     /* 고른 차종 바로 아래에 설명·사진·대수·안내(골프 견적 5번처럼), 나머지 차종은 그 아래(사장님 2026-10-17) */
     const info=cv?'<div class="cm-vinfo">'
