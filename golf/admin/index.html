@@ -88,14 +88,16 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);-
 .savebar button:disabled{opacity:.5;cursor:default}
 /* 요금표(차량·핸들링·가이드·규칙) — 사이트 관리 「🚐 차량 견적 요금」 표와 같은 모양(사장님 2026-10-19 「차량 견적 디자인이 더 맘에 든다」):
    둥근 테두리 틀 · 옅은 초록 머리줄(작은 회색 굵은 글자) · 줄마다 가는 선 · 둥근 흰 입력칸 */
-.gtwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:6px}
-table.gt{border-collapse:collapse;width:100%}
+/* 관리 화면은 간략하게 한눈에(사장님 2026-10-19) — 표·칸은 글자 폭만큼만, 넓게 늘이지 않는다 */
+.gtwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:6px;width:fit-content;max-width:100%}
+table.gt{border-collapse:collapse;width:auto}
 table.gt th,table.gt td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle}
 table.gt th{background:rgba(18,58,43,.06);font-size:11.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 table.gt tr:last-child td{border-bottom:0}
 table.gt td:first-child{font-size:13px;font-weight:700;white-space:nowrap}
-table.gt input:not([type=checkbox]):not([type=radio]),table.gt select{width:100%;font:inherit;font-size:13.5px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:#000}
+table.gt input:not([type=checkbox]):not([type=radio]),table.gt select{width:96px;font:inherit;font-size:13.5px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:#000}
 table.gt input:focus,table.gt select:focus{outline:2px solid var(--marigold);outline-offset:0}
+.ptable input.pin:not([inputmode]){width:180px}
 .noauth{max-width:420px;margin:80px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px}
 /* 탭바 + 코드관리 */
 .tabbar{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--line)}
@@ -132,6 +134,14 @@ table.gt input:focus,table.gt select:focus{outline:2px solid var(--marigold);out
 .ptable input.pin{min-width:96px}
 .ptable input.pin[inputmode]{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--fairway)}
 .ptable tr.plodge td{background:#fff8e6!important;border-top:2px solid var(--marigold)}
+/* 가이드·핸들링 표도 차량 견적 요금표 모양 — 둥근 틀·초록 머리줄·흰 둥근 칸, 폭은 글자만큼(사장님 2026-10-19 「간략하게 한눈에」) */
+.ptable{width:auto;max-width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.ptable thead th{background:#EEF2EF;font-size:11.5px;font-weight:800;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);letter-spacing:0}
+.ptable tbody tr:last-child td{border-bottom:0}
+.ptable tbody tr:nth-child(even) td{background:transparent}
+.ptable td.pname{color:var(--ink);font-size:13px}
+.ptable input.pin{width:96px;min-width:0;background:#fff;color:#000;padding:7px 8px}
+.ptable input.pin:not([inputmode]){width:180px}
 /* 사이트 관리에 끼워 넣었을 때(.embed)는 팝업 대신 화면 전체 폭·전체 높이의 판으로 편다 —
    팝업은 iframe 높이 안에 갇혀 표를 조금씩만 볼 수 있었다. 바깥 페이지가 길어지며 통째로 보인다. */
 .embed #rateModal{position:static!important;padding:0!important;background:transparent!important;display:block}
@@ -904,14 +914,16 @@ function vehicleCard(){
   /* 표 두 개 — 골프 포함(골프 실시간 견적·차량 견적 「골프 포함」) / 골프 없음(차량 견적 「골프 없음」, 사장님 2026-10-19) */
   const ruleTable=(key,title)=>{
   { const t=el('div','mini'); t.innerHTML=title.replace(/골프 (포함|없음)/,'<b style="color:#c62828">골프 $1</b>'); c.appendChild(t); }   // 「골프 포함」「골프 없음」 빨갛게(사장님 2026-10-19)
-  const rwrap=el('div','gtwrap'); c.appendChild(rwrap);
+  /* 숫자 몇 자리뿐인 표라 글자 폭만큼만(사장님 2026-10-19 「인원은 한 칸 정도인데 칸이 너무 크다」) */
+  const rwrap=el('div','gtwrap'); rwrap.style.display='table'; c.appendChild(rwrap);
   const drawRules=()=>{
     const RS=(G[key]=G[key]||[]);
     rwrap.innerHTML='';
-    const t=document.createElement('table'); t.className='gt'; t.style.minWidth='auto';
+    const t=document.createElement('table'); t.className='gt'; t.style.cssText='min-width:auto;width:auto';
     t.innerHTML='<thead><tr><th>인원 최소</th><th>인원 최대</th><th>밴 대수</th><th>짐밴 포함</th><th>버스 선택 가능</th><th>기본 추천</th><th></th></tr></thead>';
     const tb=document.createElement('tbody');
     const num=(o,k,ph)=>{ const i=document.createElement('input'); i.type='number'; i.min='0'; i.className='n'; i.placeholder=ph||''; i.value=o[k]==null?'':o[k];
+      i.style.cssText='width:'+(k==='paxMax'?'118px':'62px')+';text-align:center';
       i.oninput=()=>{ const v=i.value.trim(); o[k]=v===''?null:Number(v); _touch(); }; return i; };
     const chk=(o,k)=>{ const i=document.createElement('input'); i.type='checkbox'; i.checked=!!o[k]; i.onchange=()=>{ o[k]=i.checked; _touch(); }; return i; };
     RS.forEach((r,i)=>{
@@ -1027,22 +1039,27 @@ function vehicleCard(){
   const nta=document.createElement('textarea'); nta.rows=2; nta.value=LV.note||''; nta.placeholder='짐밴이 추천된 인원이 짐밴을 뺐을 때 보이는 문구. 비우면 안 보임';
   nta.style.cssText='flex:1;resize:vertical;font-weight:600;'+IN2;
   nta.oninput=()=>{ LV.note=nta.value; _touch(); };
+  /* 안내 문구 칸도 글 길이만큼만 높게 */
+  nta.rows=1; const fitTa=()=>{ nta.style.height='auto'; nta.style.height=(nta.scrollHeight+2)+'px'; };
+  nta.addEventListener('input',fitTa); requestAnimationFrame(fitTa);
   nrow.appendChild(nta); nrow.style.marginTop='12px';
   /* 차례(사장님 2026-10-19): 요금 표가 위, 안내 문구는 아래. 표는 다른 요금표와 같은 모양(.gt) */
   const legsBox=el('div');
   const drawLegs=()=>{
     legsBox.innerHTML='';
-    const wrap=el('div','gtwrap'); wrap.style.maxWidth='520px';
-    const t=document.createElement('table'); t.className='gt';
-    t.innerHTML='<thead><tr><th>구간</th><th style="width:130px;text-align:right">1회 요금</th><th style="width:36px"></th></tr></thead>';
+    /* 내용이 짧으면 표도 짧게 — 글자 폭만큼만(사장님 2026-10-19) */
+    const wrap=el('div','gtwrap'); wrap.style.display='table';
+    const t=document.createElement('table'); t.className='gt'; t.style.width='auto';
+    t.innerHTML='<thead><tr><th>구간</th><th style="text-align:right">1회 요금</th><th></th></tr></thead>';
     const tb=document.createElement('tbody');
     (LV.legs||[]).forEach((g,i)=>{
       const tr=document.createElement('tr');
       const td=n=>{ const d=document.createElement('td'); d.appendChild(n); tr.appendChild(d); return d; };
       const nm=document.createElement('input'); nm.type='text'; nm.value=g.label||''; nm.placeholder='구간 (예: 공항-방콕)';
+      nm.style.width='170px';
       nm.oninput=()=>{ g.label=nm.value; _touch(); };
       const am=document.createElement('input'); am.type='text'; am.className='n'; am.value=(g.amount==null?'':g.amount); am.placeholder='1회 요금';
-      am.style.textAlign='right';
+      am.style.cssText='text-align:right;width:96px';
       am.oninput=()=>{ const v=am.value.trim(); g.amount = v===''?null:Number(v.replace(/,/g,'')); _touch(); };
       const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
       x.onclick=()=>{ LV.legs.splice(i,1); _touch(); drawLegs(); };
