@@ -1385,7 +1385,9 @@ function syncBusGuide(){
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const cur=sel.value;
   /* 선택지 글자는 코드관리 가이드 라벨(「로컬가이드(한국어가능) 1일당 약 15만원」)이 있으면 그것, 없으면 종류 이름(사장님 2026-09-15). 값은 종류 이름 그대로 */
-  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideOptLabel(t,types))}</option>`).join('');
+  /* 영어 로컬은 「(기본)」, 한국어 로컬은 부드럽게 「(소정의 추가 요금)」(사장님 2026-10-19) */
+  const tail=t=>guideRank(t)===2?' (기본)':guideRank(t)===1?' (소정의 추가 요금)':'';
+  sel.innerHTML=types.map(t=>`<option value="${esc(t)}">${esc(guideOptLabel(t,types)+tail(t))}</option>`).join('');
   sel.value=(cur&&types.includes(cur))?cur
     :(types.find(t=>guideRank(t)===2)                                   // 기본은 저렴한 영어 로컬(사장님 2026-09-15)
       ||((g.busGuideType&&types.includes(g.busGuideType))?g.busGuideType:'')
