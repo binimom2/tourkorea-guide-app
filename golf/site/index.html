@@ -2318,10 +2318,12 @@ function calPick(s){
   if(qpKind !== "hotels"){
     $("#qpDate").value = s; closeCal(); drawDateBtn(); qpCalc(); return;
   }
-  if(!calHalf || s <= calHalf){ calHalf = s; drawCal(); return; }  // 체크인 고르기(앞날을 누르면 다시 잡는다)
-  $("#qpDate").value = calHalf;
-  qpCheckout = s;
-  qpNights = Math.max(1, Math.min(30, dgap(calHalf, s)));   // 박수는 고른 기간에서 저절로 나온다
+  if(!calHalf || s === calHalf){ calHalf = s; drawCal(); return; }  // 첫 번째 날
+  // 두 날 중 앞날=체크인, 뒷날=체크아웃 — 뒷날을 먼저 눌러도 된다(사장님 2026-10-19)
+  const a = s < calHalf ? s : calHalf, b = s < calHalf ? calHalf : s;
+  $("#qpDate").value = a;
+  qpCheckout = b;
+  qpNights = Math.max(1, Math.min(30, dgap(a, b)));   // 박수는 고른 기간에서 저절로 나온다
   closeCal(); drawDateBtn(); drawTriple(); qpCalc();
 }
 function openPanel(x, kind){
