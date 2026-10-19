@@ -5497,7 +5497,12 @@ function syncVendorDeposit(sectionKey,row){
     keep.add(lid);
     const dRow={date:p.date||_bahtRowDate(sectionKey,row),who:row[cfg.nameField]||'',acc:cfg.acc,currency:'THB',amount:-Math.abs(amt),summary:p.memo||'',linkedRowId:lid};
     const idx=dArr.findIndex(d=>d.linkedRowId===lid);
-    if(idx>=0) dArr[idx]=dRow; else dArr.push(dRow);
+    if(idx>=0){ dArr[idx]=dRow; return; }
+    /* v24까지는 연동 줄을 Edit 하면 연결이 끊겨(연결 없는 줄로 남음) 여기서 같은 지불 줄을 하나 더 만들었다 — 중복.
+       같은 업체·ACC·금액의 연결 없는 줄이 있으면 새로 만들지 않고 그 줄을 다시 잇는다(고친 날짜·비고는 그대로 살림) */
+    const j=dArr.findIndex(d=>!d.linkedRowId&&d.acc===cfg.acc&&String(d.who||'')===String(dRow.who)&&Math.abs(parseFloat(d.amount)||0)===Math.abs(amt));
+    if(j>=0){ dArr[j]=Object.assign({},dArr[j],{linkedRowId:lid}); delete dArr[j]._id; if(dArr[j].summary&&!p.memo) p.memo=dArr[j].summary; return; }
+    dArr.push(dRow);
   });
   // 이 줄에 연동돼 있었는데 지금 목록엔 없는 지불 → 입출금에서도 제거
   for(let i=dArr.length-1;i>=0;i--){
