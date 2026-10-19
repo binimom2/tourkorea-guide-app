@@ -1027,27 +1027,34 @@ function vehicleCard(){
   const nta=document.createElement('textarea'); nta.rows=2; nta.value=LV.note||''; nta.placeholder='짐밴이 추천된 인원이 짐밴을 뺐을 때 보이는 문구. 비우면 안 보임';
   nta.style.cssText='flex:1;resize:vertical;font-weight:600;'+IN2;
   nta.oninput=()=>{ LV.note=nta.value; _touch(); };
-  nrow.appendChild(nta); lbox.appendChild(nrow);
+  nrow.appendChild(nta); nrow.style.marginTop='12px';
+  /* 차례(사장님 2026-10-19): 요금 표가 위, 안내 문구는 아래. 표는 다른 요금표와 같은 모양(.gt) */
   const legsBox=el('div');
   const drawLegs=()=>{
     legsBox.innerHTML='';
-    (LV.legs||[]).forEach((t,i)=>{
-      const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;';
-      const nm=document.createElement('input'); nm.type='text'; nm.value=t.label||''; nm.placeholder='구간 (예: 공항-방콕)';
-      nm.style.cssText='flex:1;'+IN2;
-      nm.oninput=()=>{ t.label=nm.value; _touch(); };
-      const am=document.createElement('input'); am.type='text'; am.className='n'; am.value=(t.amount==null?'':t.amount); am.placeholder='1회 요금';
-      am.style.cssText='width:110px;text-align:right;'+IN2;
-      am.oninput=()=>{ const v=am.value.trim(); t.amount = v===''?null:Number(v.replace(/,/g,'')); _touch(); };
+    const wrap=el('div','gtwrap'); wrap.style.maxWidth='520px';
+    const t=document.createElement('table'); t.className='gt';
+    t.innerHTML='<thead><tr><th>구간</th><th style="width:130px;text-align:right">1회 요금</th><th style="width:36px"></th></tr></thead>';
+    const tb=document.createElement('tbody');
+    (LV.legs||[]).forEach((g,i)=>{
+      const tr=document.createElement('tr');
+      const td=n=>{ const d=document.createElement('td'); d.appendChild(n); tr.appendChild(d); return d; };
+      const nm=document.createElement('input'); nm.type='text'; nm.value=g.label||''; nm.placeholder='구간 (예: 공항-방콕)';
+      nm.oninput=()=>{ g.label=nm.value; _touch(); };
+      const am=document.createElement('input'); am.type='text'; am.className='n'; am.value=(g.amount==null?'':g.amount); am.placeholder='1회 요금';
+      am.style.textAlign='right';
+      am.oninput=()=>{ const v=am.value.trim(); g.amount = v===''?null:Number(v.replace(/,/g,'')); _touch(); };
       const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
       x.onclick=()=>{ LV.legs.splice(i,1); _touch(); drawLegs(); };
-      row.appendChild(nm); row.appendChild(am); row.appendChild(x); legsBox.appendChild(row);
+      td(nm); td(am); td(x).style.textAlign='center';
+      tb.appendChild(tr);
     });
+    t.appendChild(tb); wrap.appendChild(t); legsBox.appendChild(wrap);
     const add=el('button','btn ghost sm','＋ 구간 추가');
     add.onclick=()=>{ (LV.legs=LV.legs||[]).push({label:'',amount:null}); _touch(); drawLegs(); };
     legsBox.appendChild(add);
   };
-  drawLegs(); lbox.appendChild(legsBox); c.appendChild(lbox);
+  drawLegs(); lbox.appendChild(legsBox); lbox.appendChild(nrow); c.appendChild(lbox);
   return c;
 }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
