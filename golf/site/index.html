@@ -1788,7 +1788,7 @@ function closeQuoteModal(){
   try{ $("#qFrame").contentWindow.postMessage({ type:"tk-quote-fresh" }, location.origin); }catch(e){}
 }
 $("#qClose").onclick = closeQuoteModal;
-$("#qModal").addEventListener("click", e => { if(e.target === e.currentTarget) closeQuoteModal(); });
+/* 바탕을 눌러도 닫지 않는다 — 닫으면 입력이 다 지워져서(사장님 2026-10-19). 닫기는 ✕ 단추로만 */
 document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#qModal").hidden) closeQuoteModal(); });
 function drawSectors(){
   const items = catList().map(c => ({ ic: c.ic || "", t: c.t || c.k, go: "cat:" + c.k }));
