@@ -3763,7 +3763,8 @@ function subCarQ(){
     +'<h3 style="margin:14px 0 6px;font-size:14px">① 차량 기본요금 <span class="rhint" style="font-size:11.5px">풀 사용 조건 · 공항 미팅·샌딩 포함 · 1대 기준 · 4박5일을 비우면 3박4일 + 1박 추가로 계산</span></h3>'
     +'<div class="tblwrap"><table><thead><tr><th style="width:70px">순서</th><th style="width:170px">차종</th><th style="width:70px">좌석</th>'
       /* 골프가 하루라도 들어가면 1대에 태우는 최대 인원(골프백 적재) — 비우면 밴 6명, 버스는 제한 없음(사장님 2026-10-17) */
-      +'<th style="width:80px" title="골프가 하루라도 포함되면 1대 최대 인원">골프 시 최대</th><th style="width:60px">버스</th>'
+      /* 「골프 시 최대」 칸은 뺐다 — 인원 제한은 견적 요금표 관리 → 차량 요금 「인원별 노출 규칙」(골프 포함/골프 없음) 표가 정한다(사장님 2026-10-19) */
+      +'<th style="width:60px">버스</th>'
       +'<th style="width:110px">3박4일</th><th style="width:110px">4박5일</th><th style="width:110px">1박 추가</th>'
       /* 버스 + 로컬가이드 비용(사장님 2026-10-17) — 버스 줄만 쓴다. 가이드 1명 · 같은 박수 규칙 */
       +'<th style="width:110px;background:#EAF5EE">영어 가이드 3박4일</th><th style="width:110px;background:#EAF5EE">영어 가이드 4박5일</th><th style="width:110px;background:#EAF5EE">영어 가이드 1박 추가</th>'
@@ -3773,7 +3774,6 @@ function subCarQ(){
     +V.map((v,i)=>'<tr><td>'+ord('veh',i,V.length)+'</td>'
       +'<td><input data-cq="vehicles.'+i+'.n" value="'+esc(v.n||'')+'" placeholder="밴 9인승"></td>'
       +'<td>'+num('vehicles.'+i+'.seats',v.seats,60,'9')+'</td>'
-      +'<td>'+num('vehicles.'+i+'.golfMax',v.golfMax,64,v.bus?'-':'6')+'</td>'
       +'<td style="text-align:center"><input type="checkbox" data-cq="vehicles.'+i+'.bus"'+(v.bus?' checked':'')+' title="버스 — 영어 로컬가이드 1명 자동" style="width:auto"></td>'
       +'<td>'+num('vehicles.'+i+'.n3',v.n3)+'</td><td>'+num('vehicles.'+i+'.n4',v.n4)+'</td><td>'+num('vehicles.'+i+'.add',v.add)+'</td>'
       +(v.bus

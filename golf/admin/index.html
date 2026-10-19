@@ -551,6 +551,12 @@ function normalize(d){
     {paxMin:9, paxMax:14,  vans:2,lug:false,bus:true,rec:'van'},
     {paxMin:15,paxMax:null,vans:2,lug:true, bus:true,rec:'bus'}
   ];
+  /* 차량 견적 창 「골프 없음」일 때 규칙(사장님 2026-10-19) — 견적기 VEH_RULES_NOGOLF_DEFAULT와 같은 값 */
+  if(!Array.isArray(g.vehicleRulesNoGolf)||!g.vehicleRulesNoGolf.length) g.vehicleRulesNoGolf=[
+    {paxMin:1, paxMax:9,   vans:1,lug:false,bus:true,rec:'van'},
+    {paxMin:10,paxMax:18,  vans:2,lug:false,bus:true,rec:'van'},
+    {paxMin:19,paxMax:null,vans:2,lug:false,bus:true,rec:'bus'}
+  ];
   /* regions(골프장·호텔 요금줄)는 이 화면 몫이 아니다 — 사이트 관리가 넣고, 저장 때 서버 것을 그대로 살린다(NOT_MINE) */
   return g;
 }
@@ -704,6 +710,9 @@ function openVgEditor(gs, gi, onDone){
     ${F('설명 <span style="color:#2e7d32">· 견적 화면 차량 이름 아래와 견적서 차량 줄에 함께 나갑니다</span>',
         `<textarea id="vgDesc" rows="2" style="${IN}resize:vertical;" placeholder="예: 8인 골프팀은 골프백 적재로 실제 탑승 인원 최대 6~7명">${escapeHtml(g.desc||'')}</textarea>`,
         '손님이 보는 글입니다. 내부 메모는 아래 「내부 메모」에 적으세요.')}
+    ${F('설명 — 골프 없을 때 <span style="color:#2e7d32">· 차량 견적 「골프 없음」에서 위 설명 대신 나갑니다</span>',
+        `<textarea id="vgDescNG" rows="2" style="${IN}resize:vertical;" placeholder="예: 골프백 없이 최대 9명 탑승">${escapeHtml(g.descNoGolf||'')}</textarea>`,
+        '비우면 위 설명이 그대로 나갑니다.')}
     <div style="display:flex;gap:8px;">
       <div style="flex:1;">${F('인승',`<input id="vgSeats" type="number" min="1" style="${IN}" value="${g.seats==null?'':g.seats}" placeholder="12">`)}</div>
       <div style="flex:1;">${F('최대 탑승',`<input id="vgMax" type="number" min="1" style="${IN}" value="${g.maxPax==null?'':g.maxPax}" placeholder="7">`,'이 인원을 넘으면 다음 대')}</div>
@@ -777,6 +786,7 @@ function openVgEditor(gs, gi, onDone){
     g.imgs=[0,1,2].map(i=>v('vgImg'+i)).filter(Boolean);                // 차량 사진 최대 3장(사장님 2026-09-15)
     g.img=g.imgs[0]||'';                                                // 첫 장은 옛 칸(img)에도 — 옛 화면 호환
     g.desc=v('vgDesc');                                                 // 손님에게 보이는 설명글(사장님 2026-09-14)
+    g.descNoGolf=v('vgDescNG');                                         // 차량 견적 「골프 없음」일 때 설명(사장님 2026-10-19)
     const s=v('vgSeats'), m=v('vgMax');
     g.seats = s===''?null:Number(s);
     g.maxPax= m===''?null:Number(m);
@@ -878,13 +888,15 @@ function vehicleCard(){
 
   /* 인원별 노출 규칙(사장님 2026-09-15) — 견적기 5번에 인원 구간마다 어떤 구성을 보여주고 무엇을 추천할지.
      밴 요금 = 경로에 맞는 밴 열 기간요금 × 대수, 버스 = 버스 열 기간요금, 짐밴 = 아래 구간별 1회 요금. */
-  c.appendChild(el('div','mini','· 인원별 노출 규칙 (실시간 견적 차량 선택)'));
   const rhint=el('div'); rhint.style.cssText='font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.5;';
   rhint.textContent='견적 인원이 어느 줄에 들면 그 줄의 구성(밴 N대, 짐밴 포함)이 추천으로 기본 선택되고, 버스는 「버스 선택 가능」이면 함께 나옵니다. 손님은 「＋ 차량 추가 선택」으로 밴 1대·짐밴을 더 담을 수 있습니다. 최대 인원을 비우면 그 이상 전부.';
   c.appendChild(rhint);
+  /* 표 두 개 — 골프 포함(골프 실시간 견적·차량 견적 「골프 포함」) / 골프 없음(차량 견적 「골프 없음」, 사장님 2026-10-19) */
+  const ruleTable=(key,title)=>{
+  c.appendChild(el('div','mini',title));
   const rwrap=el('div','gtwrap'); c.appendChild(rwrap);
   const drawRules=()=>{
-    const RS=(G.vehicleRules=G.vehicleRules||[]);
+    const RS=(G[key]=G[key]||[]);
     rwrap.innerHTML='';
     const t=document.createElement('table'); t.className='gt'; t.style.minWidth='auto';
     t.innerHTML='<thead><tr><th>인원 최소</th><th>인원 최대</th><th>밴 대수</th><th>짐밴 포함</th><th>버스 선택 가능</th><th>기본 추천</th><th></th></tr></thead>';
@@ -912,8 +924,11 @@ function vehicleCard(){
   drawRules();
   const addRule=el('button','btn ghost sm','＋ 인원 구간 추가');
   addRule.style.cssText='margin:6px 0 14px;';
-  addRule.onclick=()=>{ (G.vehicleRules=G.vehicleRules||[]).push({paxMin:null,paxMax:null,vans:1,lug:false,bus:true,rec:'van'}); _touch(); drawRules(); };
+  addRule.onclick=()=>{ (G[key]=G[key]||[]).push({paxMin:null,paxMax:null,vans:1,lug:false,bus:true,rec:'van'}); _touch(); drawRules(); };
   c.appendChild(addRule);
+  };
+  ruleTable('vehicleRules','· 인원별 노출 규칙 — 골프 포함 (실시간 견적 · 차량 견적 「골프 포함」)');
+  ruleTable('vehicleRulesNoGolf','· 인원별 노출 규칙 — 골프 없음 (차량 견적 「골프 없음」)');
 
   // 지역 조합별 기간 요금표
   c.appendChild(el('div','mini','· 기간별 요금'));
