@@ -521,7 +521,13 @@ function normalize(d){
     if(g.guidePeriods['로컬가이드']){ g.guidePeriods[LG_KO]=g.guidePeriods['로컬가이드']; delete g.guidePeriods['로컬가이드']; }
     (g.vehicleGroups||[]).forEach(v=>{ if(v&&v.busGuideType==='로컬가이드') v.busGuideType=LG_KO; });
   }
-  if(!g.guideTypes.includes(LG_EN)) g.guideTypes.push(LG_EN);
+  /* 영어 로컬 열이 하나도 없을 때만 빈 「영어만」 열을 만든다 — 「로컬가이드(영어가능)」이 있는데도 매번 다시 생겨
+     지워도 되살아나던 중복 열(사장님 2026-10-19) */
+  const isEnLocal=t=>/로컬|local/i.test(t)&&/영어|english|eng/i.test(t);
+  if(!g.guideTypes.some(isEnLocal)) g.guideTypes.push(LG_EN);
+  /* 버스 열의 기본 동승 가이드가 없는 종류(지운 열)를 가리키면 영어 로컬로 옮긴다 */
+  { const en=g.guideTypes.find(isEnLocal)||'';
+    (g.vehicleGroups||[]).forEach(v=>{ if(v&&v.bus&&(!v.busGuideType||!g.guideTypes.includes(v.busGuideType))) v.busGuideType=en; }); }
   /* 배열 순서(사장님 2026-10-06): 한국인가이드 → 로컬(영어) → 로컬 한국어(밴) → 로컬 한국어(버스) → 그 외. 견적기 guideOrder와 같은 규칙 */
   {
     const rank=t=>{ const s=String(t||''); if(/한국인|korean/i.test(s)) return 0; if(/로컬|local/i.test(s)) return /영어|english|eng/i.test(s)?1:(/버스|bus/i.test(s)?3:2); return 4; };
@@ -648,10 +654,14 @@ function _touch(){
 }
 window.addEventListener('beforeunload',e=>{ if(_dirty){ e.preventDefault(); e.returnValue=''; } });
 
+/* 금액 칸은 세 자리마다 쉼표(사장님 2026-10-19) — 칸을 벗어나면 「12,000」으로 다시 적고, 읽을 때는 쉼표를 뺀다 */
+function comma(v){ if(v==null||v==='') return ''; const n=Number(String(v).replace(/,/g,'')); return isNaN(n)?String(v):n.toLocaleString('en-US'); }
+function bindComma(i){ i.addEventListener('blur',()=>{ const v=i.value.trim(); if(v!==''&&!isNaN(Number(v.replace(/,/g,'')))) i.value=comma(v); }); }
 function numInput(obj,key,{nullable=false,ph=''}={}){
-  const i=document.createElement('input'); i.type='number'; i.inputMode='numeric'; i.placeholder=ph;
-  i.value=(obj[key]==null?'':obj[key]);
-  i.oninput=()=>{ const v=i.value.trim(); obj[key]= v===''?(nullable?null:0):Number(v); _touch(); };
+  const i=document.createElement('input'); i.type='text'; i.inputMode='numeric'; i.placeholder=ph;
+  i.value=comma(obj[key]);
+  i.oninput=()=>{ const v=i.value.trim(), n=Number(v.replace(/,/g,'')); if(v!==''&&isNaN(n)) return; obj[key]= v===''?(nullable?null:0):n; _touch(); };
+  bindComma(i);
   return i;
 }
 function txtInput(obj,key,{ph=''}={}){
@@ -986,7 +996,7 @@ function vehicleCard(){
     tbl.querySelectorAll('input[data-vg]').forEach(inp=>{
       const gi=+inp.dataset.vg, p=inp.dataset.vp;
       const cell=(gs[gi].periods[p]=gs[gi].periods[p]||{amount:null,remark:''});
-      inp.value = cell.na ? 'X' : (cell.amount==null?'':cell.amount);
+      inp.value = cell.na ? 'X' : comma(cell.amount); bindComma(inp);
       inp.oninput=()=>{
         const v=inp.value.trim();
         if(v.toUpperCase()==='X'){ cell.amount=null; cell.na=true; }
@@ -1058,7 +1068,7 @@ function vehicleCard(){
       const nm=document.createElement('input'); nm.type='text'; nm.value=g.label||''; nm.placeholder='구간 (예: 공항-방콕)';
       nm.style.width='170px';
       nm.oninput=()=>{ g.label=nm.value; _touch(); };
-      const am=document.createElement('input'); am.type='text'; am.className='n'; am.value=(g.amount==null?'':g.amount); am.placeholder='1회 요금';
+      const am=document.createElement('input'); am.type='text'; am.className='n'; am.value=comma(g.amount); am.placeholder='1회 요금'; bindComma(am);
       am.style.cssText='text-align:right;width:96px';
       am.oninput=()=>{ const v=am.value.trim(); g.amount = v===''?null:Number(v.replace(/,/g,'')); _touch(); };
       const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';

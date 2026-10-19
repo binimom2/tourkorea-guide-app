@@ -3757,7 +3757,9 @@ function subCarQ(){
   const pane=document.getElementById('subpane');
   if(!P){ pane.innerHTML='<div class="card"><p class="desc">요금표를 읽지 못했습니다 — 새로고침해 주세요.</p></div>'; return; }
   const cq=cqData(), V=cq.vehicles;
-  const num=(path,v,w,ph)=>'<input type="number" min="0" data-cq="'+path+'" value="'+((v===''||v==null)?'':esc(v))+'" placeholder="'+(ph||'밧')+'" style="width:'+(w||96)+'px;text-align:right">';
+  /* 금액은 세 자리 쉼표(사장님 2026-10-19) — 글 칸(text)에 「20,000」으로 보이고, 저장할 땐 쉼표를 뺀 숫자 */
+  const cm=v=>{ const n=Number(String(v).replace(/,/g,'')); return isNaN(n)?esc(v):n.toLocaleString('en-US'); };
+  const num=(path,v,w,ph)=>'<input type="text" inputmode="numeric" data-num="1" data-cq="'+path+'" value="'+((v===''||v==null)?'':cm(v))+'" placeholder="'+(ph||'밧')+'" style="width:'+(w||96)+'px;text-align:right">';
   const ord=(kind,i,len)=>'<div class="ordbtns"><button class="ord" data-cqmv="'+esc(kind)+'" data-d="-1" data-i="'+i+'"'+(i===0?' disabled':'')+'>▲</button><button class="ord" data-cqmv="'+esc(kind)+'" data-d="1" data-i="'+i+'"'+(i===len-1?' disabled':'')+'>▼</button></div>';
   pane.innerHTML='<div class="card"><h2>🚐 차량 견적 요금</h2>'
     +'<p class="desc">손님 사이트 차량 안내의 <b>⚡ 실시간 견적</b>(차량 견적 창)이 이 표로 계산합니다. 3박 미만은 견적이 나가지 않습니다.<br>'
@@ -3816,7 +3818,8 @@ function subCarQ(){
   /* 칸 고치기 — vehicles.0.n3 / tours.방콕.1.p.van9 */
   const put=el=>{
     const seg=el.dataset.cq.split('.');
-    const v=el.type==='checkbox'?el.checked:el.type==='number'?(el.value===''?'':Number(el.value)):el.value;
+    let v=el.type==='checkbox'?el.checked:(el.type==='number'||el.dataset.num)?(el.value.trim()===''?'':Number(el.value.replace(/,/g,''))):el.value;
+    if(typeof v==='number'&&isNaN(v)) return;   // 숫자 칸에 글자를 치면 무시
     let o=null, key='';
     if(seg[0]==='vehicles'){ o=cq.vehicles[+seg[1]]; key=seg[2]; }
     else if(seg[0]==='tours'){ const t=(cq.tours[seg[1]]||[])[+seg[2]]; if(!t) return;
@@ -3827,6 +3830,7 @@ function subCarQ(){
     if(key==='bus') subCarQ();   // 버스로 바꾸면 가이드 비용 칸이 열린다
   };
   pane.querySelectorAll('[data-cq]').forEach(el=>el.addEventListener(el.type==='checkbox'?'change':'input',()=>put(el)));
+  pane.querySelectorAll('[data-num]').forEach(el=>el.addEventListener('blur',()=>{ const n=Number(el.value.replace(/,/g,'')); if(el.value.trim()!==''&&!isNaN(n)) el.value=n.toLocaleString('en-US'); }));
 }
 function quoteToursCard(){
   return '<p class="desc" style="margin:0 0 12px;padding:9px 12px;border:1px dashed var(--line);border-radius:9px">'

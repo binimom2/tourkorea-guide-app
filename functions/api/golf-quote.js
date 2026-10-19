@@ -200,7 +200,9 @@ export async function onRequestPost({ request, env }) {
       const want = String(B.busGuide || '');
       const bt = (want && types.includes(want)) ? want
         : (g.busGuideType && types.includes(g.busGuideType)) ? g.busGuideType
-        : (types.find((t) => /로컬|local/i.test(t) && /버스|bus/i.test(t))   // 버스용 요금 열이 있으면 그것(사장님 2026-10-06)
+        /* 기본은 영어 로컬(견적기와 같은 규칙, 사장님 2026-09-15) → 버스용 한국어 열 → 로컬 아무거나 */
+        : (types.find((t) => /로컬|local/i.test(t) && /영어|english|eng/i.test(t))
+          || types.find((t) => /로컬|local/i.test(t) && /버스|bus/i.test(t))   // 버스용 요금 열이 있으면 그것(사장님 2026-10-06)
           || types.find((t) => /로컬|local/i.test(t)) || types[0] || '');
       const BG = (P.guidePeriods || {})[bt] || {};
       const bv = bt ? tierValue(BG, nights, 'bkk', amDep) : null;
