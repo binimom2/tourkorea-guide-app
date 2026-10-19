@@ -1157,12 +1157,20 @@ function _mergeRowsById(base,mine,server){
     const sCh=(s!==undefined)&&(b===undefined||_sbSnap(s)!==_sbSnap(b));
     const sDel=(b!==undefined)&&(s===undefined);
     if(mDel){ if(sCh) conflict=true; return; }                     // 내가 삭제(서버가 바꿨으면 충돌표시) → 삭제
-    if(mCh){ if(sCh&&_sbSnap(m)!==_sbSnap(s)) conflict=true; out.push(m); return; } // 내가 바꿈 → 내 값
+    if(mCh){ let v=m; if(sCh&&_sbSnap(m)!==_sbSnap(s)){ conflict=true; v=_keepServerPayings(b,m,s); } out.push(v); return; } // 내가 바꿈 → 내 값(지불 목록은 합침)
     if(sDel) return;                                                // 나는 그대로, 서버 삭제 → 삭제
     if(s!==undefined){ out.push(s); return; }                      // 서버 변경 반영
     if(m!==undefined) out.push(m);
   });
   return {rows:out,conflict};
+}
+/* 같은 업체 줄을 둘이 동시에 고쳤을 때 줄 통째로 내 값을 쓰면, 그 사이 남이 넣은 ฿ 지불(payings)이 사라지고
+   다음 동기화 때 그 지불의 DEPOSITS 줄까지 지워졌다(2026-10-19) — 지불 목록만은 id로 3-way 합친다 */
+function _keepServerPayings(b,m,s){
+  if(!m||!s||!(Array.isArray(m.payings)||Array.isArray(s.payings))) return m;
+  const tag=a=>(Array.isArray(a)?a:[]).map(p=>Object.assign({},p,{_id:'pay:'+(p.id||'')}));
+  const r=_mergeRowsById(tag(b&&b.payings),tag(m.payings),tag(s.payings)).rows.map(p=>{ const q=Object.assign({},p); delete q._id; return q; });
+  return Object.assign({},m,{payings:r});
 }
 const _RES_SUBARRAYS=['flights','hotels','golfs','guides','vehicles','shows','shopping','deposits','withdrawals'];
 const _RES_IGNORE=new Set(['updatedAt','updatedBy']);   // 저장 때마다 바뀌는 메타 — 충돌로 치지 않음
@@ -1235,7 +1243,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 24;   // 배포마다 +1 (구버전 탭 저장차단 기준). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 25;   // 배포마다 +1 (구버전 탭 저장차단 기준). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -5281,8 +5289,11 @@ function _commitSubRowToWorking(sectionKey,index){
     if(prev.payingAmt!==undefined) row.payingAmt=prev.payingAmt;      // 예전 단일 지불 데이터 유지
     if(prev.payingMemo!==undefined) row.payingMemo=prev.payingMemo;   // +Baht 비고 유지
     if(prev.payingDate!==undefined) row.payingDate=prev.payingDate;   // +Baht 날짜 유지
+    /* 업체 ฿ 지불에서 온 입출금 줄을 Edit 하면 연결(linkedRowId)이 끊겨, 다음 동기화 때 원래 줄이 되살아나 겹치거나
+       업체 쪽 지불과 금액이 어긋났다(2026-10-19) — 연결을 지키고 고친 금액·날짜·비고를 업체 지불에도 반영한다 */
+    if(prev.linkedRowId){ row.linkedRowId=prev.linkedRowId; _updatePayingFromDeposit(row); }
   }
-  if(!row._id) row._id=sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);   // 병합·지불연동용 안정 id 1회 부여
+  if(!row._id&&!row.linkedRowId) row._id=sectionKey+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);   // 병합·지불연동용 안정 id 1회 부여(연동 입출금 줄은 linkedRowId가 키)
   if(PAYING_SYNC[sectionKey]&&row._id) syncVendorDeposit(sectionKey,row); // 이름/날짜 등이 바뀌었을 수 있으니 연동된 DEPOSITS 항목도 같이 갱신
   if(index===-1) arr.push(row); else arr[index]=row;
   if(sectionKey==='flights') updateNamePrefixFromFlights();
@@ -5741,8 +5752,33 @@ function unlinkPayingByDeposit(dep){
   }
   return false;
 }
+/* 연동된 입출금 줄을 고쳤을 때 — 그 줄을 만든 업체 지불(payings 1건)의 금액·날짜·비고를 같이 맞춘다 */
+function _updatePayingFromDeposit(dep){
+  const s=String(dep.linkedRowId||''), h=s.indexOf('#');
+  const rowId=h>=0?s.slice(0,h):s, payId=h>=0?s.slice(h+1):'';
+  for(const key of Object.keys(PAYING_SYNC)){
+    const row=(workingRes[key]||[]).find(r=>r&&r._id===rowId);
+    if(!row) continue;
+    const pays=_getPayings(row).map(p=>Object.assign({},p));
+    const p=pays.find(x=>(x.id||'')===payId); if(!p) return;
+    const a=Math.abs(parseFloat(dep.amount)||0); if(a>0) p.amt=String(a);
+    p.memo=dep.summary||''; if(dep.date) p.date=dep.date;
+    _writePayings(row,pays);
+    return;
+  }
+}
 function delSubRow(sectionKey,index){
   const removed=workingRes[sectionKey][index];
+  if(!removed) return;
+  /* Del 한 번에 바로 지워지고 서버에도 저장돼서, Edit 옆을 잘못 누르면 그대로 사라졌다(사장님 2026-10-19 가이드 전도금 사라짐).
+     지우기 전에 한 번 묻는다 — 업체 줄이면 딸린 ฿ 지불(DEPOSITS 줄)도 같이 지워진다고 알린다 */
+  const sec=SUBSECTIONS.find(s=>s.key===sectionKey);
+  const nm=PAYING_SYNC[sectionKey]?(removed[PAYING_SYNC[sectionKey].nameField]||''):(removed.who||removed.name||removed.hotel||'');
+  let msg=`${sec?sec.label:sectionKey}${nm?' · '+nm:''} 줄을 삭제할까요?`;
+  if(sectionKey==='deposits'||sectionKey==='withdrawals') msg+=`\n\n${removed.date||''}  ${removed.amount!=null&&removed.amount!==''?Number(removed.amount).toLocaleString('en-US'):''}  ${removed.summary||''}`;
+  if(PAYING_SYNC[sectionKey]){ const ps=_getPayings(removed).filter(p=>parseFloat(p.amt)>0);
+    if(ps.length) msg+=`\n\n⚠ 이 줄의 ฿ 지불 ${ps.length}건(합계 ฿${_payTotal(removed).toLocaleString('en-US')})이 DEPOSITS에서도 같이 지워집니다.`; }
+  if(!confirm(msg)) return;
   workingRes[sectionKey].splice(index,1);
   // 입출금(DEPOSITS/WITHDRAWALS)에서 지운 줄이 업체 지불에서 온 것이면 그 지불도 함께 지운다
   if((sectionKey==='deposits'||sectionKey==='withdrawals')&&removed&&removed.linkedRowId) unlinkPayingByDeposit(removed);
