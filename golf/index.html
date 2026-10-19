@@ -1121,7 +1121,7 @@ function carModeApply(){
   const ug=$('#useGuide'); if(ug) ug.checked=false;   // 가이드 칸도 없다(버스면 영어 로컬가이드가 자동)
   TOUR_PICKS.length=0;
   Object.keys(CAR_PICKS).forEach(k=>delete CAR_PICKS[k]);
-  CAR_VEH.id=''; CAR_VEH.n=1; CAR_NOAIR.in=false; CAR_NOAIR.out=false; CAR_GOLF='';
+  CAR_VEH.id=''; CAR_VEH.n=1; CAR_NOAIR.in=false; CAR_NOAIR.out=false; CAR_GOLF=''; CAR_OPT.lug=null; CAR_OPT.busG='en';
   document.querySelectorAll('[data-cmgolf]').forEach(x=>x.checked=false);
   /* 보이는 칸 번호: 1 기본 · 2 지역 · 3 차량 · 4 추가 일정 · 5 수수료 */
   document.querySelectorAll('h2').forEach(h=>{ if(/^\d\. 여행사 수수료/.test(h.textContent)) h.textContent='5. 여행사 수수료'; });
@@ -1158,9 +1158,22 @@ function carGroupOf(v){
 /* 골프가 하루라도 들어가면 밴은 골프백 때문에 1대 탈 수 있는 인원이 줄어든다(사장님 2026-10-17) — 관리 차종표 「골프 시 최대」 */
 let CAR_GOLF='';   // 2번 「골프 일정」 — ''(안 고름) | 'y' | 'n'
 function carHasGolf(){ return CAR_GOLF==='y'||Object.values(CAR_PICKS).some(a=>(a||[]).some(key=>{ const [r,id]=key.split('|'); const t=carTours(r).find(x=>x.id===id); return t&&/골프/.test(t.n); })); }
-function carCap(v){ if(!v) return 0; const gm=(v.golfMax!=null&&v.golfMax!=='')?+v.golfMax:(v.bus?0:6);   // 안 적은 밴은 6명(사장님 표 「골프여행자 2~6명」)
+function carGolfMax(v){ return (v.golfMax!=null&&v.golfMax!=='')?+v.golfMax:(v.bus?0:6); }   // 안 적은 밴은 6명(사장님 표 「골프여행자 2~6명」)
+function carCap(v){ if(!v) return 0; const gm=carGolfMax(v);
   return (carHasGolf()&&gm)?gm:(+v.seats||0); }
-function carNeed(v){ const c=carCap(v); return c?Math.max(1,Math.ceil(curPax()/c)):1; }
+/* 골프 + 밴 1대 골프 인원 초과 → 「밴 1대 추가 (미·샌딩, 지역이동 날만)」 추천(골프 실시간 짐밴과 같은 요금표, 사장님 2026-10-19).
+   좌석으로는 다 타는데 골프백 때문에 넘칠 때만. 켜면 대수는 좌석 기준으로 센다 */
+const CAR_OPT={lug:null,busG:'en'};   // lug: null=추천대로 | true | false · busG: 버스 로컬가이드 'en' 영어 | 'ko' 한국어
+function carLugRec(v,n){
+  if(!v||v.bus||!carHasGolf()) return false;
+  const gm=carGolfMax(v), s=+v.seats||0, pax=curPax(); if(!gm||!s) return false;
+  // 손님이 짐밴을 끈 뒤엔 늘어난 대수로 다시 따지지 않는다 — 그래야 체크 칸이 남아 다시 켤 수 있다
+  const vans=Math.max(CAR_OPT.lug===false?1:(n==null?CAR_VEH.n:n),Math.ceil(pax/s),1);
+  return pax>gm*vans;
+}
+function carLugOn(v,n){ return carLugRec(v,n)&&CAR_OPT.lug!==false; }
+function carCapEff(v){ return carLugOn(v)?(+v.seats||0):carCap(v); }
+function carNeed(v){ if(!v) return 1; const c=carCapEff(v); return c?Math.max(1,Math.ceil(curPax()/c)):1; }
 function carVehicles(){ const v=(P.carQuote||{}).vehicles; return (Array.isArray(v)&&v.length)?v.filter(x=>x&&String(x.n||'').trim()):CAR_VEH_DEFAULT; }
 function carTours(reg){ const t=(P.carQuote||{}).tours; const L=(t&&Array.isArray(t[reg]))?t[reg]:(CAR_TOURS_DEFAULT[reg]||[]); return L.filter(x=>x&&String(x.n||'').trim()); }
 function carNights(){ return tripGoal>0?tripGoal:totalNights(); }
@@ -1198,18 +1211,25 @@ function carRenderInner(){
     let g=null, desc='', pics=0;
     try{ g=carGroupOf(cv); desc=g&&g.desc?String(g.desc).trim():''; pics=g?vehImgs(g).length:0; }catch(err){ console.warn('carGroupOf',err); }
     const notes=(Array.isArray(P.vehicleNotes)?P.vehicleNotes:[]).filter(Boolean);
-    const cap=carCap(cv), golfCap=cv&&carHasGolf()&&cap!==(+cv.seats||0)?cap:0;
+    const cap=cv?carCapEff(cv):0, golfCap=cv&&carHasGolf()&&cap!==(+cv.seats||0)?cap:0;
+    /* 골프 짐밴 추천(밴) · 버스 로컬가이드 언어(버스) */
+    const lugRec=carLugRec(cv), lugN=lugLegsOfRoute().length;
+    const lugRow=lugRec?'<label class="cm-ck" style="font-size:13.5px;font-weight:800"><input type="checkbox" data-cmlug'+(carLugOn(cv)?' checked':'')+'> 밴 1대 추가 (미·샌딩, 지역이동 날만)'
+        +(lugN?' <span style="color:#0b3d91">('+lugN+'회)</span>':'')+' <span style="color:#c62828">추천</span></label>':'';
+    const busGRow=cv&&cv.bus?'<div class="cm-cnt">로컬가이드 1명 '
+        +[['en','영어 가능'],['ko','한국어 가능']].map(([k,l])=>'<label class="cm-ck" style="display:inline-flex"><input type="radio" name="cmBusG" data-cmbg="'+k+'"'+(CAR_OPT.busG===k?' checked':'')+'> '+l+'</label>').join(' ')+'</div>':'';
     /* 고른 차종 바로 아래에 설명·사진·대수·안내(골프 견적 5번처럼), 나머지 차종은 그 아래(사장님 2026-10-17) */
     const info=cv?'<div class="cm-vinfo">'
         +(desc?'<div class="hint" style="margin:0;font-size:13.5px;color:var(--ink,#1f2a25);font-weight:600;line-height:1.4;white-space:pre-wrap">'+esc(desc)+'</div>':'')
         +(pics?'<a class="cmphoto" style="font-size:13.5px;font-weight:700;color:#0b3d91;text-decoration:underline dotted;cursor:pointer;white-space:nowrap"><span style="font-size:24px;vertical-align:-5px;text-decoration:none;display:inline-block;margin-right:4px">🚐</span>사진 보기</a>':'')
         +'<div class="cm-cnt">차량 대수 <button type="button" data-cmn="-1">−</button><b>'+CAR_VEH.n+'대</b><button type="button" data-cmn="1">＋</button>'
-        +(golfCap?' <span style="color:#c62828;font-weight:800">골프 포함 — 1대 최대 '+golfCap+'명</span>'
+        +(golfCap?''   // 「골프 포함 — 1대 최대 N명」은 차량 설명에 이미 있어 감춤(사장님 2026-10-19)
           :cap&&pax>cap*CAR_VEH.n?' <span style="color:#c62828;font-weight:800">'+pax+'명은 '+CAR_VEH.n+'대에 다 못 탑니다</span>':'')+'</div>'
+        +lugRow+busGRow
         +(notes.length?'<div class="hint" style="margin:0;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.55">'+notes.map(t=>'※ '+esc(t)).join('<br>')+'</div>':'')
       +'</div>':'';
     const html=carVehicles().map(v=>'<label class="cm-ck cm-vrow'+(CAR_VEH.id===v.id?' on':'')+'"><input type="radio" name="cmVeh" data-cmv="'+esc(v.id)+'"'+(CAR_VEH.id===v.id?' checked':'')+'> <b>'+esc(v.n)+'</b>'
-      +(v.bus?'<small>영어 로컬가이드 1명 포함</small>':'')+'</label>'+(CAR_VEH.id===v.id?info:'')).join('');
+      +(v.bus?'<small>로컬가이드 1명 포함</small>':'')+'</label>'+(CAR_VEH.id===v.id?info:'')).join('');
     /* 같은 내용이면 다시 그리지 않는다 — 인원 칸에서 손을 떼는 순간 다시 그리면 누르던 단추가 바뀌어 클릭이 사라졌다
        (「밴 처음 누르면 안 열림」「−/＋ 안 먹음」, 2026-10-17) */
     if(vb._h!==html){ vb._h=html; vb.innerHTML=html; }
@@ -1261,6 +1281,7 @@ function carDaysForQuote(start){
 }
 /* 차량 견적서 불포함 사항 — 버스가 아니면 가이드도 */
 const CAR_EXCLUDES=['호텔','골프 그린피','관광지 입장료','식사','기사팁','기타 개인경비','항공','여행자보험'];
+function carBusGuideName(){ return CAR_OPT.busG==='ko'?'한국어 로컬가이드':'영어 로컬가이드'; }
 /* 계산 — calc()의 차량 칸 대신 */
 function carLines(lines,pax,nights,amDep){
   if(carShort()) return;
@@ -1269,6 +1290,13 @@ function carLines(lines,pax,nights,amDep){
   const base=carBaseOf(v,nights);
   if(base) lines.push({t:`${v.n}${u>1?` ${u}대`:''} · ${nights}박 기준`,s:`풀 사용 조건 (공항 미팅·샌딩 포함) · ${won(base)}${u>1?` × ${u}대`:''}`,v:base*u});
   else lines.push({t:v.n,s:'요금 미입력 — 관리 「🚐 차량 견적 요금」에서 입력 필요',v:0,warn:1});
+  /* 골프 짐밴 — 요금은 골프 실시간 견적과 같은 「미팅샌딩 짐밴」 구간표 */
+  if(carLugOn(v)){
+    const legs=lugLegsOfRoute(), miss=legs.some(l=>lugPriceOf(l.a,l.b)==null);
+    if(legs.length) lines.push({t:`밴 1대 추가 (미·샌딩, 지역이동 날만) ${legs.length}회`,
+      s:legs.map(l=>`${l.a}-${l.b}`).join(' · ')+(miss?' · 요금 미입력 — 관리 차량 요금 「미팅샌딩 짐밴」':''),
+      v:legs.reduce((a,l)=>a+(lugPriceOf(l.a,l.b)||0),0),warn:miss?1:0});
+  }
   /* 추가 일정 — 같은 항목은 묶어서 「2·3일차 × 2회」 */
   const dr=carDayRegions(), agg={};
   Object.keys(CAR_PICKS).forEach(i=>(CAR_PICKS[i]||[]).forEach(key=>{ (agg[key]||(agg[key]=[])).push(+i+1); }));
@@ -1282,16 +1310,18 @@ function carLines(lines,pax,nights,amDep){
   });
   /* 버스 — 로컬가이드 1명. 관리 차종표의 「가이드 3박4일·4박5일·1박 추가」 칸(g3·g4·gadd, 사장님 2026-10-17) — 버스 대수와 무관하게 1명 */
   if(v.bus){
-    const g=carBaseOf({n3:v.g3,n4:v.g4,add:v.gadd},nights);
-    if(g) lines.push({t:'영어 로컬가이드 1명 (버스 동승)',s:`${nights}박 기준 · ${won(g)}`,v:g});
-    else lines.push({t:'영어 로컬가이드 1명 (버스 동승)',s:'요금 미입력 — 관리 「🚐 차량 견적 요금」 가이드 칸',v:0,warn:1});
+    /* 기본 영어 가능, 손님이 한국어 가능을 고르면 관리 「한국어 가이드」 칸(kg3·kg4·kgadd) — 사장님 2026-10-19 */
+    const ko=CAR_OPT.busG==='ko', gN=carBusGuideName();
+    const g=ko?carBaseOf({n3:v.kg3,n4:v.kg4,add:v.kgadd},nights):carBaseOf({n3:v.g3,n4:v.g4,add:v.gadd},nights);
+    if(g) lines.push({t:`${gN} 1명 (버스 동승)`,s:`${nights}박 기준 · ${won(g)}`,v:g});
+    else lines.push({t:`${gN} 1명 (버스 동승)`,s:`요금 미입력 — 관리 「🚐 차량 견적 요금」 ${ko?'한국어 ':''}가이드 칸`,v:0,warn:1});
     /* 지방 숙박비 — 방콕 외 지역에서 자는 밤마다(사장님 2026-10-17 「골프 실시간 견적이랑 동일하게」).
        금액은 골프 견적과 같은 자리(가이드 요금표 맨 아래 「지방숙박(1박당)」, 영어 로컬가이드 줄), 없으면 600밧 */
     const types=guideTypesOrdered();
-    const gt=types.find(t=>guideRank(t)===2)||types.find(t=>/로컬|local/i.test(t))||'';
+    const gt=types.find(t=>guideRank(t)===(ko?1:2))||types.find(t=>/로컬|local/i.test(t))||'';
     const lodge=+((((P.guidePeriods||{})[gt]||{})[GUIDE_LODGING_KEY]||{}).bkk)||600;
     const regN=ROUTE.reduce((a,r)=>a+(isBkkRegion(r.region)?0:(+r.nights||0)),0);
-    if(regN>0) lines.push({t:'영어 로컬가이드 · 지방 숙박비',s:`방콕 외 ${regN}박 × ${won(lodge)}`,v:lodge*regN});
+    if(regN>0) lines.push({t:`${gN} · 지방 숙박비`,s:`방콕 외 ${regN}박 × ${won(lodge)}`,v:lodge*regN});
   }
   /* 공항 미팅 아따비 — 공항 미팅을 뺀 게 아니면 */
   const tip=+P.airportTip||0;
@@ -1299,15 +1329,21 @@ function carLines(lines,pax,nights,amDep){
 }
 document.addEventListener('change',e=>{
   const t=e.target; if(!CARMODE||!t||!t.dataset) return;
+  if(t.dataset.cmlug!==undefined){
+    CAR_OPT.lug=t.checked;
+    const v=carVehicles().find(x=>x.id===CAR_VEH.id); CAR_VEH.n=1; CAR_VEH.n=carNeed(v);   // 짐밴을 켜면 좌석 기준, 끄면 골프 인원 기준 대수
+    carRender(); calc(); return;
+  }
+  if(t.dataset.cmbg!==undefined){ CAR_OPT.busG=t.dataset.cmbg; carRender(); calc(); return; }
   if(t.dataset.cmv!==undefined){
-    CAR_VEH.id=t.dataset.cmv;
+    CAR_VEH.id=t.dataset.cmv; CAR_VEH.n=1;
     CAR_VEH.n=carNeed(carVehicles().find(x=>x.id===CAR_VEH.id));   // 인원(골프면 골프 시 최대)에 맞춰 대수를 먼저 넣어 둔다(＋로 더 늘림)
     carRender(); calc(); return;
   }
   if(t.dataset.cmgolf!==undefined){
     CAR_GOLF=t.dataset.cmgolf;
     if(CAR_GOLF==='n') Object.keys(CAR_PICKS).forEach(i=>{ CAR_PICKS[i]=(CAR_PICKS[i]||[]).filter(key=>{ const [r,id]=key.split('|'); const x=carTours(r).find(z=>z.id===id); return !(x&&/골프/.test(x.n)); }); });
-    const v=carVehicles().find(x=>x.id===CAR_VEH.id); if(v) CAR_VEH.n=carNeed(v);   // 골프 여부가 바뀌면 대수도 다시
+    const v=carVehicles().find(x=>x.id===CAR_VEH.id); if(v){ CAR_VEH.n=1; CAR_VEH.n=carNeed(v); }   // 골프 여부가 바뀌면 대수도 다시
     touched.add('s2'); carRender(); calc(); return;
   }
   if(t.dataset.cmd!==undefined){
@@ -2189,11 +2225,12 @@ function quoteIncludes(mode){
     /* 차량 견적 창 — 차종·대수 + 풀 사용 조건, 추가 일정은 이름만(사장님 2026-10-17) */
     const v=carVehicles().find(x=>x.id===CAR_VEH.id);
     const air=[CAR_NOAIR.in?'':'미팅',CAR_NOAIR.out?'':'샌딩'].filter(Boolean);
-    if(v) out.push(`차량 - ${v.n}${CAR_VEH.n>1?` ${CAR_VEH.n}대`:''} (풀 사용 조건, ${air.length?'공항 '+air.join('·')+' 포함':'공항 미팅·샌딩 없음'})`);
+    if(v) out.push(`차량 - ${v.n}${CAR_VEH.n>1?` ${CAR_VEH.n}대`:''} (풀 사용 조건, ${air.length?'공항 '+air.join('·')+' 포함':'공항 미팅·샌딩 없음'})`
+      +(carLugOn(v)&&lugLegsOfRoute().length?` + 밴 1대 추가 (미·샌딩, 지역이동 날만) ${lugLegsOfRoute().length}회`:''));
     const names=[];
     Object.keys(CAR_PICKS).sort((a,b)=>a-b).forEach(i=>(CAR_PICKS[i]||[]).forEach(key=>{ const [r,id]=key.split('|'), t=carTours(r).find(x=>x.id===id); if(t&&!names.includes(t.n)) names.push(t.n); }));
     if(names.length) out.push(`추가 일정 - ${names.join(', ')}`);
-    if(v&&v.bus) out.push('가이드 - 영어 로컬가이드 1명 (버스 동승)');
+    if(v&&v.bus) out.push(`가이드 - ${carBusGuideName()} 1명 (버스 동승)`);
   }
   else if(useVehOn()){
     /* 인원별 구성(사장님 2026-09-15): 대수는 규칙·추가 선택으로 정해진다(옛 인원÷탑승기준 계산 삭제).

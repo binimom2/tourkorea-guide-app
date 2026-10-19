@@ -3766,7 +3766,9 @@ function subCarQ(){
       +'<th style="width:80px" title="골프가 하루라도 포함되면 1대 최대 인원">골프 시 최대</th><th style="width:60px">버스</th>'
       +'<th style="width:110px">3박4일</th><th style="width:110px">4박5일</th><th style="width:110px">1박 추가</th>'
       /* 버스 + 로컬가이드 비용(사장님 2026-10-17) — 버스 줄만 쓴다. 가이드 1명 · 같은 박수 규칙 */
-      +'<th style="width:110px;background:#EAF5EE">가이드 3박4일</th><th style="width:110px;background:#EAF5EE">가이드 4박5일</th><th style="width:110px;background:#EAF5EE">가이드 1박 추가</th>'
+      +'<th style="width:110px;background:#EAF5EE">영어 가이드 3박4일</th><th style="width:110px;background:#EAF5EE">영어 가이드 4박5일</th><th style="width:110px;background:#EAF5EE">영어 가이드 1박 추가</th>'
+      /* 손님이 「한국어 가능」 로컬가이드를 고를 때(사장님 2026-10-19) */
+      +'<th style="width:110px;background:#EAF0FA">한국어 가이드 3박4일</th><th style="width:110px;background:#EAF0FA">한국어 가이드 4박5일</th><th style="width:110px;background:#EAF0FA">한국어 가이드 1박 추가</th>'
       +'<th style="width:40px"></th></tr></thead><tbody>'
     +V.map((v,i)=>'<tr><td>'+ord('veh',i,V.length)+'</td>'
       +'<td><input data-cq="vehicles.'+i+'.n" value="'+esc(v.n||'')+'" placeholder="밴 9인승"></td>'
@@ -3776,7 +3778,8 @@ function subCarQ(){
       +'<td>'+num('vehicles.'+i+'.n3',v.n3)+'</td><td>'+num('vehicles.'+i+'.n4',v.n4)+'</td><td>'+num('vehicles.'+i+'.add',v.add)+'</td>'
       +(v.bus
         ? '<td>'+num('vehicles.'+i+'.g3',v.g3)+'</td><td>'+num('vehicles.'+i+'.g4',v.g4)+'</td><td>'+num('vehicles.'+i+'.gadd',v.gadd)+'</td>'
-        : '<td colspan="3" style="color:var(--muted);font-size:12px;text-align:center">버스만 — 「버스」 체크 시 입력</td>')
+          +'<td>'+num('vehicles.'+i+'.kg3',v.kg3)+'</td><td>'+num('vehicles.'+i+'.kg4',v.kg4)+'</td><td>'+num('vehicles.'+i+'.kgadd',v.kgadd)+'</td>'
+        : '<td colspan="6" style="color:var(--muted);font-size:12px;text-align:center">버스만 — 「버스」 체크 시 입력</td>')
       +'<td><button class="del" data-cqdel="veh" data-i="'+i+'" title="이 차종 지우기">✕</button></td></tr>').join('')
     +'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-cqadd="veh">＋ 차종 추가</button></div>'
