@@ -841,7 +841,8 @@ function notesEditor(key,title){   // key: G의 문구 배열 이름(vehicleNote
     (G[key]||[]).forEach((t,i)=>{
       const row=el('div'); row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:5px;';
       const inp=document.createElement('input'); inp.type='text'; inp.value=t;
-      inp.style.cssText='flex:1;font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
+      inp.style.cssText='field-sizing:content;min-width:260px;max-width:100%;font:inherit;';   // 칸은 글자 폭만큼(사장님 2026-10-20)
+      inp.style.cssText+='font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--paper);';
       inp.oninput=()=>{ G[key][i]=inp.value; _touch(); };
       const x=el('button',null,'✕'); x.style.cssText='border:0;background:none;color:var(--danger);cursor:pointer;font-weight:800;';
       x.onclick=()=>{ G[key].splice(i,1); _touch(); drawNotes(); };
@@ -1173,6 +1174,7 @@ function render(){
     const orow=el('div','row');
     orow.appendChild(field('밴 1대당 최대 인원(명)',numInput(G,'paxPerVan')));
     orow.appendChild(field('공항 미팅 아따비 (1인당 ฿)',numInput(G,'airportTip')));
+    orow.querySelectorAll('.f').forEach(f=>{ f.style.flex='0 0 auto'; f.style.minWidth='0'; f.querySelector('input').style.width='80px'; });   // 칸은 글자 폭만큼(사장님 2026-10-20)
     oc.appendChild(orow);
     const nb=notesEditor('vehicleNotes','· 안내 문구 (견적서에 함께 표시)'); nb.style.marginTop='12px'; oc.appendChild(nb);   // 안내 문구(차량 탭에서 옮김)
     const xb=notesEditor('excludeNotes','· 불포함 사항 (견적서 「불포함 사항」에 한 줄씩 표시)'); xb.style.marginTop='14px'; oc.appendChild(xb);   // 사장님 2026-09-14
