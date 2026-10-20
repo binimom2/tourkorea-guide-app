@@ -1052,8 +1052,8 @@ function vehicleCard(){
   nta.style.cssText='flex:1;resize:vertical;font-weight:600;'+IN2;
   nta.oninput=()=>{ LV.note=nta.value; _touch(); };
   /* 안내 문구 칸도 글 길이만큼만 높게 */
-  nta.rows=1; const fitTa=()=>{ nta.style.height='auto'; nta.style.height=(nta.scrollHeight+2)+'px'; };
-  nta.addEventListener('input',fitTa); requestAnimationFrame(fitTa);
+  /* 높이를 JS로 재면 탭이 감춰진 채 그려질 때 0이 되어 칸이 납작해졌다(2026-10-20) → 브라우저가 글에 맞춘다 */
+  nta.rows=1; nta.style.fieldSizing='content'; nta.style.minHeight='34px';
   nrow.appendChild(nta); nrow.style.marginTop='12px';
   /* 차례(사장님 2026-10-19): 요금 표가 위, 안내 문구는 아래. 표는 다른 요금표와 같은 모양(.gt) */
   const legsBox=el('div');
