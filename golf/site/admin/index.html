@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>투어코리아 · 사이트 관리</title>
 <script src="../ovguard.js"></script><!-- 창 안에서 드래그하다 배경에서 떼도 창이 안 닫히게(공통 안전장치, 사장님 2026-09-14) -->
+<script src="../imeguard.js"></script><!-- 한글 마지막 글자 사라짐 막기(공통, 사장님 2026-10-20) — 이 화면에 있던 지킴이를 옮김 -->
 <meta name="robots" content="noindex,nofollow">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -787,7 +788,8 @@ function inpList(path,arr,ph){
    늦게 빠지는 경우까지 막는다. 「클릭 직후일 때만」 조건을 버리고, **지우는 키(Backspace·Delete·Esc)를 누른 경우만 빼고**
    되살린다. 칸을 벗어날 때(focusout)와 change 직전(캡처 단계 — 이름 칸의 change 처리기가 잘린 이름으로 요금표 자리를
    옮기기 전에)에도 한 번 더 본다. */
-(function(){
+/* 2026-10-20: 모든 화면 공통 /golf/site/imeguard.js 로 옮겼다 — 그게 불러와져 있으면 아래는 돌지 않는다(두 번 되살리기 방지) */
+if(!window.__imeGuard)(function(){
   const DEL={Backspace:1,Delete:1,Escape:1};
   const ime={el:null,val:null,valTs:0,delTs:0};
   let pend=null;                                   // 조합이 막 끝난 칸 — {el,want,until}
