@@ -202,6 +202,18 @@ table.gt input:focus,table.gt select:focus{outline:2px solid var(--marigold);out
       ['gTitle','siteAdminLink','accBtn'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); });
       document.querySelectorAll('#gNav a[href="/golf/site/"], #gNav a[href="/golf/"]').forEach(e=>e.remove());
       document.querySelectorAll('#gNav button').forEach(b=>{ if(/로그아웃/.test(b.textContent)) b.remove(); });
+      /* 창(코드관리·백업복원 등)이 끼워 넣은 긴 화면의 한가운데(한참 아래)에 뜨던 것 — 바깥에서 지금 보이는 부분에만 깔리게 한다(사장님 2026-10-20) */
+      const placeOv=()=>{ let fe=null; try{ fe=window.frameElement; }catch(e){} if(!fe) return;
+        const r=fe.getBoundingClientRect(), vh=parent.innerHeight, top=Math.max(0,-r.top);
+        document.querySelectorAll('body > div').forEach(d=>{
+          if(d.id==='rateModal') return;
+          if(!d.dataset.ov){ if(!/inset:\s*0/.test(d.getAttribute('style')||'')) return; d.dataset.ov='1'; }
+          if(getComputedStyle(d).display==='none') return;
+          d.style.top=top+'px'; d.style.bottom='auto'; d.style.height=(vh-Math.max(0,r.top))+'px';
+        });
+      };
+      new MutationObserver(placeOv).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+      try{ parent.addEventListener('scroll',placeOv,{passive:true}); }catch(e){}
     });
   }
   </script>
