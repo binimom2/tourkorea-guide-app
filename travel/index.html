@@ -1144,7 +1144,8 @@ function _mergeByKey(base,mine,server,kf,itemMerge){
 function _rowKey(r){ return (r&&(r._id||r.linkedRowId))||_sbSnap(r); }
 // 서브배열(hotels/vehicles/deposits 등) 3-way 병합: 내가 바꾼 행은 내 값, 서버가 바꾼 행은 서버 값,
 // 같은 행을 둘 다 다르게 바꿨으면 내 값 + conflict 표시(호출측이 확인창).
-function _mergeRowsById(base,mine,server){
+// theirs=true: 같은 부분을 둘 다 다르게 고쳤으면 서버(남의) 값을 쓴다 — 충돌창 [취소] 뒤 「내 입력은 살리고 남의 것은 안 덮기」용
+function _mergeRowsById(base,mine,server,theirs){
   base=base||[]; mine=mine||[]; server=server||[];
   const bM=new Map(base.map(r=>[_rowKey(r),r])), mM=new Map(mine.map(r=>[_rowKey(r),r])), sM=new Map(server.map(r=>[_rowKey(r),r]));
   const order=[], seen=new Set();
@@ -1157,8 +1158,8 @@ function _mergeRowsById(base,mine,server){
     const mDel=(b!==undefined)&&(m===undefined);
     const sCh=(s!==undefined)&&(b===undefined||_sbSnap(s)!==_sbSnap(b));
     const sDel=(b!==undefined)&&(s===undefined);
-    if(mDel){ if(sCh) conflict=true; return; }                     // 내가 삭제(서버가 바꿨으면 충돌표시) → 삭제
-    if(mCh){ let v=m; if(sCh&&_sbSnap(m)!==_sbSnap(s)){ const f=_mergeRowFields(b,m,s); v=f.row; if(f.conflict) conflict=true; } out.push(v); return; } // 내가 바꿈 → 내 값(같은 줄이면 칸 단위로 합침)
+    if(mDel){ if(sCh){ conflict=true; if(theirs) out.push(s); } return; } // 내가 삭제(서버가 바꿨으면 충돌표시) → 삭제(theirs면 서버 것 살림)
+    if(mCh){ let v=m; if(sCh&&_sbSnap(m)!==_sbSnap(s)){ const f=_mergeRowFields(b,m,s,theirs); v=f.row; if(f.conflict) conflict=true; } out.push(v); return; } // 내가 바꿈 → 내 값(같은 줄이면 칸 단위로 합침)
     if(sDel) return;                                                // 나는 그대로, 서버 삭제 → 삭제
     if(s!==undefined){ out.push(s); return; }                      // 서버 변경 반영
     if(m!==undefined) out.push(m);
@@ -1176,8 +1177,8 @@ function _keepServerPayings(b,m,s){
 /* 같은 줄을 둘이 동시에 고쳤을 때 줄 통째로 한쪽 값을 쓰면, 한 사람은 CFM·REMARK, 다른 사람은 PAYING을 넣은 경우
    충돌창이 떠서 [확인]이면 남의 PAYING, [취소]면 내 입력이 사라졌다(2026-10-21 10/20 PAYING 사라짐) —
    칸(필드) 단위로 3-way 합친다. 정말 같은 칸을 서로 다르게 고쳤을 때만 충돌(그 칸은 내 값). */
-function _mergeRowFields(b,m,s){
-  if(!b||!m||!s||typeof m!=='object'||typeof s!=='object') return {row:_keepServerPayings(b,m,s),conflict:true};
+function _mergeRowFields(b,m,s,theirs){
+  if(!b||!m||!s||typeof m!=='object'||typeof s!=='object') return {row:theirs?s:_keepServerPayings(b,m,s),conflict:true};
   const row={}; let conflict=false;
   new Set([...Object.keys(m),...Object.keys(s),...Object.keys(b)]).forEach(k=>{
     if(k==='payings') return;
@@ -1185,7 +1186,7 @@ function _mergeRowFields(b,m,s){
     let v;
     if(mv===bv) v=s[k];                       // 나는 안 바꿈 → 서버 값
     else if(sv===bv||sv===mv) v=m[k];         // 나만 바꿈(또는 같게 바꿈) → 내 값
-    else { v=m[k]; conflict=true; }           // 같은 칸을 서로 다르게 → 내 값 + 충돌
+    else { v=theirs?s[k]:m[k]; conflict=true; }   // 같은 칸을 서로 다르게 → 내 값(theirs면 서버 값) + 충돌
     if(v!==undefined) row[k]=v;
   });
   if(Array.isArray(m.payings)||Array.isArray(s.payings)||Array.isArray(b.payings)){
@@ -1197,7 +1198,7 @@ function _mergeRowFields(b,m,s){
 const _RES_SUBARRAYS=['flights','hotels','golfs','guides','vehicles','shows','shopping','deposits','withdrawals'];
 const _RES_IGNORE=new Set(['updatedAt','updatedBy']);   // 저장 때마다 바뀌는 메타 — 충돌로 치지 않음
 // 예약 하나를 base/mine/server로 필드·섹션 단위 3-way 병합. {res,conflict}.
-function _mergeReservation(base,mine,server){
+function _mergeReservation(base,mine,server,theirs){
   base=base||{}; mine=mine||{};
   const out=JSON.parse(JSON.stringify(server));
   let conflict=false;
@@ -1206,11 +1207,11 @@ function _mergeReservation(base,mine,server){
     const bv=_sbSnap(base[key]), mv=_sbSnap(mine[key]), sv=_sbSnap(server[key]);
     const mCh=mv!==bv, sCh=sv!==bv;
     if(mCh&&!sCh) out[key]=mine[key];                    // 나만 바꿈 → 내 값
-    else if(mCh&&sCh&&mv!==sv){ out[key]=mine[key]; conflict=true; }  // 둘 다 다르게 → 내 값+충돌표시
+    else if(mCh&&sCh&&mv!==sv){ if(!theirs) out[key]=mine[key]; conflict=true; }  // 둘 다 다르게 → 내 값+충돌표시(theirs면 서버 값)
     // else 서버값 유지
   });
   _RES_SUBARRAYS.forEach(key=>{
-    const r=_mergeRowsById(base[key],mine[key],server[key]);
+    const r=_mergeRowsById(base[key],mine[key],server[key],theirs);
     out[key]=r.rows; if(r.conflict) conflict=true;
   });
   if(mine.updatedAt) out.updatedAt=mine.updatedAt;
@@ -1221,7 +1222,7 @@ function _mergeReservation(base,mine,server){
 /* ── 백업 스냅샷: 덮어쓰기 직전 서버본을 키별로 슬롯에 순환 보관 ──
    슬롯이 짧으면(직원 다수가 자주 저장) 며칠 전 원본이 밀려나 복구 못 하므로,
    ① 회전 슬롯을 늘리고(단기 실행취소) ② 하루 1개씩 장기 보관하는 일별 계층을 둔다. */
-const BAK_SLOTS=30;
+const BAK_SLOTS=60;   // 30이면 바쁜 날 반나절 만에 돌아 그 사이 유실을 추적 못 했다(2026-10-21) — 하루치 보관
 // 예약은 이미 배포된 키 이름을 유지한다(오늘 쌓인 스냅샷을 계속 쓸 수 있게)
 function _bakSlotKey(key,slot){ return key==='trv_reservations'?('trv_res_bak_'+slot):('trv_bak_'+key+'_'+slot); }
 function _bakMetaKey(key){ return key==='trv_reservations'?'trv_res_bakmeta':('trv_bakmeta_'+key); }
@@ -1332,7 +1333,20 @@ async function sbSaveSafe(key,data,opts){
   }
 
   const srvStr=_sbSnap(server);
-  let out=data;
+  let out=data, pmId=null;
+
+  /* 열린 예약창은 「창을 연 시점」이 기준이다. 목록 기준(_sbBase)은 다른 저장 때마다 최신으로 넘어가는데 창은 옛 사본이라,
+     그 사이 남이 넣은 PAYING 등이 「내가 지운 것」으로 보여 조용히 사라질 수 있었다(2026-10-21) — 창 기준으로 먼저 합친다 */
+  if(opts.preMerge&&Array.isArray(server)&&Array.isArray(data)){
+    const pm=opts.preMerge(server,data);
+    if(pm&&pm.conflict&&!confirm(`[${trvLabel(key)}] 이 예약의 「같은 칸」을 그 사이 다른 사람도 수정했습니다.\n(Someone else edited the same field of this reservation.)\n\n${pm.label||''}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고, 최신 내용 위에 내 입력을 얹어 창을 다시 엽니다)\n\n(Overwrite with yours? Cancel = don't save; reopen with the latest plus your input.)`)){
+      localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
+      if(opts.onCancel) opts.onCancel(server);
+      showToast('↩ 저장하지 않았습니다 — 최신 내용 위에 내 입력을 얹어 다시 열었습니다. 확인 후 [Save]를 눌러주세요');
+      return false;
+    }
+    if(pm&&pm.data){ out=data=pm.data; pmId=pm.id; }
+  }
 
   /* 기준값을 모른다(불러오기 실패 등) = 내 화면이 서버보다 낡았을 수 있다.
      이때 통째로 저장하면 서버에만 있는 항목이 전부 지워진다 → 절대 지우지 않고,
@@ -1364,6 +1378,8 @@ async function sbSaveSafe(key,data,opts){
   // 내가 마지막으로 본 서버 상태와 지금 서버가 다르다 = 그 사이 누군가 바꿨다
   if(baseStr!=null && srvStr!==baseStr){
     const base=JSON.parse(baseStr);
+    // 창 기준으로 이미 합친 예약은 서버본 위에 얹은 것 — 목록 기준으로 한 번 더 합치면 같은 충돌을 두 번 묻는다
+    if(pmId&&Array.isArray(base)&&Array.isArray(server)){ const bi=base.findIndex(r=>r&&r.id===pmId), sv=server.find(r=>r&&r.id===pmId); if(bi>=0&&sv) base[bi]=sv; }
     const f=(Array.isArray(base)&&Array.isArray(data)&&Array.isArray(server))?_pickKeyFn([base,data,server],opts.keyFn):null;
     if(f){
       // 예약은 itemMerge(_mergeReservation)로 섹션·행 단위까지 자동 병합 → 서로 다른 부분(호텔 vs 차량 등)은
@@ -1372,10 +1388,10 @@ async function sbSaveSafe(key,data,opts){
       if(conflicts.length){
         const names=conflicts.slice(0,10).map(it=>'· '+(opts.labelFn?opts.labelFn(it):(it.name||it.code||it.id))).join('\n');
         const more=conflicts.length>10?`\n… 외 ${conflicts.length-10}건`:'';
-        if(!confirm(`[${trvLabel(key)}] 아래 항목의 「같은 부분」을 그 사이 다른 사람도 수정했습니다.\n(Someone else edited the same part of these items.)\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고 최신 내용을 불러옵니다)\n\n(Overwrite with your version? Cancel = discard and reload the latest.)`)){
+        if(!confirm(`[${trvLabel(key)}] 아래 항목의 「같은 부분」을 그 사이 다른 사람도 수정했습니다.\n(Someone else edited the same part of these items.)\n\n${names}${more}\n\n내 내용으로 덮어쓸까요?\n(취소하면 저장하지 않고, 최신 내용 위에 내 입력을 얹어 창을 다시 엽니다)\n\n(Overwrite with your version? Cancel = don't save; reopen with the latest plus your input.)`)){
           localStorage.setItem(key,JSON.stringify(server)); _sbBase[key]=srvStr;
           if(opts.onCancel) opts.onCancel(server);
-          showToast('↩ 저장을 취소하고 최신 내용을 불러왔습니다 (Save cancelled — latest data reloaded)');
+          showToast('↩ 저장하지 않았습니다 — 최신 내용 위에 내 입력을 얹어 다시 열었습니다. 확인 후 [Save]를 눌러주세요');
           return false;
         }
       }
@@ -4107,11 +4123,32 @@ function loadData(){
    호텔 줄·리마크·CFM이 조용히 사라졌다(1015 11/22 팀 SWISSOTEL W/L 줄). → 창도 최신본으로 다시 연다. */
 function _reopenEditorLatest(){
   if(!_isEditingRes()||modalMode!=='edit'||!editingId) return;
-  if(!reservations.some(r=>r.id===editingId)) return;
+  const latest=reservations.find(r=>r.id===editingId);
+  if(!latest) return;
+  /* 예전엔 [취소]하면 내 입력을 버리고 최신본만 열어서, 같은 줄에 넣은 PAYING 등이 그대로 사라졌다(2026-10-21).
+     → 최신본 위에 「내가 바꾼 칸」만 얹어 다시 연다(같은 칸을 남도 고쳤으면 남의 값). 저장은 안 된 상태 — [Save]로 저장 */
+  let merged=null;
+  try{ syncFormToRes(); }catch(e){}
+  try{ if(workingRes&&_draftBase) merged=_mergeReservation(_draftBase,workingRes,latest,true).res; }catch(e){ merged=null; }
   try{ closeBahtModal(true); }catch(e){}
-  openReservation(editingId);
-  clearDraft();
-  showToast('↩ 저장을 취소해 예약창을 최신 내용으로 다시 열었습니다 — 넣으려던 내용은 다시 입력해 주세요');
+  if(merged&&_sbSnap(merged)!==_sbSnap(latest)){
+    openReservation(editingId,null,merged,JSON.parse(JSON.stringify(latest)));
+    window._resBaselineSnap=_sbSnap(latest);   // 아직 저장 안 된 내 입력 — 닫을 때 경고되게
+  } else {
+    openReservation(editingId);
+    clearDraft();
+  }
+}
+/* 저장 직전(sbSaveSafe가 서버본을 받은 뒤) — 열린 예약창의 예약은 창을 연 시점(_draftBase)을 기준으로 서버본과 먼저 합친다.
+   목록 기준은 그 사이 다른 저장으로 최신이 됐을 수 있어, 그걸 기준으로 하면 남이 넣은 칸이 「내가 지운 것」이 된다. */
+function _preMergeEditing(server,data){
+  if(!_isEditingRes()||modalMode!=='edit'||!editingId||!_draftBase) return null;
+  const s=server.find(r=>r&&r.id===editingId), i=data.findIndex(r=>r&&r.id===editingId);
+  if(!s||i<0) return null;
+  if(_sbSnap(s)===_sbSnap(_draftBase)) return null;          // 창을 연 뒤 아무도 안 바꿈
+  const m=_mergeReservation(_draftBase,data[i],s);
+  const out=data.slice(); out[i]=m.res;
+  return {data:out,id:editingId,conflict:m.conflict,label:`· ${s.datein||''} ${s.name||s.code||''}`};
 }
 /* 예약창을 연 채로 다른 저장(순번 재부여·복사)을 하면 병합 기준은 최신본으로 넘어가는데 창은 옛 사본이다.
    → 남이 그 사이 바꾼 부분을 창에 3-way로 얹는다(내가 아직 저장 안 한 입력은 그대로 둔다). */
@@ -4134,6 +4171,7 @@ async function saveData(){
     // id 없는 예약 하나 때문에 목록 전체 병합이 막혀 "다른 사람이 변경했습니다"가 오탐되던 문제 해결.
     keyFn:r=>r.id || (r.createdAt?('C:'+r.createdAt):(r.code?('K:'+r.code):'')),
     itemMerge:_mergeReservation,   // 같은 예약을 여러 명이 서로 다른 섹션 편집 시 둘 다 살리는 중첩 병합
+    preMerge:_preMergeEditing,     // 열린 예약창은 창을 연 시점 기준으로 먼저 합침
     labelFn:r=>`${r.datein||''} ${r.name||r.code||''}`.trim(),
     onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); _reopenEditorLatest(); },
   });
@@ -5477,6 +5515,7 @@ async function persistWorkingRes(){
   }
   renderSubsections(); renderFilters(); renderAll();
   window._resBaselineSnap=_sbSnap(workingRes);   // 저장된 상태를 기준으로 갱신(닫을 때 오탐 방지)
+  _draftBase=JSON.parse(JSON.stringify(workingRes));   // 다음 저장의 창 기준 = 방금 서버에 들어간 상태
   showToast('✅ 저장되었습니다 (Saved)');
   return true;
 }
