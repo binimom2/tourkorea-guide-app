@@ -571,6 +571,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 #qpTimeLab{white-space:pre-line}   /* 차량 미팅장소 안내 두 줄 */
 .qp-holes{display:grid;gap:7px;grid-template-columns:minmax(0,1fr)}   /* 한 줄 메뉴 이름이 칸을 밀어 넓히지 않게 — 넘치면 fitMenuText 가 글자를 줄인다 */
 .qp-holes button{min-width:0}
+.qp-holes.h-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+.qp-holes.h-row button{padding:8px 4px}
+.qp-holes.h-row button span i{display:block;margin:0}
 .qp-holes button[data-m] b{overflow:hidden}
 .qp-holes button{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:9px;font:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .qp-holes button b{display:block;font-size:14.5px;font-weight:800}
@@ -2341,6 +2344,7 @@ function openPanel(x, kind){
   const p = priceOf(x, kind);
   /* 라운드 선택은 골프장에만 있다. 등록된 홀수만 버튼으로 낸다. */
   const wrap = $("#qpHoleWrap");
+  $("#qpHoles").classList.toggle("h-row", kind === "courses");   // 골프 라운드(18·27·36홀)는 한 줄 가로(사장님 1021)
   if(kind === "courses" && p){
     wrap.style.display = "";
     /* 손님이 고르는 라운드는 **18홀 · 27홀 · 36홀 셋뿐**이다(사장님 확인).
