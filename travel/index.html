@@ -1158,7 +1158,7 @@ function _mergeRowsById(base,mine,server){
     const sCh=(s!==undefined)&&(b===undefined||_sbSnap(s)!==_sbSnap(b));
     const sDel=(b!==undefined)&&(s===undefined);
     if(mDel){ if(sCh) conflict=true; return; }                     // 내가 삭제(서버가 바꿨으면 충돌표시) → 삭제
-    if(mCh){ let v=m; if(sCh&&_sbSnap(m)!==_sbSnap(s)){ conflict=true; v=_keepServerPayings(b,m,s); } out.push(v); return; } // 내가 바꿈 → 내 값(지불 목록은 합침)
+    if(mCh){ let v=m; if(sCh&&_sbSnap(m)!==_sbSnap(s)){ const f=_mergeRowFields(b,m,s); v=f.row; if(f.conflict) conflict=true; } out.push(v); return; } // 내가 바꿈 → 내 값(같은 줄이면 칸 단위로 합침)
     if(sDel) return;                                                // 나는 그대로, 서버 삭제 → 삭제
     if(s!==undefined){ out.push(s); return; }                      // 서버 변경 반영
     if(m!==undefined) out.push(m);
@@ -1172,6 +1172,27 @@ function _keepServerPayings(b,m,s){
   const tag=a=>(Array.isArray(a)?a:[]).map(p=>Object.assign({},p,{_id:'pay:'+(p.id||'')}));
   const r=_mergeRowsById(tag(b&&b.payings),tag(m.payings),tag(s.payings)).rows.map(p=>{ const q=Object.assign({},p); delete q._id; return q; });
   return Object.assign({},m,{payings:r});
+}
+/* 같은 줄을 둘이 동시에 고쳤을 때 줄 통째로 한쪽 값을 쓰면, 한 사람은 CFM·REMARK, 다른 사람은 PAYING을 넣은 경우
+   충돌창이 떠서 [확인]이면 남의 PAYING, [취소]면 내 입력이 사라졌다(2026-10-21 10/20 PAYING 사라짐) —
+   칸(필드) 단위로 3-way 합친다. 정말 같은 칸을 서로 다르게 고쳤을 때만 충돌(그 칸은 내 값). */
+function _mergeRowFields(b,m,s){
+  if(!b||!m||!s||typeof m!=='object'||typeof s!=='object') return {row:_keepServerPayings(b,m,s),conflict:true};
+  const row={}; let conflict=false;
+  new Set([...Object.keys(m),...Object.keys(s),...Object.keys(b)]).forEach(k=>{
+    if(k==='payings') return;
+    const bv=_sbSnap(b[k]), mv=_sbSnap(m[k]), sv=_sbSnap(s[k]);
+    let v;
+    if(mv===bv) v=s[k];                       // 나는 안 바꿈 → 서버 값
+    else if(sv===bv||sv===mv) v=m[k];         // 나만 바꿈(또는 같게 바꿈) → 내 값
+    else { v=m[k]; conflict=true; }           // 같은 칸을 서로 다르게 → 내 값 + 충돌
+    if(v!==undefined) row[k]=v;
+  });
+  if(Array.isArray(m.payings)||Array.isArray(s.payings)||Array.isArray(b.payings)){
+    const p=_keepServerPayings(b,m,s).payings;
+    if(p!==undefined) row.payings=p;
+  }
+  return {row,conflict};
 }
 const _RES_SUBARRAYS=['flights','hotels','golfs','guides','vehicles','shows','shopping','deposits','withdrawals'];
 const _RES_IGNORE=new Set(['updatedAt','updatedBy']);   // 저장 때마다 바뀌는 메타 — 충돌로 치지 않음
@@ -1244,7 +1265,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 25;   // 배포마다 +1 (구버전 탭 저장차단 기준). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 26;   // 배포마다 +1 (구버전 탭 저장차단 기준). v26: 같은 줄 동시 수정은 칸 단위로 합침 — 한 사람 CFM·REMARK, 다른 사람 PAYING이면 둘 다 살림(10/20 PAYING 사라짐, 2026-10-21). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
