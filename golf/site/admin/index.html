@@ -2498,8 +2498,23 @@ async function uploadPics(box,files){
   const msg=box.querySelector('.picmsg');
   const base=box.dataset.nm||'사진';
   const {data:{session}}=await sb.auth.getSession();
-  const token=session&&session.access_token;
+  let token=session&&session.access_token;
   if(!token){ msg.textContent='로그인이 풀렸습니다. 새로고침 후 다시 해 주세요.'; return; }
+  /* 창을 오래 열어 두면 토큰이 만료돼 서버가 401(로그인이 필요합니다)을 준다 → 한 번 새로 받아 다시 보낸다 */
+  const put=async(name,blob)=>{
+    const go=()=>fetch('/api/golf-img/put?name='+encodeURIComponent(name),{
+      method:'PUT',
+      headers:{Authorization:'Bearer '+token,'x-file-type':blob.type||'image/jpeg'},
+      body:blob
+    });
+    let r=await go();
+    if(r.status===401){
+      const {data}=await sb.auth.refreshSession();
+      const t=data&&data.session&&data.session.access_token;
+      if(t){ token=t; r=await go(); }
+    }
+    return r;
+  };
   /* 이어붙일 번호는 지금 목록에 있는 장수부터 — 한 장씩 올려도 -1이 반복되지 않게 */
   let n=ta.value.split('\n').map(s=>s.trim()).filter(Boolean).length;
   let done=0, fail=0, why='';
@@ -2513,11 +2528,7 @@ async function uploadPics(box,files){
       if(!blob) throw new Error('이 브라우저가 열 수 없는 사진 형식');
       const ext=(blob.type==='image/png')?'png':(blob.type==='image/gif')?'gif':(blob.type==='image/webp')?'webp':'jpg';
       const name=`${base}-${++n}.${ext}`;
-      const r=await fetch('/api/golf-img/put?name='+encodeURIComponent(name),{
-        method:'PUT',
-        headers:{Authorization:'Bearer '+token,'x-file-type':blob.type||'image/jpeg'},
-        body:blob
-      });
+      const r=await put(name,blob);
       const j=await r.json().catch(()=>({error:'서버 응답 '+r.status}));
       if(!j.ok) throw new Error(j.error||'실패');
       /* 목록에 이어 붙이고 input을 알려 S에 반영시킨다(저장 버튼을 눌러야 최종 반영) */
