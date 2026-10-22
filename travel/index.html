@@ -1266,7 +1266,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 26;   // 배포마다 +1 (구버전 탭 저장차단 기준). v26: 같은 줄 동시 수정은 칸 단위로 합침 — 한 사람 CFM·REMARK, 다른 사람 PAYING이면 둘 다 살림(10/20 PAYING 사라짐, 2026-10-21). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 27;   // 배포마다 +1 (구버전 탭 저장차단 기준). v27: 최신 목록을 못 받은(로그인 끊긴 채 연) 화면에서 저장하면 서버의 모든 팀을 낡은 사본으로 바꾸던 것 — 지금 창의 예약만 바꾸고, 다시 로그인하면 목록을 새로 받음(10/22 13:14 13팀 되돌아감).v26: 같은 줄 동시 수정은 칸 단위로 합침 — 한 사람 CFM·REMARK, 다른 사람 PAYING이면 둘 다 살림(10/20 PAYING 사라짐, 2026-10-21). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -1357,12 +1357,18 @@ async function sbSaveSafe(key,data,opts){
       const sM=_byKey(server,f);
       const out2=server.slice();
       const pos=new Map(); out2.forEach((it,i)=>pos.set(String(f(it)),i));
-      let added=0;
+      /* 이미 서버에 있는 항목은 서버 것을 그대로 둔다 — 지금 저장하는 항목(opts.touched)만 내 것으로 바꾼다.
+         예전엔 「더하기만」이라면서 서버에 있는 항목도 전부 내 화면 사본으로 바꿔서, 3시간 낡은 화면에서
+         새 예약 하나를 만들었더니 13팀이 그 3시간 전 상태로 되돌아갔다(2026-10-22 13:14 PAYING·REMARK 사라짐). */
+      let added=0, skipped=0;
       data.forEach(it=>{ const k=String(f(it));
-        if(pos.has(k)){ out2[pos.get(k)]=it; } else { pos.set(k,out2.length); out2.push(it); added++; } });
+        if(pos.has(k)){
+          if(opts.touched&&opts.touched(it)) out2[pos.get(k)]=it;
+          else if(_sbSnap(sM.get(k))!==_sbSnap(it)) skipped++;
+        } else { pos.set(k,out2.length); out2.push(it); added++; } });
       const dropped=server.length-data.filter(it=>sM.has(String(f(it)))).length;
       out=out2;
-      if(dropped>0) showToast('⚠ 최신 목록을 못 받은 상태라 삭제는 반영하지 않았습니다. 새로고침 후 다시 해주세요. (Deletions were not applied because the latest list could not be loaded. Please refresh and retry.)');
+      if(dropped>0||skipped>0) showToast('⚠ 최신 목록을 못 받은 상태라 지금 저장하는 것만 반영했습니다. 새로고침(Ctrl+Shift+R) 후 다시 확인해 주세요. (Only the item being saved was applied — please refresh.)');
       try{ await pushBackup(key,server); }catch(e){}
       localStorage.setItem(key,JSON.stringify(out));
       if(!await sbSaveRaw(key,out)){ _onSaveWriteFail(); return false; }
@@ -4172,6 +4178,7 @@ async function saveData(){
     keyFn:r=>r.id || (r.createdAt?('C:'+r.createdAt):(r.code?('K:'+r.code):'')),
     itemMerge:_mergeReservation,   // 같은 예약을 여러 명이 서로 다른 섹션 편집 시 둘 다 살리는 중첩 병합
     preMerge:_preMergeEditing,     // 열린 예약창은 창을 연 시점 기준으로 먼저 합침
+    touched:r=>!!(workingRes&&r&&r.id===workingRes.id),   // 기준을 모를 때 서버 것을 바꿔도 되는 건 지금 창의 예약뿐
     labelFn:r=>`${r.datein||''} ${r.name||r.code||''}`.trim(),
     onCancel:server=>{ setReservations(server); renderFilters(); renderAll(); _reopenEditorLatest(); },
   });
@@ -5976,6 +5983,17 @@ async function doRelogin(){
     startSessionWatch();
     closeRelogin(); clearSessDead();
     showToast('✅ 다시 로그인했습니다 — 저장을 이어서 진행합니다');
+    /* 로그인이 끊긴 채 화면을 열었으면 예약 목록을 서버에서 못 받아 화면이 낡은 사본이다.
+       다시 로그인만 하고 그대로 쓰면 그 낡은 사본이 저장된다(2026-10-22 13팀 되돌아감) → 지금 최신으로 받는다 */
+    if(_sbLoadFailed['trv_reservations']||_sbBase['trv_reservations']==null){
+      await sbLoad('trv_reservations');
+      if(!_sbLoadFailed['trv_reservations']){
+        const mine=(workingRes&&reservations.includes(workingRes))?workingRes:null;   // 저장하려다 실패한 내 예약은 새 목록에도 다시 넣는다
+        loadData();
+        if(mine){ const i=reservations.findIndex(r=>r.id===mine.id); if(i>=0) reservations[i]=mine; else reservations.push(mine); }
+        try{ renderAll(); }catch(e){}
+      }
+    }
     await runPendingSave();
   }catch(e){ err.textContent='로그인 중 오류가 발생했습니다. 잠시 후 다시 시도하세요.'; err.style.display='block'; }
 }
