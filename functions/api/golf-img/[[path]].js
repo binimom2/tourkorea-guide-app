@@ -30,17 +30,30 @@ const json = (o, s = 200) =>
     headers: { 'content-type': 'application/json;charset=utf-8', 'cache-control': 'no-store' },
   });
 
+/* 실패하면 왜 실패했는지(lastAuthErr)를 남긴다 — 1022 「로그인이 필요합니다」만 떠서 원인을 못 찾았다.
+   Supabase가 잠깐 느리거나(5xx·429) 끊기면 한 번 더 물어본다 */
+let lastAuthErr = '';
 async function getUser(request) {
+  lastAuthErr = '';
   const auth = request.headers.get('Authorization') || '';
-  if (!auth.startsWith('Bearer ')) return null;
-  try {
-    const r = await fetch(SUPABASE_URL + '/auth/v1/user', {
-      headers: { apikey: SUPABASE_KEY, Authorization: auth },
-    });
-    if (!r.ok) return null;
-    const u = await r.json();
-    return u && u.id ? u : null;
-  } catch (e) { return null; }
+  if (!auth.startsWith('Bearer ')) { lastAuthErr = '토큰 없음'; return null; }
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: { apikey: SUPABASE_KEY, Authorization: auth },
+      });
+      if (r.ok) {
+        const u = await r.json();
+        if (u && u.id) return u;
+        lastAuthErr = '사용자 정보 없음';
+        return null;
+      }
+      const t = (await r.text()).slice(0, 120);
+      lastAuthErr = 'Supabase ' + r.status + ' ' + t;
+      if (r.status < 500 && r.status !== 429) return null;   // 토큰 문제면 다시 물어도 같다
+    } catch (e) { lastAuthErr = '연결 실패 ' + String((e && e.message) || e).slice(0, 80); }
+  }
+  return null;
 }
 
 /* 관리 화면과 같은 판정 — 어드민·매니저만 사진을 올리고 지운다.
@@ -118,7 +131,7 @@ export async function onRequest(context) {
 
   /* ── 여기부터는 로그인 + 권한 ── */
   const user = await getUser(request);
-  if (!user) return json({ error: '로그인이 필요합니다.' }, 401);
+  if (!user) return json({ error: '로그인이 필요합니다. [' + lastAuthErr + ']' }, 401);
   if (!(await canEdit(env, user))) return json({ error: '사진을 올릴 권한이 없습니다. (어드민·매니저만)' }, 403);
 
   try {
