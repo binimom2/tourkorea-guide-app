@@ -2455,7 +2455,22 @@ function picsTa(path,x){
    파일을 고르면 브라우저에서 먼저 크기를 줄이고(긴 변 1600px, JPEG) R2에 올린다.
    원본 사진은 한 장에 5MB가 넘는 일이 흔해서, 그대로 두면 손님 화면이 느려진다. */
 const PIC_MAX_EDGE=1600, PIC_QUALITY=0.82;
-function shrinkImage(file){
+/* 파일 첫 바이트로 진짜 형식을 본다 — 웹에서 받은 사진은 이름은 .png인데 속은 WebP·AVIF인 일이 흔하다(사장님 1022 Gallery.png) */
+async function realImageType(file){
+  try{
+    const b=new Uint8Array(await file.slice(0,12).arrayBuffer());
+    const s=String.fromCharCode(...b);
+    if(b[0]===0xFF&&b[1]===0xD8) return 'image/jpeg';
+    if(b[0]===0x89&&s.slice(1,4)==='PNG') return 'image/png';
+    if(s.slice(0,4)==='RIFF'&&s.slice(8,12)==='WEBP') return 'image/webp';
+    if(s.slice(0,4)==='GIF8') return 'image/gif';
+  }catch(e){}
+  return '';
+}
+async function shrinkImage(file){
+  /* 이름(확장자)과 속 내용이 다르면 그 형식으로 다시 보거나(아는 형식) JPEG로 다시 만든다 */
+  const real=await realImageType(file);
+  if(real!==(file.type||'')) file=new File([file],file.name||'photo',{type:real||'image/avif'});
   return new Promise(resolve=>{
     /* GIF는 움직이는 그림이라 줄이면 한 장으로 굳는다 — 원본 그대로 올린다 */
     if(file.type==='image/gif'){ resolve(file); return; }
