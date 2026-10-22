@@ -776,6 +776,27 @@ table.subtbl td.copycell .cellcopy:hover{background:#eef2fb;color:#2c62d6;}
   </div>
 </div>
 
+<!-- ── 유실 감시(관리자 전용): 한 번의 저장으로 남의 최신 입력이 옛 내용으로 돌아간 경우 알림 ── -->
+<div id="lossCard" style="display:none;position:fixed;left:16px;bottom:16px;z-index:9990;max-width:min(460px,calc(100vw - 32px));background:#fff4e5;border:2px solid #f08c00;border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px;color:#3c2a00;">
+  <div id="lossCardMsg" style="font-weight:700;line-height:1.5;margin-bottom:8px;"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <button class="btn btn-save" style="padding:0 12px;" onclick="openLossModal()">자세히 보기</button>
+    <button class="btn" style="padding:0 12px;" onclick="document.getElementById('lossCard').style.display='none'">닫기</button>
+  </div>
+</div>
+<div class="sov" id="lossModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeLossModal()">
+  <div class="smodal" style="max-width:720px;">
+    <div class="smodal-hd"><span>⚠ 유실 의심</span><button onclick="closeLossModal()">✕</button></div>
+    <div class="smodal-body">
+      <div style="font-size:12px;color:#7a8296;line-height:1.65;margin-bottom:12px;">
+        한 번의 저장으로 <b>다른 사람이 더 최근에 넣은 내용이 옛날 내용으로 돌아간 팀</b>입니다.<br>
+        [되살리기] = 지금 내용은 그대로 두고 <b>사라진 칸만</b> 다시 채웁니다. 일부러 지운 것이면 [확인함]을 누르세요.
+      </div>
+      <div id="lossList" style="display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ── CODE MODAL (통합: 코드/고객사/거래처·업체/문구) ── -->
 <div class="sov" id="codeModal" onmousedown="ovDown(event,this)" onclick="if(event.target===this&&_ovDownOnBg)closeCodeModal()">
   <div class="smodal" style="max-width:960px;">
@@ -1580,6 +1601,7 @@ async function enterApp(){
   renderAll();
   startSessionWatch();      // 로그인이 끊기면 저장 전에 미리 알린다
   checkDraftRecovery();     // 저장 못 한 입력이 남아 있으면 되살릴 기회를 준다
+  setTimeout(runLossWatch,4000);   // 관리자: 유실 의심 저장이 있었는지 확인(화면 뜬 뒤 천천히)
 }
 async function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?\n\n(Sign out?)'))return;
@@ -4276,6 +4298,120 @@ async function restoreBackup(key,ref,ts,kind){
   _sbBase[key]=_sbSnap(snap);
   alert(`✅ [${nm}]를 ${ts} 시점으로 복원했습니다.\n확인을 누르면 화면을 새로고침합니다.`);
   location.reload();   // 화면 곳곳의 캐시된 값까지 확실히 맞추기 위해 전체 재로딩
+}
+
+/* ══════════════════════════ 유실 감시 (관리자 전용) ══════════════════════════
+   예약 저장마다 남는 직전 백업(trv_res_bak_*)을 차례로 비교해, 한 번의 저장으로 어떤 팀의 updatedAt이
+   「뒤로」 갔으면(= 더 최근 입력이 옛 사본으로 덮임) 알린다. 2026-10-22 13팀 되돌아감은 직원 신고로 알았다 —
+   이제 관리자 화면에서 먼저 잡는다. 막는 건 저장 쪽(v27·v28)이 하고, 이건 새 구멍이 생겼을 때의 경보다.
+   결과는 trv_losswatch {checkedAt, alerts[]}에 둔다(어느 PC에서 보든 같게). 백업 슬롯은 하루 안에 돌기 때문에
+   되살리기에 필요한 전·후 사본은 알림 안에 함께 보관한다. */
+const LOSS_KEY='trv_losswatch';
+let _lossState=null;
+function _lossTeamChanges(pre,post){
+  const out=[]; const lbl=r=>String(r&&(r.hotel||r.name||r.club||r.course||r.who||r.flight||'')).slice(0,18);
+  Object.keys(pre||{}).forEach(k=>{
+    if(_RES_SUBARRAYS.includes(k)||_RES_IGNORE.has(k)) return;
+    if(_sbSnap(pre[k])!==_sbSnap(post?post[k]:undefined)) out.push(`${k}: "${String(pre[k]??'').slice(0,40)}" → "${String(post&&post[k]!=null?post[k]:'').slice(0,40)}"`);
+  });
+  _RES_SUBARRAYS.forEach(s=>{
+    const pm=new Map((post&&post[s]||[]).map(r=>[_rowKey(r),r]));
+    (pre&&pre[s]||[]).forEach(r=>{
+      const a=pm.get(_rowKey(r));
+      if(!a){ out.push(`${s.toUpperCase()} 줄 사라짐 ${lbl(r)}`); return; }
+      Object.keys(r).forEach(f=>{ if(f==='_id'||f==='payings') return; if(_sbSnap(r[f])!==_sbSnap(a[f])) out.push(`${s.toUpperCase()} ${lbl(r)} ${f.toUpperCase()}: "${String(r[f]??'').slice(0,40)}" → "${String(a[f]??'').slice(0,40)}"`); });
+      if(_sbSnap(r.payings)!==_sbSnap(a.payings)) out.push(`${s.toUpperCase()} ${lbl(r)} ฿ 지불 바뀜`);
+    });
+  });
+  return out;
+}
+async function runLossWatch(){
+  if(!currentUser||currentUser.role!=='admin') return;
+  try{
+    let st=null; try{ st=await sbLoadRaw(LOSS_KEY); }catch(e){ return; }
+    if(!st||typeof st!=='object'){
+      // 처음 켤 때는 지난 기록을 뒤지지 않고 「지금부터」 본다(오늘 사고는 이미 복구함)
+      await sbSaveRaw(LOSS_KEY,{checkedAt:new Date().toISOString(),alerts:[]}); return;
+    }
+    st.alerts=Array.isArray(st.alerts)?st.alerts:[];
+    let meta=[]; try{ meta=(await sbLoadRaw(_bakMetaKey('trv_reservations')))||[]; }catch(e){ meta=[]; }
+    const C=(Array.isArray(meta)?meta:[]).slice().reverse();   // 오래된 것 → 최근
+    const cache=new Map();
+    const snap=async m=>{ if(!cache.has(m.slot)){ let d=null; try{ d=await sbLoadRaw(_bakSlotKey('trv_reservations',m.slot)); }catch(e){} cache.set(m.slot,d); } return cache.get(m.slot); };
+    let cur=null, newChecked=st.checkedAt||'';
+    for(let i=0;i<C.length;i++){
+      if(String(C[i].at)<=String(st.checkedAt||'')) continue;
+      const before=await snap(C[i]);
+      let after;
+      if(i+1<C.length) after=await snap(C[i+1]);
+      else { if(!cur){ try{ cur=await sbLoadRaw('trv_reservations'); }catch(e){} } after=cur; }
+      if(!Array.isArray(before)||!Array.isArray(after)) continue;
+      const aM=new Map(after.map(r=>[r&&r.id,r]));
+      const teams=[];
+      before.forEach(b=>{ const a=b&&aM.get(b.id);
+        if(a&&String(a.updatedAt||'')<String(b.updatedAt||'')&&_sbSnap(a)!==_sbSnap(b)){
+          const ch=_lossTeamChanges(b,a);
+          if(ch.length) teams.push({id:b.id,code:b.code||'',name:b.name||'',changes:ch,pre:b,post:a});
+        }
+      });
+      if(teams.length&&!st.alerts.some(x=>x.at===C[i].at)) st.alerts.unshift({at:C[i].at,by:C[i].by||'',teams,status:'new'});
+      if(i+1<C.length) newChecked=C[i].at;   // 맨 마지막 저장은 다음 저장 뒤에 다시 확정한다
+    }
+    st.checkedAt=newChecked; st.alerts=st.alerts.slice(0,20);
+    await sbSaveRaw(LOSS_KEY,st);
+    _lossState=st; renderLossCard();
+  }catch(e){ console.warn('[lossWatch]',e); }
+}
+function renderLossCard(){
+  const card=document.getElementById('lossCard'); if(!card) return;
+  const open=(_lossState&&_lossState.alerts||[]).filter(a=>a.status==='new');
+  if(!open.length){ card.style.display='none'; return; }
+  const a=open[0], n=a.teams.length;
+  const first=a.teams.slice(0,2).map(t=>t.code.slice(2)).join(', ');
+  document.getElementById('lossCardMsg').innerHTML=`⚠ 유실 의심 ${open.length}건 — ${escapeHtml(_bakTs(a.at))} ${escapeHtml(a.by)} 저장 때 ${n}팀이 옛 내용으로 돌아갔습니다 (${escapeHtml(first)}${n>2?' 외 '+(n-2)+'팀':''})`;
+  card.style.display='';
+}
+function openLossModal(){ renderLossList(); document.getElementById('lossModal').classList.add('open'); }
+function closeLossModal(){ document.getElementById('lossModal').classList.remove('open'); }
+function renderLossList(){
+  const host=document.getElementById('lossList');
+  const open=(_lossState&&_lossState.alerts||[]).filter(a=>a.status==='new');
+  if(!open.length){ host.innerHTML='<div style="color:#8a90a0;font-size:12.5px;">확인할 유실 의심이 없습니다.</div>'; return; }
+  host.innerHTML=open.map(a=>`<div style="border:1.5px solid #f0c27a;border-radius:10px;padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <b style="font-size:13.5px;">${escapeHtml(_bakTs(a.at))} · ${escapeHtml(a.by)} 저장 · ${a.teams.length}팀</b>
+        <span style="flex:1"></span>
+        <button class="btn btn-save" style="padding:0 12px;" onclick="restoreLoss('${escapeAttr(a.at)}')">되살리기</button>
+        <button class="btn" style="padding:0 12px;" onclick="ackLoss('${escapeAttr(a.at)}')">확인함</button>
+      </div>
+      ${a.teams.map(t=>`<div style="font-size:12px;margin:6px 0 2px;"><b>${escapeHtml(t.code)}</b> ${escapeHtml(t.name)}</div>
+        <ul style="margin:0 0 0 16px;font-size:11.5px;color:#5a6276;line-height:1.55;">${t.changes.slice(0,8).map(c=>`<li>${escapeHtml(c)}</li>`).join('')}${t.changes.length>8?`<li>… 외 ${t.changes.length-8}칸</li>`:''}</ul>`).join('')}
+    </div>`).join('');
+}
+async function _saveLossState(){ try{ await sbSaveRaw(LOSS_KEY,_lossState); }catch(e){} renderLossCard(); renderLossList(); }
+async function ackLoss(at){
+  const a=(_lossState&&_lossState.alerts||[]).find(x=>x.at===at); if(!a) return;
+  a.status='ack'; await _saveLossState();
+}
+async function restoreLoss(at){
+  const a=(_lossState&&_lossState.alerts||[]).find(x=>x.at===at); if(!a) return;
+  if(_isEditingRes()){ showToast('⚠ 예약창을 닫은 뒤 되살려 주세요'); return; }
+  if(!confirm(`${_bakTs(a.at)} ${a.by} 저장 때 돌아간 ${a.teams.length}팀의 「사라진 칸」을 되살립니다.\n지금 내용은 그대로 두고, 그 뒤 다른 사람이 고친 칸은 건드리지 않습니다.\n\n진행할까요?`)) return;
+  await sbLoad('trv_reservations');
+  if(_sbLoadFailed['trv_reservations']){ showToast('❌ 서버에서 최신 예약을 못 받았습니다 — 잠시 후 다시'); return; }
+  loadData();
+  const now=new Date().toISOString(); let n=0;
+  a.teams.forEach(t=>{
+    const i=reservations.findIndex(r=>r&&r.id===t.id); if(i<0) return;
+    const m=_mergeReservation(t.post,t.pre,reservations[i],true).res;   // 사라진 칸만 되살림(그 뒤 고친 칸은 지금 값 우선)
+    if(_sbSnap(m)===_sbSnap(reservations[i])) return;
+    m.updatedAt=now; m.updatedBy=currentUser?currentUser.id:'';
+    reservations[i]=m; n++;
+  });
+  if(n&&!await saveData()){ showToast('❌ 되살리기 저장 실패 — 다시 시도해 주세요'); return; }
+  a.status='restored'; await _saveLossState();
+  renderAll();
+  showToast(n?`✅ ${n}팀의 사라진 칸을 되살렸습니다`:'ℹ 되살릴 칸이 없습니다(이미 다시 입력된 것 같습니다)');
 }
 
 /* ══════════════════════════ FILTERS / VIEW ══════════════════════════ */
