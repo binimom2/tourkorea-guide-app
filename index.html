@@ -2715,15 +2715,15 @@ function rebuildTabBar() {
 }
 
 // 📋 제출현황 탭의 빨간 숫자 — 아직 안 열어본 건 수
-// (어드민·오거나이저: NEW / 매니저: 정산완료 전 NEW / 가이드: 전송받고 안 열어본 최종본)
+// (어드민·오거나이저·매니저: 정산완료 전 NEW / 가이드: 전송받고 안 열어본 최종본)
 function updateSubBadge() {
   const btn = document.querySelector('.tab-btn[data-tab="submissions"]');
   if (!btn) return;
   const db = Array.isArray(submissionsDB) ? submissionsDB : [];
   let n;
   if (currentRole === 'guide') n = db.filter(s => isMySubmission(s) && s.sentToGuide && !s.finalSeen).length;
-  else if (currentRole === 'op') n = db.filter(s => s.status === 'new' && !s.settled).length;
-  else n = db.filter(s => s.status === 'new').length;
+  // 목록에서 바로 [완료+전송]한 건은 안 열어봐서 status가 'new'로 남는다 → 정산완료 건은 세지 않는다
+  else n = db.filter(s => s.status === 'new' && !s.settled).length;
   let b = btn.querySelector('.sub-cnt');
   if (!n) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement('span'); b.className = 'sub-cnt'; btn.appendChild(b); }
