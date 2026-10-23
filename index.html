@@ -4446,7 +4446,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 13;   // 배포마다 +1 (구버전 탭 저장차단). v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
+const G_APP_VERSION = 14;   // 배포마다 +1 (구버전 탭 저장차단). v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -5767,7 +5767,18 @@ function _fieldsDigest(f) {
 // ══════════════════════════════════════════════════════
 //  가이드 → 어드민 제출
 // ══════════════════════════════════════════════════════
+// 제출 단추를 톡톡 두 번 누르면 두 호출이 함께 「낸 거 없음」 확인을 통과해 같은 정산서가
+// 두 건 들어갔다(261017 박종식 1022). 진행 중엔 두 번째 누름을 무시한다.
+let _submitting = false;
 async function submitToAdmin() {
+  if (_submitting) return;
+  _submitting = true;
+  const btn = document.getElementById('btnSubmit');
+  if (btn) btn.disabled = true;
+  try { await _submitToAdminRun(); }
+  finally { _submitting = false; if (btn) btn.disabled = false; }
+}
+async function _submitToAdminRun() {
   await loadSubmissions();
   const code = (state.info && state.info.settleCode) || (document.getElementById('settleCodeSec1')||{}).textContent || '-';
   const guideName = (document.getElementById('guideName')||{}).value || (currentUser&&currentUser.name) || '';
