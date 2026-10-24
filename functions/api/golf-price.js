@@ -664,6 +664,7 @@ async function tierAdj(request, env) {
   try {
     const r = await fetch(SUPABASE_URL + '/auth/v1/user', {
       headers: { apikey: env.SUPABASE_ANON_KEY || 'sb_publishable_FVavEEBxGZRRvU19F27koA_a4hJUiRl', Authorization: auth },
+      signal: AbortSignal.timeout(6000),   // 1024: 여기서 멈추면 요금 전체가 안 떴다 — 6초면 기본 요금으로
     });
     if (!r.ok) return 0;
     const u = await r.json();
