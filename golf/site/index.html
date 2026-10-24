@@ -3664,7 +3664,7 @@ function setGuest(user){
 $("#loginBtn").onclick = async () => {
   if(guest){
     if(!confirm("로그아웃하시겠습니까?")) return;
-    try{ const sb = await client(); await sb.auth.signOut(); }catch(e){}
+    try{ const sb = await client(); await sb.auth.signOut({scope:'local'}); }catch(e){}
     setGuest(null);
     return;
   }
@@ -3843,7 +3843,7 @@ function agOpen(v){
 }
 function agClose(){ $("#agMask").classList.remove("on"); agMsg(""); }
 async function agLogout(){
-  try{ const c = await agClient(); await c.auth.signOut(); }catch(e){}
+  try{ const c = await agClient(); await c.auth.signOut({scope:'local'}); }catch(e){}
   agSet(null);
 }
 
@@ -3887,7 +3887,7 @@ $("#agLoginBtn").onclick = async () => {
     const { data, error } = await c.auth.signInWithPassword({ email: id + "@" + AG_DOMAIN, password: pw });
     if(error) throw error;
     const m = (data.user && data.user.user_metadata) || {};
-    if(m.kind !== "agency"){ await c.auth.signOut(); throw new Error("not-agency"); }
+    if(m.kind !== "agency"){ await c.auth.signOut({scope:'local'}); throw new Error("not-agency"); }
     agSet(data.user);
     /* 로그인 뒤에는 사이트 첫 화면 그대로 — 실시간 견적을 자동으로 띄우지 않는다(사장님 2026-09-17) */
     if(agency.approved) agClose();

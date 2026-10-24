@@ -167,7 +167,7 @@ async function doLogin(){
     const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
     if(!error&&data&&data.session){
       const meta=(data.user&&data.user.user_metadata)||{};
-      if(meta.approved===false){ await sb.auth.signOut(); throw new Error('사용이 허가되지 않은 계정입니다. 관리자에게 문의하세요.'); }
+      if(meta.approved===false){ await sb.auth.signOut({scope:'local'}); throw new Error('사용이 허가되지 않은 계정입니다. 관리자에게 문의하세요.'); }
       await enterApp();return;
     }
     throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
@@ -189,7 +189,7 @@ async function enterApp(){
   noticeText=await loadNotice(); renderNotice();
   await load();
 }
-async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+async function doLogout(){ await sb.auth.signOut({scope:'local'}); location.reload(); }
 
 /* ── 주의사항 안내창 (Supabase guide_data 에 저장) ── */
 let noticeText='';

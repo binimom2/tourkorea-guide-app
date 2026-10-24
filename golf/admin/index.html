@@ -458,7 +458,7 @@ async function doLogin(){
   }catch(e){ err.textContent='로그인 중 오류가 발생했습니다.'; }
   finally{ btn.textContent='로그인'; btn.disabled=false; }
 }
-async function doLogout(){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); }
+async function doLogout(){ try{ await sb.auth.signOut({scope:'local'}); }catch(e){} location.reload(); }
 
 async function afterAuth(user){
   const info=roleOf(user);

@@ -1975,7 +1975,7 @@ async function idleLogout(){
   if(_loggingOut) return;          // 이미 로그아웃 처리 중이면 재실행 금지(안내창 중복 방지)
   _loggingOut=true;
   currentUser=null;                // 1초 검사기가 다시 idleLogout을 못 부르게 즉시 해제
-  try{ await sb.auth.signOut(); }catch(e){}
+  try{ await sb.auth.signOut({ scope: 'local' }); }catch(e){}
   try{ localStorage.removeItem(SESSION_KEY); localStorage.removeItem(IDLE_KEY); }catch(e){}
   alert('1시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n다시 로그인해 주세요.\n\n(Signed out after 1 hour of inactivity. Please sign in again.)');
   location.reload();
@@ -2433,7 +2433,7 @@ function resetData() {
 
 async function doLogout() {
   _clearViewBanner();
-  try { await sb.auth.signOut(); } catch(e) {}
+  try { await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
   localStorage.removeItem(SESSION_KEY);
   currentRole = null; currentUser = null;
   location.reload();
@@ -4855,7 +4855,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       // 창을 닫아둔 사이에 1시간이 지났으면 세션을 끊는다(자동 로그아웃과 같은 기준)
       const last = +(localStorage.getItem(IDLE_KEY) || 0);
       if (last && Date.now() - last > IDLE_LIMIT) {
-        try { await sb.auth.signOut(); } catch(e) {}
+        try { await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
         localStorage.removeItem(SESSION_KEY); localStorage.removeItem(IDLE_KEY);
         return;
       }

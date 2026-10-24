@@ -3618,7 +3618,7 @@ function tellBoxCount(n){
 async function resolveEmail(typed){ try{ const {data:row}=await sb.from('guide_data').select('data').eq('data_key','login_directory').single(); if(row&&row.data){const k=(typed||'').toLowerCase(); if(row.data[k])return row.data[k];} }catch(e){} /* 매핑표에 없으면 @wevetour.app 규칙으로 시도 */ return (typed||'').trim().toLowerCase()+'@wevetour.app'; }
 async function gLogin(){ const id=($('#glid').value||'').trim(),pw=($('#glpw').value||'').trim(),err=$('#gerr'),btn=$('#gbtn'); err.textContent=''; if(!id||!pw){err.textContent='아이디·비밀번호를 입력하세요.';return;} btn.textContent='로그인 중...';btn.disabled=true;
   try{ const email=await resolveEmail(id); if(email){ const {data,error}=await sb.auth.signInWithPassword({email,password:pw}); if(!error&&data&&data.session){ await Promise.all([loadPricing(), loadRegionCodes(), loadGolfRoles()]); startApp(data.user); return; } } err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; }catch(e){ err.textContent='로그인 중 오류.'; }finally{ btn.textContent='로그인';btn.disabled=false; } }
-async function doLogout(){ try{await sb.auth.signOut();}catch(e){} location.reload(); }
+async function doLogout(){ try{await sb.auth.signOut({scope:'local'});}catch(e){} location.reload(); }
 (async function boot(){
   try{
     const {data:{session}}=await sb.auth.getSession();
