@@ -28,16 +28,49 @@ const json = (o, s = 200, cache = 'no-store') =>
     },
   });
 
+/* 1024: Supabase·네이버 중 하나가 멈추면 요금 응답이 59초 만에 502로 끝나 손님 화면에 요금이 하나도 안 떴다.
+   → 한 번에 10초까지만 기다리고 한 번 더 물어본다. 그래도 안 되면 마지막으로 잘 받은 사본(이 서버의 캐시)을 쓴다.
+   사본은 «실패했을 때만» 쓴다 — 평소에는 늘 최신 요금표·환율을 읽는다. */
+const LAST_PRICING = 'https://golf-price.cache/last-pricing';
+const LAST_FX = 'https://golf-price.cache/last-fx';
+async function tryTwice(fn) {
+  let err;
+  for (let i = 0; i < 2; i++) {
+    try { return await fn(); } catch (e) { err = e; }
+  }
+  throw err;
+}
+async function keepLast(key, val) {
+  try {
+    await caches.default.put(key, new Response(JSON.stringify(val), {
+      headers: { 'content-type': 'application/json', 'cache-control': 'max-age=2592000' },
+    }));
+  } catch (e) {}
+}
+async function readLast(key) {
+  try { const r = await caches.default.match(key); return r ? await r.json() : null; } catch (e) { return null; }
+}
+
 async function readPricing(env) {
   const sr = env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sr) throw new Error('서버에 SUPABASE_SERVICE_ROLE_KEY가 등록되어 있지 않습니다');
-  const r = await fetch(
-    SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.golf_pricing&select=data',
-    { headers: { apikey: sr, Authorization: 'Bearer ' + sr } }
-  );
-  if (!r.ok) throw new Error('요금표 읽기 실패 (' + r.status + ')');
-  const rows = await r.json();
-  return (Array.isArray(rows) && rows[0] && rows[0].data) || null;
+  try {
+    const data = await tryTwice(async () => {
+      const r = await fetch(
+        SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.golf_pricing&select=data',
+        { headers: { apikey: sr, Authorization: 'Bearer ' + sr }, signal: AbortSignal.timeout(10000) }
+      );
+      if (!r.ok) throw new Error('요금표 읽기 실패 (' + r.status + ')');
+      const rows = await r.json();
+      return (Array.isArray(rows) && rows[0] && rows[0].data) || null;
+    });
+    if (data) await keepLast(LAST_PRICING, data);
+    return data;
+  } catch (e) {
+    const last = await readLast(LAST_PRICING);
+    if (last) return last;
+    throw e;
+  }
 }
 
 /* 현찰 살때 — 손님에게 나가는 한화 기준(사장님 지정) */
@@ -46,13 +79,23 @@ async function cashBuyRate() {
     headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
     cf: { cacheTtl: 300, cacheEverything: true },
   };
-  const r = await fetch(NAVER + 'FX_THBKRW/prices?page=1&pageSize=1', opt);
-  if (!r.ok) throw new Error('네이버 환율 응답 ' + r.status);
-  const rows = await r.json();
-  const d = Array.isArray(rows) ? rows[0] : null;
-  const v = parseFloat(String((d && d.cashBuyValue) || '').replace(/,/g, ''));
-  if (!isFinite(v) || v <= 0) throw new Error('네이버 환율이 비어 있습니다');
-  return { rate: v, date: (d && d.localTradedAt) || '' };
+  try {
+    const fx = await tryTwice(async () => {
+      const r = await fetch(NAVER + 'FX_THBKRW/prices?page=1&pageSize=1', Object.assign({ signal: AbortSignal.timeout(8000) }, opt));
+      if (!r.ok) throw new Error('네이버 환율 응답 ' + r.status);
+      const rows = await r.json();
+      const d = Array.isArray(rows) ? rows[0] : null;
+      const v = parseFloat(String((d && d.cashBuyValue) || '').replace(/,/g, ''));
+      if (!isFinite(v) || v <= 0) throw new Error('네이버 환율이 비어 있습니다');
+      return { rate: v, date: (d && d.localTradedAt) || '' };
+    });
+    await keepLast(LAST_FX, fx);
+    return fx;
+  } catch (e) {
+    const last = await readLast(LAST_FX);
+    if (last && last.rate) return last;
+    throw e;
+  }
 }
 
 const krwUp = (n) => Math.ceil(n / 1000) * 1000;

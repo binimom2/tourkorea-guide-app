@@ -1363,10 +1363,20 @@ async function priceAuth(){
   }catch(e){ return {}; }
 }
 async function loadPrices(){
+  /* 요금 서버가 한 번 멈추거나 실패하면(1024: 59초 만에 502) 요금이 하나도 안 떴다 — 20초에서 끊고 세 번까지 다시 묻는다 */
+  for(let i = 0; i < 3; i++){
+    if(i) await new Promise(r => setTimeout(r, 2000 * i));
+    if(await loadPricesOnce()) return true;
+  }
+  return false;
+}
+async function loadPricesOnce(){
   try{
-    const r = await fetch(API + "/api/golf-price", { headers: await priceAuth(), cache: "no-store" });
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 20000);
+    const r = await fetch(API + "/api/golf-price", { headers: await priceAuth(), cache: "no-store", signal: ctl.signal })
+      .finally(() => clearTimeout(tm));
     const j = await r.json();
-    if(!j || !j.ok) return;
+    if(!j || !j.ok) return false;
     (j.courses || []).forEach(c => { PRICE.courses[pkey(c.region, c.name)] = c;
                                      if(!PRICE.courses[nkey(c.name)]) PRICE.courses[nkey(c.name)] = c; });
     (j.hotels  || []).forEach(h => { PRICE.hotels [pkey(h.region, h.name)] = h;
@@ -1381,7 +1391,8 @@ async function loadPrices(){
     PRICE.airportTip = j.airportTip || null;   // 공항 미팅 아따비(1인당, 원·밧) — 차량에 탑승 인원수만큼 붙는다
     PRICE.loaded = true;
     drawAllItems();   // 카드에 요금줄을 붙여 다시 그린다
-  }catch(e){ /* 요금을 못 받아도 사이트는 정상 동작한다 */ }
+    return true;
+  }catch(e){ return false; /* 요금을 못 받아도 사이트는 정상 동작한다 */ }
 }
 
 /* 지역 목록은 데이터에서 뽑는다 — 엑셀에 새 지역이 생겨도 탭이 저절로 따라온다.
