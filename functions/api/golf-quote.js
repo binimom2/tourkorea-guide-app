@@ -49,18 +49,50 @@ async function readKey(env, key) {
 /* ── 환율: 네이버 금융(하나은행 고시) 현찰 살때 ──
    손님에게 나가는 한화는 «현찰 살때» 기준이다(사장님 지정). 못 가져오면 견적을 내지 않는다 —
    틀린 환율로 안내하느니 잠시 후 다시 시도해 달라고 하는 편이 낫다. */
-async function cashBuyRate() {
+/* 1024: 네이버가 530으로 죽자 견적이 전부 멈췄다 → 마지막 값(DB 'golf_fx_last')을 쓴다. golf-price.js 와 같은 코드 */
+const FX_KEY = 'golf_fx_last';
+const FX_SEED = { rate: 41.25, date: '2026-10-24' };
+let memFx = null;
+async function cashBuyRate(env) {
   const opt = {
     headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
     cf: { cacheTtl: 300, cacheEverything: true },
   };
-  const r = await fetch(NAVER + 'FX_THBKRW/prices?page=1&pageSize=1', opt);
-  if (!r.ok) throw new Error('네이버 환율 응답 ' + r.status);
-  const rows = await r.json();
-  const d = Array.isArray(rows) ? rows[0] : null;
-  const v = parseFloat(String((d && d.cashBuyValue) || '').replace(/,/g, ''));
-  if (!isFinite(v) || v <= 0) throw new Error('네이버 환율이 비어 있습니다');
-  return { rate: v, date: (d && d.localTradedAt) || '' };
+  const sr = env && env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    const r = await fetch(NAVER + 'FX_THBKRW/prices?page=1&pageSize=1', Object.assign({ signal: AbortSignal.timeout(8000) }, opt));
+    if (!r.ok) throw new Error('네이버 환율 응답 ' + r.status);
+    const rows = await r.json();
+    const d = Array.isArray(rows) ? rows[0] : null;
+    const v = parseFloat(String((d && d.cashBuyValue) || '').replace(/,/g, ''));
+    if (!isFinite(v) || v <= 0) throw new Error('네이버 환율이 비어 있습니다');
+    const fx = { rate: v, date: (d && d.localTradedAt) || '' };
+    if (sr && (!memFx || memFx.rate !== fx.rate)) {
+      try {
+        await fetch(SUPABASE_URL + '/rest/v1/guide_data', {
+          method: 'POST',
+          headers: { apikey: sr, Authorization: 'Bearer ' + sr, 'content-type': 'application/json',
+                     Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ data_key: FX_KEY, data: fx, updated_at: new Date().toISOString() }),
+          signal: AbortSignal.timeout(5000),
+        });
+      } catch (e) {}
+    }
+    memFx = fx;
+    return fx;
+  } catch (e) {
+    if (memFx) return memFx;
+    if (sr) {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.' + FX_KEY + '&select=data',
+          { headers: { apikey: sr, Authorization: 'Bearer ' + sr }, signal: AbortSignal.timeout(5000) });
+        const rows = r.ok ? await r.json() : null;
+        const s = rows && rows[0] && rows[0].data;
+        if (s && s.rate > 0) return s;
+      } catch (e2) {}
+    }
+    return FX_SEED;
+  }
 }
 
 /* ── 직원용 견적기와 같은 헬퍼 ── */
@@ -143,7 +175,7 @@ export async function onRequestPost({ request, env }) {
 
   let P, fx;
   try {
-    const got = await Promise.all([readKey(env, 'golf_pricing'), cashBuyRate()]);
+    const got = await Promise.all([readKey(env, 'golf_pricing'), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);

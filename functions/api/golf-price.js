@@ -32,7 +32,6 @@ const json = (o, s = 200, cache = 'no-store') =>
    → 한 번에 10초까지만 기다리고 한 번 더 물어본다. 그래도 안 되면 마지막으로 잘 받은 사본(이 서버의 캐시)을 쓴다.
    사본은 «실패했을 때만» 쓴다 — 평소에는 늘 최신 요금표·환율을 읽는다. */
 const LAST_PRICING = 'https://golf-price.cache/last-pricing';
-const LAST_FX = 'https://golf-price.cache/last-fx';
 async function tryTwice(fn) {
   let err;
   for (let i = 0; i < 2; i++) {
@@ -73,28 +72,52 @@ async function readPricing(env) {
   }
 }
 
-/* 현찰 살때 — 손님에게 나가는 한화 기준(사장님 지정) */
-async function cashBuyRate() {
+/* 현찰 살때 — 손님에게 나가는 한화 기준(사장님 지정)
+   1024: 네이버가 530으로 죽자 사이트 요금이 전부 「요금 문의」가 됐다.
+   → 받을 때마다 마지막 값을 DB(guide_data 'golf_fx_last')에 남기고, 네이버가 안 되면 그 값을 쓴다.
+     DB에도 없으면 FX_SEED(1024 네이버 장애 직전 값). golf-quote.js 에도 같은 코드가 있다 — 같이 고칠 것 */
+const FX_KEY = 'golf_fx_last';
+const FX_SEED = { rate: 41.25, date: '2026-10-24' };
+let memFx = null;
+async function cashBuyRate(env) {
   const opt = {
     headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
     cf: { cacheTtl: 300, cacheEverything: true },
   };
+  const sr = env && env.SUPABASE_SERVICE_ROLE_KEY;
   try {
-    const fx = await tryTwice(async () => {
-      const r = await fetch(NAVER + 'FX_THBKRW/prices?page=1&pageSize=1', Object.assign({ signal: AbortSignal.timeout(8000) }, opt));
-      if (!r.ok) throw new Error('네이버 환율 응답 ' + r.status);
-      const rows = await r.json();
-      const d = Array.isArray(rows) ? rows[0] : null;
-      const v = parseFloat(String((d && d.cashBuyValue) || '').replace(/,/g, ''));
-      if (!isFinite(v) || v <= 0) throw new Error('네이버 환율이 비어 있습니다');
-      return { rate: v, date: (d && d.localTradedAt) || '' };
-    });
-    await keepLast(LAST_FX, fx);
+    const r = await fetch(NAVER + 'FX_THBKRW/prices?page=1&pageSize=1', Object.assign({ signal: AbortSignal.timeout(8000) }, opt));
+    if (!r.ok) throw new Error('네이버 환율 응답 ' + r.status);
+    const rows = await r.json();
+    const d = Array.isArray(rows) ? rows[0] : null;
+    const v = parseFloat(String((d && d.cashBuyValue) || '').replace(/,/g, ''));
+    if (!isFinite(v) || v <= 0) throw new Error('네이버 환율이 비어 있습니다');
+    const fx = { rate: v, date: (d && d.localTradedAt) || '' };
+    if (sr && (!memFx || memFx.rate !== fx.rate)) {     // 값이 바뀔 때만 남긴다
+      try {
+        await fetch(SUPABASE_URL + '/rest/v1/guide_data', {
+          method: 'POST',
+          headers: { apikey: sr, Authorization: 'Bearer ' + sr, 'content-type': 'application/json',
+                     Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ data_key: FX_KEY, data: fx, updated_at: new Date().toISOString() }),
+          signal: AbortSignal.timeout(5000),
+        });
+      } catch (e) {}
+    }
+    memFx = fx;
     return fx;
   } catch (e) {
-    const last = await readLast(LAST_FX);
-    if (last && last.rate) return last;
-    throw e;
+    if (memFx) return memFx;
+    if (sr) {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.' + FX_KEY + '&select=data',
+          { headers: { apikey: sr, Authorization: 'Bearer ' + sr }, signal: AbortSignal.timeout(5000) });
+        const rows = r.ok ? await r.json() : null;
+        const s = rows && rows[0] && rows[0].data;
+        if (s && s.rate > 0) return s;
+      } catch (e2) {}
+    }
+    return FX_SEED;
   }
 }
 
@@ -305,7 +328,7 @@ export async function onRequestGet({ request, env }) {
   const adj = await tierAdj(request, env);
   let P, fx;
   try {
-    const got = await Promise.all([readPricing(env), cashBuyRate()]);
+    const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
@@ -455,7 +478,7 @@ export async function onRequestPost({ request, env }) {
 
   let P, fx;
   try {
-    const got = await Promise.all([readPricing(env), cashBuyRate()]);
+    const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
@@ -542,7 +565,7 @@ async function hotelPost(B, env, adj) {
 
   let P, fx;
   try {
-    const got = await Promise.all([readPricing(env), cashBuyRate()]);
+    const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
