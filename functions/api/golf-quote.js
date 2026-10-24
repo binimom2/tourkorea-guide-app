@@ -98,7 +98,9 @@ async function cashBuyRate(env) {
 /* ── 직원용 견적기와 같은 헬퍼 ── */
 const krwUp = (n) => Math.ceil(n / 1000) * 1000;   // 한화는 천원 단위 올림(내리지 않는다)
 /* 요일은 표준시(Z)로 고정해 읽는다 — 서버 시간대에 따라 주중/주말이 뒤집히면 안 된다 */
-const isWeekendDate = (ds) => [0, 6].includes(new Date(ds + 'T00:00:00Z').getUTCDay());
+/* 주말 = 토·일 + 골프장마다 더 붙는 요일 weAdd(1024 카오야이 금요일) — golf-price.js 와 같은 규칙 */
+const isWeekendDate = (ds, weAdd) =>
+  [0, 6].concat(Array.isArray(weAdd) ? weAdd.map(Number) : []).includes(new Date(ds + 'T00:00:00Z').getUTCDay());
 const roomCount = (pax, rt) =>
   rt === 'single' ? pax : rt === 'triple' ? Math.ceil(pax / 3) : Math.ceil(pax / 2);
 
@@ -135,6 +137,7 @@ function coursesOf(P) {
   Object.entries(P.regions || {}).forEach(([reg, rv]) => {
     out[reg] = (rv.courses || []).map((c) => ({
       n: c.name,
+      weAdd: c.weAdd,            // 토·일 말고 더 붙는 주말 요일(1024)
       s: (c.seasons || []).map((s) => ({
         from: s.from, to: s.to,
         g18: [
@@ -195,7 +198,7 @@ export async function onRequestPost({ request, env }) {
     if (!c) { warnings.push(st.course + ' 요금이 등록되어 있지 않습니다'); return; }
     const ss = (c.s || []).find((x) => st.date >= x.from && st.date <= x.to);
     if (!ss) { warnings.push(c.n + ' ' + st.date + ' 해당일 요금이 등록되어 있지 않습니다'); return; }
-    const wk = (isWeekendDate(st.date) || holidays.includes(st.date)) ? 1 : 0;
+    const wk = (isWeekendDate(st.date, c.weAdd) || holidays.includes(st.date)) ? 1 : 0;
     const u18 = ss.g18 && ss.g18[wk] != null ? ss.g18[wk] + ss.cad + ss.crt : null;
     const u9 = ss.g9 && ss.g9[wk] != null ? ss.g9[wk] + ss.cad9 + ss.crt9 : null;
     const holes = String(st.holes || '18');

@@ -123,7 +123,9 @@ async function cashBuyRate(env) {
 
 const krwUp = (n) => Math.ceil(n / 1000) * 1000;
 /* 요일은 표준시(Z)로 고정해 읽는다 — 서버 시간대에 따라 주중/주말이 뒤집히면 안 된다 */
-const isWeekendDate = (ds) => [0, 6].includes(new Date(ds + 'T00:00:00Z').getUTCDay());
+/* 주말 = 토·일 + 골프장마다 더 붙는 요일 weAdd(관리 「주말 추가 요일」, 1024 카오야이 금요일) */
+const isWeekendDate = (ds, weAdd) =>
+  [0, 6].concat(Array.isArray(weAdd) ? weAdd.map(Number) : []).includes(new Date(ds + 'T00:00:00Z').getUTCDay());
 /* ── 수익(마진) — 사장님 지정 ──
    18홀 +100밧 · 27홀 +150밧 · 36홀 +200밧.
    그래서 «9홀당 50밧»으로 두면 셈이 저절로 맞는다:
@@ -490,7 +492,7 @@ export async function onRequestPost({ request, env }) {
   if (!course) return json({ ok: false, error: '이 골프장은 요금이 등록되어 있지 않습니다' }, 404);
 
   const holidays = Array.isArray(P.holidays) ? P.holidays : [];
-  const we = isWeekendDate(date) || holidays.includes(date);   // 태국휴일은 주말과 요금이 같다
+  const we = isWeekendDate(date, course.weAdd) || holidays.includes(date);   // 태국휴일은 주말과 요금이 같다 · 금요일 등 추가 주말은 골프장마다(weAdd)
 
   /* 새 요금줄이 있는 골프장은 그쪽을 쓴다(사장님이 지금 넣고 있는 구조).
      오전·오후가 갈린 곳은 손님이 시간을 안 고르므로 그중 싼 값을 보여 준다. */

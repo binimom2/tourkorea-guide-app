@@ -644,6 +644,8 @@ const MG=v=>{ if(!AG_TIER) return 0; const b=(v!==''&&v!=null&&Number.isFinite(+
 let BEST_MG=0;   // bestUnit()이 고른 값에 들어 있는 1인 마진 — 견적 줄에 mg로 남긴다(관리 화면 원가 = 금액 − mg)
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
+/* 골프장 주말 요금 = 토·일 + 그 골프장 weAdd(관리 「주말 추가 요일」, 1024 카오야이 금요일) + 태국휴일 — 서버 golf-price.js 와 같은 규칙 */
+const courseWe=(c,ds)=>[0,6].concat((c&&Array.isArray(c.weAdd))?c.weAdd.map(Number):[]).includes(new Date(ds+'T00:00:00').getDay())||isHoliday(ds);
 function seasonOf(course,dateStr){ return (course.s||[]).find(x=>dateStr>=x.from && dateStr<=x.to)||null; }
 
 /* ══ 사이트 요금 기준 (사장님 2026-09-10 "사이트에서 한 요금 기준") ══
@@ -2015,7 +2017,7 @@ function calc(){
     if(!st.round || !st.course) return;
     const c=(COURSES[st.region]||[]).find(x=>x.n===st.course); if(!c) return;
     const ss=seasonOf(c,st.date);
-    const we=isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date);
+    const we=courseWe(c,st.date);
     const wk=we?1:0;
     const nm=`${c.n} ${st.holes}홀`, dl=`${st.date.slice(5)} ${st.region}`;
     if(!ss){ lines.push({t:nm,s:`${dl} · 해당일 요금 미등록`,v:0,warn:1}); return; }
@@ -2312,7 +2314,8 @@ function quoteSnapshot(){
       : (()=>{ const hb=hotelByDate(); return dayState.map(st=>({
       date:st.date, region:st.region||'', course:st.course||'', holes:st.holes||'', round:!!st.round,
       hotel: hb[st.date]||'',   // 그날 자는 호텔(마지막 날은 빈칸)
-      we: isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)   // 공휴일표가 바뀌어도 그대로
+      we: (()=>{ const c=st.course&&(COURSES[st.region]||[]).find(x=>x.n===st.course);   // 골프장의 금요일 주말 등도 반영(1024)
+               return c?courseWe(c,st.date):(isWeekend(new Date(st.date+'T00:00:00'))||isHoliday(st.date)); })()   // 공휴일표가 바뀌어도 그대로
     })); })(),
     includes: { customer: quoteIncludes('customer'), internal: quoteIncludes('internal') },
     /* 차량 견적서(사장님 2026-10-17) — 일정표를 「날짜 · 지역 · 일정」으로, 불포함은 차량용 목록 */
@@ -3477,7 +3480,7 @@ async function loadPricing(){
       if(d.regions && Object.keys(d.regions).length){
         const conv={}, hot={};
         Object.entries(d.regions).forEach(([reg,rv])=>{
-          conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'',
+          conv[reg]=(rv.courses||[]).map(c=>({ n:c.name, note:c.note||'', weAdd:c.weAdd,
             /* 옛 시즌줄(seasons[], 엑셀 요금표)은 2026-09-11부터 안 읽는다 — 사이트 관리에서 넣는 새 요금줄(rates[])만(사장님) */
             s:ratesToSeasons(c) }));
           /* 호텔은 객실 타입별 요금이 있는 것만(사장님 2026-09-23) — 처음 엑셀로 올린 옛 1박 단가(perNight)만 있는 줄은 요금으로 안 본다 */

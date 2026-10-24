@@ -3552,6 +3552,22 @@ function closedCell(i,x){
   return '<div class="iecell"><b>휴장 요일 <span class="rhint">체크한 요일은 견적·달력에서 ✕ (선택 불가)</span></b>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
     +WD_KO.map((w,d)=>'<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;'+(d===0?'color:#B23B3B':'')+'"><input type="checkbox" data-closed="'+i+'" data-d="'+d+'"'+(set.has(d)?' checked':'')+'> '+w+'</label>').join('')
+    +'</div></div>'
+    +courseWeCell(i,x);
+}
+/* ── 골프장 주말 추가 요일(사장님 2026-10-24: 카오야이 일부는 금요일도 주말 요금) ──
+   주말은 늘 토·일 + 태국휴일(별도 목록). 여기서는 «더 붙는» 요일(월~금)만 체크한다.
+   저장 위치: golf_pricing 그 골프장 자리의 weAdd = [요일 번호…] (1 월 … 5 금).
+   서버(golf-price·golf-quote)와 직원 견적기가 토·일 + weAdd 를 주말·휴일 요금으로 본다. */
+function courseWeAdd(x){
+  const h=priceHomeOf('courses',x);
+  return (h&&Array.isArray(h.weAdd))?h.weAdd.map(Number):[];
+}
+function courseWeCell(i,x){
+  const set=new Set(courseWeAdd(x));
+  return '<div class="iecell"><b>주말 추가 요일 <span class="rhint">토·일·태국휴일은 늘 주말 · 금요일도 주말 요금인 곳만 체크</span></b>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+    +[1,2,3,4,5].map(d=>'<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700"><input type="checkbox" data-cwe="'+i+'" data-d="'+d+'"'+(set.has(d)?' checked':'')+'> '+WD_KO[d]+'</label>').join('')
     +'</div></div>';
 }
 function bindClosed(k){
@@ -3562,6 +3578,13 @@ function bindClosed(k){
     if(c.checked) set.add(+c.dataset.d); else set.delete(+c.dataset.d);
     x.closed=[...set].sort();
     markDirty('site');
+  });
+  document.querySelectorAll('#iBody input[data-cwe]').forEach(c=>c.onchange=()=>{
+    const x=itemsArr(k)[+c.dataset.cwe]; if(!x) return;
+    const set=new Set(courseWeAdd(x));
+    if(c.checked) set.add(+c.dataset.d); else set.delete(+c.dataset.d);
+    ensureRateHome('courses',x).weAdd=[...set].sort();
+    markDirty('rates');
   });
 }
 /* ── 지역 칩·접기(사장님 2026-09-17) ── */
