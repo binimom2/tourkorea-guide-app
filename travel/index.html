@@ -926,7 +926,7 @@ async function idleLogout(){
   currentUser=null;                // 1초 검사기가 다시 idleLogout을 못 부르게 즉시 해제
   _pendingSave=null;               // 실패해 미뤄 둔 저장도 버린다
   try{ clearDraft(); }catch(e){}   // 보관 중이던 초안 삭제
-  try{ await sb.auth.signOut(); }catch(e){}
+  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
   try{ localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY); }catch(e){}
   alert(editing
     ? '4시간 동안 사용이 없어 자동으로 로그아웃되었습니다.\n입력 중이던 내용은 저장되지 않았습니다 — 다시 로그인한 뒤 새로 입력해 주세요.\n\n(Signed out after 4 hours of inactivity. Unsaved input was discarded — please sign in and enter it again.)'
@@ -1544,7 +1544,7 @@ async function doLogin(){
     if(!error && data && data.session){
       const meta = (data.user && data.user.user_metadata) || {};
       if(meta.approved===false){
-        try{ await sb.auth.signOut(); }catch(e){}
+        try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
         err.textContent='사용이 허가되지 않은 계정입니다. 관리자에게 문의하세요.';
         err.style.display='block';
         document.getElementById('login-pw').value='';
@@ -1605,7 +1605,7 @@ async function enterApp(){
 }
 async function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?\n\n(Sign out?)'))return;
-  try{ await sb.auth.signOut(); }catch(e){}
+  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
   try{ localStorage.removeItem('trv_session'); }catch(e){}
   currentUser=null;
   location.reload();
@@ -6138,7 +6138,7 @@ async function doRelogin(){
     const { data, error } = await sb.auth.signInWithPassword({ email:idToEmail(id), password:pw });
     if(error||!data||!data.session){ err.textContent='아이디 또는 비밀번호가 올바르지 않습니다.'; err.style.display='block'; document.getElementById('relogin-pw').value=''; return; }
     const meta=(data.user&&data.user.user_metadata)||{};
-    if(meta.approved===false){ try{ await sb.auth.signOut(); }catch(e){} err.textContent='사용이 허가되지 않은 계정입니다.'; err.style.display='block'; return; }
+    if(meta.approved===false){ try{ await sb.auth.signOut({scope:'local'}); }catch(e){} err.textContent='사용이 허가되지 않은 계정입니다.'; err.style.display='block'; return; }
     currentUser={ id:(meta.login_name||id), role: meta.role||'staff' };
     try{ localStorage.setItem('trv_session',JSON.stringify(currentUser)); }catch(e){}
     _loggingOut=false;        // 자동 로그아웃으로 멈춰 있었다면 다시 정상 동작시킨다
@@ -6245,7 +6245,7 @@ setInterval(()=>{ if(_isEditingRes()) saveDraftNow(); },3000);
     // 창을 닫아둔 사이에 4시간이 지났으면 세션을 끊는다(자동 로그아웃과 같은 기준)
     const last=+(localStorage.getItem(IDLE_KEY)||0);
     if(last && Date.now()-last>IDLE_LIMIT){
-      try{ await sb.auth.signOut(); }catch(e){}
+      try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
       localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY);
       try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}   // 시간 초과로 끊긴 세션의 초안은 저장하지 않은 것 — 버린다
       return;
@@ -6253,7 +6253,7 @@ setInterval(()=>{ if(_isEditingRes()) saveDraftNow(); },3000);
     const { data: { session } } = await sb.auth.getSession();
     if(session && session.user){
       const meta = session.user.user_metadata || {};
-      if(meta.approved===false){ try{ await sb.auth.signOut(); }catch(e){} localStorage.removeItem('trv_session'); return; }
+      if(meta.approved===false){ try{ await sb.auth.signOut({scope:'local'}); }catch(e){} localStorage.removeItem('trv_session'); return; }
       currentUser = { id:(meta.login_name||'admin'), role: meta.role||'staff' };
       enterApp();
     } else {
