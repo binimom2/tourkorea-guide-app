@@ -2354,6 +2354,10 @@ function _completeLogin() {
     // vehicles 키 제거 (미사용)
     if ('vehicles' in appSettings) { delete appSettings.vehicles; saveAppSettings(); }
 
+    // 로딩이 느린 사이 이미 제출건을 열람 중이면 화면을 건드리지 않는다.
+    // 예전엔 여기서 initData()가 열람 화면을 빈 양식으로 바꿔 놓아(배너는 그대로),
+    // [수정저장]을 누르면 빈 양식이 그 정산서를 덮었다(261026-01, 1030).
+    if (window._viewingSubId || window._viewOpening) return;
     // 어드민은 항상 빈 화면
     if (currentRole === 'admin') { initData(); }
     else { const restored = loadData(); if (!restored) { initData(); } }
@@ -4450,7 +4454,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 15;   // 배포마다 +1 (구버전 탭 저장차단). v15: 환율을 바꾸면 달러·원화 TC정산금도 바로 바트 재환산(환율을 나중에 넣으면 TC 정산금이 0으로 남던 것) / v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
+const G_APP_VERSION = 16;   // 배포마다 +1 (구버전 탭 저장차단). v16: 로그인 직후 늦은 초기화가 열람 화면을 빈 양식으로 바꾸던 것 + 빈 양식 수정저장 차단 / v15: 환율을 바꾸면 달러·원화 TC정산금도 바로 바트 재환산(환율을 나중에 넣으면 TC 정산금이 0으로 남던 것) / v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -6876,6 +6880,13 @@ async function saveSubEdits() {
   // 동기화된 state + fields를 fullData로 저장.
   // fields는 localStorage를 거치지 않고 화면에서 직접 모은다 — 예전엔 localStorage를 읽었는데,
   // 저장 실패(용량초과 등)나 키 불일치로 그 값이 비면 지상비·정산방법이 통째로 날아갔다.
+  // ⓪ 원본엔 가이드명·여행사·출발일이 있는데 화면은 셋 다 비었다 = 빈 양식이 열람 화면을 대신하고 있다. 막는다.
+  const _pi = (s.fullData && s.fullData.info) || {}, _ni = state.info || {};
+  const _blank = o => !['guideName','agencyName','tourStart'].some(k => String(o[k]||'').trim());
+  if (!_blank(_pi) && _blank(_ni)) {
+    alert('❌ 화면이 빈 양식입니다(가이드명·여행사·출발일 모두 비어 있음).\n이대로 저장하면 이 정산서 내용이 지워지므로 저장을 중단했습니다.\n\n[닫기] 후 새로고침하고 다시 열어 주세요.');
+    return;
+  }
   const newFields = collectSaveFields();
   const prevDigest = _fieldsDigest(s.fullData && s.fullData.fields);
   const nowDigest  = _fieldsDigest(newFields);
