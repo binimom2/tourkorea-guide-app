@@ -1795,6 +1795,7 @@
             <option value="op">Manager (매니저)</option>
             <option value="guide">Guide (가이드)</option>
           </select>
+          <label id="acc-onetime-wrap" style="display:none;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="acc-onetime"> 1회용 (프리가이드 · 제출하면 잠김 · 정산수첩 제외)</label>
           <input type="text" id="acc-id" placeholder="아이디 입력" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
           <input type="password" id="acc-pw" placeholder="비밀번호 입력" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;">
         </div>
@@ -2290,10 +2291,15 @@ async function doLogin() {
         let role = meta.role || 'guide';
         if (ELEVATED_ADMIN_IDS.includes((accId||'').toLowerCase())) role = 'admin';
         const name = meta.name || (role==='admin' ? '관리자' : accId);
-        currentUser = { id: accId, username: accId, name: name, role: role };
+        currentUser = { id: accId, username: accId, name: name, role: role, oneTime: !!meta.one_time, oneTimeSince: meta.one_time_since || '' };
         currentRole = role;
         signedIn = true;
       }
+    }
+    if (signedIn && await _oneTimeBlocked()) {
+      err.textContent = '이 1회용 계정은 이미 정산서를 제출해 사용이 끝났습니다. 관리자에게 문의하세요.';
+      err.style.display = 'block';
+      return;
     }
     if (signedIn) { _completeLogin(); return; }
 
@@ -2343,6 +2349,10 @@ function _completeLogin() {
     loadSubmissions(),
   ]).then(([sbData])=>{
     if (_loginSeq !== _loginLoadSeq) return;  // 리셋으로 무효화된 로드 → 무시
+    // 1회용(돌려 쓰는 프리가이드) 계정: 앞사람이 제출하고 잠긴 작성본이면 버리고 빈 양식으로 시작
+    if (currentUser && currentUser.oneTime && sbData && sbData.state && sbData.state.info && sbData.state.info.submitLocked) {
+      sbData = null; localStorage.removeItem(LS_KEY_USER());
+    }
     if (currentRole !== 'admin' && sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
     // 잘못된 마이그레이션 복구: ['메인','1일','2일','3일']이면 원래 기본값으로 되돌림
     const WRONG_CATS = ['메인','1일','2일','3일'];
@@ -2379,7 +2389,7 @@ function _completeLogin() {
     });
     syncRate2FromBase();
     // 가이드명 자동입력: 빈 경우 로그인 이름으로 채움
-    if (currentRole === 'guide') {
+    if (currentRole === 'guide' && !currentUser.oneTime) {   // 1회용 계정명(프리가이드1)은 가이드 이름이 아니다
       const gnEl = document.getElementById('guideName');
       if (gnEl && !gnEl.value && currentUser && currentUser.name) {
         gnEl.value = currentUser.name;
@@ -2401,6 +2411,8 @@ function isMySubmission(s) {
   if (!currentUser) return false;
   const uname = currentUser.username || '';
   const myName = (currentUser.name || '').trim();
+  // 돌려 쓰는 1회용 계정은 잠금 해제(oneTimeSince) 이후 내 것만 — 앞사람 정산서는 안 보이게
+  if (currentUser.oneTime) return !!uname && s.username === uname && (s.submittedAt||'') > (currentUser.oneTimeSince||'');
   return (uname && s.username === uname) || (myName && (s.guideName || '').trim() === myName);
 }
 
@@ -2433,6 +2445,20 @@ function resetData() {
   });
   const p = document.getElementById('productName'); if(p) p.value='';
   calcPaxTotal(); syncRate2FromBase(); updateSettleCode(); switchTab('main');
+}
+
+// 1회용(프리가이드) 계정이 이미 제출했으면 로그인을 막는다 — 막을 땐 세션도 끊고 true.
+async function _oneTimeBlocked() {
+  if (!currentUser || !currentUser.oneTime) return false;
+  let subs = null;
+  try { subs = await _loadSubsRaw(); } catch(e) { return false; }   // 못 읽으면 막지 않음(제출 중복은 제출 단계가 막는다)
+  // 프리가이드1·2·3처럼 돌려 쓰는 계정 — 어드민이 비번을 바꾼 시각(oneTimeSince) 이후 제출만 센다
+  const since = currentUser.oneTimeSince || '';
+  if (!(Array.isArray(subs) ? subs : []).some(s => s && s.username === currentUser.username && (s.submittedAt||'') > since)) return false;
+  try { await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
+  localStorage.removeItem(SESSION_KEY);
+  currentRole = null; currentUser = null;
+  return true;
 }
 
 async function doLogout() {
@@ -4454,7 +4480,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 16;   // 배포마다 +1 (구버전 탭 저장차단). v16: 로그인 직후 늦은 초기화가 열람 화면을 빈 양식으로 바꾸던 것 + 빈 양식 수정저장 차단 / v15: 환율을 바꾸면 달러·원화 TC정산금도 바로 바트 재환산(환율을 나중에 넣으면 TC 정산금이 0으로 남던 것) / v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
+const G_APP_VERSION = 17;   // 배포마다 +1 (구버전 탭 저장차단). v17: 1회용(프리가이드) 계정 — 제출하면 로그인 잠김·정산수첩 제외 / v16: 로그인 직후 늦은 초기화가 열람 화면을 빈 양식으로 바꾸던 것 + 빈 양식 수정저장 차단 / v15: 환율을 바꾸면 달러·원화 TC정산금도 바로 바트 재환산(환율을 나중에 넣으면 TC 정산금이 0으로 남던 것) / v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -4874,8 +4900,9 @@ document.addEventListener('DOMContentLoaded',()=>{
         let role = meta.role || 'guide';
         if (ELEVATED_ADMIN_IDS.includes((accId||'').toLowerCase())) role = 'admin';
         const name = meta.name || (role==='admin' ? '관리자' : accId);
-        currentUser = { id: accId, username: accId, name: name, role: role };
+        currentUser = { id: accId, username: accId, name: name, role: role, oneTime: !!meta.one_time, oneTimeSince: meta.one_time_since || '' };
         currentRole = role;
+        if (await _oneTimeBlocked()) return;
         _completeLogin();
       } else {
         localStorage.removeItem(SESSION_KEY);
@@ -5444,6 +5471,7 @@ function renderAccountList() {
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-weight:700;font-size:13px;">${a.name||a.id}</span>
           ${roleBadge(a.role)}
+          ${a.oneTime ? `<span style="background:#b45309;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;">1회용</span>${(submissionsDB||[]).some(x=>x.username===a.id && (x.submittedAt||'') > (a.oneTimeSince||'')) ? '<span style="font-size:11px;color:#b45309;">제출완료 · 잠김 (비번변경 = 다시 사용)</span>' : '<span style="font-size:11px;color:#059669;">사용 가능</span>'}` : ''}
           ${loginLabel}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -5562,17 +5590,26 @@ async function changePwAccount(i) {
   // 예전(legacy) 계정도 로그인 매핑표(login_directory) 이메일로 실제 Auth 비번을 바꿀 수 있게 한다
   const email = await _accEmail(a);
   if (!a.authId && !email) { err.textContent='이 계정의 로그인 계정을 찾을 수 없습니다.'; return; }
-  const res = await callAccountApi('setPassword', Object.assign(a.authId ? { id: a.authId } : { email }, { password: nw }));
+  // 1회용(프리가이드) 계정은 비번을 바꾸면 잠금이 풀린다 — 이 시각 이후 1회 더 제출 가능
+  const since = new Date().toISOString();
+  const res = a.oneTime
+    ? await callAccountApi('update', Object.assign(a.authId ? { id: a.authId } : { oldEmail: email }, { password: nw,
+        metadata: { acc_id: a.id, login_name: a.name, name: a.name, role: a.role, one_time: true, one_time_since: since } }))
+    : await callAccountApi('setPassword', Object.assign(a.authId ? { id: a.authId } : { email }, { password: nw }));
   if (!res || !res.ok) { err.textContent = (res && res.error) || '비밀번호 변경에 실패했습니다.'; return; }
+  if (a.oneTime) { a.oneTimeSince = since; await saveAccounts(accounts); renderAccountList(); }
   document.getElementById(`pwrow-${i}`).style.display='none';
   document.getElementById(`pw-new-${i}`).value='';
   err.textContent='';
-  showToast('🔑 비밀번호가 변경되었습니다.');
+  showToast(a.oneTime ? '🔓 새 비밀번호로 잠금이 풀렸습니다. 다음 프리가이드에게 알려 주세요.' : '🔑 비밀번호가 변경되었습니다.');
 }
 
 function onAccRoleChange() {
   const role = document.getElementById('acc-role').value;
   const idEl = document.getElementById('acc-id');
+  const otw = document.getElementById('acc-onetime-wrap');
+  if (otw) otw.style.display = role === 'guide' ? 'flex' : 'none';
+  if (role !== 'guide') { const ot=document.getElementById('acc-onetime'); if(ot) ot.checked=false; }
   if (role === 'guide') {
     idEl.placeholder = '이름 입력 (로그인 시 이름 사용)';
   } else {
@@ -5608,6 +5645,7 @@ async function addAccount() {
     loginKey = val.toLowerCase();          // 가이드는 이름으로 로그인
     email = accId + GUIDE_EMAIL_DOMAIN;
     entry = { id: accId, name: val, role, email, loginKey };
+    if ((document.getElementById('acc-onetime')||{}).checked) entry.oneTime = true;
   } else {
     if (val === ADMIN_ID) { err.textContent='이미 사용 중인 아이디입니다.'; err.style.display='block'; return; }
     if (accounts.find(a=>a.id===val)) { err.textContent='이미 존재하는 아이디입니다.'; err.style.display='block'; return; }
@@ -5619,7 +5657,9 @@ async function addAccount() {
   const btn = document.querySelector('#userMgrModal .acc-add-btn') || null;
   if (btn) { btn.disabled = true; btn.textContent = '생성 중...'; }
   // 1) 실제 로그인 계정(Supabase Auth) 생성 — 서버(service_role)에서
-  const res = await callAccountApi('create', { email, password: pw, metadata: { acc_id: accId, login_name: val, name: val, role } });
+  const meta = { acc_id: accId, login_name: val, name: val, role };
+  if (entry.oneTime) meta.one_time = true;   // 1회용: 제출하면 로그인 차단(_oneTimeBlocked)
+  const res = await callAccountApi('create', { email, password: pw, metadata: meta });
   if (btn) { btn.disabled = false; btn.textContent = '추가'; }
   if (!res || !res.ok) { err.textContent = (res && res.error) || '계정 생성에 실패했습니다.'; err.style.display='block'; return; }
   entry.authId = res.id;
@@ -5631,6 +5671,7 @@ async function addAccount() {
   document.getElementById('acc-id').value='';
   document.getElementById('acc-pw').value='';
   document.getElementById('acc-role').value='';
+  onAccRoleChange();
   renderAccountList();
   showToast('✅ 계정이 추가되었습니다. 이제 로그인할 수 있습니다.');
 }
@@ -5821,6 +5862,7 @@ async function _submitToAdminRun() {
     paxTotal,
     submittedAt: new Date().toISOString(),
     status: 'new',
+    ...(currentUser && currentUser.oneTime ? { oneTime: true } : {}),   // 프리가이드 1회용 — 정산수첩 제외
     ...collectProfitFields(),
     fullData: (() => {
       const fd = JSON.parse(JSON.stringify(state));
@@ -5854,6 +5896,11 @@ async function _submitToAdminRun() {
   if (currentRole === 'guide') {
     if (state.info) { state.info.submitLocked = true; saveData(); }
     applySubmitLock();
+    if (currentUser && currentUser.oneTime) {
+      alert('📤 제출되었습니다. 수고하셨습니다.\n\n1회용 계정이라 이제 로그아웃되며, 이 아이디로는 다시 로그인할 수 없습니다.');
+      await doLogout();
+      return;
+    }
     showToast('📤 제출되었습니다. 제출 후에는 수정할 수 없습니다.');
     return;
   }
@@ -6437,7 +6484,9 @@ function _buildLedgerData() {
   };
 
   // 아직 제출 이력이 없는 가이드도 이월금 설정 등을 위해 목록에 먼저 포함
-  getAccounts().filter(a=>a.role==='guide').forEach(a=>{ ensure(a.name, a.name, a.id); });
+  // 1회용(프리가이드) 계정은 소속이 아니라 현금 정산 → 수첩에서 뺀다
+  const oneTimeIds = new Set(getAccounts().filter(a=>a.oneTime).map(a=>a.id));
+  getAccounts().filter(a=>a.role==='guide' && !a.oneTime).forEach(a=>{ ensure(a.name, a.name, a.id); });
 
   // 정산완료(settled) 처리된 건만 수첩에 올린다 — 월별 엑셀과 같은 기준.
   // 어드민이 [완료]를 누르기 전(작성·수정 중)에는 금액이 잡히면 안 되고,
@@ -6445,7 +6494,7 @@ function _buildLedgerData() {
   // 차터(가이드 2명 이상)로 배분표가 짜인 건은 각자 몫만 자기 수첩에 올린다.
   // 프리랜서는 N/1 계산에는 들어가지만 소속이 아니라 현장에서 현금으로 바로 정산하므로
   // 수첩엔 올리지 않는다 — 계정 없는 이름은 아래 계정 필터가 그대로 걸러 준다.
-  submissionsDB.filter(s=>s.settled).forEach(s=>{
+  submissionsDB.filter(s=>s.settled && !s.oneTime && !oneTimeIds.has(s.username)).forEach(s=>{
     const shares = _sharesOf(s);
     if (shares) {
       const tag = ` · 차터 ${shares.length}인 배분`;
@@ -6481,7 +6530,7 @@ function _buildLedgerData() {
   // 단 계정 목록을 못 읽었으면(localStorage 비었거나 동기화 실패) 거르지 않는다 —
   // 여기서 걸러버리면 수첩이 통째로 빈 화면이 되어 데이터가 사라진 것처럼 보인다.
   const guideNames = new Set(
-    getAccounts().filter(a=>a.role==='guide').map(a=>(a.name||'').trim()).filter(Boolean)
+    getAccounts().filter(a=>a.role==='guide' && !a.oneTime).map(a=>(a.name||'').trim()).filter(Boolean)
   );
   // 차터 배분에 오른 프리랜서도 여기서 함께 빠진다 — 현금으로 바로 정산하므로 누적할 게 없다.
   if (guideNames.size) {
