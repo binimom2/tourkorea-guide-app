@@ -3825,7 +3825,8 @@ function agSet(user){
   loadBoxCount();
   /* 승인된 여행사로 들어와 있으면 견적 화면을 미리 받아 둔다 — 「실시간 견적」을 누르면 기다림 없이 바로 뜬다
      (사장님 2026-09-21 "화면 넘어오는 시간이 너무 오래 걸림"). 사이트 첫 화면이 먼저 뜨도록 잠깐 뒤에 시작한다 */
-  if(agency && agency.approved){ clearTimeout(agSet._pre); agSet._pre = setTimeout(preloadQuote, 1200); }
+  /* 2026-11-02부터는 로그인 안 한 분·직원·로그아웃 뒤에도 미리 받는다(사장님 "로딩시간이 너무 길어요") */
+  clearTimeout(agSet._pre); agSet._pre = setTimeout(preloadQuote, 1200);
 }
 function preloadQuote(){
   try{
@@ -3895,6 +3896,7 @@ async function agLogout(){
       agSet(user);
     }
   }catch(e){}
+  finally{ if(!agSet._pre) agSet._pre = setTimeout(preloadQuote, 1200); }   /* 여행사 로그인이 아니어도 견적 화면을 미리 받아 둔다 */
 })();
 
 /* 헤더 단추 — 로그인/로그아웃(회원) */
