@@ -17,7 +17,7 @@
    ══════════════════════════════════════════════════════════════════ */
 (function () {
   if (window.__imeGuard) return;
-  window.__imeGuard = 2;
+  window.__imeGuard = 3;
   var DEL = { Backspace: 1, Delete: 1, Escape: 1 };
   var ime = { el: null, val: null, valTs: 0 };
   var delTs = 0, enterTs = 0;
@@ -87,5 +87,9 @@
   }, true);
   document.addEventListener('change', function (e) { if (pend && pend.el === e.target) fix(); }, true);
   document.addEventListener('mousedown', function () { if (pend) fix(); }, true);
-  document.addEventListener('beforeinput', function (e) { if (pend && pend.el === e.target && !e.isComposing) pend = null; }, true);
+  /* v3: 다시 «글자를 넣을» 때만 기다리던 것을 버린다. 입력기가 조합 끝난 뒤 보내는 지우기 신호(delete…)로 버리면
+     바로 그 지우기 때문에 빠진 글자를 못 되살린다(「진입불가」→「진입불」, 사장님 2026-11-04) */
+  document.addEventListener('beforeinput', function (e) {
+    if (pend && pend.el === e.target && !e.isComposing && String(e.inputType || '').indexOf('insert') === 0 && e.inputType !== 'insertCompositionText') pend = null;
+  }, true);
 })();
