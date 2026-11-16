@@ -2353,6 +2353,15 @@ function _completeLogin() {
     if (currentUser && currentUser.oneTime && sbData && sbData.state && sbData.state.info && sbData.state.info.submitLocked) {
       sbData = null; localStorage.removeItem(LS_KEY_USER());
     }
+    /* 잠김 표시가 서버에 못 남은 옛 작성본(1116 이전 제출)도 버린다:
+       ① 이번 사용 차례(oneTimeSince)가 아닌 때 저장된 작성본, ② 이미 제출된 정산코드의 작성본 */
+    if (currentUser && currentUser.oneTime && sbData && sbData.state) {
+      const since = currentUser.oneTimeSince || '';
+      const code = (sbData.state.info && sbData.state.info.settleCode) || '';
+      const otherTurn = sbData.ownerSince !== undefined && sbData.ownerSince !== since;
+      const submitted = sbData.ownerSince === undefined && code && code !== '-' && (submissionsDB||[]).some(s => s && s.username === currentUser.username && s.settleCode === code);
+      if (otherTurn || submitted) { sbData = null; localStorage.removeItem(LS_KEY_USER()); }
+    }
     if (currentRole !== 'admin' && sbData) localStorage.setItem(LS_KEY_USER(), JSON.stringify(sbData));
     // 잘못된 마이그레이션 복구: ['메인','1일','2일','3일']이면 원래 기본값으로 되돌림
     const WRONG_CATS = ['메인','1일','2일','3일'];
@@ -4480,7 +4489,7 @@ async function pushGuideDailyBackup(key, serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 G_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const G_APP_VERSION = 17;   // 배포마다 +1 (구버전 탭 저장차단). v17: 1회용(프리가이드) 계정 — 제출하면 로그인 잠김·정산수첩 제외 / v16: 로그인 직후 늦은 초기화가 열람 화면을 빈 양식으로 바꾸던 것 + 빈 양식 수정저장 차단 / v15: 환율을 바꾸면 달러·원화 TC정산금도 바로 바트 재환산(환율을 나중에 넣으면 TC 정산금이 0으로 남던 것) / v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
+const G_APP_VERSION = 18;   // 배포마다 +1 (구버전 탭 저장차단). v18: 1회용 계정 제출 후 잠김 표시를 서버에 다 넣고 로그아웃 + 앞사람 작성본(쇼핑 등) 남던 것 버림 / v17: 1회용(프리가이드) 계정 — 제출하면 로그인 잠김·정산수첩 제외 / v16: 로그인 직후 늦은 초기화가 열람 화면을 빈 양식으로 바꾸던 것 + 빈 양식 수정저장 차단 / v15: 환율을 바꾸면 달러·원화 TC정산금도 바로 바트 재환산(환율을 나중에 넣으면 TC 정산금이 0으로 남던 것) / v14: 제출 단추 연타 시 두 건 제출되던 것 막음(_submitting) / v13: 환율 자동 = SuperRich 실제 매입가(/api/superrich, 100$·5만원권) / v12: 일차 사이 끼워넣기(insertDayBefore) / v7: 정산서 fields 유실방지 / v8: 저장안한 수정 감지(지상비·정산방법·환율) + 완료·전송·열람 시 서버최신본 기준 / v9: 서버저장 실패를 성공으로 알리던 문제(=한 번에 저장 안 됨) 수정 + 자동 재시도 / v10: 차터 배분(guideShares) — 가이드 2명 이상 팀의 정산금을 나눠 각자 수첩에 누적 / v11: 프리랜서는 배분엔 들어가되 수첩엔 안 올림(현금 즉시정산)
 const G_VERSION_KEY = 'guide_app_version';
 async function _gVersionSync(){
   try{
@@ -4556,6 +4565,7 @@ function saveData() {
     });
 
     const data = { state: JSON.parse(JSON.stringify(state)), fields };
+    if (currentUser && currentUser.oneTime) data.ownerSince = currentUser.oneTimeSince || '';   // 돌려 쓰는 계정 — 어느 사용 차례의 작성본인지
     const k = LS_KEY_USER();
     localStorage.setItem(k, JSON.stringify(data));
     syncToSupabase(k, data);
@@ -5897,6 +5907,9 @@ async function _submitToAdminRun() {
     if (state.info) { state.info.submitLocked = true; saveData(); }
     applySubmitLock();
     if (currentUser && currentUser.oneTime) {
+      /* 잠김 표시를 서버에 «다 넣은 뒤» 로그아웃한다. 예전엔 saveData()의 서버 저장이 끝나기 전에
+         로그아웃·새로고침해 잠김이 서버에 안 남았고, 다음 프리가이드가 앞사람 작성본(쇼핑 등)을 그대로 받았다(사장님 1116, 1110 김영진) */
+      try { const raw = localStorage.getItem(LS_KEY_USER()); if (raw) await syncToSupabase(LS_KEY_USER(), JSON.parse(raw)); } catch(e) {}
       alert('📤 제출되었습니다. 수고하셨습니다.\n\n1회용 계정이라 이제 로그아웃되며, 이 아이디로는 다시 로그인할 수 없습니다.');
       await doLogout();
       return;
