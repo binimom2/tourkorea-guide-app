@@ -76,6 +76,27 @@ body.qopen{overflow:hidden}
 .nsdrop button small{color:var(--muted);font-size:12px;margin-left:auto;white-space:nowrap}
 .nsdrop .none{padding:10px 9px;font-size:13px;color:var(--muted)}
 @media(max-width:339px){.brand span{display:none}}   /* 아주 좁은 화면에서만 로고만 */
+/* 나라 메뉴 — 태국 ▾ / 베트남 ▾ (사장님 2026-11-18). 고른 나라는 진한 초록 알약, 지역은 아래로 펼침(마우스·누르기 둘 다) */
+.ctynav{display:flex;gap:4px;margin-left:14px;flex-shrink:0}
+.ctyw{position:relative}
+.ctyb{display:flex;align-items:center;gap:4px;font:inherit;font-size:14.5px;font-weight:800;color:var(--fairway);background:none;border:1.5px solid transparent;border-radius:999px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.ctyb i{font-style:normal;font-size:9px;opacity:.55}
+.ctyb:hover{background:rgba(18,58,43,.07)}
+.ctyw.on .ctyb{background:var(--fairway);color:#fff}
+.ctyw.on .ctyb i{opacity:.8}
+.ctydd{position:absolute;left:0;top:100%;min-width:160px;display:none;z-index:70;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 14px 34px rgba(18,58,43,.18)}
+.ctyw:hover .ctydd,.ctyw.open .ctydd{display:block}
+.ctydd button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;border-radius:8px;padding:9px 11px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer;text-align:left;white-space:nowrap}
+.ctydd button:hover{background:rgba(18,58,43,.09)}
+.ctydd small{font-size:11.5px;font-weight:700;color:var(--muted)}
+.ctynote{margin:22px 0 4px;padding:14px 16px;border-radius:12px;background:#fff;border:1px solid var(--line);font-weight:700;color:var(--fairway);text-align:center}
+@media(max-width:640px){
+  .ctynav{order:1;margin-left:0}
+  .ctynav{gap:0}
+  .ctyb{font-size:12.5px;padding:5px 7px;gap:2px}
+  .ctyw:hover .ctydd{display:none}
+  .ctyw.open .ctydd{display:block}
+}
 /* align-items 를 적어 두지 않으면 stretch 라, 지역 목록을 품은 「골프장」만
    글자가 칸 위쪽에 붙어 줄이 어긋나 보였다(사장님 2026-09-08). */
 .menu{display:flex;align-items:center;gap:2px;margin-left:auto}
@@ -859,6 +880,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 <nav class="nav">
   <div class="wrap">
     <a class="brand" href="#top"><b>TOURKOREA</b><span>투어코리아</span></a>
+    <!-- 나라 메뉴 — 태국 ▾ / 베트남 ▾, 지역을 누르면 그 지역 목록으로 바로 간다(사장님 2026-11-18) -->
+    <div class="ctynav" id="ctyNav"></div>
     <!-- 검색 — 골프장·호텔·스파… 이름·지역·영문으로 찾아 바로 상세를 연다(사장님 2026-09-10) -->
     <div class="nsearch" id="nsearch">
       <input type="search" id="navQ" autocomplete="off" aria-label="찾기">
@@ -1311,7 +1334,7 @@ function bindFavBtns(root){
 /* 담아 둔 이름으로 지금 사이트에 있는 항목을 다시 찾는다.
    관리 화면에서 이름이 바뀌거나 「보이기」가 꺼지면 못 찾는다 — 그때는 열지 못하게 둔다. */
 function findItem(k, n){
-  return (itemsOf(k) || []).filter(y => y && y.n === n)[0] || null;
+  return (itemsAllOf(k) || []).filter(y => y && y.n === n)[0] || null;
 }
 
 /* ══════════ 요금 ══════════
@@ -1399,7 +1422,8 @@ async function loadPricesOnce(){
    regionOrder에 적힌 순서를 먼저 쓰고, 거기 없는 지역은 뒤에 붙인다. */
 function regionsOf(list){
   const has = {}; list.forEach(x => has[x.r] = (has[x.r] || 0) + 1);
-  const ordered = SITE.regionOrder.filter(r => has[r]);
+  const ordered = (countryOf(country()).rs || []).concat(SITE.regionOrder || [])
+    .filter((r, i, all) => has[r] && all.indexOf(r) === i);
   Object.keys(has).forEach(r => { if(ordered.indexOf(r) < 0) ordered.push(r); });
   return ordered.map(r => ({ r, n: has[r] }));
 }
@@ -1416,13 +1440,78 @@ function tabber(boxId, list, cur, onPick){
 /* ── 종류(골프장·호텔·스파·차량…) ──
    data.js의 cats에 한 줄 늘리면 손님 화면의 종류 버튼도 같이 늘어난다.
    아직 항목을 하나도 안 넣은 종류는 손님에게 빈 화면을 보이느니 아예 안 보여준다. */
-function itemsOf(k){
+/* ── 나라(태국·베트남) — 맨 위 나라 메뉴(사장님 2026-11-18) ──
+   항목의 나라는 지역으로 정해진다(SITE.countries[].rs). 어느 나라에도 없는 지역은 첫 나라(태국) —
+   그래서 예전 자료는 손대지 않아도 전부 태국에 그대로 있다. 손님 화면은 «고른 나라» 것만 보인다. */
+function countries(){
+  const c = (SITE.countries || []).filter(x => x && x.n);
+  return c.length ? c : [{ n:"태국", rs: SITE.regionOrder || [] }];
+}
+function countryOf(n){ return countries().filter(c => c.n === n)[0] || countries()[0]; }
+function countryOfRegion(r){
+  const hit = countries().filter(c => (c.rs || []).indexOf(String(r || "").trim()) >= 0)[0];
+  return (hit || countries()[0]).n;
+}
+let curCountry = "";
+try{ curCountry = localStorage.getItem("tk-country") || ""; }catch(e){}
+function country(){
+  if(!countries().some(c => c.n === curCountry)) curCountry = countries()[0].n;
+  return curCountry;
+}
+/* 나라를 바꾼다 — 화면 전체를 그 나라 것으로 다시 그린다. r 을 주면 그 지역 목록으로 바로 들어간다 */
+function setCountry(n, r, stay){
+  curCountry = n;
+  try{ localStorage.setItem("tk-country", n); }catch(e){}
+  curRegs = {};
+  if(r) catList().forEach(c => { if(itemsOf(c.k).some(x => x.r === r)) curRegs[c.k] = r; });
+  if(r && !Object.keys(curRegs).length && catList().length) CTY_NOTE = r + " 상품은 준비 중입니다.";
+  if(!catList().some(c => c.k === curCat && (!r || curRegs[c.k] === r)))
+    curCat = ((r && catList().filter(c => curRegs[c.k] === r)[0]) || catList()[0] || {}).k || "courses";
+  drawCtyNav(); drawSectors(); drawCatPick(); drawHeads(); drawCatalog(); drawFx();
+  try{ history.replaceState(null, "", "#" + curCat); }catch(e){}
+  const sec = document.getElementById("catalog");
+  if(sec && !stay) sec.scrollIntoView({ behavior:"smooth" });
+}
+function drawCtyNav(){
+  const box = $("#ctyNav"); if(!box) return;
+  const cur = country();
+  box.innerHTML = countries().map(c => {
+    const cnt = {};
+    catList0().forEach(k => itemsAllOf(k.k).forEach(x => { if(countryOfRegion(x.r) === c.n) cnt[x.r] = (cnt[x.r] || 0) + 1; }));
+    const rs = (c.rs || []).concat(Object.keys(cnt)).filter((r, i, all) => r && all.indexOf(r) === i);
+    return '<span class="ctyw' + (c.n === cur ? ' on' : '') + '">'
+      + '<button type="button" class="ctyb" data-c="' + esc(c.n) + '">' + esc(c.n) + '<i>▾</i></button>'
+      + '<div class="ctydd">' + rs.map(r =>
+          '<button type="button" data-c="' + esc(c.n) + '" data-r="' + esc(r) + '">' + esc(r)
+          + '<small>' + (cnt[r] ? cnt[r] : '준비 중') + '</small></button>').join("") + '</div></span>';
+  }).join("");
+  /* 나라 이름 — 그 나라로 바꾸고 지역 목록을 펼친다(한 번 더 누르면 접힘). 화면은 움직이지 않는다 */
+  box.querySelectorAll(".ctyb").forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const n = b.dataset.c, wasOpen = b.parentNode.classList.contains("open");
+    if(n !== country()) setCountry(n, "", true);
+    $("#ctyNav").querySelectorAll(".ctyw").forEach(w =>
+      w.classList.toggle("open", !wasOpen && w.querySelector(".ctyb").dataset.c === n));
+  });
+  box.querySelectorAll(".ctydd button").forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    box.querySelectorAll(".ctyw").forEach(x => x.classList.remove("open"));
+    setCountry(b.dataset.c, b.dataset.r);
+  });
+}
+document.addEventListener("click", () => {
+  document.querySelectorAll("#ctyNav .ctyw.open").forEach(x => x.classList.remove("open"));
+});
+/* 나라 구분 없이 그 종류 전부(보이기 켠 것) — 찜·장바구니·주소로 연 상세가 다른 나라 것이어도 찾게 */
+function itemsAllOf(k){
   const all = k === "courses" ? (SITE.courses || [])
             : k === "hotels"  ? (SITE.hotels  || [])
             : ((SITE.items && SITE.items[k]) || []);
-  /* 관리 화면에서 「보이기」를 끈 것은 손님에게 안 나온다 — 자료(사진·문구)는 그대로 남아 있다.
-     여기서 한 번만 걸러 두면 카드·지역탭·개수·상세가 전부 같은 목록을 본다. */
   return all.filter(x => x && x.on !== false);
+}
+function itemsOf(k){
+  const cn = country();
+  return itemsAllOf(k).filter(x => countryOfRegion(x.r) === cn);
 }
 const CATS_FALLBACK = [
   { k:"courses", ic:"⛳", t:"골프장", u:"곳" },
@@ -1441,6 +1530,11 @@ function catList(){
   /* k:'tours'(기타투어)는 종류 관리에서 차례만 잡는 줄 — 카탈로그 종류가 아니라 섹터 띠에서 따로 넣는다 */
   const on = cs.filter(c => c && c.k && c.k !== "tours" && c.on !== false && itemsOf(c.k).length);
   return on.length ? on : CATS_FALLBACK.filter(c => itemsOf(c.k).length);
+}
+/* 나라와 상관없이 켜 둔 종류 전부 — 나라 메뉴의 지역별 개수를 셀 때 */
+function catList0(){
+  const cs = (Array.isArray(SITE.cats) && SITE.cats.length) ? SITE.cats : CATS_FALLBACK;
+  return cs.filter(c => c && c.k && c.k !== "tours" && c.on !== false);
 }
 /* 종류별 안내 문구 — 한 번도 안 적은 차량 줄(note 없음)은 기본 문구, 비워 저장하면 안 나온다 */
 const CAR_NOTE = "3박 이상 밴·버스 견적은 차량 실시간 견적에서 요청해 주세요.";
@@ -1590,9 +1684,13 @@ function regOf(k){
   if(!regs.some(g => g.r === curRegs[k])) curRegs[k] = (regs[0] || {}).r || "";
   return curRegs[k];
 }
+let CTY_NOTE = "";   /* 나라 메뉴에서 상품이 아직 없는 지역을 눌렀을 때 한 줄 안내 */
 function drawCatalog(){
   const list = catList();
-  $("#catSections").innerHTML = list.map(c =>
+  const note = !list.length ? country() + " 상품은 준비 중입니다." : CTY_NOTE;
+  CTY_NOTE = "";
+  $("#catSections").innerHTML = (note ? '<div class="wrap"><p class="ctynote">' + esc(note) + '</p></div>' : '')
+    + list.map(c =>
     '<section class="catsec" id="sec-' + esc(c.k) + '"><div class="wrap">'
     + '<div class="sechead" id="sh-cat-' + esc(c.k) + '"></div>'
     + '<div class="tabs" id="tabs-' + esc(c.k) + '"></div>'
@@ -1927,6 +2025,7 @@ function openDeepLink(){
   if(!d) return;
   const x = findItem(d.k, d.n);
   if(!x) return;               // 지웠거나 감춘 항목이면 종류 페이지만 보인다
+  if(countryOfRegion(x.r) !== country()) setCountry(countryOfRegion(x.r), x.r);   // 다른 나라 상품 주소면 그 나라로
   pickCat(d.k, x.r);
   openDetail(x, d.k);
 }
@@ -1950,6 +2049,7 @@ function renderAll(){
   else if(!RENDERED_ONCE) curCat = (catList()[0] || {}).k || "courses";
   RENDERED_ONCE = true;
   if(!catList().some(c => c.k === curCat)) curCat = (catList()[0] || {}).k || "courses";
+  drawCtyNav(); drawFx();
   drawCatPick(); drawHeads(); drawCatalog();
   drawTours(); drawBoard(); drawContact();
 }
@@ -3181,8 +3281,14 @@ async function loadFx(){
       + (buy  ? '<div class="fxr"><span>살때</span><b>' + buy  + '</b></div>' : '')
       + (sell ? '<div class="fxr"><span>팔때</span><b>' + sell + '</b></div>' : '');
     box.title = (j.date ? j.date + " 기준 · " : "") + "1밧당 원";
-    box.hidden = false;
+    box.dataset.ok = "1";
+    drawFx();
   }catch(e){ /* 환율을 못 받아도 사이트는 그대로 돈다 */ }
+}
+/* 태국환율 상자는 태국을 보고 있을 때만 — 베트남 화면에 밧 환율이 붙어 있으면 헷갈린다 */
+function drawFx(){
+  const box = $("#fxBox");
+  if(box) box.hidden = !(box.dataset.ok && country() === "태국");
 }
 /* 견적 패널 아래 한 줄 알림 — ok면 초록(담았습니다), 아니면 빨강(못 담는 까닭) */
 function qpTell(html, ok){

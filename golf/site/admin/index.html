@@ -2116,6 +2116,15 @@ let sub='hero', iSearch={}, iSort={};   /* iSort: 종류별로 「지역순 보�
 /* 골프장·호텔 표가 길어져서(사장님 2026-09-17) — iRegion: 종류별 「지역 칩」으로 고른 지역(''=전체, '__none'=지역 없음),
    iOpen: 종류별로 펼쳐 둔 줄 번호(Set). 기본은 전부 접힘(아래 줄 = 포함·불포함·요금·바우처 주소가 숨는다). 보기만 바뀌고 저장 내용은 그대로 */
 const iRegion={}, iOpen={};
+/* ── 나라(태국·베트남) — 손님 화면 맨 위 나라 메뉴와 같은 규칙(사장님 2026-11-18) ──
+   항목의 나라는 지역으로 정해진다(S.countries[].rs). 어디에도 없는 지역은 첫 나라(태국).
+   iCountry: 표에서 지금 보고 있는 나라(종류 공통). 보기만 바뀌고 저장 내용은 그대로 */
+let iCountry='';
+function ctyAll(){ const c=(S.countries||[]).filter(x=>x&&x.n); return c.length?c:[{n:'태국',rs:S.regionOrder||[]}]; }
+function ctyOfRegion(r){ const hit=ctyAll().filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0]; return (hit||ctyAll()[0]).n; }
+function ctyCur(){ if(!ctyAll().some(c=>c.n===iCountry)) iCountry=ctyAll()[0].n; return iCountry; }
+/* 새 줄의 기본 지역 — 보고 있는 나라의 첫 지역 */
+function ctyFirstRegion(){ const c=ctyAll().filter(x=>x.n===ctyCur())[0]||{}; return (c.rs||[])[0]||(S.regionOrder&&S.regionOrder[0])||'파타야'; }
 function openSet(k){ return iOpen[k]||(iOpen[k]=new Set()); }
 /* 지역순 보기는 처음부터 켜져 있다 — 62곳을 지역별로 나눠 봐야 찾기 쉽다. 끄면 넣은 차례대로. */
 function sortOn(k){ return iSort[k]!==false; }
@@ -2643,8 +2652,8 @@ function itemBadge(k){
            bp: k==='hotels'?'5성' : k==='courses'?'27홀' : '' };
 }
 function itemRows(k){
-  const arr=itemsArr(k), q=iSearch[k]||'', rg=iRegion[k]||'';
-  const rows=arr.map((x,i)=>({x,i})).filter(o=>!q
+  const arr=itemsArr(k), q=iSearch[k]||'', rg=iRegion[k]||'', cn=ctyCur();
+  const rows=arr.map((x,i)=>({x,i})).filter(o=>ctyOfRegion(o.x.r)===cn).filter(o=>!q
     ||((o.x.n||'')+(o.x.r||'')+(o.x.sr||'')+(o.x.e||'')+(o.x.d||'')).toLowerCase().includes(q.toLowerCase()))
     /* 지역 칩으로 고른 지역만(사장님 2026-09-17). '__none'은 지역 칸이 빈 줄 */
     .filter(o=>!rg||(rg==='__none'?!(o.x.r||'').trim():(o.x.r||'').trim()===rg));
@@ -3589,11 +3598,17 @@ function bindClosed(k){
 }
 /* ── 지역 칩·접기(사장님 2026-09-17) ── */
 /* 지역 칩: 전체 · 방콕 n · 파타야 n … (regionOrder 차례, 거기 없는 지역은 뒤에, 지역 칸이 빈 줄은 「지역 없음」) */
+/* 나라 칩: 🇹🇭 태국 n · 🇻🇳 베트남 n — 고른 나라의 줄만 표에 나온다 */
+function ctyChipsHTML(k){
+  const all=itemsArr(k), cur=ctyCur();
+  return ctyAll().map(c=>'<button type="button" data-cty="'+esc(c.n)+'" class="'+(c.n===cur?'on':'')+'">'
+    +esc(c.n)+' <b>'+all.filter(x=>x&&ctyOfRegion(x.r)===c.n).length+'</b></button>').join('');
+}
 function regChipsHTML(k){
-  const arr=itemsArr(k), cur=iRegion[k]||'';
+  const cn=ctyCur(), arr=itemsArr(k).filter(x=>x&&ctyOfRegion(x.r)===cn), cur=iRegion[k]||'';
   const cnt={}; let none=0;
   arr.forEach(x=>{ const r=(x&&x.r||'').trim(); if(r) cnt[r]=(cnt[r]||0)+1; else none++; });
-  const ord=(S.regionOrder||[]).filter(r=>cnt[r]);
+  const ord=((ctyAll().filter(c=>c.n===cn)[0]||{}).rs||[]).concat(S.regionOrder||[]).filter((r,i,a)=>cnt[r]&&a.indexOf(r)===i);
   Object.keys(cnt).forEach(r=>{ if(ord.indexOf(r)<0) ord.push(r); });
   const chip=(v,t,n)=>'<button type="button" data-reg="'+esc(v)+'" class="'+(cur===v?'on':'')+'">'+esc(t)+' <b>'+n+'</b></button>';
   return chip('','전체',arr.length)+ord.map(r=>chip(r,r,cnt[r])).join('')+(none?chip('__none','지역 없음',none):'');
@@ -3612,6 +3627,12 @@ function bindItemExtras(k){
   bindClosed(k);
   const rc=document.getElementById('iRegs');
   if(rc) rc.querySelectorAll('button[data-reg]').forEach(b=>b.onclick=()=>{ iRegion[k]=b.dataset.reg; redrawItems(k); });
+  /* 나라 칩 — 나라를 바꾸면 지역 칩은 «전체»로, 칩 두 줄을 다시 그린다 */
+  const cc=document.getElementById('iCtys');
+  if(cc) cc.querySelectorAll('button[data-cty]').forEach(b=>b.onclick=()=>{
+    iCountry=b.dataset.cty; Object.keys(iRegion).forEach(x=>iRegion[x]='');
+    cc.innerHTML=ctyChipsHTML(k); redrawItems(k);
+  });
   const oa=document.getElementById('iOpenAll'), ca=document.getElementById('iCloseAll');
   if(oa) oa.onclick=()=>{ const set=openSet(k); itemRows(k).rows.forEach(o=>set.add(o.i)); redrawItems(k); };   /* 지금 보이는 줄만 */
   if(ca) ca.onclick=()=>{ openSet(k).clear(); redrawItems(k); };
@@ -3645,6 +3666,7 @@ function subItems(k){
     +'<button class="ghost" id="iOpenAll" type="button">▾ 전부 펼치기</button>'
     +'<button class="ghost" id="iCloseAll" type="button">▸ 전부 접기</button></div>'
     /* 지역 칩 — 방콕·파타야… 한 지역만 보기(보기만 바뀐다). 개수는 그 지역의 전체 줄 수 */
+    +'<div class="subtabs regchips ctychips" id="iCtys">'+ctyChipsHTML(k)+'</div>'
     +'<div class="subtabs regchips" id="iRegs">'+regChipsHTML(k)+'</div>'
     +'<div class="tblwrap"><table><thead><tr>'
     +'<th style="width:58px">보이기</th>'
@@ -3710,7 +3732,15 @@ function subCats(){
   document.getElementById('subpane').innerHTML=
     /* 지역 차례 — 종류마다 표 아래에도 있지만 62줄 밑이라 찾기 어려워 여기 맨 위에도 둔다(사장님 2026-09-09).
        같은 값(regionOrder)이라 어디서 고쳐도 같다. 골프장·호텔·스파 모두 이 차례를 쓴다. */
-    '<div class="card"><h2>지역 차례</h2>'
+    /* 나라별 지역(사장님 2026-11-18) — 손님 화면 맨 위 「태국 ▾ / 베트남 ▾」 메뉴가 이 목록대로 펼쳐진다.
+       항목의 나라는 지역으로 정해진다: 여기 적힌 지역이면 그 나라, 어디에도 없으면 첫 나라(태국). */
+    '<div class="card"><h2>나라별 지역</h2>'
+    +'<p class="desc">손님 화면 맨 위 나라 메뉴(태국 ▾ · 베트남 ▾)가 이 차례대로 펼쳐집니다. 상품의 「지역」 칸에 여기 적힌 지역을 쓰면 그 나라 상품이 됩니다. '
+      +'가운뎃점(·)으로 구분. <b>저장을 눌러야 반영됩니다.</b></p>'
+    +ctyAll().map((c,i)=>'<div class="f" style="margin-top:8px"><label>'+esc(c.n)+'</label>'
+      +((S.countries||[])[i]?inpList('countries.'+i+'.rs',c.rs,'방콕 · 파타야'):'')+'</div>').join('')
+    +'</div>'
+    +'<div class="card"><h2>지역 차례</h2>'
     +'<p class="desc">손님 화면의 지역 탭(방콕 · 파타야 · 후아힌…)이 이 차례대로 섭니다. 골프장·호텔·스파 공용, 가운뎃점(·)으로 구분. '
       +'<b>저장을 눌러야 반영됩니다.</b></p>'
     +'<div class="rowbtns" style="margin:0"><div style="flex:1 1 320px">'+inpList('regionOrder',S.regionOrder,'방콕 · 파타야 · 후아힌 · 칸차나부리 · 카오야이')+'</div>'
@@ -4033,7 +4063,7 @@ const ADDERS={
   /* 종류(골프장·호텔·스파…)에 항목 한 줄 추가 — 어느 종류인지는 버튼의 data-k에 적혀 온다 */
   item: (i,k)=>{
     const key=k||'courses';
-    const row={r:(S.regionOrder&&S.regionOrder[0])||'파타야',n:'',e:'',d:''};
+    const row={r:ctyFirstRegion(),n:'',e:'',d:''};
     row[key==='hotels'?'g':key==='courses'?'h':'b']='';
     itemsArr(key).push(row);
   },
