@@ -181,7 +181,17 @@ function siteItems(site, kind) {
 /* 담긴 줄마다 업체 정보(영문 이름·주소·전화·침대·조식)를 붙인다 */
 function venueOf(site, it) {
   const x = siteItems(site, it.kind).find(v => v && v.n === it.name) || {};
-  const out = { en: s(x.e, 120), addr: s(x.addr, 200), tel: s(x.tel, 60) };
+  /* 안내사항(x.d)에 적힌 「주소 : …」「전화번호 : …」 줄 — 호텔은 이게 정본(바우처칸에 두 번 넣지 않게, 사장님 1118),
+     다른 종류는 바우처칸이 비었을 때 대신 쓴다 */
+  const raw = String(x.d || '');
+  const lines = (raw.indexOf('\n') >= 0 ? raw.split(/\r?\n/) : raw.split(/\s·\s/)).map(t => t.trim());
+  const pick = re => { for (const l of lines) { const m = l.match(re); if (m && m[1].trim()) return m[1].trim(); } return ''; };
+  const dAddr = pick(/^주\s*소\s*[:：\-]\s*(.+)$/);
+  const dTel  = pick(/^(?:전화번호|전화|연락처|tel)\s*[:：\-]\s*(.+)$/i);
+  const hotel = it.kind === 'hotels';
+  const out = { en: s(x.e, 120),
+    addr: s(hotel ? (dAddr || x.addr) : (x.addr || dAddr), 200),
+    tel:  s(hotel ? (dTel  || x.tel)  : (x.tel  || dTel), 60) };
   if (it.kind === 'hotels' && Array.isArray(x.rooms)) {
     const r = x.rooms.find(r => r && r.t === it.option);
     if (r) { out.bed = s(r.bed, 80); out.bf = !!r.bf; }
