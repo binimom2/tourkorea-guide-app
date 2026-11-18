@@ -3709,8 +3709,8 @@ function itemBodyHTML(k){
             +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
             +(k==='courses'?closedCell(o.i,o.x):'')
             +priceCell(k,o.x))
-        /* 바우처(예약 확정서) 머리에 찍히는 업체 주소·전화 — 손님 화면에는 안 나온다 */
-        +'<div class="iecell vcell"><b>바우처용 주소 · 전화 <span class="rhint">예약 확정서 머리에 찍힙니다</span></b>'
+        /* 바우처(예약 확정서) 머리에 찍히는 업체 주소·전화 — 2026-11-18부터 손님 상세 「안내사항」 아래에도 나온다(사장님) */
+        +'<div class="iecell vcell"><b>바우처용 주소 · 전화 <span class="rhint">예약 확정서 머리 + 손님 화면 안내사항 아래에 나옵니다</span></b>'
           +inp(p+'.addr',o.x.addr||'','주소 (영문) — 예: 300 Sukhumvit 55, Bangkok 10110, Thailand')
           +inp(p+'.tel',o.x.tel||'','전화 — 예: +66(0) 2 020 8000')+'</div>'
       +'</div></td></tr>';
