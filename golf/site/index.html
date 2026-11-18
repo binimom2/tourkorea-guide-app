@@ -2247,8 +2247,10 @@ function openDetail(x, kind){
   /* 주소·전화(관리 「바우처용 주소 · 전화」) — 주소는 누르면 구글 지도, 전화는 누르면 걸린다 */
   /* 안내사항에 이미 「주소」「전화…」 줄이 있으면 그건 다시 안 띄운다(호텔 소개에 들어 있는 경우 — 사장님 1118) */
   const hasLbl = re => [...$("#dList").querySelectorAll("li")].some(li => re.test(li.textContent.trim()));
-  const ad = hasLbl(/^주\s*소/) ? "" : String(x.addr || "").trim(),
-        tl = hasLbl(/^(전화|연락처|tel)/i) ? "" : String(x.tel || "").trim();
+  /* 이 상자는 골프장에만 — 호텔 등은 안내사항에 이미 있다(사장님 1118 「골프에만 추가」) */
+  const noBox = kind !== "courses";
+  const ad = (noBox || hasLbl(/^주\s*소/)) ? "" : String(x.addr || "").trim(),
+        tl = (noBox || hasLbl(/^(전화|연락처|tel)/i)) ? "" : String(x.tel || "").trim();
   $("#dAddr").innerHTML =
       (ad ? '<li><b>주소</b><span class="nv"><a href="https://www.google.com/maps/search/?api=1&query='
             + encodeURIComponent(ad) + '" target="_blank" rel="noopener">' + esc(ad) + '</a></span></li>' : '')
