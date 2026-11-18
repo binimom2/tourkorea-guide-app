@@ -89,6 +89,18 @@ body.qopen{overflow:hidden}
 .ctydd button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;border-radius:8px;padding:9px 11px;font:inherit;font-size:14px;font-weight:700;color:var(--fairway);cursor:pointer;text-align:left;white-space:nowrap}
 .ctydd button:hover{background:rgba(18,58,43,.09)}
 .ctydd small{font-size:11.5px;font-weight:700;color:var(--muted)}
+/* 맨 위 얇은 띠(1118) — 나라 이름 + 지역 글자를 한 줄로. 고른 나라는 진하게, 고른 지역은 밑줄 */
+.ctystrip{background:#fff;border-bottom:1px solid var(--line)}
+.nav .ctystrip .wrap{display:flex;align-items:center;gap:4px;height:32px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.nav .ctystrip .wrap::-webkit-scrollbar{display:none}
+.cty1{display:flex;align-items:center;gap:1px;flex-shrink:0}
+.cty1 + .cty1{margin-left:10px;padding-left:12px;border-left:1px solid var(--line)}
+.cty1 button{background:none;border:0;font:inherit;font-size:12.5px;font-weight:700;color:#6B7570;padding:4px 7px;border-radius:6px;cursor:pointer}
+.cty1 button:hover{color:var(--fairway);background:rgba(18,58,43,.06)}
+.cty1 .cn{font-size:13px;font-weight:900;color:var(--fairway);padding:3px 10px;border-radius:999px;margin-right:3px}
+.cty1.on .cn{background:var(--fairway);color:#fff}
+.cty1 button.rs{color:var(--fairway);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:2px}
+.cty1 button.no{color:#B3BAB6}
 .ctynote{margin:22px 0 4px;padding:14px 16px;border-radius:12px;background:#fff;border:1px solid var(--line);font-weight:700;color:var(--fairway);text-align:center}
 @media(max-width:640px){
   .ctynav{order:1;margin-left:0}
@@ -883,10 +895,11 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 <body>
 
 <nav class="nav">
+  <!-- 맨 위 얇은 나라·지역 띠 — 「태국 방콕 파타야 … | 베트남 다낭 …」 한 줄(사장님 2026-11-18).
+       지역을 누르면 그 지역 목록으로 바로 간다. 헤더의 태국 ▾ / 베트남 ▾ 는 이 띠로 옮겨 검색창 자리를 넓혔다 -->
+  <div class="ctystrip"><div class="wrap" id="ctyNav"></div></div>
   <div class="wrap">
     <a class="brand" href="#top"><b>TOURKOREA</b><span>투어코리아</span></a>
-    <!-- 나라 메뉴 — 태국 ▾ / 베트남 ▾, 지역을 누르면 그 지역 목록으로 바로 간다(사장님 2026-11-18) -->
-    <div class="ctynav" id="ctyNav"></div>
     <!-- 검색 — 골프장·호텔·스파… 이름·지역·영문으로 찾아 바로 상세를 연다(사장님 2026-09-10) -->
     <div class="nsearch" id="nsearch">
       <input type="search" id="navQ" autocomplete="off" aria-label="찾기">
@@ -1482,33 +1495,23 @@ function setCountry(n, r, stay){
 function drawCtyNav(){
   const box = $("#ctyNav"); if(!box) return;
   const cur = country();
+  const sel = Object.values(curRegs || {})[0] || "";
   box.innerHTML = countries().map(c => {
     const cnt = {};
     catList0().forEach(k => itemsAllOf(k.k).forEach(x => { if(countryOfRegion(x.r) === c.n) cnt[x.r] = (cnt[x.r] || 0) + 1; }));
     const rs = (c.rs || []).concat(Object.keys(cnt)).filter((r, i, all) => r && all.indexOf(r) === i);
-    return '<span class="ctyw' + (c.n === cur ? ' on' : '') + '">'
-      + '<button type="button" class="ctyb" data-c="' + esc(c.n) + '">' + esc(c.n) + '<i>▾</i></button>'
-      + '<div class="ctydd">' + rs.map(r =>
-          '<button type="button" data-c="' + esc(c.n) + '" data-r="' + esc(r) + '">' + esc(r)
-          + '<small>' + (cnt[r] ? cnt[r] : '준비 중') + '</small></button>').join("") + '</div></span>';
+    return '<span class="cty1' + (c.n === cur ? ' on' : '') + '">'
+      + '<button type="button" class="cn" data-c="' + esc(c.n) + '">' + esc(c.n) + '</button>'
+      + rs.map(r => '<button type="button" data-c="' + esc(c.n) + '" data-r="' + esc(r) + '"'
+          + ' class="' + (c.n === cur && r === sel ? 'rs' : '') + (cnt[r] ? '' : ' no') + '"'
+          + (cnt[r] ? '' : ' title="준비 중"') + '>' + esc(r) + '</button>').join("") + '</span>';
   }).join("");
-  /* 나라 이름 — 그 나라로 바꾸고 지역 목록을 펼친다(한 번 더 누르면 접힘). 화면은 움직이지 않는다 */
-  box.querySelectorAll(".ctyb").forEach(b => b.onclick = e => {
-    e.stopPropagation();
-    const n = b.dataset.c, wasOpen = b.parentNode.classList.contains("open");
-    if(n !== country()) setCountry(n, "", true);
-    $("#ctyNav").querySelectorAll(".ctyw").forEach(w =>
-      w.classList.toggle("open", !wasOpen && w.querySelector(".ctyb").dataset.c === n));
-  });
-  box.querySelectorAll(".ctydd button").forEach(b => b.onclick = e => {
-    e.stopPropagation();
-    box.querySelectorAll(".ctyw").forEach(x => x.classList.remove("open"));
-    setCountry(b.dataset.c, b.dataset.r);
+  /* 나라 이름 — 그 나라 전체로(화면은 그대로), 지역 — 그 지역 목록으로 바로 */
+  box.querySelectorAll("button").forEach(b => b.onclick = () => {
+    if(b.dataset.r) setCountry(b.dataset.c, b.dataset.r);
+    else setCountry(b.dataset.c, "", true);
   });
 }
-document.addEventListener("click", () => {
-  document.querySelectorAll("#ctyNav .ctyw.open").forEach(x => x.classList.remove("open"));
-});
 /* 나라 구분 없이 그 종류 전부(보이기 켠 것) — 찜·장바구니·주소로 연 상세가 다른 나라 것이어도 찾게 */
 function itemsAllOf(k){
   const all = k === "courses" ? (SITE.courses || [])
@@ -3944,6 +3947,7 @@ function agSet(user){
                tier: +m.tier === 1 ? 1 : 2 };
   }else agency = null;
   agPaint();
+  try{ staffBtnPaint(); }catch(e){}
   /* 티어1(랜드사)은 요금이 다르다 — 로그인·로그아웃으로 티어가 바뀌면 카드 요금을 다시 받는다(2026-10-15) */
   const tr = (agency && agency.approved) ? agency.tier : 0;
   if(agSet._tier === undefined ? tr === 1 : agSet._tier !== tr) loadPrices();   // 첫 화면 요금은 로그인 확인 전에 받으므로 티어1이면 한 번 더
@@ -4143,15 +4147,21 @@ function staffIn(){
 /* 직원·어드민이 이 브라우저에서 업무 화면에 로그인해 뒀으면 「⚙ 관리」 버튼을 띄운다.
    손님 「로그인」과는 별개의 문이다 — 손님은 이 버튼을 볼 일이 없다.
    (업무용 세션은 Supabase가 localStorage의 gs-auth에 넣어 둔다) */
-(function(){
+/* 여행사로 로그인해 있으면 같은 브라우저에 직원 로그인이 남아 있어도 「⚙ 관리」는 감춘다(사장님 2026-11-18 —
+   여행사 화면에 관리 단추가 보여 헷갈림). 여행사 계정(@agency…) 토큰은 직원으로 치지 않는다 */
+function staffBtnPaint(){
   let has = false;
   try{
-    const raw = localStorage.getItem("sb-" + SB_URL.split("//")[1].split(".")[0] + "-auth-token")
-             || localStorage.getItem("gs-auth");
-    has = !!(raw && JSON.parse(raw));
+    [localStorage.getItem("sb-" + SB_URL.split("//")[1].split(".")[0] + "-auth-token"), localStorage.getItem("gs-auth")].forEach(raw => {
+      const a = raw && JSON.parse(raw);
+      const u = a && (a.user || (a.currentSession && a.currentSession.user));
+      if(a && !/@agency\./i.test((u && u.email) || "")) has = true;
+    });
   }catch(e){ has = false; }
-  if(has) $("#staffBtn").classList.remove("hide");
-})();
+  if(typeof agency !== "undefined" && agency) has = false;
+  $("#staffBtn").classList.toggle("hide", !has);
+}
+staffBtnPaint();
 
 /* 모바일 메뉴 */
 $("#burger").onclick = () => $("#menu").classList.toggle("open");
