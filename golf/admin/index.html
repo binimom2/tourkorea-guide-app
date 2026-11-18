@@ -359,7 +359,10 @@ let currentUser = null;
      어느 경우든 덮어쓰기 직전 상태를 백업해 되돌릴 수 있게 한다. */
 const GBAK_SLOTS=10;
 const _gBase={};   // data_key → 마지막으로 서버와 맞춘 값(JSON 문자열)
-function _gSnap(v){ try{ return JSON.stringify(v===undefined?null:v); }catch(e){ return null; } }
+/* 칸 차례를 가나다로 — 서버(jsonb)가 칸 차례를 바꿔 돌려줘 «남이 고쳤다»로 잘못 알던 것 막음(1118) */
+function _gCanon(v){ return Array.isArray(v)?v.map(_gCanon)
+  :(v&&typeof v==='object')?Object.keys(v).sort().reduce((o,k)=>{ if(v[k]!==undefined) o[k]=_gCanon(v[k]); return o; },{}):v; }
+function _gSnap(v){ try{ return JSON.stringify(_gCanon(v===undefined?null:v)); }catch(e){ return null; } }
 async function gsLoadRaw(key){
   const { data:row, error } = await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
   if(error) throw error;

@@ -614,7 +614,11 @@ function toast(m){
    (요금관리 /golf/admin/ 과 같은 방식 — 백업 슬롯도 같이 쓴다) */
 const BAK_SLOTS=10;
 const _base={};
-const _snap=v=>{ try{ return JSON.stringify(v===undefined?null:v); }catch(e){ return null; } };
+/* 칸 이름 차례를 가나다로 맞춰 적는다 — 서버(jsonb)는 저장할 때 칸 차례를 제멋대로 바꿔 돌려주므로,
+   차례만 다른 같은 내용을 «남이 고쳤다»로 잘못 알던 것(1118 혼자 고치는데 「다른 관리자도 고쳤습니다」)을 막는다 */
+const _canon=v=>Array.isArray(v)?v.map(_canon)
+  :(v&&typeof v==='object')?Object.keys(v).sort().reduce((o,k)=>{ if(v[k]!==undefined) o[k]=_canon(v[k]); return o; },{}):v;
+const _snap=v=>{ try{ return JSON.stringify(_canon(v===undefined?null:v)); }catch(e){ return null; } };
 async function loadRaw(key){
   const {data:row,error}=await sb.from('guide_data').select('data').eq('data_key',key).maybeSingle();
   if(error) throw error;
