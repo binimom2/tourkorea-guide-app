@@ -3268,27 +3268,38 @@ function drawTools(){
 /* 태국환율 — 오른쪽 위에 「살때 / 팔때」 두 줄로 늘 띄워 둔다(사장님 2026-09-08).
    /api/fx 가 네이버(하나은행 고시)를 대신 받아 넘겨 준다(브라우저에서 직접 부르면 CORS로 막힌다).
    못 받아 오면 칸을 아예 안 띄운다 — 틀린 환율이 붙어 있는 것보다 없는 편이 낫다. */
+/* 베트남환율(사장님 2026-11-18) — 베트남을 보고 있으면 같은 자리에 동 환율(100동당 원)이 뜬다 */
+/* 함수로 둔다 — 화면을 처음 그릴 때(renderAll → drawFx, loadFx)는 이 줄보다 먼저 돈다.
+   상수로 두면 그 순간 아직 값이 없어 환율이 안 뜨거나(var) 사이트가 멈춘다(const) */
+function fxShow(){ return {
+  "태국":   { code:"FX_THBKRW", h:"태국환율",   unit:"1밧당 원" },
+  "베트남": { code:"FX_VNDKRW", h:"베트남환율", unit:"100동당 원" }
+}; }
+var FX_GOT;
 async function loadFx(){
-  try{
-    const r = await fetch(API + "/api/fx");
-    const j = await r.json();
-    if(!j || !j.ok) return;
-    const n = v => (v == null || !isFinite(v)) ? "" : Number(v).toFixed(2);
-    const buy = n(j.cashBuy), sell = n(j.cashSell);
-    if(!buy && !sell) return;
-    const box = $("#fxBox");
-    box.innerHTML = '<div class="fxh">태국환율</div>'
-      + (buy  ? '<div class="fxr"><span>살때</span><b>' + buy  + '</b></div>' : '')
-      + (sell ? '<div class="fxr"><span>팔때</span><b>' + sell + '</b></div>' : '');
-    box.title = (j.date ? j.date + " 기준 · " : "") + "1밧당 원";
-    box.dataset.ok = "1";
-    drawFx();
-  }catch(e){ /* 환율을 못 받아도 사이트는 그대로 돈다 */ }
+  FX_GOT = FX_GOT || {};
+  const S_ = fxShow();
+  await Promise.all(Object.keys(S_).map(async c => {
+    try{
+      const j = await (await fetch(API + "/api/fx?code=" + S_[c].code)).json();
+      if(j && j.ok && (j.cashBuy || j.cashSell)) FX_GOT[c] = j;
+    }catch(e){ /* 환율을 못 받아도 사이트는 그대로 돈다 */ }
+  }));
+  drawFx();
 }
-/* 태국환율 상자는 태국을 보고 있을 때만 — 베트남 화면에 밧 환율이 붙어 있으면 헷갈린다 */
+/* 지금 보고 있는 나라의 환율만 — 베트남 화면에 밧 환율이 붙어 있으면 헷갈린다. 못 받은 나라는 상자를 감춘다 */
 function drawFx(){
-  const box = $("#fxBox");
-  if(box) box.hidden = !(box.dataset.ok && country() === "태국");
+  const box = $("#fxBox"); if(!box) return;
+  if(!FX_GOT){ box.hidden = true; return; }
+  const c = country(), j = FX_GOT[c], s = fxShow()[c];
+  if(!j || !s){ box.hidden = true; return; }
+  const n = v => (v == null || !isFinite(v)) ? "" : Number(v).toFixed(2);
+  const buy = n(j.cashBuy), sell = n(j.cashSell);
+  box.innerHTML = '<div class="fxh">' + s.h + '</div>'
+    + (buy  ? '<div class="fxr"><span>살때</span><b>' + buy  + '</b></div>' : '')
+    + (sell ? '<div class="fxr"><span>팔때</span><b>' + sell + '</b></div>' : '');
+  box.title = (j.date ? j.date + " 기준 · " : "") + s.unit;
+  box.hidden = false;
 }
 /* 견적 패널 아래 한 줄 알림 — ok면 초록(담았습니다), 아니면 빨강(못 담는 까닭) */
 function qpTell(html, ok){

@@ -63,6 +63,12 @@ select[data-rmf=sur]{text-shadow:none}
 .subtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
 .subtabs button{background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 13px;font-size:13px;font-weight:700;color:var(--fairway)}
 .subtabs button.on{background:var(--marigold);border-color:var(--marigold);color:#2A1A00}
+/* 사이트 내용 하위 탭 나무(사장님 2026-11-18) — 첫 화면(공통) 아래 태국 / 베트남 / 공통 줄 */
+.subtree{margin-bottom:6px;align-items:center}
+.subtree.last{margin-bottom:14px}
+.subtree .stlbl{min-width:56px;font-size:13px;font-weight:900;color:var(--fairway);padding-left:12px;position:relative}
+.subtree .stlbl:before{content:"└";position:absolute;left:0;color:var(--muted);font-weight:400}
+.subtree.cur .stlbl{color:#B5650A}
 
 .wrap{max-width:1180px;margin:0 auto;padding:16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px 16px 17px;margin-bottom:14px}
@@ -542,7 +548,6 @@ tr.mainrow.hotmove td{background:#FFF3C4}       /* 방금 옮긴 줄 */
       <b class="brand">투어코리아 · 사이트 관리</b>
       <nav class="jump">
         <a href="../index.html">🌐 손님 사이트</a>
-        <a href="/golf/">⛳ 실시간견적</a>
       </nav>
       <span class="who" id="who"></span>
       <button class="lnk" id="outBtn" type="button">로그아웃</button>
@@ -2236,28 +2241,48 @@ document.addEventListener('keydown',e=>{
   if(!document.getElementById('saveSite')) return;   // 사이트 내용 화면일 때만
   e.preventDefault(); saveSite();
 });
+/* 하위 탭 나무 — 첫 화면만 공통, 그 아래 나라별 줄(사장님 2026-11-18 「입구에서부터 베트남·태국 분리, 트리 아래로」).
+   나라 줄의 종류(골프장·호텔…)를 누르면 그 나라 상품만 표에 나온다(iCountry). 실시간 요금표·차량 견적·공휴일은 태국 전용이라 태국 줄에.
+   종류 관리·게시판·연락처는 두 나라가 같이 쓰는 설정이라 맨 아래 「공통」 줄. */
+const SUB_TH_ONLY=['tours','rates','carq','holiday'], SUB_COMMON=['cats','board','foot'];
+function subTreeHTML(SUB){
+  const by=k=>SUB.filter(s=>s.k===k)[0];
+  const isCat=s=>s.k.indexOf('cat:')===0;
+  const curC=isCat({k:sub})?ctyCur():(SUB_TH_ONLY.includes(sub)?'태국':'');
+  const btn=(s,c)=>'<button data-s="'+esc(s.k)+'"'+(c?' data-c="'+esc(c)+'"':'')
+    +' class="'+(s.k===sub&&(!c||c===curC)?'on':'')+'">'+esc(s.label)+'</button>';
+  const row=(lbl,html,cur,last)=>'<div class="subtabs subtree'+(cur?' cur':'')+(last?' last':'')+'"><span class="stlbl">'+esc(lbl)+'</span>'+html+'</div>';
+  return '<div class="subtabs subtree">'+(by('hero')?btn(by('hero')):'')+'<span class="rhint" style="font-size:12px">공통</span></div>'
+    +ctyAll().map(c=>row(c.n,
+        SUB.filter(isCat).map(s=>btn(s,c.n)).join('')
+        +(c.n==='태국'?SUB_TH_ONLY.map(by).filter(Boolean).map(s=>btn(s,'태국')).join(''):''),
+        curC===c.n)).join('')
+    +row('공통',SUB_COMMON.map(by).filter(Boolean).map(s=>btn(s)).join(''),!curC&&sub!=='hero',true);
+}
+function bindSubTree(p){
+  p.querySelectorAll('.subtree button[data-s]').forEach(b=>b.onclick=()=>{
+    if(b.dataset.c&&b.dataset.c!==iCountry){ iCountry=b.dataset.c; Object.keys(iRegion).forEach(x=>iRegion[x]=''); }
+    sub=b.dataset.s; drawSite();
+  });
+}
 function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
   if(!SUB.some(s=>s.k===sub)) sub='hero';
   clearInterval(ratesTimer);          // 요금표 하위 탭을 떠나면 높이 맞추기를 멈춘다
   /* 요금표(코드관리 포함)는 자기 저장 단추를 쓴다 — 사이트 내용 저장줄은 감춘다 */
   if(sub==='rates'||sub==='codes'){   // 'codes'는 예전 링크·저장된 탭 상태 호환용(메뉴에는 없음)
-    p.innerHTML='<div class="subtabs">'
-      +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
-      +'</div><div id="subpane"></div>';
-    p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
+    p.innerHTML=subTreeHTML(SUB)+'<div id="subpane"></div>';
+    bindSubTree(p);
     if(sub==='rates') drawRates(); else drawCodes();
     return;
   }
-  p.innerHTML='<div class="subtabs">'
-    +SUB.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')
-    +'</div><div id="subpane"></div>'
+  p.innerHTML=subTreeHTML(SUB)+'<div id="subpane"></div>'
     +'<div class="rowbtns savebar"><button class="save" id="saveSite">저장</button>'
     +'<span class="warn" id="siteDirty"></span>'
     +'<button class="ghost" id="resetSite">기본값으로 되돌리기</button>'
     +'<span class="cnt" id="siteNote"></span>'
     +'<span class="tip">Ctrl+S 로도 저장됩니다</span></div>';
-  p.querySelectorAll('.subtabs button').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
+  bindSubTree(p);
   document.getElementById('saveSite').onclick=saveSite;
   showDirtyNote();
   document.getElementById('resetSite').onclick=()=>{
@@ -2675,7 +2700,8 @@ function itemRows(k){
 }
 function itemCntHTML(k){
   const cat=catsAll().filter(c=>c.k===k)[0]||{k:k,t:k,u:'곳'}, u=cat.u||'곳';
-  const {arr,q,rows}=itemRows(k);
+  const {arr:all,q,rows}=itemRows(k);
+  const arr=all.filter(x=>x&&ctyOfRegion(x.r)===ctyCur());   // 보고 있는 나라 것만 센다(2026-11-18)
   const hid=arr.filter(x=>x&&x.on===false).length;   // 손님 화면에서 감춰 둔 것
   /* 요금표에 안 들어와 있는 곳이 몇 곳인지 한눈에 — 자료 넣으면서 같이 챙기라고 */
   const noP=P
@@ -3673,7 +3699,6 @@ function subItems(k){
     +'<button class="ghost" id="iOpenAll" type="button">▾ 전부 펼치기</button>'
     +'<button class="ghost" id="iCloseAll" type="button">▸ 전부 접기</button></div>'
     /* 지역 칩 — 방콕·파타야… 한 지역만 보기(보기만 바뀐다). 개수는 그 지역의 전체 줄 수 */
-    +'<div class="subtabs regchips ctychips" id="iCtys">'+ctyChipsHTML(k)+'</div>'
     +'<div class="subtabs regchips" id="iRegs">'+regChipsHTML(k)+'</div>'
     +'<div class="tblwrap"><table><thead><tr>'
     +'<th style="width:58px">보이기</th>'
