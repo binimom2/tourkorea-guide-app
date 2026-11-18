@@ -2243,7 +2243,10 @@ function openDetail(x, kind){
         ? "객실 타입·조식 여부는 일정에 맞춰 안내드립니다."
         : "안내는 준비 중입니다. 문의 주시면 바로 알려드리겠습니다.") + "</li>";
   /* 주소·전화(관리 「바우처용 주소 · 전화」) — 주소는 누르면 구글 지도, 전화는 누르면 걸린다 */
-  const ad = String(x.addr || "").trim(), tl = String(x.tel || "").trim();
+  /* 안내사항에 이미 「주소」「전화…」 줄이 있으면 그건 다시 안 띄운다(호텔 소개에 들어 있는 경우 — 사장님 1118) */
+  const hasLbl = re => [...$("#dList").querySelectorAll("li")].some(li => re.test(li.textContent.trim()));
+  const ad = hasLbl(/^주\s*소/) ? "" : String(x.addr || "").trim(),
+        tl = hasLbl(/^(전화|연락처|tel)/i) ? "" : String(x.tel || "").trim();
   $("#dAddr").innerHTML =
       (ad ? '<li><b>주소</b><span class="nv"><a href="https://www.google.com/maps/search/?api=1&query='
             + encodeURIComponent(ad) + '" target="_blank" rel="noopener">' + esc(ad) + '</a></span></li>' : '')
