@@ -776,6 +776,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .fxbox{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff;
   min-width:96px;text-align:center;line-height:1.2}
 .fxbox .fxh{background:var(--fairway);color:#fff;font-size:10px;font-weight:800;padding:1px 8px}
+/* 태국환율·베트남환율 상자 두 개 — #fxBox는 감싸기만, 상자 모양은 .fxc 하나하나에(사장님 2026-11-18) */
+.fxbox{display:flex;gap:6px;border:0;border-radius:0;background:none;overflow:visible;min-width:0}
+.fxbox[hidden]{display:none}
+.fxbox .fxc{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff;min-width:96px;text-align:center}
 .fxbox .fxr{display:flex;justify-content:center;gap:5px;font-size:11px;padding:0 8px;
   font-variant-numeric:tabular-nums}
 .fxbox .fxr span{color:var(--muted);font-weight:700}
@@ -786,7 +790,8 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   .navtools{gap:2px}
   .ntbtn{padding:5px}
   .ntbtn svg{width:20px;height:20px}
-  .fxbox{min-width:84px}
+  .fxbox{min-width:0;gap:4px}
+  .fxbox .fxc{min-width:78px}
   .fxbox .fxh{font-size:9.5px;padding:1px 6px}
   .fxbox .fxr{font-size:10.5px;padding:0 5px;gap:4px}
   /* 휴대폰은 두 줄(사장님 2026-10-03 모바일 점검 — 한 줄이면 환율 상자가 잘리고 화면이 옆으로 밀렸다):
@@ -3287,18 +3292,20 @@ async function loadFx(){
   }));
   drawFx();
 }
-/* 지금 보고 있는 나라의 환율만 — 베트남 화면에 밧 환율이 붙어 있으면 헷갈린다. 못 받은 나라는 상자를 감춘다 */
+/* 태국환율·베트남환율을 나란히 늘 띄운다(사장님 2026-11-18). 못 받은 쪽은 빼고, 둘 다 못 받으면 상자를 감춘다 */
 function drawFx(){
   const box = $("#fxBox"); if(!box) return;
-  if(!FX_GOT){ box.hidden = true; return; }
-  const c = country(), j = FX_GOT[c], s = fxShow()[c];
-  if(!j || !s){ box.hidden = true; return; }
-  const n = v => (v == null || !isFinite(v)) ? "" : Number(v).toFixed(2);
-  const buy = n(j.cashBuy), sell = n(j.cashSell);
-  box.innerHTML = '<div class="fxh">' + s.h + '</div>'
-    + (buy  ? '<div class="fxr"><span>살때</span><b>' + buy  + '</b></div>' : '')
-    + (sell ? '<div class="fxr"><span>팔때</span><b>' + sell + '</b></div>' : '');
-  box.title = (j.date ? j.date + " 기준 · " : "") + s.unit;
+  const S_ = fxShow(), n = v => (v == null || !isFinite(v)) ? "" : Number(v).toFixed(2);
+  const got = Object.keys(S_).filter(c => FX_GOT && FX_GOT[c]);
+  if(!got.length){ box.hidden = true; return; }
+  box.innerHTML = got.map(c => {
+    const j = FX_GOT[c], s = S_[c], buy = n(j.cashBuy), sell = n(j.cashSell);
+    return '<div class="fxc" title="' + esc((j.date ? j.date + " 기준 · " : "") + s.unit) + '">'
+      + '<div class="fxh">' + s.h + '</div>'
+      + (buy  ? '<div class="fxr"><span>살때</span><b>' + buy  + '</b></div>' : '')
+      + (sell ? '<div class="fxr"><span>팔때</span><b>' + sell + '</b></div>' : '')
+      + '</div>';
+  }).join("");
   box.hidden = false;
 }
 /* 견적 패널 아래 한 줄 알림 — ok면 초록(담았습니다), 아니면 빨강(못 담는 까닭) */
