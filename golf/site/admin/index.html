@@ -638,20 +638,138 @@ async function pushBackup(key,val){
   meta.unshift({slot,at:new Date().toISOString(),by:(currentUser&&currentUser.id)||'',sig});
   await saveRaw('golf_bakmeta_'+key,meta.slice(0,BAK_SLOTS));
 }
-const KEY_LABEL={golf_site:'사이트 내용',golf_codes:'코드',golf_roles:'계정 권한'};
-async function saveSafe(key,data){
-  let server=null;
-  try{ server=await loadRaw(key); }
-  catch(e){ toast('⚠ 서버 연결 실패 — 저장하지 않았습니다'); return false; }
-  const b=_base[key], s=_snap(server);
-  if(b!=null && s!==b){
-    if(!confirm('['+(KEY_LABEL[key]||key)+']를 그 사이 다른 관리자가 바꿨습니다.\n\n'
-      +'지금 저장하면 그 내용이 사라집니다.\n(취소하면 저장하지 않습니다 — 새로고침해 최신 내용을 확인하세요)\n\n계속할까요?')) return false;
+const KEY_LABEL={golf_site:'사이트 내용',golf_codes:'코드',golf_roles:'계정 권한',golf_pricing:'요금'};
+
+/* ══════ 동시 저장 병합 (사장님 2026-11-18 — 태국·베트남 지사가 같은 시간에 올려도 서로 안 지우게) ══════
+   저장은 한 덩이(golf_site / golf_pricing)지만, 저장 순간 서버 최신본을 다시 읽어
+   «내가 불러온 뒤 내가 바꾼 것»만 그 위에 얹는다(3방향 병합: 불러온 때 b · 내 것 m · 서버 v).
+     · 내가 안 바꾼 부분 → 서버 것(남이 바꾼 것 그대로 산다)
+     · 나만 바꾼 부분   → 내 것
+     · 둘 다 바꾼 부분  → 내 것 + 「충돌」로 모아 물어본다(취소하면 저장 안 함)
+   나누는 단위: 사이트 = 칸(첫 화면·게시판…) → 상품표는 나라별 → 상품 이름(n)별.
+                요금   = 지역 → 종류(courses·hotels·spa…) → 이름(name)별.
+   이름이 겹치는 줄(빈 이름 새 줄 둘 등)이 있으면 그 묶음은 통째로 비교한다(겹친 이름으로 합치면 줄이 사라진다). */
+function m3(b,m,v,label,conf){
+  const sb=_snap(b), sm=_snap(m), sv=_snap(v);
+  if(sm===sb) return v;              // 나는 안 바꿨다
+  if(sv===sb||sv===sm) return m;     // 남은 안 바꿨거나 같은 값
+  conf.push(label); return m;        // 둘 다 바꿨다
+}
+function mByKey(B,M,V,kf,label,conf){
+  B=Array.isArray(B)?B:[]; M=Array.isArray(M)?M:[]; V=Array.isArray(V)?V:[];
+  if(_snap(M)===_snap(B)) return V;
+  if(_snap(V)===_snap(B)||_snap(V)===_snap(M)) return M;
+  const dup=a=>{ const s=new Set(); for(const x of a){ const k=kf(x); if(s.has(k)) return true; s.add(k); } return false; };
+  if(dup(B)||dup(M)||dup(V)){ conf.push(label); return M; }
+  const get=(a,k)=>a.find(x=>kf(x)===k);
+  const keys=M.map(kf);
+  V.forEach(x=>{ const k=kf(x); if(!keys.includes(k)) keys.push(k); });
+  const out=[];
+  keys.forEach(k=>{ const r=m3(get(B,k),get(M,k),get(V,k),label+' 「'+k+'」',conf); if(r!==undefined&&r!==null) out.push(r); });
+  return out;
+}
+/* 사이트 상품표 — 나라별로 나눠 합치고, 나라 안에서는 이름별 */
+function siteArrMerge(B,M,V,cl,label,conf){
+  const cOf=r=>{ const hit=cl.filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0]; return (hit||cl[0]).n; };
+  const part=(a,c)=>(Array.isArray(a)?a:[]).filter(x=>x&&cOf(x.r)===c);
+  let out=[];
+  cl.forEach(c=>{ out=out.concat(mByKey(part(B,c.n),part(M,c.n),part(V,c.n),x=>String((x&&x.n)||''),c.n+' '+label,conf)); });
+  return out;
+}
+function siteMerge(b,m,v,conf){
+  b=b||{}; v=v||{};
+  const cl=((m.countries||v.countries||[]).filter(c=>c&&c.n));
+  const CL=cl.length?cl:[{n:'태국',rs:[]}];
+  const out={};
+  new Set(Object.keys(b).concat(Object.keys(m),Object.keys(v))).forEach(k=>{
+    let r;
+    if(k==='courses'||k==='hotels') r=siteArrMerge(b[k],m[k],v[k],CL,k==='courses'?'골프장':'호텔',conf);
+    else if(k==='items'){
+      r={}; const bi=b.items||{}, mi=m.items||{}, vi=v.items||{};
+      new Set(Object.keys(bi).concat(Object.keys(mi),Object.keys(vi))).forEach(ik=>{
+        if(mi[ik]===undefined&&bi[ik]!==undefined&&_snap(vi[ik])===_snap(bi[ik])) return;   // 내가 지운 종류
+        if(vi[ik]===undefined&&bi[ik]!==undefined&&_snap(mi[ik])===_snap(bi[ik])) return;   // 남이 지운 종류
+        r[ik]=siteArrMerge(bi[ik],mi[ik],vi[ik],CL,ik,conf);
+      });
+    }
+    else r=m3(b[k],m[k],v[k],'「'+k+'」',conf);
+    if(r!==undefined) out[k]=r;
+  });
+  return out;
+}
+/* 요금표 — 이 화면 몫(RATE_MINE)만 합치고 나머지 칸(차량·가이드…)은 서버 것 그대로 */
+function pricingMerge(b,m,v,conf){
+  b=b||{}; v=v||{};
+  const out=Object.assign({},v);
+  RATE_MINE.forEach(k=>{
+    if(k!=='regions'){ const r=m3(b[k],m[k],v[k],'요금 「'+k+'」',conf); if(r!==undefined) out[k]=r; else delete out[k]; return; }
+    const br=b.regions||{}, mr=m.regions||{}, vr=v.regions||{}, rr={};
+    new Set(Object.keys(br).concat(Object.keys(mr),Object.keys(vr))).forEach(reg=>{
+      const B=br[reg], M=mr[reg], V=vr[reg];
+      if(M===undefined||V===undefined){ const r=m3(B,M,V,'요금 '+reg,conf); if(r!==undefined) rr[reg]=r; return; }
+      const B0=B||{}, o={};
+      new Set(Object.keys(B0).concat(Object.keys(M),Object.keys(V))).forEach(kk=>{
+        const B=B0;
+        const r=(Array.isArray(M[kk])||Array.isArray(V[kk]))
+          ? mByKey(B[kk],M[kk],V[kk],x=>String((x&&x.name)||''),'요금 '+reg,conf)
+          : m3(B[kk],M[kk],V[kk],'요금 '+reg+' '+kk,conf);
+        if(r!==undefined) o[kk]=r;
+      });
+      rr[reg]=o;
+    });
+    out.regions=rr;
+  });
+  return out;
+}
+/* 서버 줄을 updated_at과 같이 읽는다 — 조건부 저장(내가 읽은 뒤 아무도 안 썼을 때만 쓴다)에 쓴다 */
+async function loadRow(key){
+  const {data:row,error}=await sb.from('guide_data').select('data,updated_at').eq('data_key',key).maybeSingle();
+  if(error) throw error;
+  return row?{data:(row.data===undefined?null:row.data),at:row.updated_at||null}:{data:null,at:null};
+}
+async function saveRawIf(key,data,at){
+  if(!at) return (await saveRaw(key,data))?'ok':'fail';     // 아직 줄이 없다 — 처음 저장
+  try{
+    const {data:rows,error}=await sb.from('guide_data').update({data,updated_at:new Date().toISOString()})
+      .eq('data_key',key).eq('updated_at',at).select('data_key');
+    if(error) return 'fail';
+    return (rows&&rows.length)?'ok':'raced';                // 0줄 = 그 사이 남이 저장했다
+  }catch(e){ return 'fail'; }
+}
+/* mergeFn 이 있으면 남이 바꾼 것과 합쳐 저장한다. 성공하면 «실제로 저장된 값»을, 아니면 false 를 돌려준다 */
+async function saveSafe(key,data,mergeFn){
+  let asked=false;
+  for(let tries=0;tries<4;tries++){
+    let row;
+    try{ row=await loadRow(key); }
+    catch(e){ toast('⚠ 서버 연결 실패 — 저장하지 않았습니다'); return false; }
+    const server=row.data, b=_base[key], s=_snap(server);
+    let out=data;
+    if(b!=null && s!==b){
+      if(mergeFn){
+        const conf=[];
+        let base=null; try{ base=JSON.parse(b); }catch(e){}
+        out=mergeFn(base,data,server,conf);
+        if(conf.length&&!asked){
+          const list=conf.slice(0,8).join('\n · ')+(conf.length>8?'\n · 외 '+(conf.length-8)+'곳':'');
+          if(!confirm('['+(KEY_LABEL[key]||key)+'] 같은 부분을 그 사이 다른 관리자도 고쳤습니다:\n · '+list
+            +'\n\n계속하면 이 부분만 «내 것»으로 저장되고, 나머지는 서로의 변경이 모두 남습니다.\n(취소하면 저장하지 않습니다)\n\n계속할까요?')) return false;
+          asked=true;
+        }
+      } else if(!asked){
+        if(!confirm('['+(KEY_LABEL[key]||key)+']를 그 사이 다른 관리자가 바꿨습니다.\n\n'
+          +'지금 저장하면 그 내용이 사라집니다.\n(취소하면 저장하지 않습니다 — 새로고침해 최신 내용을 확인하세요)\n\n계속할까요?')) return false;
+        asked=true;
+      }
+    }
+    try{ await pushBackup(key,server); }catch(e){}
+    const r=await saveRawIf(key,out,row.at);
+    if(r==='ok'){ _base[key]=_snap(out); return out; }
+    if(r==='fail'){ toast('❌ 저장 실패'); return false; }
+    /* raced — 읽고 쓰는 사이에 남이 저장했다. 다시 읽어 합친다 */
   }
-  try{ await pushBackup(key,server); }catch(e){}
-  if(!await saveRaw(key,data)){ toast('❌ 저장 실패'); return false; }
-  _base[key]=_snap(data);
-  return true;
+  toast('⚠ 다른 관리자의 저장과 계속 겹쳐 저장하지 못했습니다 — 잠시 뒤 다시 눌러 주세요');
+  return false;
 }
 
 /* ══════ 로그인 ══════ */
@@ -2215,7 +2333,9 @@ async function saveSite(){
     let ok=true, msg=[];
     if(syncPriceNames()+pruneOldPricing()) markDirty('rates');
     if(dirty['site']){
-      if(await saveSafe(SITE_KEY,S)){ clearDirty('site'); msg.push('사이트 내용'); } else ok=false;
+      /* 남이 그 사이 저장했으면 합쳐서 저장한다 — 합친 결과(남의 변경 포함)를 화면에도 그대로 받는다 */
+      const saved=await saveSafe(SITE_KEY,S,siteMerge);
+      if(saved){ const mg=saved!==S; if(mg) S=saved; clearDirty('site'); msg.push(mg?'사이트 내용(다른 관리자 변경과 합침)':'사이트 내용'); } else ok=false;
     }
     /* 요금은 키가 달라 따로 나간다 — 한쪽이 실패해도 다른 쪽은 남는다.
        ⚠ 요금표(golf_pricing) 한 덩이를 요금·코드 화면(/golf/admin/)과 같이 쓴다.
@@ -2226,8 +2346,11 @@ async function saveSite(){
     if(ok&&dirty['rates']){
       const merged=await mergeRatesForSave(P);
       if(!merged){ toast('⚠ 서버 연결 실패 — 요금을 저장하지 않았습니다'); ok=false; }
-      else if(await saveSafe(PRICE_KEY,merged)){ P=merged; clearDirty('rates'); msg.push('요금'); }
-      else ok=false;
+      else {
+        const saved=await saveSafe(PRICE_KEY,merged,pricingMerge);
+        if(saved){ P=saved; buildPriceIndex(); clearDirty('rates'); msg.push('요금'); }
+        else ok=false;
+      }
     }
     if(ok){ hotRate=null; hotItem=null; }   // 저장이 끝나면 요금 줄·옮긴 줄의 노란 표시를 지운다
     drawTabs();
