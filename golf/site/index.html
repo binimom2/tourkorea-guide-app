@@ -90,7 +90,7 @@ body.qopen{overflow:hidden}
 .ctydd button:hover{background:rgba(18,58,43,.09)}
 .ctydd small{font-size:11.5px;font-weight:700;color:var(--muted)}
 /* 맨 위 얇은 띠(1118) — 나라 이름 + 지역 글자를 한 줄로. 고른 나라는 진하게, 고른 지역은 밑줄 */
-.ctystrip{background:#fff;border-bottom:1px solid var(--line)}
+.ctystrip{background:#fff;border-top:1px solid var(--line)}
 .nav .ctystrip .wrap{display:flex;align-items:center;gap:4px;height:32px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
 .nav .ctystrip .wrap::-webkit-scrollbar{display:none}
 .cty1{display:flex;align-items:center;gap:1px;flex-shrink:0}
@@ -895,9 +895,6 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 <body>
 
 <nav class="nav">
-  <!-- 맨 위 얇은 나라·지역 띠 — 「태국 방콕 파타야 … | 베트남 다낭 …」 한 줄(사장님 2026-11-18).
-       지역을 누르면 그 지역 목록으로 바로 간다. 헤더의 태국 ▾ / 베트남 ▾ 는 이 띠로 옮겨 검색창 자리를 넓혔다 -->
-  <div class="ctystrip"><div class="wrap" id="ctyNav"></div></div>
   <div class="wrap">
     <a class="brand" href="#top"><b>TOURKOREA</b><span>투어코리아</span></a>
     <!-- 검색 — 골프장·호텔·스파… 이름·지역·영문으로 찾아 바로 상세를 연다(사장님 2026-09-10) -->
@@ -928,6 +925,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     </div>
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
   </div>
+  <!-- 헤더 아래 얇은 나라·지역 띠 — 「태국 방콕 파타야 … | 베트남 다낭 …」 한 줄(사장님 2026-11-18, 헤더 아래로).
+       지역을 누르면 그 지역 목록으로 바로 간다. 헤더의 태국 ▾ / 베트남 ▾ 는 이 띠로 옮겨 검색창 자리를 넓혔다 -->
+  <div class="ctystrip"><div class="wrap" id="ctyNav"></div></div>
 </nav>
 
 <!-- 실시간 견적 팝업 — 기존 견적 계산기(/golf/)를 사이트 안에 창으로 띄운다(사장님 2026-09-10).
