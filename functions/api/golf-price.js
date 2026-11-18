@@ -121,6 +121,76 @@ async function cashBuyRate(env) {
   }
 }
 
+/* ══════ 베트남(동) 요금 — 사장님 2026-11-18 ══════
+   베트남 지역(golf_site.countries 의 「베트남」 rs) 요금표는 «동(VND)»으로 적는다.
+   요금표를 읽자마자 베트남 지역의 금액을 «바트 환산값»으로 바꿔 두면 아래 계산(마진·티어·써차지·연박…)을 손대지 않고 쓴다:
+     바트 환산 = 동 × (원/동) ÷ (원/밧)   →   원화 = 바트 환산 × (원/밧) = 동 × (원/동)
+   · 기본 마진(200밧 등)·티어 할인은 바트 그대로 둔다 = 태국과 «같은 원화 금액»이 붙는다.
+   · 요금표에 직접 적은 margin 칸은 베트남 쪽이면 동으로 본다(같이 환산).
+   · 동 환율 = 네이버(하나은행 고시) FX_VNDKRW «현찰 살때» — 100동당 원.
+   · 동 환율을 못 받으면 베트남 요금은 내보내지 않는다(틀린 값보다 「요금 문의」가 낫다). 태국 요금은 그대로. */
+const VN_REGIONS_DEFAULT = ['다낭', '나트랑', '푸꾸옥', '하노이'];
+const VN_NUM_KEYS = ['p18', 'p9', 'margin', 'wd', 'we', 'sgWd', 'sgWe', 'eaWd', 'eaWe', 'ecWd', 'ecWe', 'cbWd', 'cbWe',
+  'extraAdult', 'extraChild', 'extraPax', 'extraBed', 'ad', 'ch', 'p'];
+let memVnRegions = null, memVnFx = null;
+async function vnRegions(env) {
+  const sr = env && env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.golf_site&select=c:data->countries',
+      { headers: { apikey: sr, Authorization: 'Bearer ' + sr }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error('countries ' + r.status);
+    const rows = await r.json();
+    const list = rows && rows[0] && rows[0].c;
+    const vn = Array.isArray(list) ? list.find((c) => c && c.n === '베트남') : null;
+    memVnRegions = (vn && Array.isArray(vn.rs)) ? vn.rs.map((s) => String(s || '').trim()).filter(Boolean) : VN_REGIONS_DEFAULT;
+  } catch (e) {
+    if (!memVnRegions) memVnRegions = VN_REGIONS_DEFAULT;
+  }
+  return memVnRegions;
+}
+async function vndRate() {
+  try {
+    const r = await fetch(NAVER + 'FX_VNDKRW/prices?page=1&pageSize=1', {
+      headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
+      cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error('vnd ' + r.status);
+    const rows = await r.json();
+    const d = Array.isArray(rows) ? rows[0] : null;
+    const v = parseFloat(String((d && (d.cashBuyValue || d.closePrice)) || '').replace(/,/g, ''));
+    if (!isFinite(v) || v <= 0) throw new Error('vnd 비어 있음');
+    memVnFx = { rate: v / 100, date: (d && d.localTradedAt) || '' };   // 1동당 원
+  } catch (e) { /* 직전 값이 있으면 그대로 */ }
+  return memVnFx;
+}
+/* 객체 안의 금액 칸을 f배 — 배열·하위 객체까지(rates·rooms·galas·menu) */
+function vnScale(o, f) {
+  if (Array.isArray(o)) { o.forEach((x) => vnScale(x, f)); return; }
+  if (!o || typeof o !== 'object') return;
+  Object.keys(o).forEach((k) => {
+    const v = o[k];
+    if (v && typeof v === 'object') vnScale(v, f);
+    else if (VN_NUM_KEYS.includes(k) && !blank(v) && Number.isFinite(+v)) o[k] = +v * f;
+  });
+  /* 공항 미팅 아따비(바트)는 태국 공항 이야기 — 베트남 메뉴 줄엔 안 붙인다 */
+  if (Array.isArray(o.menu)) o.menu.forEach((r) => { if (r) r.tip = false; });
+}
+async function vnConvert(P, fx, env) {
+  if (!P || !P.regions) return P;
+  const regs = await vnRegions(env);
+  const hit = Object.keys(P.regions).filter((r) => regs.includes(String(r).trim()));
+  if (!hit.length) return P;
+  const Q = Object.assign({}, P, { regions: Object.assign({}, P.regions) });
+  const vf = await vndRate();
+  hit.forEach((r) => {
+    if (!vf || !(fx && fx.rate > 0)) { delete Q.regions[r]; return; }
+    const copy = JSON.parse(JSON.stringify(P.regions[r]));
+    vnScale(copy, vf.rate / fx.rate);
+    Q.regions[r] = copy;
+  });
+  return Q;
+}
+
 const krwUp = (n) => Math.ceil(n / 1000) * 1000;
 /* 요일은 표준시(Z)로 고정해 읽는다 — 서버 시간대에 따라 주중/주말이 뒤집히면 안 된다 */
 /* 주말 = 토·일 + 골프장마다 더 붙는 요일 weAdd(관리 「주말 추가 요일」, 1024 카오야이 금요일) */
@@ -332,6 +402,7 @@ export async function onRequestGet({ request, env }) {
   try {
     const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
+    P = await vnConvert(P, fx, env);   // 베트남 지역 동 → 바트 환산(2026-11-18)
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
   }
@@ -482,6 +553,7 @@ export async function onRequestPost({ request, env }) {
   try {
     const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
+    P = await vnConvert(P, fx, env);   // 베트남 지역 동 → 바트 환산(2026-11-18)
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
   }
@@ -569,6 +641,7 @@ async function hotelPost(B, env, adj) {
   try {
     const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
     P = got[0]; fx = got[1];
+    P = await vnConvert(P, fx, env);   // 베트남 지역 동 → 바트 환산(2026-11-18)
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
   }
