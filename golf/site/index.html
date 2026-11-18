@@ -90,19 +90,19 @@ body.qopen{overflow:hidden}
 .ctydd button:hover{background:rgba(18,58,43,.09)}
 .ctydd small{font-size:11.5px;font-weight:700;color:var(--muted)}
 /* 맨 위 얇은 띠(1118) — 나라 이름 + 지역 글자를 한 줄로. 고른 나라는 진하게, 고른 지역은 밑줄 */
-.ctystrip{background:#fff;border-top:1px solid var(--line)}
-.nav .ctystrip .wrap{display:flex;align-items:center;gap:4px;height:32px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
-.nav .ctystrip .wrap::-webkit-scrollbar{display:none}
+.ctyin{display:flex;align-items:center;flex:1 1 0;min-width:0;margin-left:18px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.ctyin::-webkit-scrollbar{display:none}
 .cty1{display:flex;align-items:center;gap:1px;flex-shrink:0}
 .cty1 + .cty1{margin-left:10px;padding-left:12px;border-left:1px solid var(--line)}
-.cty1 button{background:none;border:0;font:inherit;font-size:12.5px;font-weight:700;color:#6B7570;padding:4px 7px;border-radius:6px;cursor:pointer}
-.cty1 button:hover{color:var(--fairway);background:rgba(18,58,43,.06)}
-.cty1 .cn{font-size:13px;font-weight:900;color:var(--fairway);padding:3px 10px;border-radius:999px;margin-right:3px}
+.cty1 button{background:none;border:0;font:inherit;font-size:14.5px;font-weight:800;color:#2C3A33;padding:6px 6px;border-radius:8px;cursor:pointer}
+.cty1 button:hover{color:var(--fairway);background:rgba(18,58,43,.08)}
+.cty1 .cn{font-size:15.5px;font-weight:900;color:var(--fairway);padding:6px 13px;border-radius:999px;margin-right:4px;border:1.5px solid var(--fairway)}
 .cty1.on .cn{background:var(--fairway);color:#fff}
 .cty1 button.rs{color:var(--fairway);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:2px}
-.cty1 button.no{color:#B3BAB6}
+.cty1 button.no{color:#9AA39E}
 #dAddr a{text-decoration:none;color:inherit}   /* 주소·전화 밑줄 없앰(사장님 1118) — 눌러지는 건 그대로 */
 #dAddr a:hover{color:var(--fairway)}
+.dlist#dAddr li b{flex:0 0 auto;margin-right:2px}   /* 「주소」「전화」 뒤 띄움을 좁게(사장님 1118) */
 .ctynote{margin:22px 0 4px;padding:14px 16px;border-radius:12px;background:#fff;border:1px solid var(--line);font-weight:700;color:var(--fairway);text-align:center}
 @media(max-width:640px){
   .ctynav{order:1;margin-left:0}
@@ -815,6 +815,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   .nsearch{order:9;flex:1 1 180px!important;margin:0!important}
   .navtools{order:10;margin-left:0}
   .loginbtn{padding:7px 12px;font-size:13px;white-space:nowrap}
+  .ctyin{order:20;flex:0 0 100%;margin-left:0}   /* 휴대폰: 맨 아래 줄 나라·지역(옆으로 밀어 봄) */
+}
+/* PC: 1줄 로고 · 나라·지역 · 로그인 · ♡🛒 · 환율 / 2줄 검색칸 한 줄 통째(사장님 2026-11-18) */
+@media(min-width:641px){
+  .nav .wrap{flex-wrap:wrap;height:auto;row-gap:8px;padding-top:8px;padding-bottom:10px;max-width:1500px}
+  .nsearch{order:20;flex:0 0 100%!important;max-width:none;margin:0!important}
+  .menu{margin-left:10px}
 }
 
 /* 찜·장바구니 창 — 상세창보다 좁고 목록만 보여 준다 */
@@ -899,6 +906,9 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 <nav class="nav">
   <div class="wrap">
     <a class="brand" href="#top"><b>TOURKOREA</b><span>투어코리아</span></a>
+    <!-- 나라·지역 — 로고 옆 한 줄 「태국 방콕 파타야 … | 베트남 다낭 …」, 검색칸은 그 아래 줄(사장님 2026-11-18).
+         지역을 누르면 그 지역 목록으로 바로 간다 -->
+    <div class="ctyin" id="ctyNav"></div>
     <!-- 검색 — 골프장·호텔·스파… 이름·지역·영문으로 찾아 바로 상세를 연다(사장님 2026-09-10) -->
     <div class="nsearch" id="nsearch">
       <input type="search" id="navQ" autocomplete="off" aria-label="찾기">
@@ -927,9 +937,6 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
     </div>
     <button class="burger" id="burger" aria-label="메뉴">☰</button>
   </div>
-  <!-- 헤더 아래 얇은 나라·지역 띠 — 「태국 방콕 파타야 … | 베트남 다낭 …」 한 줄(사장님 2026-11-18, 헤더 아래로).
-       지역을 누르면 그 지역 목록으로 바로 간다. 헤더의 태국 ▾ / 베트남 ▾ 는 이 띠로 옮겨 검색창 자리를 넓혔다 -->
-  <div class="ctystrip"><div class="wrap" id="ctyNav"></div></div>
 </nav>
 
 <!-- 실시간 견적 팝업 — 기존 견적 계산기(/golf/)를 사이트 안에 창으로 띄운다(사장님 2026-09-10).
