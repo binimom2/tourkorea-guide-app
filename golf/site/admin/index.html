@@ -69,6 +69,8 @@ select[data-rmf=sur]{text-shadow:none}
 .subtree .stlbl{min-width:56px;font-size:13px;font-weight:900;color:var(--fairway);padding-left:12px;position:relative}
 .subtree .stlbl:before{content:"└";position:absolute;left:0;color:var(--muted);font-weight:400}
 .subtree.cur .stlbl{color:#B5650A}
+.subtree button.stgrp{font-size:14px;padding:8px 18px;font-weight:900}
+.subtree button.stgrp.on{background:var(--fairway);border-color:var(--fairway);color:#fff}
 
 .wrap{max-width:1180px;margin:0 auto;padding:16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px 16px 17px;margin-bottom:14px}
@@ -2245,25 +2247,41 @@ document.addEventListener('keydown',e=>{
    나라 줄의 종류(골프장·호텔…)를 누르면 그 나라 상품만 표에 나온다(iCountry). 실시간 요금표·차량 견적·공휴일은 태국 전용이라 태국 줄에.
    종류 관리·게시판·연락처는 두 나라가 같이 쓰는 설정이라 맨 아래 「공통」 줄. */
 const SUB_TH_ONLY=['tours','rates','carq','holiday'], SUB_COMMON=['cats','board','foot'];
+/* 1줄: 첫 화면 · 공통 · 태국 · 베트남 단추 → 2줄: 고른 단추의 하위 항목(사장님 2026-11-18 두 번째 모양) */
+function subGroupItems(SUB,g){
+  const by=k=>SUB.filter(s=>s.k===k)[0], isCat=s=>s.k.indexOf('cat:')===0;
+  if(g==='공통') return SUB_COMMON.map(by).filter(Boolean);
+  if(g==='hero') return [];
+  return SUB.filter(isCat).concat(g==='태국'?SUB_TH_ONLY.map(by).filter(Boolean):[]);
+}
+function subGroup(){
+  if(sub==='hero') return 'hero';
+  if(SUB_COMMON.includes(sub)) return '공통';
+  if(SUB_TH_ONLY.includes(sub)) return '태국';
+  return ctyCur();
+}
 function subTreeHTML(SUB){
-  const by=k=>SUB.filter(s=>s.k===k)[0];
-  const isCat=s=>s.k.indexOf('cat:')===0;
-  const curC=isCat({k:sub})?ctyCur():(SUB_TH_ONLY.includes(sub)?'태국':'');
-  const btn=(s,c)=>'<button data-s="'+esc(s.k)+'"'+(c?' data-c="'+esc(c)+'"':'')
-    +' class="'+(s.k===sub&&(!c||c===curC)?'on':'')+'">'+esc(s.label)+'</button>';
-  const row=(lbl,html,cur,last)=>'<div class="subtabs subtree'+(cur?' cur':'')+(last?' last':'')+'"><span class="stlbl">'+esc(lbl)+'</span>'+html+'</div>';
-  return '<div class="subtabs subtree">'+(by('hero')?btn(by('hero')):'')+'<span class="rhint" style="font-size:12px">공통</span></div>'
-    +ctyAll().map(c=>row(c.n,
-        SUB.filter(isCat).map(s=>btn(s,c.n)).join('')
-        +(c.n==='태국'?SUB_TH_ONLY.map(by).filter(Boolean).map(s=>btn(s,'태국')).join(''):''),
-        curC===c.n)).join('')
-    +row('공통',SUB_COMMON.map(by).filter(Boolean).map(s=>btn(s)).join(''),!curC&&sub!=='hero',true);
+  const g=subGroup();
+  const groups=[['hero','첫 화면']].concat([['공통','공통']]).concat(ctyAll().map(c=>[c.n,c.n]));
+  const kids=subGroupItems(SUB,g);
+  return '<div class="subtabs subtree'+(kids.length?'':' last')+'">'
+      +groups.map(([k,t])=>'<button data-g="'+esc(k)+'" class="stgrp'+(k===g?' on':'')+'">'+esc(t)+'</button>').join('')+'</div>'
+    +(kids.length?'<div class="subtabs subtree last"><span class="stlbl">'+esc(g)+'</span>'
+      +kids.map(s=>'<button data-s="'+esc(s.k)+'" class="'+(s.k===sub?'on':'')+'">'+esc(s.label)+'</button>').join('')+'</div>':'');
 }
 function bindSubTree(p){
-  p.querySelectorAll('.subtree button[data-s]').forEach(b=>b.onclick=()=>{
-    if(b.dataset.c&&b.dataset.c!==iCountry){ iCountry=b.dataset.c; Object.keys(iRegion).forEach(x=>iRegion[x]=''); }
-    sub=b.dataset.s; drawSite();
+  p.querySelectorAll('.subtree button[data-g]').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.g, SUB=subs();
+    if(g==='hero') sub='hero';
+    else if(g==='공통') sub=SUB_COMMON.includes(sub)?sub:'cats';
+    else {
+      if(g!==iCountry){ iCountry=g; Object.keys(iRegion).forEach(x=>iRegion[x]=''); }
+      const first=subGroupItems(SUB,g)[0];
+      if(!(sub.indexOf('cat:')===0||(g==='태국'&&SUB_TH_ONLY.includes(sub)))) sub=first?first.k:'hero';
+    }
+    drawSite();
   });
+  p.querySelectorAll('.subtree button[data-s]').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
 }
 function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
