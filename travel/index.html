@@ -3060,13 +3060,14 @@ function downloadCostExcel(){
       // 관광·식당외에서 「비고 공통 사용」을 켠 항목은 화면처럼 공통 비고가 나가게(기간에 남아 있는 옛 비고가 덮지 않게)
       if(costTab==='attraction'&&top.remarkCommon) row.remark=top.remark||'';
       if(costTab==='golf') row.remark=golfRemarkCommon(top)?(top.remark||''):(s.remark||'');
+      if(costTab==='hotel'&&top.remarkAll) row.remark=top.remark||'';   // 호텔 「비고 전체 기간 공통」
       flat.push(row);
     });
     else flat.push(base);
   });
   // 실제 데이터에 등장하는 모든 키 수집(상위→시즌), 보기 좋은 순서로 정렬
   const seen=new Set(), keys=[], collect=k=>{ if(!seen.has(k)){ seen.add(k); keys.push(k); } };
-  rows.forEach(t=>Object.keys(t).forEach(k=>{ if(k!=='seasons'&&k!=='remarkCommon') collect(k); }));
+  rows.forEach(t=>Object.keys(t).forEach(k=>{ if(k!=='seasons'&&k!=='remarkCommon'&&k!=='remarkAll') collect(k); }));
   rows.forEach(t=>(t.seasons||[]).forEach(s=>Object.keys(s).forEach(collect)));
   const PREF=['name','nameKr','region','category','season','period','dateFrom','dateTo','gf18wd','gf18we','caddy','cart','gf9wd','gf9we','caddy9','cart9','roomType','twin','amount','extbed','rooms','joiners','adult','child','remark'];
   keys.sort((a,b)=>{ let ia=PREF.indexOf(a),ib=PREF.indexOf(b); if(ia<0)ia=99; if(ib<0)ib=99; return ia-ib; });
@@ -3686,6 +3687,14 @@ function normHotelSeasons(list){
 function getHotels(){ return normHotelSeasons(migrateHotel(getCostRows('hotel'))); }
 async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 
+// 기간을 시작일 순서로 정렬한 사본(시작일 없는 기간은 맨 뒤, 같은 날이면 원래 순서)
+function seasonsByDate(arr){
+  return arr.map((s,i)=>({s,i})).sort((a,b)=>{
+    const x=String(a.s.dateFrom||''), y=String(b.s.dateFrom||'');
+    if(!x||!y) return (!x&&y)?1:((x&&!y)?-1:a.i-b.i);
+    return x<y?-1:(x>y?1:a.i-b.i);
+  }).map(o=>o.s);
+}
 function renderHotelTable(){
   const COLS=['호텔명','지역','시즌','기간','객실 타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
   const CEN=['지역','시즌','기간','객실 타입 구분','트윈/싱글','엑스트라','조이너스'];
@@ -3706,7 +3715,7 @@ function renderHotelTable(){
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
   list.forEach(({h,idx},gi)=>{
-    const ss=(h.seasons&&h.seasons.length)?h.seasons:[{}];
+    const ss=(h.seasons&&h.seasons.length)?seasonsByDate(h.seasons):[{}];   // 표는 시작일 순서로(데이터 순서는 그대로)
     const roomsOf=ss.map(s=>(s.rooms&&s.rooms.length)?s.rooms:[{}]);
     const total=roomsOf.reduce((a,r)=>a+r.length,0);   // 호텔명/지역/관리 병합 높이
     const grp=gi%2;
@@ -3728,8 +3737,10 @@ function renderHotelTable(){
              +`<td class="num">${escapeHtml(fmtMoney(rm.rate))}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.extbed))}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.joiners))}</td>`;
-        // 비고: '공통' 켜져 있으면 룸타입 수만큼 한 칸으로 병합
-        if(s.remarkCommon){
+        // 비고: 「전체 기간 공통」이면 호텔 전체 높이로 한 칸, 「기간 공통」이면 룸타입 수만큼 한 칸
+        if(h.remarkAll){
+          if(rowNo===0) html+=`<td rowspan="${total}" class="remark-col" style="vertical-align:middle;">${h.remark?renderRemark(h.remark):'-'}</td>`;
+        } else if(s.remarkCommon){
           if(ri===0) html+=`<td rowspan="${rooms.length}" class="remark-col" style="vertical-align:middle;">${s.remark?renderRemark(s.remark):'-'}</td>`;
         } else {
           html+=`<td class="remark-col">${rm.remark?renderRemark(rm.remark):'-'}</td>`;
@@ -3773,6 +3784,8 @@ function syncHotelDraftFromDom(){
   if(!_hotelDraft) return;
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
   _hotelDraft.name=gv('h-name'); _hotelDraft.region=gv('h-region');
+  const arm=document.getElementById('h-all-remark');   // 전체 기간 공통 비고(켜져 있을 때만 칸이 있음, 꺼져 있으면 기존 값 보존)
+  if(arm) _hotelDraft.remark=arm.value;
   _hotelDraft.seasons=_hotelDraft.seasons.map((s,i)=>{
     const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo'),
              remarkCommon:!!s.remarkCommon};
@@ -3821,7 +3834,8 @@ function copyHotelSeason(i){
 function hotelSeasonBlockHtml(s,i){
   const t='flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;';
   const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
-  const common=!!s.remarkCommon;   // 비고를 이 기간 공통으로 쓸지
+  const all=!!(_hotelDraft&&_hotelDraft.remarkAll);   // 호텔 전체 기간 공통이면 기간·객실 비고칸은 감춤(값은 보존)
+  const common=!!s.remarkCommon && !all;   // 비고를 이 기간 공통으로 쓸지
   return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${i+1}</span>
@@ -3838,13 +3852,13 @@ function hotelSeasonBlockHtml(s,i){
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed #e3e7ef;">
       <b style="font-size:12px;color:#3c5a86;">객실 타입 구분 (${rooms.length}개)</b>
       <div style="display:flex;align-items:center;gap:10px;">
-        <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5570;cursor:pointer;user-select:none;">
+        ${all?'':`<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5570;cursor:pointer;user-select:none;">
           <input type="checkbox" ${common?'checked':''} onchange="toggleHotelRemarkCommon(${i})" style="cursor:pointer;"/> 비고 공통 사용
-        </label>
+        </label>`}
         <button type="button" class="btn btn-save" style="padding:0 10px;height:26px;font-size:11.5px;" onclick="addHotelRoom(${i})">＋ 객실 타입 추가</button>
       </div>
     </div>
-    ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j,common)).join('')}
+    ${rooms.map((rm,j)=>hotelRoomBlockHtml(rm,i,j,common||all)).join('')}
     ${common?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
       <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (이 기간 공통 — 객실 타입 ${rooms.length}개에 함께 적용, 표에서 한 칸으로 합쳐짐)</div>
       ${remarkColorBar('h-'+i+'-remark')}
@@ -3889,9 +3903,35 @@ function renderHotelEditorBody(){
   </div>
   <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
     <b style="font-size:13px;color:#1f2a44;">기간별 요금 (${h.seasons.length}개)</b>
-    <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addHotelSeason()">＋ 기간 추가</button>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#4a5570;cursor:pointer;user-select:none;">
+        <input type="checkbox" ${h.remarkAll?'checked':''} onchange="toggleHotelRemarkAll()" style="cursor:pointer;"/> 비고 전체 기간 공통
+      </label>
+      <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addHotelSeason()">＋ 기간 추가</button>
+    </div>
   </div>`;
-  document.getElementById('soBody').innerHTML=head+`<div id="hotelSeasons">${h.seasons.map((s,i)=>hotelSeasonBlockHtml(s,i)).join('')}</div>`;
+  const allBox=h.remarkAll?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
+      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (전체 기간 공통 — 표에서 한 칸으로 합쳐짐)</div>
+      ${remarkColorBar('h-all-remark')}
+      <textarea id="h-all-remark" style="width:100%;">${escapeHtml(h.remark||'')}</textarea>
+    </div>`:'';
+  document.getElementById('soBody').innerHTML=head+`<div id="hotelSeasons">${h.seasons.map((s,i)=>hotelSeasonBlockHtml(s,i)).join('')}</div>`+allBox;
+}
+// 호텔 「비고 전체 기간 공통」 켜기/끄기 — 켤 때 비어 있으면 기간·객실에 적어둔 첫 비고를 끌어옴(기간별 비고는 지우지 않음)
+function toggleHotelRemarkAll(){
+  syncHotelDraftFromDom();
+  const h=_hotelDraft; if(!h) return;
+  h.remarkAll=!h.remarkAll;
+  if(h.remarkAll && !String(h.remark||'').trim()){
+    const pick=[];
+    seasonsByDate(h.seasons||[]).forEach(s=>{
+      if(s.remarkCommon) pick.push(s.remark);
+      else (s.rooms||[]).forEach(r=>pick.push(r.remark));
+    });
+    const first=pick.map(x=>String(x||'').trim()).filter(Boolean)[0];
+    if(first) h.remark=first;
+  }
+  renderHotelEditorBody();
 }
 function openHotelEditor(index){
   hotelEditIndex=index;
@@ -3940,7 +3980,8 @@ function openHotelDetail(i){
   // raw=true면 이미 만들어진 HTML(비고 색상)을 그대로 넣음
   const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['호텔명',h.name||'-'],['지역',h.region||'-']].map(x=>line(x[0],x[1])).join('');
-  const ss=(h.seasons||[]).map((s,i)=>{
+  const ss=seasonsByDate(h.seasons||[]).map((s0,i)=>{
+    const s=h.remarkAll?Object.assign({},s0,{remarkCommon:true,remark:''}):s0;   // 전체 공통이면 기간별 비고는 안 보이게
     const sh=seasonHd(s.season);
     const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
     // 기간 아래 룸타입들을 가로 표로
@@ -3968,7 +4009,8 @@ function openHotelDetail(i){
     </div>`;
   }).join('');
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
-    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>');
+    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>')
+    +((h.remarkAll&&h.remark)?`<div style="margin-top:10px;padding:8px 10px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;"><div style="font-size:10.5px;color:#8892a0;font-weight:700;margin-bottom:3px;">비고 (전체 기간 공통)</div>${renderRemark(h.remark)}</div>`:'');
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
