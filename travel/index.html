@@ -150,6 +150,9 @@ table.rlist tr{cursor:pointer;}
 .rlist tr.season-off td:not(.cost-sum-col):not(.name-col){background:#edf7f0;}
 .rlist tr.season-mid td:not(.cost-sum-col):not(.name-col){background:#eff5fd;}
 .rlist tr.season-etc td:not(.cost-sum-col):not(.name-col){background:#fff;}
+/* 원가서 구분선: 기간이 바뀌는 줄 위 진한 선, 다음 호텔·골프장 시작 줄 위 더 진한 선(사장님 1119) */
+#costTable tr.season-start td,.costtbl tr.season-start td{border-top:2px solid #8a93a5;}
+#costTable tr.item-start td,.costtbl tr.item-start td{border-top:2px solid #3d465c;}
 .rlist tr td.name-col{background:#fff;}   /* 이름·지역·관리 병합칸은 시즌색을 따르지 않고 흰색 */
 .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10.5px;font-weight:700;}
 .badge-proc-FINAL{background:#e2f7ec;color:#1a8a52;}
@@ -3403,7 +3406,7 @@ function renderGolfTable(){
     const grp=gi%2;                                   // 골프장별로 번갈아 배색(구분용)
     ss.forEach((s,si)=>{
       const scls=seasonRowCls(s.season);              // 시즌별 고정색(성수기 그린/비수기 연분홍/평수기 연파랑)
-      html+=`<tr class="golf-grp-${grp} ${scls}">`;
+      html+=`<tr class="golf-grp-${grp} ${scls}${si===0?' item-start':' season-start'}">`;
       if(si===0){
         html+=`<td rowspan="${n}" class="name-col" style="vertical-align:middle;"><b>${escapeHtml(c.nameKr||c.name||'-')}</b></td>`
              +`<td rowspan="${n}" class="num name-col" style="vertical-align:middle;">${escapeHtml(c.region||'-')}</td>`;
@@ -3712,7 +3715,7 @@ function renderHotelTable(){
       const rooms=roomsOf[si];
       const scls=seasonRowCls(s.season);              // 시즌별 고정색(성수기 그린/비수기 연분홍/평수기 연파랑)
       rooms.forEach((rm,ri)=>{
-        html+=`<tr class="golf-grp-${grp} ${scls}">`;
+        html+=`<tr class="golf-grp-${grp} ${scls}${rowNo===0?' item-start':(ri===0?' season-start':'')}">`;
         if(rowNo===0){   // 호텔명·지역: 이 호텔 전체 높이만큼 병합
           html+=`<td rowspan="${total}" class="name-col" style="vertical-align:middle;"><b>${escapeHtml(h.name||'-')}</b></td>`
                +`<td rowspan="${total}" class="num name-col" style="vertical-align:middle;">${escapeHtml(h.region||'-')}</td>`;
@@ -4035,7 +4038,7 @@ function renderAttrTable(){
     const ss=(a.seasons&&a.seasons.length)?a.seasons:[{}];
     const n=ss.length, grp=gi%2;
     ss.forEach((s,si)=>{
-      html+=`<tr class="golf-grp-${grp}">`;
+      html+=`<tr class="golf-grp-${grp}${si===0?' item-start':' season-start'}">`;
       if(si===0){
         html+=`<td rowspan="${n}" style="vertical-align:middle;">${escapeHtml(a.category||'-')}</td>`
              +`<td rowspan="${n}" style="vertical-align:middle;"><b>${escapeHtml(a.name||'-')}</b></td>`
