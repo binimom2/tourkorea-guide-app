@@ -3402,7 +3402,7 @@ function renderGolfTable(){
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
   list.forEach(({c,idx},gi)=>{
-    const ss=(c.seasons&&c.seasons.length)?c.seasons:[{}];
+    const ss=(c.seasons&&c.seasons.length)?seasonsByDate(c.seasons):[{}];   // 표는 시작일 순서로
     const n=ss.length;
     const grp=gi%2;                                   // 골프장별로 번갈아 배색(구분용)
     ss.forEach((s,si)=>{
@@ -3689,8 +3689,11 @@ async function saveHotels(arr){ await saveCostRows('hotel',arr); }
 
 // 기간을 시작일 순서로 정렬한 사본(시작일 없는 기간은 맨 뒤, 같은 날이면 원래 순서)
 function seasonsByDate(arr){
+  // 2026-05-01 / 26/05/01 / 2026.5.1 등 직접입력 형식이 섞여도 yyyymmdd로 맞춰 비교
+  const key=v=>{ const t=String(v||'').trim(); const m=t.match(/(\d{2,4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if(!m) return t; const y=m[1].length===2?'20'+m[1]:m[1]; return y+m[2].padStart(2,'0')+m[3].padStart(2,'0'); };
   return arr.map((s,i)=>({s,i})).sort((a,b)=>{
-    const x=String(a.s.dateFrom||''), y=String(b.s.dateFrom||'');
+    const x=key(a.s.dateFrom), y=key(b.s.dateFrom);
     if(!x||!y) return (!x&&y)?1:((x&&!y)?-1:a.i-b.i);
     return x<y?-1:(x>y?1:a.i-b.i);
   }).map(o=>o.s);
@@ -4077,7 +4080,7 @@ function renderAttrTable(){
   if(!list.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${COLS.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   let html='';
   list.forEach(({a,idx},gi)=>{
-    const ss=(a.seasons&&a.seasons.length)?a.seasons:[{}];
+    const ss=(a.seasons&&a.seasons.length)?seasonsByDate(a.seasons):[{}];   // 표는 시작일 순서로
     const n=ss.length, grp=gi%2;
     ss.forEach((s,si)=>{
       html+=`<tr class="golf-grp-${grp}${si===0?' item-start':' season-start'}">`;
