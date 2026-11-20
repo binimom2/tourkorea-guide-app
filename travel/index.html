@@ -1325,7 +1325,7 @@ async function pushDailyBackup(key,serverVal){
 /* ── 버전 게이트: 오래 열어둔 구버전 탭이 최신 데이터를 통째로 덮어쓰는 것을 원천 차단 ──
    배포할 때마다 TRV_APP_VERSION을 올린다. 최신 탭이 서버에 자기 버전을 기록하고,
    그보다 낮은 탭은 저장 직전에 막혀 새로고침을 강제받는다. 유실의 근본 원인 차단. */
-const TRV_APP_VERSION = 31;   // 배포마다 +1 (구버전 탭 저장차단 기준). v31: SHOW/RESTAURANT/MASSAGE에 PAYING 칸(옛 탭이 고치면 이 칸이 지워지므로 버전 올림), TIME·CFM 좁게. v30: 저장 두 번이 겹치면 남의 새 예약이 「내가 지운 것」으로 보여 삭제되던 것 — 기준값을 저장 시작 순간에 잡고, [삭제] 단추로 지운 예약 말고는 서버에서 지우지 않음(10/30 270226-01 사라짐). v29: 조건부 저장 — 읽은 뒤 그 사이 남이 저장했으면 덮지 않고 최신본에 다시 합쳐 저장(10/26 새 예약 항공이 동시 저장에 덮여 사라짐). v28: 최종 안전망 — 지금 창에서 고치는 예약이 아닌데 서버보다 옛 시각(updatedAt)의 사본으로 바꾸려 하면 서버 것을 둠(경로와 상관없이 낡은 화면 덮어쓰기 차단, 사장님 1022).v27: 최신 목록을 못 받은(로그인 끊긴 채 연) 화면에서 저장하면 서버의 모든 팀을 낡은 사본으로 바꾸던 것 — 지금 창의 예약만 바꾸고, 다시 로그인하면 목록을 새로 받음(10/22 13:14 13팀 되돌아감).v26: 같은 줄 동시 수정은 칸 단위로 합침 — 한 사람 CFM·REMARK, 다른 사람 PAYING이면 둘 다 살림(10/20 PAYING 사라짐, 2026-10-21). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
+const TRV_APP_VERSION = 31;   // 배포마다 +1 (구버전 탭 저장차단 기준). v31: SHOW/RESTAURANT/MASSAGE에 PAYING 칸(옛 탭이 고치면 이 칸이 지워지므로 버전 올림), TIME·CFM 좁게 + 원가서 호텔 비고를 기간별로 골라 합치기/나누기(「위 기간과 비고 합치기」, 옛 전체 공통은 열면 자동 변환). v30: 저장 두 번이 겹치면 남의 새 예약이 「내가 지운 것」으로 보여 삭제되던 것 — 기준값을 저장 시작 순간에 잡고, [삭제] 단추로 지운 예약 말고는 서버에서 지우지 않음(10/30 270226-01 사라짐). v29: 조건부 저장 — 읽은 뒤 그 사이 남이 저장했으면 덮지 않고 최신본에 다시 합쳐 저장(10/26 새 예약 항공이 동시 저장에 덮여 사라짐). v28: 최종 안전망 — 지금 창에서 고치는 예약이 아닌데 서버보다 옛 시각(updatedAt)의 사본으로 바꾸려 하면 서버 것을 둠(경로와 상관없이 낡은 화면 덮어쓰기 차단, 사장님 1022).v27: 최신 목록을 못 받은(로그인 끊긴 채 연) 화면에서 저장하면 서버의 모든 팀을 낡은 사본으로 바꾸던 것 — 지금 창의 예약만 바꾸고, 다시 로그인하면 목록을 새로 받음(10/22 13:14 13팀 되돌아감).v26: 같은 줄 동시 수정은 칸 단위로 합침 — 한 사람 CFM·REMARK, 다른 사람 PAYING이면 둘 다 살림(10/20 PAYING 사라짐, 2026-10-21). v25: Del 확인창·연동 입출금 Edit 연결 유지·동시편집 ฿ 지불 합침(가이드 전도금 사라짐, 2026-10-19). v24: 충돌 확인창 [취소] 뒤 예약창이 옛 내용으로 남아, 다시 저장하면 남이 넣은 호텔 줄 등이 사라지던 유실 수정 — 취소하면 창도 최신본으로 다시 엶(1015 11/22 팀) / v23: 원가서 골프장도 시즌별 비고 + 「비고 공통 사용」(기본 공통, 사장님 1008) /v22: 원가서 검색칸이 골프장·호텔·관광을 한 번에 찾음(전체 검색, 사장님 0922) / v21: 시간 초과 자동 로그아웃 1시간→4시간, 시간 초과 때 저장 안 한 입력은 버림(초안·미룬 저장 삭제 후 새로고침, 사장님 0922) / v20: 초안(draft) 되살리기 유실 수정 — 창 닫으면 초안 삭제, 안 바꾼 초안은 안 띄움, 되살릴 땐 「내가 바꾼 부분」만 최신본 위에 3-way 병합(11/08 팀 호텔 리마크 사라짐 원인) / v19: 원가서 관광·식당외에 「비고 공통 사용」 — 기간이 여러 개여도 비고 한 칸으로 합침(호텔 탭과 같은 방식) / v18: 상단 합산(MD/TK 인원)을 체크인 날짜 기준으로 — 달력과 같은 팀만 / v17: 신규 예약 저장 실패 후 [Create] 재시도 시 순번이 -02,-03…으로 밀리던 버그 수정 / v16: 세부배정 편집 줄이 포커스 이탈로 닫히지 않게(Save·Cancel·Enter로만) / v12: REMARK·PAYING 입력칸이 열 너비만큼 넓게 시작 + SHOW REMARK 넓은 칸 / v13: 가이드 이름 전부 보이기 / v14: 가이드 이름 복사 단추 제거 / v15: 가이드 이름·전화는 글자만큼만, 남는 폭은 REMARK로. v6: 순번재부여 아이콘화 / v7: GOLF 표 날짜순 정렬 / v8: SHOW 날짜순 정렬 + 가이드명 복사(⧉) + 거래처칸 '직접입력…' / v9: HOTEL 체크인 날짜순 정렬 / v10: REMARK·PAYING 등 글자칸 자동완성 복구 / v11: 로그인 끊김 즉시 표시 + 입력 초안 보관 + 재로그인 후 자동 재저장
 const TRV_VERSION_KEY = 'trv_app_version';
 async function _trvVersionSync(){
   try{
@@ -3056,12 +3056,14 @@ function downloadCostExcel(){
   rows.forEach(top=>{
     const base={}; Object.keys(top).forEach(k=>{ if(k!=='seasons') base[k]=top[k]; });
     const ss=Array.isArray(top.seasons)?top.seasons:[];
+    const hg=new Map(); if(costTab==='hotel') hotelRmGroups(top).forEach(g=>{ if(g.on) g.ss.forEach(s=>hg.set(s,g.remark)); });   // 호텔 비고 합친 묶음
     if(ss.length) ss.forEach(s=>{
       const row=Object.assign({},base,s);
       // 관광·식당외에서 「비고 공통 사용」을 켠 항목은 화면처럼 공통 비고가 나가게(기간에 남아 있는 옛 비고가 덮지 않게)
       if(costTab==='attraction'&&top.remarkCommon) row.remark=top.remark||'';
       if(costTab==='golf') row.remark=golfRemarkCommon(top)?(top.remark||''):(s.remark||'');
-      if(costTab==='hotel'&&top.remarkAll) row.remark=top.remark||'';   // 호텔 「비고 전체 기간 공통」
+      if(hg.has(s)) row.remark=hg.get(s)||'';   // 호텔 비고 합친 묶음(예전 전체 공통 포함)
+      delete row.mergeUp; delete row.mrgRemark;
       flat.push(row);
     });
     else flat.push(base);
@@ -3699,6 +3701,16 @@ function seasonsByDate(arr){
     return x<y?-1:(x>y?1:a.i-b.i);
   }).map(o=>o.s);
 }
+/* 호텔 비고 합치기 묶음(사장님 1120): 날짜순으로 놓고 「위 기간과 비고 합치기」(mergeUp)를 켠 기간은 바로 위 기간과 한 묶음.
+   묶음 비고는 묶음 첫 기간의 mrgRemark. 예전 「비고 전체 기간 공통」(remarkAll)은 전부 한 묶음으로 읽는다.
+   g.on=true인 묶음만 비고를 한 칸으로 합친다(기간 1개짜리는 기존 기간별·객실별 비고 그대로). */
+function hotelRmGroups(h,ss){
+  ss=ss||seasonsByDate(h.seasons||[]);
+  const out=[];
+  ss.forEach((s,k)=>{ if(k>0&&(h.remarkAll||s.mergeUp)) out[out.length-1].ss.push(s); else out.push({ss:[s]}); });
+  out.forEach(g=>{ g.on=g.ss.length>1||!!h.remarkAll; g.remark=h.remarkAll?(h.remark||''):(g.ss[0].mrgRemark||''); });
+  return out;
+}
 function renderHotelTable(){
   const COLS=['호텔명','지역','시즌','기간','객실 타입 구분','트윈/싱글','엑스트라','조이너스','비고'];
   const CEN=['지역','시즌','기간','객실 타입 구분','트윈/싱글','엑스트라','조이너스'];
@@ -3723,9 +3735,11 @@ function renderHotelTable(){
     const roomsOf=ss.map(s=>(s.rooms&&s.rooms.length)?s.rooms:[{}]);
     const total=roomsOf.reduce((a,r)=>a+r.length,0);   // 호텔명/지역/관리 병합 높이
     const grp=gi%2;
+    const gOf=new Map(); hotelRmGroups(h,ss).forEach(g=>g.ss.forEach(s=>gOf.set(s,g)));
     let rowNo=0;
     ss.forEach((s,si)=>{
       const rooms=roomsOf[si];
+      const rg=gOf.get(s)||{on:false,ss:[s]};
       const scls=seasonRowCls(s.season);              // 시즌별 고정색(성수기 그린/비수기 연분홍/평수기 연파랑)
       rooms.forEach((rm,ri)=>{
         html+=`<tr class="golf-grp-${grp} ${scls}${rowNo===0?' item-start':(ri===0?' season-start':'')}">`;
@@ -3741,9 +3755,12 @@ function renderHotelTable(){
              +`<td class="num">${escapeHtml(fmtMoney(rm.rate))}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.extbed))}</td>`
              +`<td class="num">${escapeHtml(fmtMoney(rm.joiners))}</td>`;
-        // 비고: 「전체 기간 공통」이면 호텔 전체 높이로 한 칸, 「기간 공통」이면 룸타입 수만큼 한 칸
-        if(h.remarkAll){
-          if(rowNo===0) html+=`<td rowspan="${total}" class="remark-col" style="vertical-align:middle;">${h.remark?renderRemark(h.remark):'-'}</td>`;
+        // 비고: 합친 기간 묶음이면 묶음 전체 높이로 한 칸, 「기간 공통」이면 룸타입 수만큼 한 칸
+        if(rg.on){
+          if(ri===0&&rg.ss[0]===s){
+            const span=rg.ss.reduce((a,x)=>a+((x.rooms&&x.rooms.length)?x.rooms.length:1),0);
+            html+=`<td rowspan="${span}" class="remark-col" style="vertical-align:middle;">${rg.remark?renderRemark(rg.remark):'-'}</td>`;
+          }
         } else if(s.remarkCommon){
           if(ri===0) html+=`<td rowspan="${rooms.length}" class="remark-col" style="vertical-align:middle;">${s.remark?renderRemark(s.remark):'-'}</td>`;
         } else {
@@ -3788,11 +3805,13 @@ function syncHotelDraftFromDom(){
   if(!_hotelDraft) return;
   const gv=id=>{const el=document.getElementById(id);return el?el.value:'';};
   _hotelDraft.name=gv('h-name'); _hotelDraft.region=gv('h-region');
-  const arm=document.getElementById('h-all-remark');   // 전체 기간 공통 비고(켜져 있을 때만 칸이 있음, 꺼져 있으면 기존 값 보존)
-  if(arm) _hotelDraft.remark=arm.value;
   _hotelDraft.seasons=_hotelDraft.seasons.map((s,i)=>{
     const o={season:hotelSelText(i,'season'),dateFrom:hotelSelText(i,'dateFrom'),dateTo:hotelSelText(i,'dateTo'),
              remarkCommon:!!s.remarkCommon};
+    if(s.mergeUp) o.mergeUp=true;   // 위 기간과 비고 합치기
+    const grm=document.getElementById(`h-g-${i}`);   // 묶음 비고(이 기간이 묶음 첫 기간일 때만 칸이 있음, 없으면 기존 값 보존)
+    const mr=grm?grm.value:(s.mrgRemark||'');
+    if(mr) o.mrgRemark=mr;
     // 공통 비고: 켜져 있으면 입력칸에서 읽고, 꺼져 있으면 기존 값 보존
     const crm=document.getElementById(`h-${i}-remark`);
     o.remark = crm ? crm.value : (s.remark||'');
@@ -3835,14 +3854,23 @@ function copyHotelSeason(i){
   renderHotelEditorBody();
   showToast('📋 세트를 복사했습니다 — 기간·요금만 바꿔 저장하세요');
 }
-function hotelSeasonBlockHtml(s,i){
+/* i=데이터 순번(입력칸 id용), k=날짜순 위치(화면 번호), g=이 기간이 속한 비고 묶음 */
+function hotelSeasonBlockHtml(s,i,k,g){
   const t='flex:1 1 calc(33.33% - 7px);margin-bottom:0;min-width:0;';
   const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
-  const all=!!(_hotelDraft&&_hotelDraft.remarkAll);   // 호텔 전체 기간 공통이면 기간·객실 비고칸은 감춤(값은 보존)
+  const all=!!(g&&g.on);   // 합친 묶음이면 기간·객실 비고칸은 감춤(값은 보존)
   const common=!!s.remarkCommon && !all;   // 비고를 이 기간 공통으로 쓸지
-  return `<div style="border:1px solid #e3e7ef;border-radius:10px;padding:10px;margin-top:8px;background:#fbfcfe;">
+  const isLast=all&&g.ss[g.ss.length-1]===s, lead=all?g.ss[0]:null;
+  const leadIdx=lead?_hotelDraft.seasons.indexOf(lead):-1;
+  const pos=x=>_hotelDraft._ord.indexOf(x)+1;
+  return `<div style="border:1px solid ${all?'#b9d8f5':'#e3e7ef'};border-radius:10px;padding:10px;margin-top:${(all&&lead!==s)?'2px':'8px'};background:#fbfcfe;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${i+1}</span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:12px;color:#6b7484;font-weight:700;">기간 ${k+1}</span>
+        ${k>0?`<label style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:${s.mergeUp?'#1f5c9e':'#4a5570'};font-weight:${s.mergeUp?700:400};cursor:pointer;user-select:none;">
+          <input type="checkbox" ${s.mergeUp?'checked':''} onchange="toggleHotelMergeUp(${i})" style="cursor:pointer;"/> ⬆ 위 기간과 비고 합치기
+        </label>`:''}
+      </div>
       <div style="display:flex;align-items:center;gap:14px;">
         <a class="act-edit" style="cursor:pointer;font-size:12px;font-weight:700;" onclick="copyHotelSeason(${i})">📋 이 세트 복사</a>
         <a class="act-del" style="cursor:pointer;font-size:12px;" onclick="delHotelSeason(${i})">삭제</a>
@@ -3868,7 +3896,27 @@ function hotelSeasonBlockHtml(s,i){
       ${remarkColorBar('h-'+i+'-remark')}
       <textarea id="h-${i}-remark" style="width:100%;">${escapeHtml(s.remark||'')}</textarea>
     </div>`:''}
+    ${isLast?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
+      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (기간 ${pos(g.ss[0])}~${pos(s)} 합침 — 표에서 한 칸)</div>
+      ${remarkColorBar('h-g-'+leadIdx)}
+      <textarea id="h-g-${leadIdx}" style="width:100%;">${escapeHtml(g.remark||'')}</textarea>
+    </div>`:''}
   </div>`;
+}
+// 「위 기간과 비고 합치기」 켜기/끄기 — 묶음 비고가 비어 있으면 묶음 안 기간·객실에 적어둔 첫 비고를 끌어옴(기존 비고는 지우지 않음)
+function toggleHotelMergeUp(i){
+  syncHotelDraftFromDom();
+  const h=_hotelDraft, s=h&&h.seasons[i]; if(!s) return;
+  const before=hotelRmGroups(h).find(g=>g.ss.indexOf(s)>=0);
+  s.mergeUp=!s.mergeUp;
+  if(!s.mergeUp){ if(!s.mrgRemark&&before&&before.remark) s.mrgRemark=before.remark; }   // 아래쪽 묶음도 비고를 이어받음
+  const g=hotelRmGroups(h).find(x=>x.ss.indexOf(s)>=0);
+  if(g&&g.on&&!String(g.remark||'').trim()){
+    const pick=[]; g.ss.forEach(x=>{ if(x.remarkCommon) pick.push(x.remark); else (x.rooms||[]).forEach(r=>pick.push(r.remark)); });
+    const first=pick.map(x=>String(x||'').trim()).filter(Boolean)[0];
+    if(first) g.ss[0].mrgRemark=first;
+  }
+  renderHotelEditorBody();
 }
 // 비고 공통 사용 켜기/끄기
 function toggleHotelRemarkCommon(i){
@@ -3907,35 +3955,21 @@ function renderHotelEditorBody(){
   </div>
   <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
     <b style="font-size:13px;color:#1f2a44;">기간별 요금 (${h.seasons.length}개)</b>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#4a5570;cursor:pointer;user-select:none;">
-        <input type="checkbox" ${h.remarkAll?'checked':''} onchange="toggleHotelRemarkAll()" style="cursor:pointer;"/> 비고 전체 기간 공통
-      </label>
-      <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addHotelSeason()">＋ 기간 추가</button>
-    </div>
+    <button class="btn btn-save" style="padding:0 12px;height:30px;" onclick="addHotelSeason()">＋ 기간 추가</button>
   </div>`;
-  const allBox=h.remarkAll?`<div style="margin-top:10px;border:1.5px solid #b9d8f5;background:#f2f8fe;border-radius:9px;padding:9px;">
-      <div style="font-size:11.5px;font-weight:700;color:#1f5c9e;margin-bottom:4px;">📌 비고 (전체 기간 공통 — 표에서 한 칸으로 합쳐짐)</div>
-      ${remarkColorBar('h-all-remark')}
-      <textarea id="h-all-remark" style="width:100%;">${escapeHtml(h.remark||'')}</textarea>
-    </div>`:'';
-  document.getElementById('soBody').innerHTML=head+`<div id="hotelSeasons">${h.seasons.map((s,i)=>hotelSeasonBlockHtml(s,i)).join('')}</div>`+allBox;
+  // 편집창도 표처럼 시작일 순서로 보여 준다(입력칸 id는 데이터 순번 그대로)
+  const ord=seasonsByDate(h.seasons);
+  Object.defineProperty(h,'_ord',{value:ord,configurable:true,enumerable:false,writable:true});   // 저장 데이터엔 안 들어감
+  const gOf=new Map(); hotelRmGroups(h,ord).forEach(g=>g.ss.forEach(s=>gOf.set(s,g)));
+  document.getElementById('soBody').innerHTML=head+`<div id="hotelSeasons">${ord.map((s,k)=>hotelSeasonBlockHtml(s,h.seasons.indexOf(s),k,gOf.get(s))).join('')}</div>`;
 }
-// 호텔 「비고 전체 기간 공통」 켜기/끄기 — 켤 때 비어 있으면 기간·객실에 적어둔 첫 비고를 끌어옴(기간별 비고는 지우지 않음)
-function toggleHotelRemarkAll(){
-  syncHotelDraftFromDom();
-  const h=_hotelDraft; if(!h) return;
-  h.remarkAll=!h.remarkAll;
-  if(h.remarkAll && !String(h.remark||'').trim()){
-    const pick=[];
-    seasonsByDate(h.seasons||[]).forEach(s=>{
-      if(s.remarkCommon) pick.push(s.remark);
-      else (s.rooms||[]).forEach(r=>pick.push(r.remark));
-    });
-    const first=pick.map(x=>String(x||'').trim()).filter(Boolean)[0];
-    if(first) h.remark=first;
-  }
-  renderHotelEditorBody();
+/* 예전 「비고 전체 기간 공통」(remarkAll) → 날짜순 전 기간을 「위 기간과 합치기」로 바꿔 둔다(편집창 열 때, 저장하면 굳어짐) */
+function hotelConvertRemarkAll(h){
+  if(!h||!h.remarkAll) return;
+  const ord=seasonsByDate(h.seasons||[]), rm=h.remark||'';
+  if(ord.length>1){ ord.forEach((s,k)=>{ if(k===0){ if(rm) s.mrgRemark=rm; } else s.mergeUp=true; }); }
+  else if(ord.length===1&&rm){ ord[0].remarkCommon=true; ord[0].remark=rm; }
+  delete h.remarkAll; delete h.remark;
 }
 function openHotelEditor(index){
   hotelEditIndex=index;
@@ -3944,6 +3978,7 @@ function openHotelEditor(index){
   _hotelDraft=JSON.parse(JSON.stringify(src||{}));
   if(!Array.isArray(_hotelDraft.seasons)||!_hotelDraft.seasons.length) _hotelDraft.seasons=[{rooms:[{}]}];
   _hotelDraft.seasons.forEach(s=>{ if(!Array.isArray(s.rooms)||!s.rooms.length) s.rooms=[{}]; });
+  hotelConvertRemarkAll(_hotelDraft);
   document.getElementById('soTitle').textContent=`호텔 ${index===null?'추가':'수정'}`;
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='';
   renderHotelEditorBody();
@@ -3984,8 +4019,12 @@ function openHotelDetail(i){
   // raw=true면 이미 만들어진 HTML(비고 색상)을 그대로 넣음
   const line=(l,v,raw)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid #eef1f6;"><span style="color:#5a6478;font-size:12.5px;flex:0 0 auto;">${escapeHtml(l)}</span><b style="color:#1f2a44;font-size:13px;text-align:right;white-space:pre-wrap;min-width:0;">${raw?v:escapeHtml(String(v))}</b></div>`;
   const info=[['호텔명',h.name||'-'],['지역',h.region||'-']].map(x=>line(x[0],x[1])).join('');
-  const ss=seasonsByDate(h.seasons||[]).map((s0,i)=>{
-    const s=h.remarkAll?Object.assign({},s0,{remarkCommon:true,remark:''}):s0;   // 전체 공통이면 기간별 비고는 안 보이게
+  const ord=seasonsByDate(h.seasons||[]);
+  const gOf=new Map(); hotelRmGroups(h,ord).forEach(g=>g.ss.forEach(s=>gOf.set(s,g)));
+  const ss=ord.map((s0,i)=>{
+    const g=gOf.get(s0)||{on:false,ss:[s0]};
+    const s=g.on?Object.assign({},s0,{remarkCommon:true,remark:''}):s0;   // 합친 묶음이면 기간별 비고는 안 보이고 묶음 끝에 한 번
+    const gBox=(g.on&&g.ss[g.ss.length-1]===s0&&g.remark)?`<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;"><div style="font-size:10.5px;color:#8892a0;font-weight:700;margin-bottom:3px;">비고 (${g.ss.length>1?`기간 ${ord.indexOf(g.ss[0])+1}~${i+1} 합침`:'공통'})</div>${renderRemark(g.remark)}</div>`:'';
     const sh=seasonHd(s.season);
     const rooms=(s.rooms&&s.rooms.length)?s.rooms:[{}];
     // 기간 아래 룸타입들을 가로 표로
@@ -4010,11 +4049,10 @@ function openHotelDetail(i){
         <span style="font-size:12px;color:#4a5570;">${escapeHtml(costPeriod(s))}</span>
       </div>
       <div style="padding:8px;">${tbl}</div>
-    </div>`;
+    </div>${gBox}`;
   }).join('');
   document.getElementById('soBody').innerHTML=`<div style="border:1px solid #e5e9f0;border-radius:10px;overflow:hidden;">${info}</div>`
-    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>')
-    +((h.remarkAll&&h.remark)?`<div style="margin-top:10px;padding:8px 10px;background:#f8fafc;border:1px solid #eef1f6;border-radius:8px;font-size:12.5px;color:#4a5570;white-space:pre-wrap;"><div style="font-size:10.5px;color:#8892a0;font-weight:700;margin-bottom:3px;">비고 (전체 기간 공통)</div>${renderRemark(h.remark)}</div>`:'');
+    +(ss||'<div style="color:#9aa1af;font-size:12.5px;margin-top:10px;">등록된 기간 요금이 없습니다</div>');
   const sv=document.getElementById('soSaveBtn'); if(sv) sv.style.display='none';
   document.getElementById('sov').dataset.mode='cost';
   document.getElementById('sov').dataset.costTab=costTab;   // 탭별로 창 너비를 다르게
