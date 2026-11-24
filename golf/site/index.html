@@ -3366,8 +3366,16 @@ function inqOpen(){
   if(!agency){ agOpen("login"); return; }
   if(!agency.approved){ agOpen("status"); return; }
   $("#inqMask").classList.add("on");
-  INQ_CUR = ""; inqDraw();
-  inqLoad().then(() => { if($("#inqMask").classList.contains("on")) inqDraw(); });
+  /* 열면 바로 «새 견적문의» 작성 칸(사장님 2026-11-24). 보낸 문의·답변은 「← 내 문의」로 */
+  INQ_CUR = "new"; INQ_FILES = []; inqDraw();
+  /* 목록을 받아 와도 작성 칸은 다시 그리지 않는다 — 적던 글이 지워지지 않게. 「내 문의」 단추 숫자만 */
+  inqLoad().then(() => { if(!$("#inqMask").classList.contains("on")) return; if(INQ_CUR === "new") inqBackLabel(); else if(!INQ_CUR) inqDraw(); });
+}
+function inqBackLabel(){
+  const b = $("#inqBack"), L = INQ_LIST || [];
+  if(INQ_CUR === "new") b.textContent = "📂 내 문의" + (L.length ? " " + L.length : "") + (INQ_UN ? " · 새 답변 " + INQ_UN : "");
+  else b.textContent = "← 목록";
+  b.style.color = (INQ_CUR === "new" && INQ_UN) ? "#B3261E" : "";
 }
 function inqClose(){ $("#inqMask").classList.remove("on"); INQ_FILES = []; }
 $("#inqClose").onclick = inqClose;
@@ -3383,6 +3391,7 @@ function inqFilesHtml(fs){
 function inqDraw(){
   const body = $("#inqBody"), form = $("#inqForm");
   $("#inqBack").hidden = !INQ_CUR || INQ_CUR === "new";
+  inqBackLabel();
   if(INQ_CUR === "new"){
     $("#inqBack").hidden = false;
     body.innerHTML = '<p style="margin:0 0 4px;font-weight:800;color:#13507A">새 견적문의</p>'
