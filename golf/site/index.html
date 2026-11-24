@@ -1560,7 +1560,10 @@ function drawCtyGate(){
     + '<p class="cgq">여행하실 나라를 선택해 주세요</p><div class="cgcards">'
     + countries().map(c => {
         const mine = catList0().reduce((a, k) => a.concat(itemsAllOf(k.k).filter(x => countryOfRegion(x.r) === c.n)), []);
-        const pic = (mine.map(x => picsOf(x)[0]).filter(Boolean)[0]) || "";
+        /* 태국 카드는 첫 화면 큰 배너 사진(첫 골프장 첫 사진이 로고라서, 사장님 2026-11-24). 다른 나라는 그 나라 첫 상품 사진 */
+        const h = SITE.hero || {};
+        const heroPic = [h.img].concat(h.imgs || []).map(s => String(s || "").trim()).filter(Boolean)[0] || "/golf/site/img/hero-golf.webp";
+        const pic = c.n === "태국" ? heroPic : ((mine.map(x => picsOf(x)[0]).filter(Boolean)[0]) || "");
         const rs = (c.rs || []).concat(mine.map(x => x.r)).filter((r, i, all) => r && all.indexOf(r) === i && mine.some(x => x.r === r));
         return '<button type="button" class="cgcard" data-c="' + esc(c.n) + '"'
           + (pic ? ' style="background-image:linear-gradient(180deg,rgba(8,23,15,.15),rgba(8,23,15,.78)),url(\'' + esc(pic) + '\')"' : '') + '>'
