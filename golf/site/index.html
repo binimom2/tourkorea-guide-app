@@ -100,25 +100,6 @@ body.qopen{overflow:hidden}
 .cty1.on .cn{background:var(--fairway);color:#fff}
 .cty1 button.rs{color:var(--fairway);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:2px}
 .cty1 button.no{color:#9AA39E}
-.ctychg{flex-shrink:0;margin-left:12px;background:none;border:1px solid var(--line);border-radius:999px;font:inherit;font-size:13px;font-weight:800;color:var(--muted);padding:5px 11px;cursor:pointer}
-.ctychg:hover{color:var(--fairway);border-color:var(--fairway)}
-/* 대문 나라 선택 */
-body.gated{overflow:hidden}
-#ctyGate{position:fixed;inset:0;z-index:9000;background:var(--fairway-deep);display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
-#ctyGate[hidden]{display:none}
-#ctyGate .cgin{width:100%;max-width:960px;text-align:center}
-#ctyGate .cgbrand{color:#fff;display:flex;align-items:baseline;justify-content:center;gap:8px;margin-bottom:10px}
-#ctyGate .cgbrand b{font-size:26px;font-weight:900;letter-spacing:.04em}
-#ctyGate .cgbrand span{font-size:15px;opacity:.8}
-#ctyGate .cgq{color:rgba(255,255,255,.85);font-size:17px;font-weight:700;margin:0 0 26px}
-#ctyGate .cgcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
-#ctyGate .cgcard{position:relative;height:340px;border:0;border-radius:20px;cursor:pointer;color:#fff;text-align:left;padding:26px;
-  display:flex;flex-direction:column;justify-content:flex-end;gap:6px;background:var(--fairway-mid) center/cover no-repeat;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .15s}
-#ctyGate .cgcard:hover{transform:translateY(-4px)}
-#ctyGate .cgcard b{font-size:40px;font-weight:900}
-#ctyGate .cgcard span{font-size:15px;font-weight:700;opacity:.9}
-@media (max-width:640px){ #ctyGate .cgcard{height:200px;padding:20px} #ctyGate .cgcard b{font-size:32px} }
 #dAddr a{text-decoration:none;color:inherit}   /* 주소·전화 밑줄 없앰(사장님 1118) — 눌러지는 건 그대로 */
 #dAddr a:hover{color:var(--fairway)}
 .dlist#dAddr li b{flex:0 0 auto;margin-right:2px}   /* 「주소」「전화」 뒤 띄움을 좁게(사장님 1118) */
@@ -923,7 +904,6 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 </style>
 </head>
 <body>
-<div id="ctyGate" hidden></div>
 
 <nav class="nav">
   <div class="wrap">
@@ -1530,9 +1510,7 @@ function drawCtyNav(){
   const box = $("#ctyNav"); if(!box) return;
   const cur = country();
   const sel = Object.values(curRegs || {})[0] || "";
-  /* 대문에서 나라를 고르고 들어오면 그 나라만 보인다(사장님 2026-11-24) — 다른 나라는 「나라 변경」으로 대문을 다시 열어서 */
-  const multi = countries().length > 1;
-  box.innerHTML = countries().filter(c => c.n === cur).map(c => {
+  box.innerHTML = countries().map(c => {
     const cnt = {};
     catList0().forEach(k => itemsAllOf(k.k).forEach(x => { if(countryOfRegion(x.r) === c.n) cnt[x.r] = (cnt[x.r] || 0) + 1; }));
     const rs = (c.rs || []).concat(Object.keys(cnt)).filter((r, i, all) => r && all.indexOf(r) === i);
@@ -1541,43 +1519,12 @@ function drawCtyNav(){
       + rs.map(r => '<button type="button" data-c="' + esc(c.n) + '" data-r="' + esc(r) + '"'
           + ' class="' + (c.n === cur && r === sel ? 'rs' : '') + (cnt[r] ? '' : ' no') + '"'
           + (cnt[r] ? '' : ' title="준비 중"') + '>' + esc(r) + '</button>').join("") + '</span>';
-  }).join("") + (multi ? '<button type="button" class="ctychg" id="ctyChg">🌏 나라 변경</button>' : '');
+  }).join("");
   /* 나라 이름 — 그 나라 전체로(화면은 그대로), 지역 — 그 지역 목록으로 바로 */
-  box.querySelectorAll(".cty1 button").forEach(b => b.onclick = () => {
+  box.querySelectorAll("button").forEach(b => b.onclick = () => {
     if(b.dataset.r) setCountry(b.dataset.c, b.dataset.r);
     else setCountry(b.dataset.c, "", true);
   });
-  const chg = $("#ctyChg"); if(chg) chg.onclick = openCtyGate;
-  if(GATE_OPEN) drawCtyGate();
-}
-/* ── 대문 나라 선택(사장님 2026-11-24) ──
-   처음 들어오면 «태국 / 베트남» 큰 카드 두 장이 화면을 덮고, 누르면 그 나라만 보이는 사이트로 들어간다.
-   같은 창에서 새로 고침할 때는 다시 묻지 않는다(sessionStorage). 상세 창 주소(#courses/이름)로 온 손님은 바로 그 상품으로 */
-let GATE_OPEN = false;
-function drawCtyGate(){
-  const g = $("#ctyGate"); if(!g) return;
-  g.innerHTML = '<div class="cgin"><div class="cgbrand"><b>TOURKOREA</b><span>투어코리아</span></div>'
-    + '<p class="cgq">여행하실 나라를 선택해 주세요</p><div class="cgcards">'
-    + countries().map(c => {
-        const mine = catList0().reduce((a, k) => a.concat(itemsAllOf(k.k).filter(x => countryOfRegion(x.r) === c.n)), []);
-        const pic = (mine.map(x => picsOf(x)[0]).filter(Boolean)[0]) || "";
-        const rs = (c.rs || []).concat(mine.map(x => x.r)).filter((r, i, all) => r && all.indexOf(r) === i && mine.some(x => x.r === r));
-        return '<button type="button" class="cgcard" data-c="' + esc(c.n) + '"'
-          + (pic ? ' style="background-image:linear-gradient(180deg,rgba(8,23,15,.15),rgba(8,23,15,.78)),url(\'' + esc(pic) + '\')"' : '') + '>'
-          + '<b>' + esc(c.n) + '</b><span>' + esc(rs.join(" · ") || "준비 중") + '</span></button>';
-      }).join("") + '</div></div>';
-  g.querySelectorAll(".cgcard").forEach(b => b.onclick = () => {
-    try{ sessionStorage.setItem("tk-cty-ok", "1"); }catch(e){}
-    GATE_OPEN = false; g.hidden = true; document.body.classList.remove("gated");
-    setCountry(b.dataset.c, "", true);
-    window.scrollTo(0, 0);
-  });
-}
-function openCtyGate(){
-  if(countries().length < 2) return;
-  GATE_OPEN = true; drawCtyGate();
-  const g = $("#ctyGate"); if(g) g.hidden = false;
-  document.body.classList.add("gated");
 }
 /* 나라 구분 없이 그 종류 전부(보이기 켠 것) — 찜·장바구니·주소로 연 상세가 다른 나라 것이어도 찾게 */
 function itemsAllOf(k){
@@ -2131,11 +2078,6 @@ function renderAll(){
   drawTours(); drawBoard(); drawContact();
 }
 renderAll();
-/* 대문 나라 선택 — 상세 창 주소로 온 손님·같은 창에서 이미 고른 손님은 건너뛴다 */
-(() => {
-  let ok = false; try{ ok = sessionStorage.getItem("tk-cty-ok") === "1"; }catch(e){}
-  if(!ok && !DEEP) openCtyGate();
-})();
 const pricesP = loadPrices();   // 요금은 화면을 그린 뒤에 붙는다 — 요금 서버가 늦어도 사이트는 먼저 보인다
 loadFx();       // 오른쪽 위 태국환율도 마찬가지 — 늦게 와도 사이트는 이미 보인다
 
