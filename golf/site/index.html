@@ -3410,7 +3410,8 @@ function inqBackLabel(){
 function inqClose(){ $("#inqMask").classList.remove("on"); INQ_FILES = []; }
 $("#inqClose").onclick = inqClose;
 /* 「📂 내 문의」 — 새 답변이 있으면 바로 그 대화, 없으면 목록. 대화에서 「← 목록」은 목록으로 */
-$("#inqBack").onclick = () => { INQ_FILES = []; INQ_CUR = (INQ_CUR === "new" && inqUnreadNo()) || ""; inqDraw(); };
+/* 2026-11-24 사장님 「2번째 창 건너뛰고 답글 바로」 — 새 답변이 없어도 가장 최근 문의의 대화로(다른 문의는 대화의 「← 목록」) */
+$("#inqBack").onclick = () => { INQ_FILES = []; INQ_CUR = INQ_CUR === "new" ? (inqUnreadNo() || ((INQ_LIST || [])[0] || {}).no || "") : ""; inqDraw(); };
 const inqWhen = iso => { const d = new Date(iso); if(isNaN(d)) return ""; const p = n => String(n).padStart(2, "0");
   return (d.getMonth() + 1) + "/" + d.getDate() + " " + p(d.getHours()) + ":" + p(d.getMinutes()); };
 const INQ_ST = { new:["접수","new"], done:["완료","done"], cancel:["종료","done"] };
