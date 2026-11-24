@@ -701,7 +701,9 @@ function ratesToSeasons(c){
 function bestUnit(course,dateStr,wk,holes){
   let ss=(course.s||[]).filter(x=>dateStr>=x.from && dateStr<=x.to);
   if(ss.some(x=>x.src==='rates')) ss=ss.filter(x=>x.src==='rates');
-  let best=null; BEST_MG=0;
+  let best=null, bestLen=null; BEST_MG=0;
+  /* 기간이 겹치면 짧은 기간 줄이 이긴다(사장님 2026-11-24 써차지 겹쳐 넣기) — 같은 길이끼리만 싼 값. 서버 golf-price.js와 같은 규칙 */
+  const len=s=>(Date.parse(s.to)-Date.parse(s.from))||0;
   ss.forEach(s=>{
     const m=MG(s.margin);
     const u18=s.g18&&s.g18[wk]!=null ? s.g18[wk]+s.cad+s.crt+m : null;
@@ -710,7 +712,9 @@ function bestUnit(course,dateStr,wk,holes){
     if(holes==='18'){ u=u18; um=m; } else if(holes==='9'){ u=u9; um=margin9(m); }
     else if(holes==='27'){ u=(u18!=null&&u9!=null)?u18+u9:null; um=m+margin9(m); }
     else if(holes==='36'){ u=u18!=null?u18*2:null; um=2*m; }
-    if(u!=null&&(best==null||u<best)){ best=u; BEST_MG=um; }
+    if(u==null) return;
+    const L=len(s);
+    if(best==null||L<bestLen||(L===bestLen&&u<best)){ best=u; bestLen=L; BEST_MG=um; }
   });
   return best;
 }

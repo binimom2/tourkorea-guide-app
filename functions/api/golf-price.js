@@ -228,6 +228,11 @@ const posNum = (v) => { const n = +v; return Number.isFinite(n) && n > 0 ? n : n
 const partOf = (v) => (v === '주말' || v === '태국휴일' || v === '주말·휴일') ? 'we' : 'wd';
 /* 기간을 비워 둔 줄은 «언제나»로 본다 — 한 해 내내 같은 값인 곳이 있다 */
 const rateCovers = (r, date) => (blank(r.from) || date >= r.from) && (blank(r.to) || date <= r.to);
+/* 줄의 기간 길이(일) — 비운 쪽은 끝없음. 겹친 줄 중 짧은 기간이 우선할 때 쓴다 */
+const spanOf = (r) => {
+  const a = blank(r.from) ? -1e7 : Date.parse(r.from) / 864e5, b = blank(r.to) ? 1e7 : Date.parse(r.to) / 864e5;
+  return (isFinite(a) ? a : -1e7) <= (isFinite(b) ? b : 1e7) ? (isFinite(b) ? b : 1e7) - (isFinite(a) ? a : -1e7) : 2e7;
+};
 /* 트와일라잇·나이트 줄(2026-09-18)은 손님 최저가·날짜 요금에서 뺀다 — 손님이 시간을 안 고르는데 나이트 값이 «~»로 잡히면 안 된다 */
 const dayTime = (r) => blank(r.time) || r.time === '종일' || r.time === '오전' || r.time === '오후';
 /* adj = 티어 할인(밧, 18홀·1실1박 기준) — 티어1(랜드사) 로그인이면 100, 아니면 0. 마진에서 빼고 0 밑으로는 안 내려간다 */
@@ -574,8 +579,13 @@ export async function onRequestPost({ request, env }) {
     const want = we ? 'we' : 'wd';
     const hit = rates.filter((r) => dayTime(r) && rateCovers(r, date) && partOf(r.part) === want);
     if (hit.length) {
-      u = lowestOf(hit, course, adj);
-      const r0 = hit[0];
+      /* 기간이 겹치면 «짧은 기간 줄»이 이긴다(사장님 2026-11-24 — 11/01~04/30 위에 02/04~02/10 써차지 줄을 겹쳐 넣는 방식).
+         같은 길이(같은 기간의 오전·오후 등)끼리는 싼 값. 18홀·9홀은 각각 그 값이 적힌 가장 짧은 줄에서 */
+      const byLen = hit.slice().sort((a, b) => spanOf(a) - spanOf(b));
+      const pick = (key) => { const has = byLen.filter((r) => posNum(r[key]) != null); return has.length ? has.filter((r) => spanOf(r) === spanOf(has[0])) : []; };
+      const s18 = pick('p18'), s9 = pick('p9');
+      u = { u18: lowestOf(s18, course, adj).u18, u9: lowestOf(s9, course, adj).u9 };
+      const r0 = s18[0] || s9[0] || byLen[0];
       seasonLabel = (blank(r0.from) && blank(r0.to)) ? '' : (r0.from || '') + '~' + (r0.to || '');
     }
   }
