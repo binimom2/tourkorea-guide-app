@@ -1896,6 +1896,17 @@ function bookDocHtml(b){
    안 읽은 건(b.msgUnread)이 있으면 빨간 표시 + 「확인함」 — 누르면 서버가 0으로 돌린다(상태·직원 메모는 그대로) */
 /* 💬 1:1 메시지 — 여행사 ↔ 직원 주고받기(사장님 2026-10-03 「어드민에서도 주고받게, 카톡 필요 없게」).
    여행사가 보낸 건(from 없음)·직원 답장(from:'staff', 초록). 여행사 건(AQ)·여행사가 보낸 사이트 예약(from.id)에만 답장 칸 */
+/* 견적문의 답장 첨부 — 고른 파일(번호별). 보내면 비운다 */
+const STAFF_FILES={};
+const INQ_EXT=/\.(jpe?g|png|webp|gif|heic|pdf|xlsx?|docx?|hwpx?|txt|csv)$/i;
+const fileB64=f=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(f); });
+function drawStaffChips(p,no){
+  const box=p.querySelector('[data-mrepc="'+CSS.escape(no)+'"]'); if(!box) return;
+  const L=STAFF_FILES[no]||[];
+  box.innerHTML=L.map((f,i)=>'<span style="font-size:12px;background:#EEF3F7;border-radius:999px;padding:3px 9px">📎 '+esc(f.name)
+    +' <b data-mrepx="'+i+'" style="cursor:pointer;color:#B23B3B;margin-left:4px">✕</b></span>').join('');
+  box.querySelectorAll('[data-mrepx]').forEach(x=>x.onclick=()=>{ L.splice(+x.dataset.mrepx,1); if(!L.length) delete STAFF_FILES[no]; drawStaffChips(p,no); });
+}
 /* 견적문의 첨부 열기(2026-11-24) — 공개 주소가 없어 직원 로그인 토큰으로 /api/inquiry 에서 받아 새 탭에 띄운다 */
 document.addEventListener('click',async e=>{
   const b=e.target.closest&&e.target.closest('[data-inqf]'); if(!b) return;
@@ -1928,8 +1939,12 @@ function bookMsgsHtml(b){
         +((m.files||[]).length?'<span style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">'+m.files.map(f=>'<button type="button" class="ghost" data-inqf="'+esc(f.k)+'" data-inqn="'+esc(f.name)+'" style="padding:2px 9px;font-size:12px">'
           +(/^image\//.test(f.type)?'🖼':/pdf/.test(f.type)?'📄':'📎')+' '+esc(f.name)+'</button>').join('')+'</span>':'')
         +'</p></div>'; }).join('')
-    +(canReply?'<div class="mrep"><textarea data-mreptx="'+esc(b.no)+'" rows="1" maxlength="1000" placeholder="'+(b.kind==='inquiry'?'여행사에 답장 (보낸 글은 여행사 사이트 「1:1 견적문의」 창에 뜹니다)':'여행사에 답장 (보낸 글은 여행사 보관함 「1:1 메시지」에 뜹니다)')+'"></textarea>'
-      +'<button class="add" data-mrep="'+esc(b.no)+'">답장 보내기</button></div>':'')
+    +(canReply?'<div class="mrep">'
+      /* 견적문의는 답장에도 파일 첨부(2026-11-24) */
+      +(b.kind==='inquiry'?'<label class="ghost" style="flex:none;display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:7px;cursor:pointer;font-weight:800;font-size:12.5px;background:#fff" title="사진·PDF·엑셀·워드·한글 — 파일당 5MB, 5개까지">📎 첨부<input type="file" multiple hidden data-mrepf="'+esc(b.no)+'" accept=".jpg,.jpeg,.png,.webp,.gif,.heic,.pdf,.xlsx,.xls,.docx,.doc,.hwp,.hwpx,.txt,.csv"></label>':'')
+      +'<textarea data-mreptx="'+esc(b.no)+'" rows="1" maxlength="1000" placeholder="'+(b.kind==='inquiry'?'여행사에 답장 (보낸 글은 여행사 사이트 「1:1 견적문의」 창에 뜹니다)':'여행사에 답장 (보낸 글은 여행사 보관함 「1:1 메시지」에 뜹니다)')+'"></textarea>'
+      +'<button class="add" data-mrep="'+esc(b.no)+'">답장 보내기</button></div>'
+      +(b.kind==='inquiry'?'<div data-mrepc="'+esc(b.no)+'" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px"></div>':''):'')
     +'</div>';
 }
 function openBookDoc(no){
@@ -2043,13 +2058,38 @@ function bindVoucherBtns(p){
   p.querySelectorAll('[data-bkdoc]').forEach(btn=>btn.onclick=()=>openBookDoc(btn.dataset.bkdoc));
   p.querySelectorAll('[data-bkcostw]').forEach(btn=>btn.onclick=()=>openCostWin(btn.dataset.bkcostw));
   /* 💬 답장 보내기 — 서버 msgReply(여행사 보관함에 뜸, 여행사 쪽 「새 답장」) */
+  /* 견적문의 답장 첨부(2026-11-24) — 고른 파일은 STAFF_FILES[번호]에 두어 목록이 다시 그려져도 남는다 */
+  p.querySelectorAll('input[data-mrepf]').forEach(inp=>inp.onchange=()=>{
+    const no=inp.dataset.mrepf, L=STAFF_FILES[no]||(STAFF_FILES[no]=[]);
+    for(const f of Array.from(inp.files||[])){
+      if(L.length>=5){ toast('첨부는 한 번에 5개까지입니다'); break; }
+      if(!INQ_EXT.test(f.name)){ toast('⚠ 「'+f.name+'」 — 사진·PDF·엑셀·워드·한글·텍스트만'); continue; }
+      if(f.size>5*1024*1024){ toast('⚠ 「'+f.name+'」 — 파일 하나는 5MB까지'); continue; }
+      if(L.reduce((n,x)=>n+x.size,0)+f.size>10*1024*1024){ toast('⚠ 첨부는 합쳐서 10MB까지'); break; }
+      L.push(f);
+    }
+    inp.value='';
+    drawStaffChips(p,no);
+  });
+  p.querySelectorAll('[data-mrepc]').forEach(c=>drawStaffChips(p,c.dataset.mrepc));
   p.querySelectorAll('[data-mrep]').forEach(btn=>btn.onclick=async()=>{
     const no=btn.dataset.mrep, ta=p.querySelector('[data-mreptx="'+CSS.escape(no)+'"]');
-    const text=String(ta&&ta.value||'').trim(); if(!text){ if(ta) ta.focus(); toast('답장 내용을 적어 주세요'); return; }
+    const bk=bookOf(no), isInq=!!(bk&&bk.kind==='inquiry'), fl=STAFF_FILES[no]||[];
+    const text=String(ta&&ta.value||'').trim(); if(!text&&!(isInq&&fl.length)){ if(ta) ta.focus(); toast('답장 내용을 적어 주세요'); return; }
     btn.disabled=true; btn.textContent='보내는 중…';
-    const j=await bookApi('msgReply',{no,text});
+    let j;
+    if(isInq){
+      try{
+        const files=[]; for(const f of fl) files.push({name:f.name,data:await fileB64(f)});
+        const {data:{session}}=await sb.auth.getSession();
+        const r=await fetch('/api/inquiry',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+((session&&session.access_token)||'')},
+          body:JSON.stringify({action:'staffReply',no,text,files})});
+        j=await r.json().catch(()=>({error:'서버 응답을 읽지 못했습니다'}));
+      }catch(e){ j={error:'서버 연결 실패'}; }
+      if(j&&j.ok) delete STAFF_FILES[no];
+    } else j=await bookApi('msgReply',{no,text});
     if(!j||!j.ok){ btn.disabled=false; btn.textContent='답장 보내기'; toast('❌ '+((j&&j.error)||'보내지 못했습니다')); return; }
-    bookReplace(j.rec); drawBooks(); toast('💬 답장을 보냈습니다 — 여행사 보관함에 뜹니다');
+    bookReplace(j.rec); drawBooks(); toast(isInq?'💬 답장을 보냈습니다 — 여행사 「1:1 견적문의」 창에 뜹니다':'💬 답장을 보냈습니다 — 여행사 보관함에 뜹니다');
   });
   p.querySelectorAll('[data-msgread]').forEach(btn=>btn.onclick=async()=>{
     const b=bookOf(btn.dataset.msgread); if(!b) return;
@@ -2210,6 +2250,7 @@ setInterval(async()=>{
     if(tab==='books'&&editing) return;
     /* 답장 칸에 적어 둔 글이 있으면(커서가 떠나 있어도) 다시 그리지 않는다 — 적던 답장이 지워지지 않게 */
     if(tab==='books'&&[...document.querySelectorAll('[data-mreptx]')].some(t=>t.value.trim())) return;
+    if(tab==='books'&&Object.keys(STAFF_FILES).length) return;   // 답장 첨부를 골라 둔 중이면 다시 그리지 않는다
     const j=await bookApi('list',{});
     if(!j||!j.ok) return;
     bookSrvSig=sg.sig;

@@ -204,6 +204,28 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
 
+    /* ── 직원 답장(글 + 첨부) — 견적문의(IQ)만. 첨부는 그 여행사 폴더(inquiry/<여행사>/)에 둬서 여행사도 inqFile 로 받는다 ── */
+    if (action === 'staffReply') {
+      if (!(await staffRole(env, user))) return json({ error: '직원만 답장할 수 있습니다.' }, 403);
+      const no = s(body.no, 60);
+      if (!/^IQ[\w-]+$/.test(no)) return json({ error: '번호가 없습니다.' }, 400);
+      const rec = await readBook(KEY, no);
+      if (!rec || !rec.from || !idOk(String(rec.from.id || ''))) return json({ error: '문의를 찾지 못했습니다.' }, 404);
+      const text = textOf(body.text);
+      const nFiles = Array.isArray(body.files) ? body.files.length : 0;
+      if (!text && !nFiles) return json({ error: '답장 내용을 적거나 파일을 첨부해 주세요.' }, 400);
+      let files;
+      try { files = await putFiles(env.FILES_BUCKET, rec.from.id, body.files); }
+      catch (e) { return json({ error: (e && e.message) || '첨부를 저장하지 못했습니다.' }, 400); }
+      const msg = { at: now, by: aid, text, from: 'staff' };
+      if (files.length) msg.files = files;
+      rec.msgs = (Array.isArray(rec.msgs) ? rec.msgs : []).concat([msg]).slice(-80);
+      rec.msgUnread = 0;
+      rec.agencyUnread = Math.max(0, Math.round(+rec.agencyUnread || 0)) + 1;
+      await srUpsert(KEY, { data_key: BOOK + no, data: rec, updated_at: now });
+      return json({ ok: true, rec });
+    }
+
     /* ── 첨부 받기 — 그 여행사 본인 또는 직원만 ── */
     if (action === 'inqFile') {
       const k = String(body.k || '');
