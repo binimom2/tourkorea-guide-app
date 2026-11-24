@@ -859,7 +859,8 @@ async function afterAuth(user){
   }
   await loadAll();
   /* 입구 나라 선택 — 사이트 내용 탭을 쓰는 계정만, 이 창에서 아직 안 골랐으면 */
-  if(admCtyOk()) iCountry=ADM_CTY;
+  /* 새로 고침으로 나라가 이미 정해져 있어도 첫 화면이 아니라 맨 앞 칸(그 나라 골프장)에서 시작한다(사장님 2026-11-24) */
+  if(admCtyOk()){ iCountry=ADM_CTY; if(sub==='hero'){ const f=subGroupItems(subs(),ADM_CTY)[0]; if(f) sub=f.k; } }
   drawTabs();
   if(!admCtyOk()) openAdmGate();
   presStart();
