@@ -210,12 +210,20 @@ const isWeekendDate = (ds, weAdd) =>
      18홀 +200 · 9홀 +100 · 27홀 +300 · 36홀 +400 · 호텔 1실 1박 +200.
    (스파·티켓·차량 메뉴는 그때 100이었고, 2026-10-15부터 같이 200 — 아래 MENU_MARGIN)
    요금표에 마진을 따로 적어 둔 곳(margin 칸)은 여전히 그 값이 우선한다. */
-const DEFAULT_MARGIN = 200;
-/* 2026-10-15 사장님 「단품목도 전부 공통」 — 스파·티켓·차량 등 메뉴 요금도 골프·호텔과 같이 기본 +200(티어2·비회원), 티어1 +100.
-   그 전(~10-15) 메뉴 마진은 100이었다 — 관리 화면 원가 계산이 예약 날짜로 구분한다(MENU_M200_FROM) */
-const MENU_MARGIN = 200;
+/* ★ 2026-11-24 사장님 「베트남이 같이 들어가니 마진을 한화로」 — 기본 마진은 1인 «원화 고정»:
+     티어2(여행사)·비회원 +10,000원 · 티어1(랜드사) +5,000원 (태국·베트남 공통, 18홀·호텔 1실 1박·메뉴 1개 기준, 9홀은 절반).
+   계산은 지금처럼 밧으로 하므로, 요청마다 그날 환율(현찰 살때)로 «원화 마진 → 밧»을 바꿔 둔다(setKrwMargin).
+   요금표 margin 칸에 따로 적은 값은 예전처럼 그 상품의 밧(베트남은 동) 마진으로 우선한다.
+   환율을 못 받는 일은 없지만(FX_SEED) 혹시 0이면 예전 값 200·100밧으로 */
+const MARGIN_KRW = 10000, TIER1_OFF_KRW = 5000;
+let DEFAULT_MARGIN = 200, MENU_MARGIN = 200, TIER1_OFF = 100;
+function setKrwMargin(fx) {
+  const r = fx && +fx.rate;
+  if (r > 0) { DEFAULT_MARGIN = MENU_MARGIN = MARGIN_KRW / r; TIER1_OFF = TIER1_OFF_KRW / r; }
+  else { DEFAULT_MARGIN = MENU_MARGIN = 200; TIER1_OFF = 100; }
+}
 const marginOf = (v, d) => (Number.isFinite(+v) && +v >= 0 && !blank(v) ? +v : (d == null ? DEFAULT_MARGIN : d));
-const margin9Of = (m) => Math.round(m / 2);
+const margin9Of = (m) => m / 2;
 
 /* 옛 시즌줄(seasons[], 엑셀 요금표)은 2026-09-11부터 읽지 않는다 — 새 요금줄(rates[])만 본다(사장님) */
 
@@ -407,7 +415,7 @@ function extraLowest(rm, p) {
 
 /* ── GET: 카드에 붙는 최저가 ── */
 export async function onRequestGet({ request, env }) {
-  const adj = await tierAdj(request, env);
+  const t1 = await tierAdj(request, env);
   let P, fx;
   try {
     const got = await Promise.all([readPricing(env), cashBuyRate(env)]);
@@ -416,6 +424,8 @@ export async function onRequestGet({ request, env }) {
   } catch (e) {
     return json({ ok: false, error: e.message || String(e) }, 502);
   }
+  setKrwMargin(fx);                       // 원화 마진 → 오늘 환율 밧(2026-11-24)
+  const adj = t1 ? TIER1_OFF : 0;
   if (!P) return json({ ok: false, error: '요금표가 아직 등록되지 않았습니다' }, 503);
 
   const courses = [];
@@ -548,8 +558,8 @@ export async function onRequestPost({ request, env }) {
   try { B = await request.json(); }
   catch (e) { return json({ ok: false, error: '요청을 읽지 못했습니다' }, 400); }
 
-  const adj = await tierAdj(request, env);
-  if (String(B.kind || '') === 'hotel') return hotelPost(B, env, adj);
+  const t1 = await tierAdj(request, env);   // 1 = 티어1. 밧 할인액은 환율을 받은 뒤에(2026-11-24)
+  if (String(B.kind || '') === 'hotel') return hotelPost(B, env, t1);
 
   const region = String(B.region || '');
   const name = String(B.course || '');
@@ -568,6 +578,8 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: e.message || String(e) }, 502);
   }
   if (!P) return json({ ok: false, error: '요금표가 아직 등록되지 않았습니다' }, 503);
+  setKrwMargin(fx);                       // 원화 마진 → 오늘 환율 밧(2026-11-24)
+  const adj = t1 ? TIER1_OFF : 0;
 
   /* 지역이 안 맞아도 이름으로 찾는다 — 사이트의 지역 표기와 요금표가 조금 달라도 견적이 나와야 한다 */
   const course = findByName(P, region, 'courses', name);
@@ -636,7 +648,7 @@ const addDays = (ds, n) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-async function hotelPost(B, env, adj) {
+async function hotelPost(B, env, t1) {
   const region = String(B.region || '');
   const name = String(B.hotel || '');
   const want = String(B.room || '');
@@ -661,6 +673,8 @@ async function hotelPost(B, env, adj) {
     return json({ ok: false, error: e.message || String(e) }, 502);
   }
   if (!P) return json({ ok: false, error: '요금표가 아직 등록되지 않았습니다' }, 503);
+  setKrwMargin(fx);                       // 원화 마진 → 오늘 환율 밧(2026-11-24)
+  const adj = t1 ? TIER1_OFF : 0;
 
   /* 지역이 안 맞아도 이름으로 찾는다 — 사이트 표기와 요금표가 조금 달라도 견적이 나와야 한다 */
   const hotel = findByName(P, region, 'hotels', name);
@@ -782,6 +796,6 @@ async function tierAdj(request, env) {
     if (!r.ok) return 0;
     const u = await r.json();
     const m = (u && u.user_metadata) || {};
-    return (m.kind === 'agency' && m.approved === true && +m.tier === 1) ? 100 : 0;
+    return (m.kind === 'agency' && m.approved === true && +m.tier === 1) ? 1 : 0;   // 1 = 티어1 — 밧 금액은 환율을 받은 뒤 TIER1_OFF(5,000원)로
   } catch (e) { return 0; }
 }

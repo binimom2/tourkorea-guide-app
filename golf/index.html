@@ -640,7 +640,13 @@ const krwUp=n=>Math.ceil(n/1000)*1000;
    티어1(랜드사) +100 · 티어2(여행사) +200 (요금표 '마진' 칸에 값이 있으면 그 값이 티어2, 티어1은 거기서 −100).
    18홀·1실1박 기준이고 9홀은 절반. 직원 견적(AG_TIER 0)은 예전처럼 원가. 카드 요금(/api/golf-price)과 같은 규칙 */
 let AG_TIER=0;
-const MG=v=>{ if(!AG_TIER) return 0; const b=(v!==''&&v!=null&&Number.isFinite(+v)&&+v>=0)?+v:200; return Math.max(0,AG_TIER===1?b-100:b); };
+/* ★ 2026-11-24 사장님 「마진을 한화로」 — 기본 마진은 1인 원화 고정: 티어2 +10,000원 · 티어1 +5,000원(태국·베트남 공통).
+   계산은 밧이라 그날 환율(FX_RATE, 현찰 살때)로 밧으로 바꿔 얹는다 — 손님 사이트 /api/golf-price setKrwMargin 과 같은 규칙.
+   요금표 margin 칸에 적은 값(밧)은 예전처럼 우선(티어1은 거기서 5,000원어치를 뺀다). 환율이 아직 없으면 예전 200·100밧 */
+const MG_KRW=10000, MG_T1_OFF_KRW=5000;
+const MG=v=>{ if(!AG_TIER) return 0;
+  const fx=+FX_RATE>0?+FX_RATE:0, def=fx?MG_KRW/fx:200, off=fx?MG_T1_OFF_KRW/fx:100;
+  const b=(v!==''&&v!=null&&Number.isFinite(+v)&&+v>=0)?+v:def; return Math.max(0,AG_TIER===1?b-off:b); };
 let BEST_MG=0;   // bestUnit()이 고른 값에 들어 있는 1인 마진 — 견적 줄에 mg로 남긴다(관리 화면 원가 = 금액 − mg)
 const isWeekend=d=>[0,6].includes(d.getDay());
 const isHoliday=s=>(P.holidays||[]).includes(s);
