@@ -416,6 +416,44 @@ section{padding:64px 0}
 .totop:hover{background:var(--paper)}
 .mask{position:fixed;inset:0;z-index:200;background:rgba(8,23,15,.62);display:none;align-items:center;justify-content:center;padding:18px}
 .mask.on{display:flex}
+/* ── 💬 1:1 견적문의 창(사장님 2026-11-24) ── */
+body .trust.top button.inq{background:#fff;border:2px solid #1F7FB8;border-radius:999px;margin-right:8px}
+body .trust.top button.inq b{color:#1F7FB8}
+body .trust.top button.inq:hover{background:#EAF4FB}
+.trust button.inq{position:relative}
+.trust button.inq i.n{position:absolute;top:-6px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#D9412B;color:#fff;font:800 11px/18px sans-serif;font-style:normal}
+#inqMask .ibox{position:relative;width:min(720px,100%);max-height:92vh;display:flex;flex-direction:column;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+#inqMask .ihd{display:flex;align-items:center;gap:10px;padding:14px 18px;background:#EAF4FB;border-bottom:1px solid #CFE3F1}
+#inqMask .ihd h3{margin:0;font-size:18px;font-weight:900;color:#13507A;flex:1}
+#inqMask .ihd button{border:0;background:rgba(0,0,0,.06);border-radius:8px;padding:6px 12px;font:inherit;font-weight:800;cursor:pointer}
+#inqMask .ibody{padding:14px 18px;overflow-y:auto;flex:1}
+#inqMask .inew{display:block;width:100%;padding:12px;border:2px dashed #1F7FB8;border-radius:12px;background:#F5FAFE;color:#13507A;font:inherit;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:12px}
+#inqMask .irow{display:flex;gap:10px;align-items:center;padding:11px 12px;border:1px solid #E3E8EC;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff}
+#inqMask .irow:hover{background:#F7FAFC}
+#inqMask .irow b{flex:1;font-size:14.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#inqMask .irow span{font-size:12px;color:#6B7A73;white-space:nowrap}
+#inqMask .ist{font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 9px;background:#EEF1F0;color:#3C4A44}
+#inqMask .ist.new{background:#FDE7E3;color:#B3261E}#inqMask .ist.done{background:#E3F1E7;color:#1f6b3f}
+#inqMask .iun{background:#D9412B;color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px}
+#inqMask .iempty{color:#6B7A73;text-align:center;padding:26px 0}
+#inqMask .imsg{max-width:86%;margin:0 0 10px;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+#inqMask .imsg.me{margin-left:auto;background:#E8F2FB;border:1px solid #CFE3F1}
+#inqMask .imsg.st{background:#E9F5EC;border:1px solid #CBE6D3}
+#inqMask .imsg .iw{display:block;font-size:11.5px;color:#6B7A73;font-weight:700;margin-bottom:3px;white-space:normal}
+#inqMask .ifile{display:inline-flex;align-items:center;gap:5px;margin:6px 6px 0 0;padding:4px 10px;border:1px solid #C9D6DF;border-radius:999px;background:#fff;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#inqMask .iform{border-top:1px solid #E3E8EC;padding:12px 18px;background:#FAFBFC}
+#inqMask .iform textarea{width:100%;min-height:110px;font:inherit;font-size:14px;border:1px solid #C9D6DF;border-radius:10px;padding:10px 12px;resize:vertical;box-sizing:border-box}
+#inqMask .iform.reply textarea{min-height:60px}
+#inqMask .ifrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+#inqMask .ifrow label.att{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid #C9D6DF;border-radius:9px;background:#fff;font-weight:800;font-size:13px;cursor:pointer}
+#inqMask .ifrow .chips{flex:1;display:flex;gap:5px;flex-wrap:wrap;min-width:0}
+#inqMask .ifrow .chip{font-size:12px;background:#EEF3F7;border-radius:999px;padding:3px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#inqMask .ifrow .chip i{font-style:normal;margin-left:5px;cursor:pointer;color:#B3261E;font-weight:900}
+#inqMask .isend{margin-left:auto;padding:9px 20px;border:0;border-radius:10px;background:#1F7FB8;color:#fff;font:inherit;font-weight:900;font-size:14.5px;cursor:pointer}
+#inqMask .isend:disabled{opacity:.55;cursor:default}
+#inqMask .ihint{font-size:12px;color:#6B7A73;margin-top:6px}
+#inqMask .ierr{color:#B3261E;font-weight:700;font-size:13px;margin-top:6px}
+@media(max-width:640px){ #inqMask{padding:0} #inqMask .ibox{max-height:100vh;height:100%;border-radius:0} }
 .modal{background:#fff;border-radius:18px;width:100%;max-width:392px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.36);max-height:90vh;overflow:auto}
 .modal h3{margin:0 0 4px;font-size:21px;font-weight:900;letter-spacing:-.04em}
 .modal .sub{margin:0 0 20px;font-size:13.5px;color:var(--muted);line-height:1.55}
@@ -1169,6 +1207,14 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 </div>
 
 <!-- 여행사 회원 로그인 · 가입 신청 (사장님 2026-09-17, B2B) — 아래 「손님 간편 로그인」 칸은 안 쓰지만 코드는 남겨 둔다 -->
+<!-- 💬 1:1 견적문의(사장님 2026-11-24) — 로그인한 승인 여행사만. 글 + 첨부, 직원 답장은 같은 창에 -->
+<div class="mask" id="inqMask">
+  <div class="ibox" role="dialog" aria-modal="true" aria-labelledby="inqTitle">
+    <div class="ihd"><h3 id="inqTitle">💬 1:1 견적문의</h3><button type="button" id="inqBack" hidden>← 목록</button><button type="button" id="inqClose">✕ 닫기</button></div>
+    <div class="ibody" id="inqBody"></div>
+    <div class="iform" id="inqForm" hidden></div>
+  </div>
+</div>
 <div class="mask" id="agMask">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="agTitle">
     <button class="mclose" id="agClose" type="button" aria-label="닫기">×</button>
@@ -1902,7 +1948,7 @@ $("#hsNext").onclick = () => hsGo(hsCur + 1);
    예전에는 「직영·직수배·실시간·전담」 문구가 있던 자리다(자료는 SITE.trust 에 그대로 남아 있다).
    종류는 관리 화면 「＋ 종류 관리」에서 늘리시면 여기도 저절로 늘어난다.
    열 칸을 넘으면 줄이 어지러워져 앞에서부터 열 개까지만 낸다. */
-const SECTOR_MAX = 10;
+const SECTOR_MAX = 11;   // 1:1 견적문의 칸이 늘어 10 → 11(종류 칸 수는 그대로, 2026-11-24)
 /* 「실시간 견적」 단추(맨 위 메뉴·섹터 띠·첫 화면 단추)가 여는 곳 — 기존 견적 계산기 /golf/ 다(사장님 2026-09-10).
    전에는 아래 연락처 칸(#contact)으로만 내려갔다. 관리 화면 「첫 화면 → 섹터 메뉴」에서 주소를 바꿀 수 있고,
    #contact 처럼 # 으로 시작하면 옛날처럼 그 자리로 스크롤한다. /golf/ 는 로그인이 있어야 열린다. */
@@ -1950,14 +1996,15 @@ function drawSectors(){
     items.splice(pos, 0, { ic: tc.ic || sc.toursIc || "🚌", t: tc.t || sc.toursT || "기타투어", go:"#tours" });
   }
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 «맨 앞»에 금색으로 도드라지게 둔다(사장님 2026-09-11, 전에는 맨 뒤) */
-  items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true });
+  items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true },
+                { ic: "", t: "1:1 견적문의", go:"inq", inq:true });   // 실시간 견적 바로 옆(사장님 2026-11-24)
   /* 종류 칸은 감싸는 칸(.secw) 안에 넣고 아래에 지역 하위메뉴(.secdd)를 붙인다(사장님 2026-09-17).
      패스트트랙(종류 이름으로 잡는다 — 키가 자동번호라서)은 지역 대신 「별도문의」. 실시간 견적 칸은 그대로. */
   const isAsk = t => /패스트트랙/.test(String(t || ""));
   $("#trustBox").innerHTML = items.slice(0, SECTOR_MAX).map(s => {
-    const btn = '<button type="button"' + (s.hot ? ' class="hot"' : '') + ' data-go="' + esc(s.go) + '">'
+    const btn = '<button type="button"' + (s.hot ? ' class="hot"' : s.inq ? ' class="inq" id="inqBtn"' : '') + ' data-go="' + esc(s.go) + '">'
       + (s.ic ? '<em>' + esc(s.ic) + '</em>' : '')
-      + '<b>' + esc(s.t) + '</b></button>';
+      + '<b>' + esc(s.t) + '</b>' + (s.inq && INQ_UN ? '<i class="n">' + INQ_UN + '</i>' : '') + '</button>';
     if(s.go.indexOf("cat:") !== 0) return btn;
     const k = s.go.slice(4);
     const dd = isAsk(s.t)
@@ -1972,6 +2019,7 @@ function drawSectors(){
   $("#trustBox").querySelectorAll("button[data-go]").forEach(b => b.onclick = () => {
     const go = b.dataset.go;
     if(go === "quote"){ goQuote(); return; }
+    if(go === "inq"){ inqOpen(); return; }
     if(go.indexOf("cat:") === 0){
       pickCat(go.slice(4));
       document.getElementById("catalog").scrollIntoView({ behavior:"smooth" });
@@ -3276,6 +3324,177 @@ async function loadBoxCount(){
   }catch(e){}
   drawBoxBtn();
 }
+/* ══ 💬 1:1 견적문의 (사장님 2026-11-24) ══
+   로그인한 승인 여행사만. 글 + 첨부(사진·PDF·엑셀·워드·한글·텍스트, 파일당 5MB·한 번에 5개·합쳐서 10MB).
+   서버 /api/inquiry 가 golf_book_IQ… 로 남겨 관리 화면 「예약요청」에 「견적문의」로 뜬다. 직원 답장은 이 창에 같이 보인다.
+   첨부는 공개 주소가 없다 — 열 때 로그인 토큰을 실어 받아 와 새 탭으로 띄운다 */
+var INQ_UN = 0, INQ_LIST = null, INQ_CUR = "", INQ_FILES = [];
+const INQ_ACCEPT = ".jpg,.jpeg,.png,.webp,.gif,.heic,.pdf,.xlsx,.xls,.docx,.doc,.hwp,.hwpx,.txt,.csv";
+const INQ_FILE_MAX = 5 * 1024 * 1024, INQ_TOTAL_MAX = 10 * 1024 * 1024;
+async function inqToken(){
+  try{ const c = await agClient(); const { data } = await c.auth.getSession(); return (data && data.session && data.session.access_token) || ""; }
+  catch(e){ return ""; }
+}
+async function inqApi(action, payload){
+  const tk = await inqToken();
+  if(!tk) return { error:"로그인이 만료되었습니다. 다시 로그인해 주세요." };
+  try{
+    const r = await fetch(API + "/api/inquiry", { method:"POST",
+      headers:{ "content-type":"application/json", Authorization:"Bearer " + tk },
+      body: JSON.stringify(Object.assign({ action }, payload || {})) });
+    return await r.json().catch(() => ({ error:"서버 응답을 읽지 못했습니다." }));
+  }catch(e){ return { error:"서버 연결 실패 — 잠시 뒤 다시 시도해 주세요." }; }
+}
+function inqBadge(){
+  INQ_UN = (INQ_LIST || []).reduce((n, q) => n + (+q.agencyUnread || 0), 0);
+  const b = $("#inqBtn"); if(!b) return;
+  let i = b.querySelector("i.n");
+  if(!INQ_UN){ if(i) i.remove(); return; }
+  if(!i){ i = document.createElement("i"); i.className = "n"; b.appendChild(i); }
+  i.textContent = INQ_UN;
+}
+async function inqLoad(){
+  if(!(agency && agency.approved)){ INQ_LIST = null; inqBadge(); return; }
+  const j = await inqApi("inqList");
+  if(j && j.ok) INQ_LIST = j.list || [];
+  inqBadge();
+}
+function inqOpen(){
+  if(!agency){ agOpen("login"); return; }
+  if(!agency.approved){ agOpen("status"); return; }
+  $("#inqMask").classList.add("on");
+  INQ_CUR = ""; inqDraw();
+  inqLoad().then(() => { if($("#inqMask").classList.contains("on")) inqDraw(); });
+}
+function inqClose(){ $("#inqMask").classList.remove("on"); INQ_FILES = []; }
+$("#inqClose").onclick = inqClose;
+$("#inqBack").onclick = () => { INQ_CUR = ""; INQ_FILES = []; inqDraw(); };
+const inqWhen = iso => { const d = new Date(iso); if(isNaN(d)) return ""; const p = n => String(n).padStart(2, "0");
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " + p(d.getHours()) + ":" + p(d.getMinutes()); };
+const INQ_ST = { new:["접수","new"], done:["완료","done"], cancel:["종료","done"] };
+const inqSt = st => INQ_ST[st] || ["답변 중",""];
+function inqFilesHtml(fs){
+  return (fs || []).map((f, i) => '<button type="button" class="ifile" data-k="' + esc(f.k) + '" data-n="' + esc(f.name) + '">'
+    + (/^image\//.test(f.type) ? "🖼" : /pdf/.test(f.type) ? "📄" : "📎") + " " + esc(f.name) + "</button>").join("");
+}
+function inqDraw(){
+  const body = $("#inqBody"), form = $("#inqForm");
+  $("#inqBack").hidden = !INQ_CUR || INQ_CUR === "new";
+  if(INQ_CUR === "new"){
+    $("#inqBack").hidden = false;
+    body.innerHTML = '<p style="margin:0 0 4px;font-weight:800;color:#13507A">새 견적문의</p>'
+      + '<p class="ihint" style="margin:0">일정·인원·지역·원하시는 골프장/호텔 등을 자유롭게 적어 주세요. 일정표·명단 파일을 첨부하셔도 됩니다.</p>';
+    inqFormDraw(false);
+    return;
+  }
+  if(INQ_CUR){
+    const q = (INQ_LIST || []).find(x => x.no === INQ_CUR);
+    if(!q){ INQ_CUR = ""; inqDraw(); return; }
+    const st = inqSt(q.status);
+    body.innerHTML = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><b style="flex:1;font-size:15px">' + esc(q.title || "견적문의")
+        + '</b><span class="ist ' + st[1] + '">' + st[0] + '</span></div>'
+      + q.msgs.map(m => '<div class="imsg ' + (m.staff ? "st" : "me") + '"><span class="iw">' + (m.staff ? "투어코리아" : "보낸 문의") + " · " + esc(inqWhen(m.at)) + "</span>"
+        + esc(m.text || "") + (m.files && m.files.length ? "<div>" + inqFilesHtml(m.files) + "</div>" : "") + "</div>").join("")
+      + (q.msgs.some(m => m.staff) ? "" : '<p class="ihint">담당자가 확인 후 이 창으로 답변드립니다.</p>');
+    inqBindFiles(body);
+    setTimeout(() => { body.scrollTop = body.scrollHeight; }, 0);
+    if(q.status === "cancel"){ form.hidden = true; form.innerHTML = ""; }
+    else inqFormDraw(true);
+    if(+q.agencyUnread){ q.agencyUnread = 0; inqBadge(); inqApi("inqSeen", { no:q.no }); }
+    return;
+  }
+  form.hidden = true; form.innerHTML = "";
+  const L = INQ_LIST;
+  body.innerHTML = '<button type="button" class="inew" id="inqNew">＋ 새 견적문의 작성</button>'
+    + (L === null ? '<p class="iempty">불러오는 중…</p>'
+      : !L.length ? '<p class="iempty">아직 보낸 문의가 없습니다.</p>'
+      : L.map(q => { const st = inqSt(q.status), last = q.msgs[q.msgs.length - 1] || q;
+          return '<div class="irow" data-no="' + esc(q.no) + '"><b>' + esc(q.title || "견적문의") + "</b>"
+            + (+q.agencyUnread ? '<span class="iun">새 답변 ' + q.agencyUnread + "</span>" : "")
+            + '<span class="ist ' + st[1] + '">' + st[0] + "</span><span>" + esc(inqWhen(last.at)) + "</span></div>"; }).join(""));
+  $("#inqNew").onclick = () => { INQ_CUR = "new"; INQ_FILES = []; inqDraw(); };
+  body.querySelectorAll(".irow").forEach(r => r.onclick = () => { INQ_CUR = r.dataset.no; INQ_FILES = []; inqDraw(); });
+}
+function inqFormDraw(reply){
+  const form = $("#inqForm");
+  form.hidden = false;
+  form.className = "iform" + (reply ? " reply" : "");
+  form.innerHTML = '<textarea id="inqText" maxlength="3000" placeholder="' + (reply ? "추가 문의·답장을 적어 주세요" : "예) 2/10~2/14 파타야 4박, 성인 8명, 골프 3회, 4성급 호텔 희망") + '"></textarea>'
+    + '<div class="ifrow"><label class="att">📎 파일 첨부<input type="file" id="inqFile" multiple accept="' + INQ_ACCEPT + '" hidden></label>'
+    + '<div class="chips" id="inqChips"></div><button type="button" class="isend" id="inqSend">' + (reply ? "보내기" : "문의 보내기") + "</button></div>"
+    + '<div class="ihint">사진·PDF·엑셀·워드·한글 — 파일당 5MB, 한 번에 5개까지</div><div class="ierr" id="inqErr"></div>';
+  $("#inqFile").onchange = e => { inqAddFiles(e.target.files); e.target.value = ""; };
+  $("#inqSend").onclick = () => inqSend(reply);
+  inqChips();
+  if(!reply) setTimeout(() => $("#inqText").focus(), 30);
+}
+function inqChips(){
+  const c = $("#inqChips"); if(!c) return;
+  c.innerHTML = INQ_FILES.map((f, i) => '<span class="chip" title="' + esc(f.name) + '">' + esc(f.name) + '<i data-i="' + i + '">✕</i></span>').join("");
+  c.querySelectorAll("i[data-i]").forEach(x => x.onclick = () => { INQ_FILES.splice(+x.dataset.i, 1); inqChips(); });
+}
+/* 큰 사진(1.5MB 넘는 JPG·PNG·WEBP)은 긴 변 2000px JPG로 줄여 보낸다 — 휴대폰 사진이 5MB를 넘기 쉽다 */
+function inqShrink(file){
+  return new Promise(res => {
+    if(!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size <= 1.5 * 1024 * 1024){ res(file); return; }
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 2000 / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      cv.toBlob(b => res(b && b.size < file.size ? new File([b], file.name.replace(/\.(png|webp)$/i, ".jpg"), { type:"image/jpeg" }) : file), "image/jpeg", 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); res(file); };
+    img.src = url;
+  });
+}
+async function inqAddFiles(list){
+  const err = $("#inqErr"); if(err) err.textContent = "";
+  for(const f0 of Array.from(list || [])){
+    if(INQ_FILES.length >= 5){ if(err) err.textContent = "첨부는 한 번에 5개까지입니다."; break; }
+    if(!new RegExp("\\.(" + INQ_ACCEPT.replace(/\./g, "").replace(/,/g, "|") + ")$", "i").test(f0.name)){
+      if(err) err.textContent = "「" + f0.name + "」 — 사진·PDF·엑셀·워드·한글·텍스트 파일만 올릴 수 있습니다."; continue; }
+    const f = await inqShrink(f0);
+    if(f.size > INQ_FILE_MAX){ if(err) err.textContent = "「" + f.name + "」 — 파일 하나는 5MB까지입니다."; continue; }
+    if(INQ_FILES.reduce((n, x) => n + x.size, 0) + f.size > INQ_TOTAL_MAX){ if(err) err.textContent = "첨부는 합쳐서 10MB까지입니다."; break; }
+    INQ_FILES.push(f);
+  }
+  inqChips();
+}
+const inqB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = rej; r.readAsDataURL(f); });
+async function inqSend(reply){
+  const btn = $("#inqSend"), err = $("#inqErr"), text = ($("#inqText").value || "").trim();
+  if(!text && !INQ_FILES.length){ err.textContent = "문의 내용을 적거나 파일을 첨부해 주세요."; return; }
+  btn.disabled = true; btn.textContent = "보내는 중…"; err.textContent = "";
+  try{
+    const files = [];
+    for(const f of INQ_FILES) files.push({ name:f.name, data: await inqB64(f) });
+    const j = reply ? await inqApi("inqMsg", { no:INQ_CUR, text, files })
+                    : await inqApi("inqNew", { text, files, cty: (typeof country === "function" ? country() : "") });
+    if(!j || !j.ok){ err.textContent = (j && j.error) || "보내지 못했습니다."; return; }
+    INQ_FILES = [];
+    if(!reply) INQ_CUR = j.no;
+    await inqLoad(); inqDraw();
+  }catch(e){ err.textContent = "보내지 못했습니다 — 잠시 뒤 다시 시도해 주세요."; }
+  finally{ const b = $("#inqSend"); if(b){ b.disabled = false; b.textContent = reply ? "보내기" : "문의 보내기"; } }
+}
+/* 첨부 열기 — 토큰을 실어 받아 와 새 탭으로(사진·PDF는 바로 보이고, 엑셀·한글 등은 내려받기) */
+function inqBindFiles(box){
+  box.querySelectorAll(".ifile").forEach(b => b.onclick = async () => {
+    const w = window.open("", "_blank");
+    const tk = await inqToken();
+    try{
+      const r = await fetch(API + "/api/inquiry", { method:"POST", headers:{ "content-type":"application/json", Authorization:"Bearer " + tk },
+        body: JSON.stringify({ action:"inqFile", k:b.dataset.k }) });
+      if(!r.ok){ const j = await r.json().catch(() => ({})); if(w) w.close(); alert(j.error || "파일을 열지 못했습니다."); return; }
+      const blob = await r.blob(), url = URL.createObjectURL(blob);
+      if(/^(image\/|application\/pdf|text\/)/.test(blob.type) && w){ w.location.href = url; }
+      else { if(w) w.close(); const a = document.createElement("a"); a.href = url; a.download = b.dataset.n || "file"; document.body.appendChild(a); a.click(); a.remove(); }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }catch(e){ if(w) w.close(); alert("파일을 열지 못했습니다."); }
+  });
+}
 function openQuoteBox(){
   const go = quoteHref();
   if(go.charAt(0) === "#"){ goQuote(); return; }          // 견적이 창이 아니라 화면 안 자리로 잡혀 있는 설정이면 거기로
@@ -3986,6 +4205,7 @@ function agSet(user){
   }
   agSet._who = who;
   loadBoxCount();
+  inqLoad();   // 1:1 견적문의 새 답변 숫자(2026-11-24)
   /* 승인된 여행사로 들어와 있으면 견적 화면을 미리 받아 둔다 — 「실시간 견적」을 누르면 기다림 없이 바로 뜬다
      (사장님 2026-09-21 "화면 넘어오는 시간이 너무 오래 걸림"). 사이트 첫 화면이 먼저 뜨도록 잠깐 뒤에 시작한다 */
   /* 2026-11-02부터는 로그인 안 한 분·직원·로그아웃 뒤에도 미리 받는다(사장님 "로딩시간이 너무 길어요") */

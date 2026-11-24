@@ -1487,7 +1487,7 @@ const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
      찾는 말이 있으면 「처리할 것/전체」와 상관없이 전부에서 찾는다 */
   const q=bookQ.trim().toLowerCase().replace(/\s+/g,'');
   const hay=b=>{ const c=b.customer||{}, a=b.agency||{}, qt=b.quote||{}, v=b.voucher||{};
-    return [b.no,a.quoteNo,a.company,(b.from&&b.from.company)||'',(b.assign&&b.assign.by)||'',a.contact,v.cno,c.name,c.tel,c.email,qt.team,qt.start,qt.end,String(b.at||'').slice(0,10),
+    return [b.no,b.title||'',...(b.kind==='inquiry'?(b.msgs||[]).map(m=>m.text):[]),a.quoteNo,a.company,(b.from&&b.from.company)||'',(b.assign&&b.assign.by)||'',a.contact,v.cno,c.name,c.tel,c.email,qt.team,qt.start,qt.end,String(b.at||'').slice(0,10),
       ...(b.items||[]).flatMap(it=>[it.name,it.option,it.date,it.dateEnd,it.region]),
       ...((qt.days||[]).flatMap(d=>[d.date,d.hotel,d.course]))].join(' ').toLowerCase().replace(/\s+/g,''); };
   const list=q?all.filter(b=>hay(b).includes(q)):(bookFilter==='all'?all:all.filter(bookLive));
@@ -1550,7 +1550,8 @@ function bookCardHtml(b){
         ? '<span class="bkasg">담당 '+esc(b.assign.by)+(b.assign.name&&b.assign.name.toLowerCase()!==b.assign.by?' / '+esc(b.assign.name):'')+'</span>'
           +(b.assign.by!==String(currentUser&&currentUser.id||'').toLowerCase()&&b.status!=='cancel'?'<button class="ghost bkasgbtn" data-asg="'+esc(b.no)+'">내가 맡기</button>':'')
         : (b.status!=='cancel'?'<span class="bkasg" style="background:#FFF1EE;color:#B3261E">담당자 없음</span>':''))
-      +'<span class="bktot">'+Number(b.total||0).toLocaleString('ko-KR')+'원</span>'
+      +(b.kind==='inquiry'?'<span class="bktot" style="background:#1F7FB8;color:#fff;border-radius:999px;padding:2px 10px;font-size:12.5px">💬 견적문의</span>'
+        :'<span class="bktot">'+Number(b.total||0).toLocaleString('ko-KR')+'원</span>')
     +'</div>'
     /* 로그인한 여행사가 사이트에서 보낸 건은 이름 앞에 여행사명(사장님 2026-09-29) */
     /* 여행사가 보관함에서 보낸 취소 요청(사장님 2026-10-02) — 처리 뒤 상태를 「취소」로 바꾸면 사라진다 */
@@ -1563,6 +1564,8 @@ function bookCardHtml(b){
           +'<span class="bkvhint">견적 '+esc(b.quote.quoteNo||'')+' · '+esc(b.quote.start||'')+' ~ '+esc(b.quote.end||'')+' · '+(b.quote.pax||0)+'명 · '+esc(b.quote.route||'')
           +((b.quote.requests||[]).length?' · <b style="color:#B23B3B">요청사항 '+(b.quote.requests||[]).length+'건</b>':'')+'</span></div>'
         +bookMsgsHtml(b)
+      : b.kind==='inquiry'   /* 💬 1:1 견적문의(2026-11-24) — 상품 줄 없이 제목 + 1:1 메시지(첨부 포함)만 */
+        ? '<div class="bkmemo"><b>견적문의</b>'+esc(b.title||'')+'</div>'+bookMsgsHtml(b)
       : (c.memo?'<div class="bkmemo"><b>손님 요청</b>'+esc(c.memo)+'</div>':'')
         /* 보이는 차례만 호텔 → 골프 → 기타(사장님 2026-10-03). 줄 번호 i 는 원래 자리 그대로 넘긴다 */
         +'<ul class="bkitems">'+kindSorted(b.items).map(([it,i])=>bookItemHtml(it,i,b.no)).join('')+'</ul>'
@@ -1571,7 +1574,7 @@ function bookCardHtml(b){
     +((!b.assign||!b.assign.by)&&b.status!=='cancel'
       ? '<div class="bkstaff"><div class="bkvc"><button class="add" data-asg="'+esc(b.no)+'">🙋 담당하기</button></div>'
         +'<div class="bkfoot"><button class="ghost" data-bdel="'+esc(b.no)+'" style="margin-left:auto;color:#B23B3B;border-color:#E5B4B4">🗑 삭제</button></div></div></div>'
-      : '<div class="bkstaff">'+voucherRowHtml(b)
+      : '<div class="bkstaff">'+(b.kind==='inquiry'?'':voucherRowHtml(b))
     +'<div class="bkfoot">'
       +'<select data-st="'+esc(b.no)+'">'
       +BOOK_STATUS.map(s=>'<option value="'+s.k+'"'+(s.k===b.status?' selected':'')+'>'+s.t+'</option>').join('')
@@ -1893,6 +1896,22 @@ function bookDocHtml(b){
    안 읽은 건(b.msgUnread)이 있으면 빨간 표시 + 「확인함」 — 누르면 서버가 0으로 돌린다(상태·직원 메모는 그대로) */
 /* 💬 1:1 메시지 — 여행사 ↔ 직원 주고받기(사장님 2026-10-03 「어드민에서도 주고받게, 카톡 필요 없게」).
    여행사가 보낸 건(from 없음)·직원 답장(from:'staff', 초록). 여행사 건(AQ)·여행사가 보낸 사이트 예약(from.id)에만 답장 칸 */
+/* 견적문의 첨부 열기(2026-11-24) — 공개 주소가 없어 직원 로그인 토큰으로 /api/inquiry 에서 받아 새 탭에 띄운다 */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-inqf]'); if(!b) return;
+  e.preventDefault();
+  const w=window.open('','_blank');
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/inquiry',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+((session&&session.access_token)||'')},
+      body:JSON.stringify({action:'inqFile',k:b.dataset.inqf})});
+    if(!r.ok){ const j=await r.json().catch(()=>({})); if(w) w.close(); toast('⚠ '+(j.error||'파일을 열지 못했습니다')); return; }
+    const blob=await r.blob(), url=URL.createObjectURL(blob);
+    if(/^(image\/|application\/pdf|text\/)/.test(blob.type)&&w) w.location.href=url;
+    else { if(w) w.close(); const a=document.createElement('a'); a.href=url; a.download=b.dataset.inqn||'file'; document.body.appendChild(a); a.click(); a.remove(); }
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(err){ if(w) w.close(); toast('⚠ 파일을 열지 못했습니다'); }
+});
 function bookMsgsHtml(b){
   const ms=Array.isArray(b.msgs)?b.msgs:[];
   const canReply=!!((b.agency&&b.agency.id)||(b.from&&b.from.id))&&b.status!=='cancel';
@@ -1904,7 +1923,11 @@ function bookMsgsHtml(b){
     +(un?' <b>새 메시지 '+un+'</b><button class="ghost" data-msgread="'+esc(b.no)+'">확인함</button>':'')
     +(b.agencyUnread?' <span style="font-weight:700;color:var(--muted)">· 여행사가 아직 안 읽은 답장 '+(+b.agencyUnread)+'</span>':'')+'</div>'
     +ms.map(m=>{ const st=m.from==='staff'; const isUn=!st&&(++k>fromAg.length-un);
-      return '<div class="m'+(isUn?' un':'')+(st?' st':'')+'"><span>'+esc(bookWhen(m.at))+'</span><span class="who">'+(st?'투어코리아'+(m.by?' · '+esc(m.by):''):'여행사')+'</span><p>'+esc(m.text||'')+'</p></div>'; }).join('')
+      return '<div class="m'+(isUn?' un':'')+(st?' st':'')+'"><span>'+esc(bookWhen(m.at))+'</span><span class="who">'+(st?'투어코리아'+(m.by?' · '+esc(m.by):''):'여행사')+'</span><p>'+esc(m.text||'')
+        /* 견적문의 첨부(2026-11-24) — 누르면 /api/inquiry 로 받아 새 탭에 */
+        +((m.files||[]).length?'<span style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">'+m.files.map(f=>'<button type="button" class="ghost" data-inqf="'+esc(f.k)+'" data-inqn="'+esc(f.name)+'" style="padding:2px 9px;font-size:12px">'
+          +(/^image\//.test(f.type)?'🖼':/pdf/.test(f.type)?'📄':'📎')+' '+esc(f.name)+'</button>').join('')+'</span>':'')
+        +'</p></div>'; }).join('')
     +(canReply?'<div class="mrep"><textarea data-mreptx="'+esc(b.no)+'" rows="1" maxlength="1000" placeholder="여행사에 답장 (보낸 글은 여행사 보관함 「1:1 메시지」에 뜹니다)"></textarea>'
       +'<button class="add" data-mrep="'+esc(b.no)+'">답장 보내기</button></div>':'')
     +'</div>';
@@ -2313,7 +2336,8 @@ function regsCty(regs){
   if(!s.size) s.add(ctyAll()[0].n);
   return s;
 }
-function bookCty(b){ const qt=(b&&b.quote)||{};
+function bookCty(b){ if(b&&b.cty&&ctyAll().some(c=>c.n===b.cty)) return new Set([b.cty]);   // 견적문의는 보낸 나라(2026-11-24)
+  const qt=(b&&b.quote)||{};
   return regsCty([].concat((b&&b.items||[]).map(i=>i&&i.region),(qt.days||[]).map(d=>d&&d.region))); }
 /* 견적 기록 — days[].region, 없으면 route 「방콕 2박 → 파타야 1박」에서 지역 이름 */
 function quoteCty(r){
