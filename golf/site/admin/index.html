@@ -563,6 +563,7 @@ tr.mainrow.hotmove td{background:#FFF3C4}       /* 방금 옮긴 줄 */
       <nav class="jump">
         <a href="../index.html">🌐 손님 사이트</a>
       </nav>
+      <button class="lnk hidden" id="ctyTop" type="button" title="나라 변경"></button>
       <span class="who" id="who"></span>
       <button class="lnk" id="outBtn" type="button">로그아웃</button>
     </div>
@@ -851,7 +852,7 @@ async function afterAuth(user){
   /* 입구 나라 선택 — 사이트 내용 탭을 쓰는 계정만, 이 창에서 아직 안 골랐으면 */
   if(admCtyOk()) iCountry=ADM_CTY;
   drawTabs();
-  if(!admCtyOk()&&myTabs().some(t=>t.k==='site')) openAdmGate();
+  if(!admCtyOk()) openAdmGate();
 }
 
 /* ══════ 데이터 불러오기 ══════ */
@@ -1115,6 +1116,9 @@ function drawTabs(){
   ts.forEach(t=>{ document.getElementById('tab-'+t.k).onclick=()=>{ tab=t.k; drawTabs(); }; });
   drawBookBadge();
   drawAgBadge();
+  /* 맨 위 줄 나라 표시 — 예약요청·견적 기록 탭에서도 나라를 바꿀 수 있게(2026-11-24) */
+  const ct=document.getElementById('ctyTop');
+  if(ct){ ct.classList.toggle('hidden',!admCtyOk()); ct.textContent='🌏 '+(ADM_CTY||'')+' · 나라 변경'; ct.onclick=openAdmGate; }
   if(!AGENCIES) agPoll();     // 로그인 직후 — 1분 기다리지 않고 바로 대기 수를 띄운다
   draw();
 }
@@ -1153,7 +1157,7 @@ function drawQuotes(){
     document.getElementById('qtReload').onclick=()=>{ QUOTES=null; drawQuotes(); };
     return;
   }
-  const all=QUOTES.list||[];
+  const all=(QUOTES.list||[]).filter(r=>inMyCty(quoteCty(r)));   // 고른 나라 것만(2026-11-24)
   const q=quoteQ.trim().toLowerCase();
   const list=all.filter(r=>!q||[r.quoteNo,r.team,r.start,r.route,r.issued].join(' ').toLowerCase().includes(q));
   const th=(t,st)=>'<th style="text-align:left;white-space:nowrap;padding:8px 8px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);'+(st||'')+'">'+t+'</th>';
@@ -1464,7 +1468,7 @@ function drawBooks(){
     document.getElementById('bkReload').onclick=()=>{ BOOKS=null; drawBooks(); };
     return;
   }
-  const all=BOOKS.list||[];
+  const all=(BOOKS.list||[]).filter(b=>inMyCty(bookCty(b)));   // 고른 나라 것만(2026-11-24)
   /* 처리할 것 = 접수·진행중 + 여행사가 보낸 «추가 요청 메시지»를 아직 확인 안 한 건(컨펌 뒤에 온 메시지도 놓치지 않게, 사장님 2026-09-21) */
   /* 처리할 것 = ⑤완료·취소가 아닌 것 전부(사장님 2026-09-29) — 인보이스 보내고 입금 기다리는 건, 입금 뒤 바우처 보낼 건도 할 일이다 */
 const bookLive=b=>(b.status!=='done'&&b.status!=='cancel')||(+b.msgUnread>0);
@@ -2172,7 +2176,7 @@ setInterval(async()=>{
     bookSrvSig=sg.sig;
     const old=(BOOKS&&BOOKS.list)||null, list=j.list||[];
     if(old&&bookSig(old)===bookSig(list)) return;
-    const fresh=old?list.filter(b=>!old.some(o=>o.no===b.no)):[];
+    const fresh=old?list.filter(b=>!old.some(o=>o.no===b.no)&&inMyCty(bookCty(b))):[];
     BOOKS={list};
     if(tab==='books') drawBooks();
     drawBookBadge();
@@ -2183,7 +2187,7 @@ setInterval(async()=>{
 /* 탭 이름 옆 빨간 숫자 = 「① 접수」(아직 아무도 안 맡은 건) 수 */
 function drawBookBadge(){
   const b=document.getElementById('tab-books'); if(!b) return;
-  const n=((BOOKS&&BOOKS.list)||[]).filter(x=>x.status==='new'||(x.cancelReq&&x.status!=='cancel')).length;
+  const n=((BOOKS&&BOOKS.list)||[]).filter(x=>inMyCty(bookCty(x))&&(x.status==='new'||(x.cancelReq&&x.status!=='cancel'))).length;
   let s=b.querySelector('.bkbadge');
   if(!n){ if(s) s.remove(); return; }
   if(!s){ s=document.createElement('span'); s.className='bkbadge'; b.appendChild(s); }
@@ -2265,7 +2269,7 @@ const iRegion={}, iOpen={};
    항목의 나라는 지역으로 정해진다(S.countries[].rs). 어디에도 없는 지역은 첫 나라(태국).
    iCountry: 표에서 지금 보고 있는 나라(종류 공통). 보기만 바뀌고 저장 내용은 그대로 */
 let iCountry='';
-function ctyAll(){ const c=(S.countries||[]).filter(x=>x&&x.n); return c.length?c:[{n:'태국',rs:S.regionOrder||[]}]; }
+function ctyAll(){ const c=((S&&S.countries)||[]).filter(x=>x&&x.n); return c.length?c:[{n:'태국',rs:(S&&S.regionOrder)||[]}]; }
 /* 목록에 안 적은 지역이라도 베트남 지명이면 베트남(사장님 2026-11-24 「남호이안」이 태국에 섞이던 것) — 손님 사이트·서버 golf-price.js와 같은 목록 */
 const VN_HINT=/다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|베트남/;
 function ctyOfRegion(r){ const hit=ctyAll().filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0];
@@ -2287,8 +2291,24 @@ function pickAdmCty(n){
   if(SUB_TH_ONLY.includes(sub)&&n!=='태국') sub='hero';
   const g=document.getElementById('admGate'); if(g) g.remove();
   document.body.style.overflow='';
-  tab='site'; drawTabs(); window.scrollTo(0,0);
+  drawTabs(); window.scrollTo(0,0);
 }
+/* 예약요청·견적 기록도 고른 나라 것만(사장님 2026-11-24) — 나라는 담긴 지역으로 정한다.
+   지역이 하나도 없으면 첫 나라(태국). 두 나라가 섞인 건은 양쪽 모두에 보인다 */
+function regsCty(regs){
+  const s=new Set(regs.map(r=>String(r||'').trim()).filter(Boolean).map(r=>ctyOfRegion(r)));
+  if(!s.size) s.add(ctyAll()[0].n);
+  return s;
+}
+function bookCty(b){ const qt=(b&&b.quote)||{};
+  return regsCty([].concat((b&&b.items||[]).map(i=>i&&i.region),(qt.days||[]).map(d=>d&&d.region))); }
+/* 견적 기록 — days[].region, 없으면 route 「방콕 2박 → 파타야 1박」에서 지역 이름 */
+function quoteCty(r){
+  let regs=((r&&r.days)||[]).map(d=>d&&d.region).filter(Boolean);
+  if(!regs.length) regs=String((r&&r.route)||'').split('→').map(t=>t.trim().replace(/\s*\d+박.*$/,''));
+  return regsCty(regs);
+}
+const inMyCty=set=>!admCtyOk()||set.has(ADM_CTY);
 function openAdmGate(){
   if(ctyAll().length<2) return;
   let g=document.getElementById('admGate');
