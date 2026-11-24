@@ -175,7 +175,8 @@ tr.subrow td{padding:0 6px 11px}
 .rdhd>span{font-weight:800;color:var(--ink)}
 .rrow input,.rrow select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
-.rrow input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
+.rrow input[type=number],.rrow input.money{text-align:right;font-variant-numeric:tabular-nums}
+input.money{text-align:right;font-variant-numeric:tabular-nums}
 /* 메뉴·내용 칸은 글이 길면 줄을 바꿔 다 보이게(사장님 2026-10-17 「메뉴를 한눈에」) — 엔터로 줄바꿈은 안 들어간다 */
 .rrow textarea.mta{padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:#fff;width:100%;
   resize:none;overflow:hidden;line-height:1.4;field-sizing:content;min-height:28px;display:block}
@@ -272,15 +273,15 @@ tr.subrow td{padding:0 6px 11px}
 .rmrate select[data-rmf=sur]{background:#2E7D4F;border-color:#2E7D4F;color:#fff;font-weight:800}
 .rmrate select[data-rmf=sur] option{background:#fff;color:#222;font-weight:400}
 .rmrate .rmgrid>span{color:#1F5C39}
-.rmgrid{display:grid;grid-template-columns:44px repeat(5,72px);gap:4px 5px;align-items:center}
-.rmgrid.nolbl{grid-template-columns:repeat(5,72px)}
+.rmgrid{display:grid;grid-template-columns:44px repeat(5,84px);gap:4px 5px;align-items:center}   /* 84 = 「12,500,000」 동 금액이 다 보이게(1124) */
+.rmgrid.nolbl{grid-template-columns:repeat(5,84px)}
 .rmgrid>span{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap}
 .rmhd .rmgrid>span{text-align:center}
 /* 써차지(특별일 추가요금) 줄은 눈에 띄게 — 기본요금과 헷갈리면 값이 두 배로 나간다 */
 .rmrate.sur{background:#FDE3E1;border-left-color:#D32F2F}
 .rmrate.sur select[data-rmf=sur]{background:#D32F2F;border-color:#D32F2F}
 .rmrate.sur .rmgrid>span{color:#B71C1C}
-.rmrate.sur input[type=number]{border-color:#E57373}
+.rmrate.sur input[type=number],.rmrate.sur input.money{border-color:#E57373}
 .rmhd{font-size:10.5px;font-weight:800;color:var(--muted);padding:0 6px 0 13px}
 .rmrate input,.rmrate select{padding:5px 6px;font-size:12px;border:1px solid var(--line);
   border-radius:6px;background:#fff;width:100%}
@@ -3082,6 +3083,24 @@ function periodSelHTML(r){
     +(list.length?'<option value="__del">－ 목록에서 지우기…</option>':'')
     +'</select>';
 }
+/* ── 금액 칸 3자리 쉼표(사장님 2026-11-24 — 베트남 동은 자릿수가 많다, 태국·베트남·호텔 공통) ──
+   화면 칸에만 쉼표를 찍고, 저장 값은 쉼표 없는 숫자 그대로(numOf). 숫자 아닌 글자는 받지 않는다 */
+function moneyFmt(v){
+  const s=String(v==null?'':v).replace(/[^\d.]/g,''); if(s==='') return '';
+  const [a,b]=s.split('.');
+  return a.replace(/^0+(?=\d)/,'').replace(/\B(?=(\d{3})+(?!\d))/g,',')+(b!=null?'.'+b:'');
+}
+function numOf(v){ const s=String(v==null?'':v).replace(/[^\d.]/g,''); if(s==='') return ''; const n=Number(s); return isFinite(n)?n:''; }
+/* 칠 때마다 쉼표를 다시 찍고, 커서는 «앞에 있던 숫자 개수» 자리로 돌려놓는다. 각 칸의 저장 처리(input)보다 먼저 돈다(capture) */
+document.addEventListener('input',e=>{
+  const el=e.target; if(!el||!el.classList||!el.classList.contains('money')) return;
+  const pos=el.selectionStart||0, digitsBefore=el.value.slice(0,pos).replace(/[^\d.]/g,'').length;
+  const f=moneyFmt(el.value);
+  if(f===el.value) return;
+  el.value=f;
+  let i=0, seen=0; while(i<f.length&&seen<digitsBefore){ if(/[\d.]/.test(f[i])) seen++; i++; }
+  try{ el.setSelectionRange(i,i); }catch(err){}
+},true);
 function rateRowHTML(k,idx,r){
   const n=v=>(v===''||v==null)?'':v;
   const sel=(cur,list)=>list.map(v=>'<option'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
@@ -3095,8 +3114,8 @@ function rateRowHTML(k,idx,r){
       +'</div></div>'
     +'<select data-rf="part">'+sel(normPart(r.part),RATE_PARTS)+'</select>'
     +'<select data-rf="time">'+sel(r.time||'종일',RATE_TIMES)+'</select>'
-    +'<input type="number" data-rf="p18" value="'+esc(n(r.p18))+'" placeholder="18홀" min="0">'
-    +'<input type="number" data-rf="p9" value="'+esc(n(r.p9))+'" placeholder="9홀" min="0">'
+    +'<input type="text" inputmode="numeric" class="money" data-rf="p18" value="'+esc(moneyFmt(n(r.p18)))+'" placeholder="18홀">'
+    +'<input type="text" inputmode="numeric" class="money" data-rf="p9" value="'+esc(moneyFmt(n(r.p9)))+'" placeholder="9홀">'
     +'<button type="button" class="rdel" title="이 줄 지우기">✕</button>'
     +'</div>';
 }
@@ -3122,7 +3141,7 @@ function menuRowHTML(idx,m,vt,last){
       +'<span class="rtil">~</span>'
       +'<input type="date" data-rf="to" value="'+esc(n(m.to))+'" title="적용 끝 (비우면 늘)">'
     +'</div>'
-    +'<input type="number" data-rf="p" value="'+esc(n(m.p))+'" placeholder="밧" min="0">'
+    +'<input type="text" inputmode="numeric" class="money" data-rf="p" value="'+esc(moneyFmt(n(m.p)))+'" placeholder="금액">'
     +(vt?'<label class="mtip" title="체크한 줄만 공항 미팅 아따비(1인당)가 탑승 인원수만큼 붙습니다 — 출발이 공항인 줄은 저절로 체크"><input type="checkbox" data-rf="tip"'+(tipOf(m)?' checked':'')+'></label>':'')
     +'<span class="rmv"><button type="button" data-rmv="-1" title="위로"'+(idx===0?' disabled':'')+'>▲</button>'
       +'<button type="button" data-rmv="1" title="아래로"'+(idx===last?' disabled':'')+'>▼</button></span>'
@@ -3268,7 +3287,7 @@ document.getElementById('pane').addEventListener('input',e=>{
   const o=ensureRateHome(k,item);
   const r=(isMenuKind(k)?o.menu:o.rates)[Number(row.dataset.ri)]; if(!r) return;
   r[f]=(f==='tip') ? e.target.checked
-     : (f==='p18'||f==='p9'||f==='p') ? (e.target.value===''?'':Number(e.target.value)) : e.target.value;
+     : (f==='p18'||f==='p9'||f==='p') ? numOf(e.target.value) : e.target.value;
   if(f==='from'||f==='to'){
     if(isMenuKind(k)){ const dbox=e.target.closest('.rdate'); if(dbox) dbox.classList.toggle('mprom',!!(r.from||r.to)); }
     else rememberPeriod(r.from,r.to);
@@ -3458,7 +3477,7 @@ function roomRateHTML(r,j,pr,weOn){
       const f=rmField(c[0],we);
       let v=n(r[f]);
       if(v===''&&!sur&&rmBlank(r,c[0])) v=rmOldVal(pr,c[0]);
-      return '<input type="number" data-rmf="'+f+'" value="'+esc(v)+'" min="0" title="'+esc(c[1]+' · '+(we?'주말·휴일':'주중')+' — '+c[2])+'">';
+      return '<input type="text" inputmode="numeric" class="money" data-rmf="'+f+'" value="'+esc(moneyFmt(v))+'" title="'+esc(c[1]+' · '+(we?'주말·휴일':'주중')+' — '+c[2])+'">';
     }).join('');
   return '<div class="rmrate'+(sur?' sur':'')+'" data-ri="'+j+'">'
     +'<div class="rper">'+periodSelHTML(r)
@@ -3584,8 +3603,8 @@ function hotelRulesHTML(x){
     +'<div class="rminc hrule"><label>갈라디너 (1인)</label><div class="hlist">'
       +gs.map((g,q)=>'<div class="hrow" data-hk="galas" data-hq="'+q+'">'
         +'<input type="date" data-hf="date" value="'+v(g.date)+'" title="이 날 밤을 묵으면 의무 포함">'
-        +'<span>성인</span><input type="number" data-hf="ad" min="0" value="'+v(g.ad)+'" class="hnum">'
-        +'<span>아동</span><input type="number" data-hf="ch" min="0" value="'+v(g.ch)+'" class="hnum"><span>밧</span>'
+        +'<span>성인</span><input type="text" inputmode="numeric" data-hf="ad" value="'+esc(moneyFmt(v(g.ad)))+'" class="hnum money">'
+        +'<span>아동</span><input type="text" inputmode="numeric" data-hf="ch" value="'+esc(moneyFmt(v(g.ch)))+'" class="hnum money"><span>'+(curUnit(x)==='동'?'동':'밧')+'</span>'
         +'<button type="button" class="hdel" title="지우기">✕</button></div>').join('')
       +'<button type="button" class="hadd" data-hk="galas" title="갈라디너 날짜 추가">＋</button></div></div>';
 }
@@ -3594,7 +3613,7 @@ document.getElementById('pane').addEventListener('input',e=>{
   const cell=e.target.closest('.rcell'), row=e.target.closest('.hrow'); if(!cell||!row) return;
   const x=hotelByName(cell.dataset.rn); if(!x) return;
   const it=(ensureRateHome('hotels',x)[row.dataset.hk]||[])[Number(row.dataset.hq)]; if(!it) return;
-  it[f]=e.target.type==='number'?(e.target.value===''?'':Number(e.target.value)):e.target.value;
+  it[f]=(e.target.type==='number'||e.target.classList.contains('money'))?numOf(e.target.value):e.target.value;
   markDirty('rates');
 });
 document.getElementById('pane').addEventListener('click',e=>{
@@ -3691,7 +3710,7 @@ document.getElementById('pane').addEventListener('input',e=>{
   materializeExtras(pr);
   /* 이 줄을 써차지로 돌리는 참이면 방금 옮겨 적힌 값은 도로 비운다 — 써차지 줄에 들어가면 기본값 위에 또 더해진다 */
   if(f==='sur'&&e.target.value==='1') wasBlank.forEach(p=>{ r[rmField(p,false)]=''; r[rmField(p,true)]=''; });
-  r[f]=RM_NUM[f] ? (e.target.value===''?'':Number(e.target.value))
+  r[f]=RM_NUM[f] ? numOf(e.target.value)
      : (f==='sur')          ? (e.target.value==='1')
      : e.target.value;
   if(f==='sur'){ const m=/^n(\d+)$/.exec(e.target.value); if(m) r.minN=Number(m[1]); else delete r.minN; }
