@@ -1492,6 +1492,12 @@ function country(){
   if(!countries().some(c => c.n === curCountry)) curCountry = countries()[0].n;
   return curCountry;
 }
+/* 지금 나라의 첫 화면 — 첫 나라(태국)는 SITE.hero, 다른 나라는 관리 화면에서 따로 넣은 SITE["hero_베트남"](없으면 태국 것) */
+function heroNow(){
+  const n = country();
+  const own = n !== countries()[0].n ? SITE["hero_" + n] : null;
+  return (own && typeof own === "object") ? own : (SITE.hero || {});
+}
 /* 나라를 바꾼다 — 화면 전체를 그 나라 것으로 다시 그린다. r 을 주면 그 지역 목록으로 바로 들어간다 */
 function setCountry(n, r, stay){
   curCountry = n;
@@ -1501,6 +1507,7 @@ function setCountry(n, r, stay){
   if(r && !Object.keys(curRegs).length && catList().length) CTY_NOTE = r + " 상품은 준비 중입니다.";
   if(!catList().some(c => c.k === curCat && (!r || curRegs[c.k] === r)))
     curCat = ((r && catList().filter(c => curRegs[c.k] === r)[0]) || catList()[0] || {}).k || "courses";
+  applyTheme(); drawHero();   // 첫 화면은 나라별(2026-11-24)
   drawCtyNav(); drawSectors(); drawCatPick(); drawHeads(); drawCatalog(); drawFx();
   try{ history.replaceState(null, "", "#" + curCat); }catch(e){}
   const sec = document.getElementById("catalog");
@@ -1810,7 +1817,7 @@ function drawContact(){
 }
 /* 첫 화면 — title의 *별표*는 금색 강조, 줄바꿈은 그대로 살린다 */
 function drawHero(){
-  const h = SITE.hero || {};
+  const h = heroNow();
   const title = esc(h.title || "")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
@@ -2024,7 +2031,7 @@ function applyTheme(){
   r.setProperty("--marigold", p.c);
   r.setProperty("--marigold-hi", p.hi);
   /* 「직접 고르기」로 찍은 색 하나(hero.bgHex)면 그 색을 가운데 두고 어둡게→밝게 흐르는 그라데이션을 만든다 */
-  const hh = SITE.hero || {};
+  const hh = heroNow();
   const bg = (hh.bg === "custom" && /^#[0-9a-fA-F]{6}$/.test(hh.bgHex || ""))
     ? { a: shade(hh.bgHex, -0.35), b: hh.bgHex, c: shade(hh.bgHex, 0.28), bar: shade(hh.bgHex, -0.58) }
     : (HERO_BG[hh.bg] || HERO_BG.fresh);
