@@ -3362,15 +3362,45 @@ async function inqLoad(){
   if(j && j.ok) INQ_LIST = j.list || [];
   inqBadge();
 }
+/* 새 답변 자동으로(사장님 2026-11-24 「리로드해야 들어온다」) — 20초마다 내 문의를 다시 받아 빨간 숫자를 맞춘다.
+   창이 열려 있으면: 목록은 다시 그리고, 보고 있는 문의에 새 글이 오면 대화만 다시 그린다(적던 답장·첨부는 그대로).
+   작성 칸(새 문의)은 건드리지 않고 「📂 내 문의」 숫자만. 화면이 가려져 있으면 묻지 않는다 */
+const inqSig = L => (L || []).map(q => q.no + ":" + q.msgs.length + ":" + q.status + ":" + (+q.agencyUnread || 0)).join("|");
+let inqPolling = false;
+setInterval(async () => {
+  if(inqPolling || document.hidden || !(agency && agency.approved)) return;
+  inqPolling = true;
+  try{
+    const before = inqSig(INQ_LIST);
+    await inqLoad();
+    if(inqSig(INQ_LIST) === before || !$("#inqMask").classList.contains("on")) return;
+    if(INQ_CUR === "new"){ inqBackLabel(); return; }
+    const ta = $("#inqText"), keep = ta ? ta.value : "", focused = ta && document.activeElement === ta;
+    inqDraw();
+    const t2 = $("#inqText");
+    if(t2 && keep){ t2.value = keep; if(focused) t2.focus(); }
+  }catch(e){}
+  finally{ inqPolling = false; }
+}, 20000);
 function inqOpen(){
   if(!agency){ agOpen("login"); return; }
   if(!agency.approved){ agOpen("status"); return; }
   $("#inqMask").classList.add("on");
   /* 열면 바로 «새 견적문의» 작성 칸(사장님 2026-11-24). 보낸 문의·답변은 「← 내 문의」로 */
-  INQ_CUR = "new"; INQ_FILES = []; inqDraw();
-  /* 목록을 받아 와도 작성 칸은 다시 그리지 않는다 — 적던 글이 지워지지 않게. 「내 문의」 단추 숫자만 */
-  inqLoad().then(() => { if(!$("#inqMask").classList.contains("on")) return; if(INQ_CUR === "new") inqBackLabel(); else if(!INQ_CUR) inqDraw(); });
+  /* 새 답변이 있으면 목록을 건너뛰고 바로 그 문의 대화로(사장님 2026-11-24), 없으면 새 문의 작성 칸 */
+  INQ_FILES = [];
+  INQ_CUR = inqUnreadNo() || "new"; inqDraw();
+  /* 목록을 받아 와도 작성 칸은 다시 그리지 않는다 — 적던 글이 지워지지 않게. 「내 문의」 단추 숫자만.
+     다만 아직 아무것도 안 적었는데 새 답변이 확인되면 그 대화로 넘어간다 */
+  inqLoad().then(() => {
+    if(!$("#inqMask").classList.contains("on")) return;
+    const un = inqUnreadNo(), ta = $("#inqText");
+    if(INQ_CUR === "new" && un && !(ta && ta.value.trim()) && !INQ_FILES.length){ INQ_CUR = un; inqDraw(); return; }
+    if(INQ_CUR === "new") inqBackLabel(); else if(!INQ_CUR) inqDraw();
+  });
 }
+/* 새 답변이 있는 문의 중 가장 최근 것 — 목록은 최근 글 차례로 온다 */
+function inqUnreadNo(){ const q = (INQ_LIST || []).find(x => +x.agencyUnread > 0); return q ? q.no : ""; }
 function inqBackLabel(){
   const b = $("#inqBack"), L = INQ_LIST || [];
   if(INQ_CUR === "new") b.textContent = "📂 내 문의" + (L.length ? " " + L.length : "") + (INQ_UN ? " · 새 답변 " + INQ_UN : "");
@@ -3379,7 +3409,8 @@ function inqBackLabel(){
 }
 function inqClose(){ $("#inqMask").classList.remove("on"); INQ_FILES = []; }
 $("#inqClose").onclick = inqClose;
-$("#inqBack").onclick = () => { INQ_CUR = ""; INQ_FILES = []; inqDraw(); };
+/* 「📂 내 문의」 — 새 답변이 있으면 바로 그 대화, 없으면 목록. 대화에서 「← 목록」은 목록으로 */
+$("#inqBack").onclick = () => { INQ_FILES = []; INQ_CUR = (INQ_CUR === "new" && inqUnreadNo()) || ""; inqDraw(); };
 const inqWhen = iso => { const d = new Date(iso); if(isNaN(d)) return ""; const p = n => String(n).padStart(2, "0");
   return (d.getMonth() + 1) + "/" + d.getDate() + " " + p(d.getHours()) + ":" + p(d.getMinutes()); };
 const INQ_ST = { new:["접수","new"], done:["완료","done"], cancel:["종료","done"] };
