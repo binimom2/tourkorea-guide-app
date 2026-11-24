@@ -3395,7 +3395,9 @@ function inqDraw(){
   if(INQ_CUR === "new"){
     $("#inqBack").hidden = false;
     body.innerHTML = '<p style="margin:0 0 4px;font-weight:800;color:#13507A">새 견적문의</p>'
-      + '<p class="ihint" style="margin:0">일정·인원·지역·원하시는 골프장/호텔 등을 자유롭게 적어 주세요. 일정표·명단 파일을 첨부하셔도 됩니다.</p>';
+      /* 안내 문구 — 빨강, 기본(12px)보다 2 크게(사장님 2026-11-24) */
+      + '<p style="margin:0;color:#D32F2F;font-size:14px;font-weight:700;line-height:1.6">필수입력: 출발일자, 지역, 인원수<br>'
+      + '추가사항: 원하시는 호텔, 골프장 또는 급수를 적어주세요<br>일정표를 첨부해 주셔도 됩니다.</p>';
     inqFormDraw(false);
     return;
   }
