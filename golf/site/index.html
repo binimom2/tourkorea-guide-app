@@ -1954,6 +1954,8 @@ const SECTOR_MAX = 11;   // 1:1 견적문의 칸이 늘어 10 → 11(종류 칸 
    #contact 처럼 # 으로 시작하면 옛날처럼 그 자리로 스크롤한다. /golf/ 는 로그인이 있어야 열린다. */
 function quoteHref(){ return ((SITE.sector || {}).quoteHref || "").trim() || "/golf/?embed=site"; }   /* embed=site: 계산기가 팝업용으로 단추를 감춘다 */
 function goQuote(){
+  /* 실시간 견적은 태국에서만(2026-11-24) — 베트남에서 문구 속 링크 등으로 눌러도 견적기 대신 1:1 견적문의로 */
+  if(country() !== "태국"){ inqOpen(); return; }
   const go = quoteHref();
   if(go.charAt(0) === "#"){ const el = document.querySelector(go); if(el) el.scrollIntoView({ behavior:"smooth" }); }
   else openQuoteModal(go);
@@ -1996,8 +1998,9 @@ function drawSectors(){
     items.splice(pos, 0, { ic: tc.ic || sc.toursIc || "🚌", t: tc.t || sc.toursT || "기타투어", go:"#tours" });
   }
   /* 「실시간 견적」은 손님이 제일 눌러 주셨으면 하는 칸이라 «맨 앞»에 금색으로 도드라지게 둔다(사장님 2026-09-11, 전에는 맨 뒤) */
-  items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true },
-                { ic: "", t: "1:1 견적문의", go:"inq", inq:true });   // 실시간 견적 바로 옆(사장님 2026-11-24)
+  /* 실시간 견적은 태국에서만(사장님 2026-11-24 「베트남은 일단 닫기」 — 견적기가 베트남 요금을 아직 안 읽는다). 1:1 견적문의는 두 나라 다 */
+  items.unshift({ ic: "", t: "1:1 견적문의", go:"inq", inq:true });
+  if(country() === "태국") items.unshift({ ic: sc.quoteIc || "⚡", t: sc.quoteT || "실시간 견적", go:"quote", hot:true });
   /* 종류 칸은 감싸는 칸(.secw) 안에 넣고 아래에 지역 하위메뉴(.secdd)를 붙인다(사장님 2026-09-17).
      패스트트랙(종류 이름으로 잡는다 — 키가 자동번호라서)은 지역 대신 「별도문의」. 실시간 견적 칸은 그대로. */
   const isAsk = t => /패스트트랙/.test(String(t || ""));
