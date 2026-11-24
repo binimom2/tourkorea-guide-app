@@ -1481,6 +1481,9 @@ function countries(){
 function countryOf(n){ return countries().filter(c => c.n === n)[0] || countries()[0]; }
 function countryOfRegion(r){
   const hit = countries().filter(c => (c.rs || []).indexOf(String(r || "").trim()) >= 0)[0];
+  /* 목록에 안 적은 지역이라도 베트남 지명이면 베트남(사장님 2026-11-24 「남호이안」) — 관리 화면·서버와 같은 목록 */
+  if(!hit && /다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|베트남/.test(String(r || ""))
+     && countries().some(c => c.n === "베트남")) return "베트남";
   return (hit || countries()[0]).n;
 }
 let curCountry = "";

@@ -132,7 +132,11 @@ async function cashBuyRate(env) {
 const VN_REGIONS_DEFAULT = ['다낭', '나트랑', '푸꾸옥', '하노이'];
 const VN_NUM_KEYS = ['p18', 'p9', 'margin', 'wd', 'we', 'sgWd', 'sgWe', 'eaWd', 'eaWe', 'ecWd', 'ecWe', 'cbWd', 'cbWe',
   'extraAdult', 'extraChild', 'extraPax', 'extraBed', 'ad', 'ch', 'p'];
-let memVnRegions = null, memVnFx = null;
+let memVnRegions = null, memVnFx = null, memAllRegions = [];
+/* 나라별 지역 목록에 안 적은 지역인데 이름이 베트남 지명이면 베트남으로 본다(사장님 2026-11-24 「남호이안」이 태국에 섞이던 것).
+   사이트·관리 화면(VN_HINT)과 같은 목록 — 고치면 세 곳 같이 */
+const VN_HINT = /다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|베트남/;
+const isVnRegion = (r, regs) => { const s = String(r || '').trim(); return regs.includes(s) || (!memAllRegions.includes(s) && VN_HINT.test(s)); };
 async function vnRegions(env) {
   const sr = env && env.SUPABASE_SERVICE_ROLE_KEY;
   try {
@@ -143,6 +147,7 @@ async function vnRegions(env) {
     const list = rows && rows[0] && rows[0].c;
     const vn = Array.isArray(list) ? list.find((c) => c && c.n === '베트남') : null;
     memVnRegions = (vn && Array.isArray(vn.rs)) ? vn.rs.map((s) => String(s || '').trim()).filter(Boolean) : VN_REGIONS_DEFAULT;
+    memAllRegions = (Array.isArray(list) ? list : []).reduce((a, c) => a.concat((c && Array.isArray(c.rs)) ? c.rs.map((s) => String(s || '').trim()) : []), []);
   } catch (e) {
     if (!memVnRegions) memVnRegions = VN_REGIONS_DEFAULT;
   }
@@ -178,7 +183,7 @@ function vnScale(o, f) {
 async function vnConvert(P, fx, env) {
   if (!P || !P.regions) return P;
   const regs = await vnRegions(env);
-  const hit = Object.keys(P.regions).filter((r) => regs.includes(String(r).trim()));
+  const hit = Object.keys(P.regions).filter((r) => isVnRegion(r, regs));
   if (!hit.length) return P;
   const Q = Object.assign({}, P, { regions: Object.assign({}, P.regions) });
   const vf = await vndRate();

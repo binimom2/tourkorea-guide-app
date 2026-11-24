@@ -2251,7 +2251,11 @@ const iRegion={}, iOpen={};
    iCountry: 표에서 지금 보고 있는 나라(종류 공통). 보기만 바뀌고 저장 내용은 그대로 */
 let iCountry='';
 function ctyAll(){ const c=(S.countries||[]).filter(x=>x&&x.n); return c.length?c:[{n:'태국',rs:S.regionOrder||[]}]; }
-function ctyOfRegion(r){ const hit=ctyAll().filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0]; return (hit||ctyAll()[0]).n; }
+/* 목록에 안 적은 지역이라도 베트남 지명이면 베트남(사장님 2026-11-24 「남호이안」이 태국에 섞이던 것) — 손님 사이트·서버 golf-price.js와 같은 목록 */
+const VN_HINT=/다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|베트남/;
+function ctyOfRegion(r){ const hit=ctyAll().filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0];
+  if(!hit&&VN_HINT.test(String(r||''))&&ctyAll().some(c=>c.n==='베트남')) return '베트남';
+  return (hit||ctyAll()[0]).n; }
 function ctyCur(){ if(!ctyAll().some(c=>c.n===iCountry)) iCountry=ctyAll()[0].n; return iCountry; }
 /* 베트남 상품은 요금을 동(VND)으로 적는다 — 서버(golf-price.js vnConvert)가 동 환율로 원화를 낸다(사장님 2026-11-18).
    마진은 따로 안 적으면 태국과 같은 원화 금액(200밧 상당)이 붙는다. 마진 칸에 적으면 그 값도 동 */
