@@ -2298,7 +2298,8 @@ function heroKey(){ const n=admCtyOk()?ADM_CTY:ctyAll()[0].n; return n===ctyAll(
 function pickAdmCty(n){
   ADM_CTY=n; try{ sessionStorage.setItem('tk-adm-cty',n); }catch(e){}
   if(iCountry!==n){ iCountry=n; Object.keys(iRegion).forEach(x=>iRegion[x]=''); }
-  if(SUB_TH_ONLY.includes(sub)&&n!=='태국') sub='hero';
+  /* 나라를 고르면 맨 앞 칸인 그 나라 첫 종류(골프장)로 들어간다 */
+  if(sub==='hero'||(SUB_TH_ONLY.includes(sub)&&n!=='태국')){ const f=subGroupItems(subs(),n)[0]; sub=f?f.k:'hero'; }
   const g=document.getElementById('admGate'); if(g) g.remove();
   document.body.style.overflow='';
   drawTabs(); window.scrollTo(0,0);
@@ -2518,8 +2519,9 @@ function subGroup(){
 }
 function subTreeHTML(SUB){
   const g=subGroup();
-  const groups=[['hero',admCtyOk()?ADM_CTY+' 첫 화면':'첫 화면']].concat([['공통','공통']])
-    .concat(ctyAll().filter(c=>!admCtyOk()||c.n===ADM_CTY).map(c=>[c.n,c.n]));
+  /* 차례: 나라 → 공통 → 그 나라 첫 화면 (사장님 2026-11-24) */
+  const groups=ctyAll().filter(c=>!admCtyOk()||c.n===ADM_CTY).map(c=>[c.n,c.n])
+    .concat([['공통','공통']]).concat([['hero',admCtyOk()?ADM_CTY+' 첫 화면':'첫 화면']]);
   const kids=subGroupItems(SUB,g);
   return '<div class="subtabs subtree'+(kids.length?'':' last')+'">'
       +groups.map(([k,t])=>'<button data-g="'+esc(k)+'" class="stgrp'+(k===g?' on':'')+'">'+esc(t)+'</button>').join('')
