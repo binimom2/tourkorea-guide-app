@@ -3954,6 +3954,9 @@ function itemBodyHTML(k){
         +(k==='hotels' ? roomCell(o.x,o.i)
           : '<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
             +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
+            /* 패키지 「여행 일정」(사장님 2026-11-25) — 적으면 손님 상세 사진 아래 날짜별 카드로 나온다 */
+            +(k!=='courses'?'<div class="iecell pcell"><b>여행 일정 <span class="rhint">패키지만 — 「1일 · 방콕 → 파타야」로 날을 시작, 그 아래 한 줄에 일정 하나 · 「호텔: …」「식사: …」 · 맨 끝 「※ …」는 작은 글씨 · 비우면 안 나옵니다</span></b>'
+              +ta(p+'.plan',o.x.plan||'','1일 · 방콕 → 파타야\n출발지 국제공항 출발\n방콕 수완나품 국제공항 도착\n호텔: 어메이징 풀빌라\n식사: 석 불포함','big')+'</div>':'')
             +(k==='courses'?closedCell(o.i,o.x):'')
             +priceCell(k,o.x))
         /* 바우처(예약 확정서) 머리에 찍히는 업체 주소·전화 — 2026-11-18부터 손님 상세 「안내사항」 아래에도 나온다(사장님) */
