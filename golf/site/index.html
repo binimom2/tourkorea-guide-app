@@ -2259,7 +2259,9 @@ function ro(w){
 /* 「**글자**」로 감싼 부분만 진한 검은색 — 한 줄 안에서 일부만 강조할 때(사장님 2026-09-17). 별표는 화면에 안 나온다 */
 /* 전각 글자(「２」「～」「：」 — 한글 입력기 전각 모드)는 보통 폭으로 바꿔 보여 준다. 물결이 크고 칸이 안 맞던 것(사장님 2026-10-16) */
 function halfW(s){ return String(s == null ? "" : s).replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/　/g, " "); }
-function noteLine(s){ return String(noteLine0(halfW(s))).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'); }
+function noteLine(s){ return bangParen(String(noteLine0(halfW(s))).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>')); }
+/* 줄 중간의 「!(…)」 = 괄호 부분만 강조, ! 는 안 보인다 — 「+2만원/18홀 !(공휴일: …)」(사장님 1125) */
+function bangParen(h){ return String(h).replace(/[!！]\s*(\([^)]*\)|（[^）]*）)/g, '<b class="nstrong">$1</b>'); }
 function noteLine0(s){
   /* 줄 맨 앞에 「!」를 붙이면 그 줄 전체를 진한 검은색으로 세운다 — 「!매주 월요일 휴장」(사장님 2026-09-17). ! 는 화면에 안 나온다 */
   /* 앞말이 없는 줄은 통째로 .nv(뒷말 칸)에 담는다 — li가 flex라서 글자와 <b>가 따로 놀며 「매주 월요일 휴/장」처럼 잘렸다(사장님 2026-09-17) */
@@ -2413,7 +2415,7 @@ function openDetail(x, kind){
   /* 포함·불포함 강조(사장님 1125) — 「**글자**」는 그 부분만, 줄 맨 앞 「!」는 그 줄 전체를 빨간 굵은 글씨로 */
   const emph = t => String(t).split("\n").map(l => /^\s*[!！]/.test(l)
       ? '<b class="nstrong">' + esc(l.replace(/^\s*[!！]\s*/, "")) + '</b>'
-      : esc(l).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>')).join("\n");
+      : bangParen(esc(l).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'))).join("\n");
   $("#dInc").innerHTML = kind === "hotels" ? "" : emph((x.inc || "").trim() || dft.inc || "");
   $("#dExc").innerHTML = kind === "hotels" ? "" : emph((x.exc || "").trim() || dft.exc || "");
   /* 적을 것이 없으면 그 상자는 아예 감춘다 — 빈 칸이 남으면 빠뜨린 것처럼 보인다 */
