@@ -3143,7 +3143,7 @@ function renderCostTable(){
   // 원본 순번(idx)을 함께 들고 다녀야 필터 중에도 수정/삭제가 올바른 행에 적용됨
   let rows=getCostRows(costTab).map((r,idx)=>({r,idx}));
   if(region) rows=rows.filter(x=>(x.r.region||'').toLowerCase().includes(region));
-  if(q) rows=rows.filter(x=>[(x.r.name||''),(x.r.nameKr||''),(x.r.region||''),(x.r.season||''),(x.r.dateFrom||''),(x.r.dateTo||''),(x.r.remark||'')].join(' ').toLowerCase().includes(q));
+  if(q) rows=rows.filter(x=>costMatchQuery([(x.r.name||''),(x.r.nameKr||''),(x.r.region||''),(x.r.season||''),(x.r.dateFrom||''),(x.r.dateTo||''),(x.r.remark||'')].join(' '), q));
   const body=document.getElementById('costTableBody');
   if(!rows.length){ body.innerHTML=`<tr class="empty-row"><td colspan="${cols.length+1}">등록된 항목이 없습니다</td></tr>`; return; }
   body.innerHTML=rows.map(({r,idx})=>`<tr>${cols.map(c=>`<td${(c.compute&&!c.plain)?' class="cost-sum-col"':''}>${escapeHtml(fmtCostCell(r,c))}</td>`).join('')}
@@ -3286,8 +3286,10 @@ function remarkColorBar(id){
 function costMatchQuery(hay,q){
   const terms=String(q||'').split(',').map(s=>s.trim()).filter(Boolean);
   if(!terms.length) return true;
-  const h=String(hay||'').toLowerCase();
-  return terms.some(t=>h.includes(t));
+  // 띄어쓰기 무시(사장님 2026-11-25) — 「시암베이」로 「시암 베이쇼어 리조트」가 나오게
+  const ns=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
+  const h=ns(hay);
+  return terms.some(t=>{ const tt=ns(t); return !tt||h.includes(tt); });
 }
 // 표 아래 '최종 업데이트' 시각 — Supabase의 updated_at을 읽어 현지시간으로 표시
 async function showCostUpdated(){
