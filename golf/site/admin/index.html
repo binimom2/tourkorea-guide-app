@@ -2352,7 +2352,11 @@ const iRegion={}, iOpen={};
 let iCountry='';
 function ctyAll(){ const c=((S&&S.countries)||[]).filter(x=>x&&x.n); return c.length?c:[{n:'태국',rs:(S&&S.regionOrder)||[]}]; }
 /* 베트남 지역 차례(사장님 2026-11-25) — 옛 기본값이 그대로면 새 차례로 바꿔 둔다(손님 사이트 vnOrderFix와 같은 규칙). 저장하면 굳는다 */
-function vnOrderFixAdm(){ (S&&S.countries||[]).forEach(x=>{ if(x&&x.n==='베트남'&&(x.rs||[]).join(',')==='다낭,나트랑,푸꾸옥,하노이'){ x.rs=['다낭','호이안','후에','나트랑','푸꾸옥','하노이']; } }); }
+function vnOrderFixAdm(){ (S&&S.countries||[]).forEach(x=>{ if(x&&x.n==='베트남'&&(x.rs||[]).join(',')==='다낭,나트랑,푸꾸옥,하노이'){ x.rs=['다낭','호이안','후에','나트랑','푸꾸옥','하노이']; } });
+  /* 지역 차례(regionOrder)는 나라 공용 한 줄이다 — 베트남 화면에서 「다낭 · 호이안 · 후에」만 남아 태국 지역이 빠진 적이 있다(1125).
+     나라별 지역 차례(태국 → 베트남)를 앞에 두고 원래 적힌 것은 뒤에 붙여 늘 전체가 들어 있게 한다. 다음 저장 때 굳는다 */
+  if(S){ const all=ctyAll().reduce((a,c)=>a.concat(c.rs||[]),[]), cur=S.regionOrder||[];
+    if(all.some(r=>cur.indexOf(r)<0)) S.regionOrder=all.concat(cur).filter((r,i,a)=>r&&a.indexOf(r)===i); } }
 /* 목록에 안 적은 지역이라도 베트남 지명이면 베트남(사장님 2026-11-24 「남호이안」이 태국에 섞이던 것) — 손님 사이트·서버 golf-price.js와 같은 목록 */
 const VN_HINT=/다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|후에|훼|퀴논|꾸이년|사파|닌빈|하이퐁|껀터|베트남/;
 function ctyOfRegion(r){ const hit=ctyAll().filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0];
