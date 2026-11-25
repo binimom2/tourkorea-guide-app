@@ -153,7 +153,10 @@ async function vnRegions(env) {
   }
   return memVnRegions;
 }
-async function vndRate() {
+/* ★ 베트남 고정환율(사장님 2026-11-25): 10만원 = 180만동 → 1동 = 1/18원(100동 ≈ 5.56원). 네이버 환율은 안 쓴다 */
+const VND_FIXED = { rate: 100000 / 1800000, date: '고정환율' };
+async function vndRate() { return VND_FIXED; }
+async function vndRateNaver() {
   try {
     const r = await fetch(NAVER + 'FX_VNDKRW/prices?page=1&pageSize=1', {
       headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },

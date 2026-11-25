@@ -2457,7 +2457,7 @@ function openAdmGate(){
    마진은 따로 안 적으면 태국과 같은 원화 금액(200밧 상당)이 붙는다. 마진 칸에 적으면 그 값도 동 */
 function curUnit(x){ return ctyOfRegion(x&&x.r)==='베트남'?'동':'밧'; }
 function vndTag(x){ return curUnit(x)==='동'
-  ? '<div class="vndtag">베트남 상품 — 금액은 모두 <b>동(VND)</b>으로 적습니다. 손님에게는 동 환율(현찰 살때)로 원화가 보입니다.</div>' : ''; }
+  ? '<div class="vndtag">베트남 상품 — 금액은 모두 <b>동(VND)</b>으로 적습니다. 손님에게는 고정환율(10만원 = 180만동)로 원화가 보입니다.</div>' : ''; }
 /* 새 줄의 기본 지역 — 보고 있는 나라의 첫 지역 */
 function ctyFirstRegion(){ const c=ctyAll().filter(x=>x.n===ctyCur())[0]||{}; return (c.rs||[])[0]||(S.regionOrder&&S.regionOrder[0])||'파타야'; }
 function openSet(k){ return iOpen[k]||(iOpen[k]=new Set()); }
