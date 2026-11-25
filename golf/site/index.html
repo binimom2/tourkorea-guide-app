@@ -854,6 +854,10 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   .navtools{order:10;margin-left:0}
   .loginbtn{padding:7px 12px;font-size:13px;white-space:nowrap}
   .ctyin{order:20;flex:0 0 100%;margin-left:0}   /* 휴대폰: 맨 아래 줄 나라·지역(옆으로 밀어 봄) */
+  /* 아래로 내리면 위 머리(로고·검색·지역)를 접고 메뉴 띠만 남긴다, 위로 올리면 다시 보인다(사장님 2026-11-25 「상단 고정이 너무 커서」) */
+  .nav,.trust.top{transition:transform .22s ease}
+  body.navhide .nav{transform:translateY(-100%)}
+  body.navhide .trust.top{transform:translateY(calc(-1 * var(--navh,150px)))}
 }
 /* PC: 1줄 로고 · 나라·지역 · 로그인 · ♡🛒 · 환율 / 2줄 검색칸 한 줄 통째(사장님 2026-11-18) */
 @media(min-width:641px){
@@ -1948,6 +1952,21 @@ $("#hsNext").onclick = () => hsGo(hsCur + 1);
   set();
   if(window.ResizeObserver){ const ro = new ResizeObserver(set); ro.observe(nav); ro.observe(bar); }
   else window.addEventListener("resize", set);
+})();
+/* 휴대폰 — 아래로 내리면 위 머리를 접고(body.navhide), 위로 조금만 올려도 다시 편다(사장님 2026-11-25).
+   검색칸을 쓰는 중·나라 메뉴가 펼쳐진 중에는 접지 않는다 */
+(function(){
+  let last = window.scrollY || 0;
+  const mq = window.matchMedia("(max-width:640px)");
+  const busy = () => document.activeElement && document.activeElement.id === "navQ"
+    || !!document.querySelector(".ctyw.open") || ($("#navQDrop") && !$("#navQDrop").hidden);
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY || 0, b = document.body;
+    if(!mq.matches || y < 160 || busy()){ b.classList.remove("navhide"); last = y; return; }
+    if(y > last + 8){ b.classList.add("navhide"); last = y; }
+    else if(y < last - 8){ b.classList.remove("navhide"); last = y; }
+  }, { passive:true });
+  mq.addEventListener && mq.addEventListener("change", () => { if(!mq.matches) document.body.classList.remove("navhide"); });
 })();
 /* 휴대폰 — 옆으로 밀어서 넘기기 */
 (function(){
