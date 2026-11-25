@@ -2619,7 +2619,8 @@ function bindSubTree(p){
    S.vndFixed = 한화 100,000원당 동. 비어 있으면 서버(golf-price.js)가 1,800,000동으로 본다 */
 const VND_FIXED_DEFAULT=1800000;
 function vndFixedBar(){
-  if(subGroup()!=='베트남') return '';
+  /* 베트남 줄이거나, 입구에서 베트남을 골라 들어온 관리자면 사이트 내용 어느 줄에서나(첫 화면·공통 포함) 보인다 */
+  if(subGroup()!=='베트남'&&!(admCtyOk()&&ADM_CTY==='베트남')) return '';
   const v=Number(String((S&&S.vndFixed)||'').replace(/,/g,''))||VND_FIXED_DEFAULT;
   return '<div class="vndfx" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#FFF8E6;font-weight:700">'
     +'💱 베트남 고정환율 — 한화 100,000원 = '
