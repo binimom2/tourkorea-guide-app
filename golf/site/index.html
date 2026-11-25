@@ -2153,7 +2153,7 @@ function renderAll(){
 }
 renderAll();
 const pricesP = loadPrices();   // 요금은 화면을 그린 뒤에 붙는다 — 요금 서버가 늦어도 사이트는 먼저 보인다
-loadFx();       // 오른쪽 위 태국환율도 마찬가지 — 늦게 와도 사이트는 이미 보인다
+// loadFx();    // 환율 노출 삭제(사장님 2026-11-25) — 받아 올 필요 없음
 
 /* 관리 화면(admin/)에서 저장한 내용이 있으면 그걸로 다시 그린다.
    손님은 로그인이 없어 못 읽을 수 있다 — 그때는 data.js의 기본값 그대로 간다.
@@ -3614,6 +3614,8 @@ async function loadFx(){
 /* 태국환율·베트남환율을 나란히 늘 띄운다(사장님 2026-11-18). 못 받은 쪽은 빼고, 둘 다 못 받으면 상자를 감춘다 */
 function drawFx(){
   const box = $("#fxBox"); if(!box) return;
+  /* 환율 노출 삭제(사장님 2026-11-25) — 상자를 늘 감춘다. 다시 띄우려면 이 줄만 지우면 된다 */
+  box.hidden = true; return;
   const S_ = fxShow(), n = v => (v == null || !isFinite(v)) ? "" : Number(v).toFixed(2);
   const got = Object.keys(S_).filter(c => FX_GOT && FX_GOT[c]);
   if(!got.length){ box.hidden = true; return; }
