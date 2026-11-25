@@ -2275,8 +2275,11 @@ function noteLine0(s){
 }
 /* 주소(http…)는 눌러서 열리게 — 호텔 홈페이지를 안내사항에 적어 두는 일이 많다 */
 function linkify(s){
-  return esc(s).replace(/(https?:\/\/[^\s<]+)/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  /* 「(https://…/)」처럼 괄호·마침표 안에 적은 주소는 끝의 ) . , 」 를 주소에서 뺀다 — 끝 「)」까지 주소로 잡혀 안 열렸다(사장님 1125 TDAC) */
+  return esc(s).replace(/https?:\/\/[^\s<]+/g, u => {
+    const t = (u.match(/[).,;!?\]」』〉》]+$/) || [""])[0], h = t ? u.slice(0, -t.length) : u;
+    return '<a href="' + h + '" target="_blank" rel="noopener noreferrer">' + h + '</a>' + t;
+  });
 }
 
 /* ══════════ 호텔 객실 ══════════
