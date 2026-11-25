@@ -2457,7 +2457,7 @@ function openAdmGate(){
    마진은 따로 안 적으면 태국과 같은 원화 금액(200밧 상당)이 붙는다. 마진 칸에 적으면 그 값도 동 */
 function curUnit(x){ return ctyOfRegion(x&&x.r)==='베트남'?'동':'밧'; }
 function vndTag(x){ return curUnit(x)==='동'
-  ? '<div class="vndtag">베트남 상품 — 금액은 모두 <b>동(VND)</b>으로 적습니다. 손님에게는 고정환율(10만원 = 180만동)로 원화가 보입니다.</div>' : ''; }
+  ? '<div class="vndtag">베트남 상품 — 금액은 모두 <b>동(VND)</b>으로 적습니다. 손님에게는 위 「베트남 고정환율」로 원화가 보입니다.</div>' : ''; }
 /* 새 줄의 기본 지역 — 보고 있는 나라의 첫 지역 */
 function ctyFirstRegion(){ const c=ctyAll().filter(x=>x.n===ctyCur())[0]||{}; return (c.rs||[])[0]||(S.regionOrder&&S.regionOrder[0])||'파타야'; }
 function openSet(k){ return iOpen[k]||(iOpen[k]=new Set()); }
@@ -2615,6 +2615,17 @@ function bindSubTree(p){
   p.querySelectorAll('.subtree button[data-s]').forEach(b=>b.onclick=()=>{ sub=b.dataset.s; drawSite(); });
   const chg=document.getElementById('admCtyChg'); if(chg) chg.onclick=openAdmGate;
 }
+/* 베트남 고정환율(사장님 2026-11-25) — 베트남 줄에서만 보인다. 직원도 고칠 수 있다(저장 단추로 반영).
+   S.vndFixed = 한화 100,000원당 동. 비어 있으면 서버(golf-price.js)가 1,800,000동으로 본다 */
+const VND_FIXED_DEFAULT=1800000;
+function vndFixedBar(){
+  if(subGroup()!=='베트남') return '';
+  const v=Number(String((S&&S.vndFixed)||'').replace(/,/g,''))||VND_FIXED_DEFAULT;
+  return '<div class="vndfx" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#FFF8E6;font-weight:700">'
+    +'💱 베트남 고정환율 — 한화 100,000원 = '
+    +'<input data-p="vndFixed" type="text" inputmode="numeric" value="'+v.toLocaleString('en-US')+'" style="width:110px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;text-align:right"> 동'
+    +'<span style="font-weight:600;color:var(--muted);font-size:12.5px">저장을 눌러야 손님 요금에 반영됩니다</span></div>';
+}
 function drawSite(){
   const p=document.getElementById('pane'), SUB=subs();
   if(!SUB.some(s=>s.k===sub)) sub='hero';
@@ -2626,7 +2637,7 @@ function drawSite(){
     if(sub==='rates') drawRates(); else drawCodes();
     return;
   }
-  p.innerHTML=subTreeHTML(SUB)+'<div id="subpane"></div>'
+  p.innerHTML=subTreeHTML(SUB)+vndFixedBar()+'<div id="subpane"></div>'
     +'<div class="rowbtns savebar"><button class="save" id="saveSite">저장</button>'
     +'<span class="warn" id="siteDirty"></span>'
     +'<button class="ghost" id="resetSite">기본값으로 되돌리기</button>'

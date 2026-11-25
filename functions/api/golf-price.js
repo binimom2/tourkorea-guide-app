@@ -140,11 +140,12 @@ const isVnRegion = (r, regs) => { const s = String(r || '').trim(); return regs.
 async function vnRegions(env) {
   const sr = env && env.SUPABASE_SERVICE_ROLE_KEY;
   try {
-    const r = await fetch(SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.golf_site&select=c:data->countries',
+    const r = await fetch(SUPABASE_URL + '/rest/v1/guide_data?data_key=eq.golf_site&select=c:data->countries,v:data->vndFixed',
       { headers: { apikey: sr, Authorization: 'Bearer ' + sr }, signal: AbortSignal.timeout(6000) });
     if (!r.ok) throw new Error('countries ' + r.status);
     const rows = await r.json();
     const list = rows && rows[0] && rows[0].c;
+    memVndPer100k = (rows && rows[0] && rows[0].v != null) ? rows[0].v : null;
     const vn = Array.isArray(list) ? list.find((c) => c && c.n === '베트남') : null;
     memVnRegions = (vn && Array.isArray(vn.rs)) ? vn.rs.map((s) => String(s || '').trim()).filter(Boolean) : VN_REGIONS_DEFAULT;
     memAllRegions = (Array.isArray(list) ? list : []).reduce((a, c) => a.concat((c && Array.isArray(c.rs)) ? c.rs.map((s) => String(s || '').trim()) : []), []);
@@ -153,9 +154,15 @@ async function vnRegions(env) {
   }
   return memVnRegions;
 }
-/* ★ 베트남 고정환율(사장님 2026-11-25): 10만원 = 180만동 → 1동 = 1/18원(100동 ≈ 5.56원). 네이버 환율은 안 쓴다 */
-const VND_FIXED = { rate: 100000 / 1800000, date: '고정환율' };
-async function vndRate() { return VND_FIXED; }
+/* ★ 베트남 고정환율(사장님 2026-11-25): 기본 10만원 = 180만동 → 1동 = 1/18원(100동 ≈ 5.56원). 네이버 환율은 안 쓴다.
+   직원이 관리 화면 베트남 줄 「💱 베트남 고정환율」에서 바꾼다 → golf_site.vndFixed(10만원당 동). 이상한 값이면 기본값 */
+const VND_PER_100K_DEFAULT = 1800000;
+let memVndPer100k = null;
+async function vndRate() {
+  const n = Number(String(memVndPer100k == null ? '' : memVndPer100k).replace(/[,\s]/g, ''));
+  const per = (isFinite(n) && n >= 500000 && n <= 5000000) ? n : VND_PER_100K_DEFAULT;
+  return { rate: 100000 / per, date: '고정환율' };
+}
 async function vndRateNaver() {
   try {
     const r = await fetch(NAVER + 'FX_VNDKRW/prices?page=1&pageSize=1', {
