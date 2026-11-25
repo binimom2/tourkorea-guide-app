@@ -135,7 +135,7 @@ const VN_NUM_KEYS = ['p18', 'p9', 'margin', 'wd', 'we', 'sgWd', 'sgWe', 'eaWd', 
 let memVnRegions = null, memVnFx = null, memAllRegions = [];
 /* 나라별 지역 목록에 안 적은 지역인데 이름이 베트남 지명이면 베트남으로 본다(사장님 2026-11-24 「남호이안」이 태국에 섞이던 것).
    사이트·관리 화면(VN_HINT)과 같은 목록 — 고치면 세 곳 같이 */
-const VN_HINT = /다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|베트남/;
+const VN_HINT = /다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|후에|훼|퀴논|꾸이년|사파|닌빈|하이퐁|껀터|베트남/;   // 후에 등 추가(사장님 1125)
 const isVnRegion = (r, regs) => { const s = String(r || '').trim(); return regs.includes(s) || (!memAllRegions.includes(s) && VN_HINT.test(s)); };
 async function vnRegions(env) {
   const sr = env && env.SUPABASE_SERVICE_ROLE_KEY;

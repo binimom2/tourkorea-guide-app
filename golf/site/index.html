@@ -1548,7 +1548,7 @@ function countryOfRegion(r){
   const all = countriesAll();
   const hit = all.filter(c => (c.rs || []).indexOf(String(r || "").trim()) >= 0)[0];
   /* 목록에 안 적은 지역이라도 베트남 지명이면 베트남(사장님 2026-11-24 「남호이안」) — 관리 화면·서버와 같은 목록 */
-  if(!hit && /다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|베트남/.test(String(r || ""))
+  if(!hit && /다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|후에|훼|퀴논|꾸이년|사파|닌빈|하이퐁|껀터|베트남/.test(String(r || ""))
      && all.some(c => c.n === "베트남")) return "베트남";
   return (hit || all[0]).n;
 }
