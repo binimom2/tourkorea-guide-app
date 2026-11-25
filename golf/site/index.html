@@ -499,7 +499,7 @@ body .trust.top button.inq:hover{background:#EAF4FB}
 .dlist li.none{padding-left:0;font-size:13.5px;color:var(--muted)}   /* 「등록된 안내 없음」 자리표시는 그대로 흐리게 */
 .dlist li.none::before{content:""}
 /* 「위치: 터미널21 부근」처럼 앞말을 적어 두면 앞말만 진하게 서고 뒷말이 옆에 붙는다 */
-.dlist li b{flex:0 0 88px;font-weight:800;color:var(--ink)}
+.dlist li b{flex:0 0 var(--lw,88px);font-weight:800;color:var(--ink)}
 .dlist li .nv{flex:1 1 auto;min-width:0}   /* 뒷말 칸 — 넘치면 이 칸 안에서만 줄바꿈된다 */
 /* 강조 줄(「!…」)·강조 글자(「**…**」)는 앞말 칸(88px)이 아니다 — 줄 전체 폭을 쓴다. 안 그러면 「매주 월요일 휴/장」처럼 잘린다(사장님 2026-09-17) */
 .dlist li b.nstrong{flex:1 1 auto;min-width:0;display:inline}
@@ -2426,6 +2426,14 @@ function openDetail(x, kind){
   drawMenu(x, kind);
   openPanel(x, kind);
   $("#detailMask").classList.add("on");
+  /* 안내사항 앞말 칸 폭 = 그 목록에서 가장 긴 앞말 폭(사장님 1125 간격맞춤) — 88px 고정이라 「여행기간」 뒤가 너무 벌어졌다 */
+  (() => { const L = $("#dList"); L.style.removeProperty("--lw");
+    const bs = [...L.querySelectorAll("li > b:not(.nstrong)")];
+    if(!bs.length) return;
+    bs.forEach(b => b.style.flexBasis = "auto");
+    const w = Math.max(...bs.map(b => b.getBoundingClientRect().width));
+    bs.forEach(b => b.style.flexBasis = "");
+    if(w > 0 && w < 88) L.style.setProperty("--lw", Math.ceil(w) + 10 + "px"); })();
   /* 주소를 #courses/람차방 처럼 바꾼다 — 이 주소를 보내면 받은 사람도 이 창이 바로 열린다(1024) */
   try{ history.replaceState(null, "", "#" + kind + "/" + encodeURIComponent(x.n)); }catch(e){}
 }
