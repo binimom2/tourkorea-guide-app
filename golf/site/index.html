@@ -637,6 +637,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 /* 여행 일정(패키지) — 왼쪽 일차 동그라미 + 세로 선, 오른쪽 그날 일정 */
 .dsect.plan{background:#fff}
 .dsale{display:flex;align-items:baseline;gap:10px;margin:6px 0 12px;padding:10px 14px;border-radius:12px;background:#FFF6E3;border:1px solid #F0D7A6}
+.card .pnum.psale{color:#C62828}
 .dsale span{font-size:13px;font-weight:800;color:var(--muted)}
 .dsale b{font-size:21px;font-weight:900;color:#C62828;letter-spacing:-.3px}
 .pday{display:grid;grid-template-columns:46px 1fr;gap:12px;position:relative;padding-bottom:12px}
@@ -1725,8 +1726,15 @@ function cardOf(x, kind, idx){
        카드를 눌러 여는 상세에서만 보인다 — 카드에 주소가 길게 깔리면 요금이 밀려 내려간다. */
     + ((kind === "courses" || kind === "hotels") ? ''
        : (incOf(x, kind) ? '<p class="keep">' + esc(incOf(x, kind)) + '</p>' : ''))
-    + priceHtml(p, kind)
+    + (saleText(x)
+       ? '<div class="price"><span class="pinc">1인 판매가</span><span class="pnum psale">' + esc(saleText(x)) + '</span></div>'
+       : priceHtml(p, kind))
     + '</div></button>';
+}
+/* 패키지 「1인 판매가」(관리 x.sale) — 숫자만 적었으면 「1,290,000원」, 글을 적었으면 그대로(사장님 1125) */
+function saleText(x){
+  const sv = String((x && x.sale) || "").trim();
+  return /^[\d,]+$/.test(sv) ? Number(sv.replace(/,/g, "")).toLocaleString("ko-KR") + "원" : sv;
 }
 /* 카드 아래 요금줄 — 「그린피+캐디+카트 포함 / 94,700원~ / ฿2,150~」.
    한화는 서버가 네이버(하나은행 고시) «현찰 살때»로 환산한 값이고,
@@ -2422,8 +2430,8 @@ function openDetail(x, kind){
    「※ …」 = 맨 아래 작은 글씨, 나머지 = 그날 일정 한 줄(「라운딩」이 든 줄은 골프 줄로 진하게). */
 function drawPlan(x){
   /* 1인 판매가 — 숫자만 적었으면 「1,290,000원」으로 다듬는다 */
-  const sv = String((x && x.sale) || "").trim();
-  $("#dSaleV").textContent = /^[\d,]+$/.test(sv) ? Number(sv.replace(/,/g, "")).toLocaleString("ko-KR") + "원" : sv;
+  const sv = saleText(x);
+  $("#dSaleV").textContent = sv;
   $("#dSale").style.display = sv ? "" : "none";
   const box = $("#dPlanBox"), raw = String((x && x.plan) || "").trim();
   /* 패키지(일정 있음)는 일정 → 안내사항 → 포함 → 불포함 → 사진 차례(사장님 1125),
