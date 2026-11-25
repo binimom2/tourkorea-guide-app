@@ -3955,7 +3955,10 @@ function itemBodyHTML(k){
           : '<div class="iecell"><b>포함사항</b>'+ta(p+'.inc',o.x.inc||'',dft.inc)+'</div>'
             +'<div class="iecell"><b>불포함사항</b>'+ta(p+'.exc',o.x.exc||'',dft.exc)+'</div>'
             /* 패키지 「여행 일정」(사장님 2026-11-25) — 적으면 손님 상세 사진 아래 날짜별 카드로 나온다 */
-            +(k!=='courses'?'<div class="iecell pcell"><b>여행 일정 <span class="rhint">패키지만 — 「1일 · 방콕 → 파타야」로 날을 시작, 그 아래 한 줄에 일정 하나 · 「호텔: …」「식사: …」 · 맨 끝 「※ …」는 작은 글씨 · 빨간 강조는 「**글자**」(포함·불포함 칸도 같음) · 비우면 안 나옵니다</span></b>'
+            /* 패키지 「1인 판매가」(사장님 1125) — 적은 그대로 손님 상세 이름 아래에 나온다. 숫자만 적으면 쉼표·「원」을 붙인다 */
+            +(k!=='courses'?'<div class="iecell pcell"><b>1인 판매가 <span class="rhint">패키지만 — 예: 1,290,000 또는 「1,290,000원~ (4인 기준)」 · 비우면 안 나옵니다</span></b>'
+              +'<div style="max-width:360px">'+inp(p+'.sale',o.x.sale||'','1,290,000')+'</div></div>':'')
+            +(k!=='courses'?'<div class="iecell pcell"><b>여행 일정<span class="rhint">패키지만 — 「1일 · 방콕 → 파타야」로 날을 시작, 그 아래 한 줄에 일정 하나 · 「호텔: …」「식사: …」 · 맨 끝 「※ …」는 작은 글씨 · 빨간 강조는 「**글자**」(포함·불포함 칸도 같음) · 비우면 안 나옵니다</span></b>'
               +ta(p+'.plan',o.x.plan||'','1일 · 방콕 → 파타야\n출발지 국제공항 출발\n방콕 수완나품 국제공항 도착\n호텔: 어메이징 풀빌라\n식사: 석 불포함','big')+'</div>':'')
             +(k==='courses'?closedCell(o.i,o.x):'')
             +priceCell(k,o.x))
