@@ -638,6 +638,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .dsect.plan{background:#fff}
 .dsale{display:flex;align-items:baseline;gap:10px;margin:6px 0 12px;padding:10px 14px;border-radius:12px;background:#FFF6E3;border:1px solid #F0D7A6}
 .card .pnum.psale{color:#C62828}
+b.tdac,.dlist li b.tdac{flex:none;display:inline;color:#0B3D91;font-weight:900}
 .card .keep .nstrong{color:#1D5FBF;font-weight:800}   /* 카드 문구 강조는 파란색(사장님 1125) — 아래 판매가 빨강과 구분 */
 .dsale span{font-size:13px;font-weight:800;color:var(--muted)}
 .dsale b{font-size:21px;font-weight:900;color:#C62828;letter-spacing:-.3px}
@@ -2270,7 +2271,9 @@ function ro(w){
 function halfW(s){ return String(s == null ? "" : s).replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/　/g, " "); }
 function noteLine(s){ return bangParen(String(noteLine0(halfW(s))).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>')); }
 /* 줄 중간의 「!(…)」 = 괄호 부분만 강조, ! 는 안 보인다 — 「+2만원/18홀 !(공휴일: …)」(사장님 1125) */
-function bangParen(h){ return String(h).replace(/[!！]\s*(\([^)]*\)|（[^）]*）)/g, '<b class="nstrong">$1</b>'); }
+function bangParen(h){ return String(h).replace(/[!！]\s*(\([^)]*\)|（[^）]*）)/g, '<b class="nstrong">$1</b>')
+  /* 「TDAC」(태국 입국신고)는 늘 진파랑 굵게(사장님 1125) — 주소 속 소문자 tdac 은 건드리지 않는다 */
+  .replace(/TDAC/g, '<b class="tdac">TDAC</b>'); }
 function noteLine0(s){
   /* 줄 맨 앞에 「!」를 붙이면 그 줄 전체를 진한 검은색으로 세운다 — 「!매주 월요일 휴장」(사장님 2026-09-17). ! 는 화면에 안 나온다 */
   /* 앞말이 없는 줄은 통째로 .nv(뒷말 칸)에 담는다 — li가 flex라서 글자와 <b>가 따로 놀며 「매주 월요일 휴/장」처럼 잘렸다(사장님 2026-09-17) */
