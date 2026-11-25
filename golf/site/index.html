@@ -638,6 +638,7 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
 .dsect.plan{background:#fff}
 .dsale{display:flex;align-items:baseline;gap:10px;margin:6px 0 12px;padding:10px 14px;border-radius:12px;background:#FFF6E3;border:1px solid #F0D7A6}
 .card .pnum.psale{color:#C62828}
+.card .keep .nstrong{color:#C62828;font-weight:800}
 .dsale span{font-size:13px;font-weight:800;color:var(--muted)}
 .dsale b{font-size:21px;font-weight:900;color:#C62828;letter-spacing:-.3px}
 .pday{display:grid;grid-template-columns:46px 1fr;gap:12px;position:relative;padding-bottom:12px}
@@ -1725,11 +1726,19 @@ function cardOf(x, kind, idx){
     /* 스파·티켓… 카드에는 «포함사항»만 적는다(사장님 2026-09-09). 영문 이름·안내사항(주소·전화)은
        카드를 눌러 여는 상세에서만 보인다 — 카드에 주소가 길게 깔리면 요금이 밀려 내려간다. */
     + ((kind === "courses" || kind === "hotels") ? ''
-       : (incOf(x, kind) ? '<p class="keep">' + esc(incOf(x, kind)) + '</p>' : ''))
+       /* 관리 「카드 문구」(x.card)를 적었으면 포함사항 대신 그것을(사장님 1125) */
+       : (String(x.card || "").trim() ? '<p class="keep">' + emph(String(x.card).trim()) + '</p>'
+          : incOf(x, kind) ? '<p class="keep">' + emph(incOf(x, kind)) + '</p>' : ''))
     + (saleText(x)
        ? '<div class="price"><span class="pinc">1인 판매가</span><span class="pnum psale">' + esc(saleText(x)) + '</span></div>'
        : priceHtml(p, kind))
     + '</div></button>';
+}
+/* 포함·불포함 강조(사장님 1125) — 「**글자**」·「!(…)」는 그 부분만, 줄 맨 앞 「!」는 그 줄 전체를 빨간 굵은 글씨로. 상세와 카드가 같이 쓴다 */
+function emph(t){
+  return String(t).split("\n").map(l => /^\s*[!！]/.test(l)
+      ? '<b class="nstrong">' + esc(l.replace(/^\s*[!！]\s*/, "")) + '</b>'
+      : bangParen(esc(l).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'))).join("\n");
 }
 /* 패키지 「1인 판매가」(관리 x.sale) — 숫자만 적었으면 「1,290,000원」, 글을 적었으면 그대로(사장님 1125) */
 function saleText(x){
@@ -2413,9 +2422,6 @@ function openDetail(x, kind){
   const dft = (kind === "hotels") ? {}
             : (SITE.incExc && (SITE.incExc[kind] || SITE.incExc._)) || {};
   /* 포함·불포함 강조(사장님 1125) — 「**글자**」는 그 부분만, 줄 맨 앞 「!」는 그 줄 전체를 빨간 굵은 글씨로 */
-  const emph = t => String(t).split("\n").map(l => /^\s*[!！]/.test(l)
-      ? '<b class="nstrong">' + esc(l.replace(/^\s*[!！]\s*/, "")) + '</b>'
-      : bangParen(esc(l).replace(/\*\*(.+?)\*\*/g, '<b class="nstrong">$1</b>'))).join("\n");
   $("#dInc").innerHTML = kind === "hotels" ? "" : emph((x.inc || "").trim() || dft.inc || "");
   $("#dExc").innerHTML = kind === "hotels" ? "" : emph((x.exc || "").trim() || dft.exc || "");
   /* 적을 것이 없으면 그 상자는 아예 감춘다 — 빈 칸이 남으면 빠뜨린 것처럼 보인다 */
