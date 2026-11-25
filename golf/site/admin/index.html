@@ -2354,11 +2354,7 @@ const iRegion={}, iOpen={};
 let iCountry='';
 function ctyAll(){ const c=((S&&S.countries)||[]).filter(x=>x&&x.n); return c.length?c:[{n:'태국',rs:(S&&S.regionOrder)||[]}]; }
 /* 베트남 지역 차례(사장님 2026-11-25) — 옛 기본값이 그대로면 새 차례로 바꿔 둔다(손님 사이트 vnOrderFix와 같은 규칙). 저장하면 굳는다 */
-function vnOrderFixAdm(){ (S&&S.countries||[]).forEach(x=>{ if(x&&x.n==='베트남'&&(x.rs||[]).join(',')==='다낭,나트랑,푸꾸옥,하노이'){ x.rs=['다낭','호이안','후에','나트랑','푸꾸옥','하노이']; } });
-  /* 지역 차례(regionOrder)는 나라 공용 한 줄이다 — 베트남 화면에서 「다낭 · 호이안 · 후에」만 남아 태국 지역이 빠진 적이 있다(1125).
-     나라별 지역 차례(태국 → 베트남)를 앞에 두고 원래 적힌 것은 뒤에 붙여 늘 전체가 들어 있게 한다. 다음 저장 때 굳는다 */
-  if(S){ const all=ctyAll().reduce((a,c)=>a.concat(c.rs||[]),[]), cur=S.regionOrder||[];
-    if(all.some(r=>cur.indexOf(r)<0)) S.regionOrder=all.concat(cur).filter((r,i,a)=>r&&a.indexOf(r)===i); } }
+function vnOrderFixAdm(){ (S&&S.countries||[]).forEach(x=>{ if(x&&x.n==='베트남'&&(x.rs||[]).join(',')==='다낭,나트랑,푸꾸옥,하노이'){ x.rs=['다낭','호이안','후에','나트랑','푸꾸옥','하노이']; } }); }
 /* 목록에 안 적은 지역이라도 베트남 지명이면 베트남(사장님 2026-11-24 「남호이안」이 태국에 섞이던 것) — 손님 사이트·서버 golf-price.js와 같은 목록 */
 const VN_HINT=/다낭|호이안|나트랑|냐짱|푸꾸옥|하노이|호치민|사이공|달랏|하롱|판티엣|무이네|캄란|붕따우|후에|훼|퀴논|꾸이년|사파|닌빈|하이퐁|껀터|베트남/;
 function ctyOfRegion(r){ const hit=ctyAll().filter(c=>(c.rs||[]).indexOf(String(r||'').trim())>=0)[0];
@@ -3063,9 +3059,10 @@ function itemRows(k){
     .filter(o=>!rg||(rg==='__none'?!(o.x.r||'').trim():(o.x.r||'').trim()===rg));
   /* 「지역」 머리글을 누르면 지역끼리 모아서 보여 준다 — 보기만 바뀌고 저장되는 순서는 그대로다.
      지역 안에서는 원래 넣은 순서를 지킨다(sort가 안정 정렬이라 그대로 남는다).
-     regionOrder(파타야·방콕·후아힌…)에 적힌 차례를 따르고, 거기 없는 지역은 뒤에 붙인다. */
+     「나라별 지역」(태국 → 베트남) 차례를 따르고, 거기 없는 지역은 뒤에 붙인다(1125 지역 차례 칸 정리). */
   if(sortOn(k)){
-    const rOrd=r=>{ const L=S.regionOrder||[], i=L.indexOf(r||''); return i<0?999:i; };
+    const L=ctyAll().reduce((a,c)=>a.concat(c.rs||[]),[]);
+    const rOrd=r=>{ const i=L.indexOf(r||''); return i<0?999:i; };
     rows.sort((a,b)=>{ const d=rOrd(a.x.r)-rOrd(b.x.r); if(d) return d;
       return (a.x.r||'').localeCompare(b.x.r||'','ko'); });
   }
@@ -4105,10 +4102,7 @@ function subItems(k){
     +'<th style="width:175px">'+(k==='hotels'?'공통 사진 <span class="rhint">객실 사진과 같이 나온다</span>':'사진')+'</th><th style="width:74px"></th>'
     +'</tr></thead><tbody id="iBody">'+itemBodyHTML(k)+'</tbody></table></div>'
     +'<div class="rowbtns"><button class="add" data-add="item" data-k="'+esc(k)+'">＋ '+esc(cat.t||k)+' 추가</button></div>'
-    /* 지역 차례 — 손님 화면과 「지역순 보기」가 이 차례를 따른다. 골프장·호텔이 같이 쓴다 */
-    +'<div class="f" style="margin-top:16px"><label>지역 차례 — 손님 화면과 위 「지역」 모아 보기가 '
-      +'이 차례대로 늘어놓습니다 (골프장·호텔 공용, 가운뎃점으로 구분)</label>'
-      +inpList('regionOrder',S.regionOrder,'방콕 · 파타야 · 후아힌')+'</div>'
+    /* 「지역 차례」 칸은 뺐다(사장님 2026-11-25) — 「공통 › 종류 관리 › 나라별 지역」 하나로 차례를 정한다. 저장된 regionOrder 값은 그대로 둔다 */
     /* 표에서 비워 둔 줄에 나갈 문구 — 여기서 한 번 고치면 그 종류 전체에 적용된다.
        호텔은 포함·불포함을 쓰지 않는다(객실마다 조식이 달라 한 문장으로 못 묶는다) */
     +(k==='hotels' ? '' :
@@ -4161,16 +4155,10 @@ function subCats(){
     /* 나라별 지역(사장님 2026-11-18) — 손님 화면 맨 위 「태국 ▾ / 베트남 ▾」 메뉴가 이 목록대로 펼쳐진다.
        항목의 나라는 지역으로 정해진다: 여기 적힌 지역이면 그 나라, 어디에도 없으면 첫 나라(태국). */
     '<div class="card"><h2>나라별 지역</h2>'
-    +'<p class="desc">손님 화면 맨 위 나라 메뉴(태국 ▾ · 베트남 ▾)가 이 차례대로 펼쳐집니다. 상품의 「지역」 칸에 여기 적힌 지역을 쓰면 그 나라 상품이 됩니다. '
+    +'<p class="desc">손님 화면 맨 위 나라 메뉴(태국 ▾ · 베트남 ▾)와 골프장·호텔·스파 목록의 지역 탭이 이 차례대로 섭니다. 상품의 「지역」 칸에 여기 적힌 지역을 쓰면 그 나라 상품이 됩니다. '
       +'가운뎃점(·)으로 구분. <b>저장을 눌러야 반영됩니다.</b></p>'
     +ctyAll().map((c,i)=>'<div class="f" style="margin-top:8px"><label>'+esc(c.n)+'</label>'
       +((S.countries||[])[i]?inpList('countries.'+i+'.rs',c.rs,'방콕 · 파타야'):'')+'</div>').join('')
-    +'</div>'
-    +'<div class="card"><h2>지역 차례</h2>'
-    +'<p class="desc">손님 화면의 지역 탭(방콕 · 파타야 · 후아힌…)이 이 차례대로 섭니다. 골프장·호텔·스파 공용, 가운뎃점(·)으로 구분. '
-      +'<b>저장을 눌러야 반영됩니다.</b></p>'
-    +'<div class="rowbtns" style="margin:0"><div style="flex:1 1 320px">'+inpList('regionOrder',S.regionOrder,'방콕 · 파타야 · 후아힌 · 칸차나부리 · 카오야이')+'</div>'
-    +'<button type="button" class="ghost" id="regDefault">기본 차례로 채우기 (태국 → 베트남)</button></div>'
     +'</div>'
     +'<div class="card"><h2>종류 관리</h2>'
     +'<p class="desc">손님이 1차 화면에서 고르는 종류입니다. 여기에 한 줄 추가하면 위 메뉴에 그 종류의 표가 생기고, '
@@ -4227,9 +4215,6 @@ function subCats(){
     if(S.items) delete S.items[k];
     sub='cats'; markDirty('site'); drawTabs();
   });
-  /* 기본 차례로 — data.js 의 regionOrder(방콕 먼저)를 그대로 넣는다. 저장은 따로 눌러야 한다 */
-  const rd=document.getElementById('regDefault');
-  if(rd) rd.onclick=()=>{ S.regionOrder=deepCopy((window.SITE_DEFAULT||{}).regionOrder||[]); markDirty('site'); subCats(); };
   bindRowBtns();
 }
 /* ── 실시간 견적 7번 「기타투어」 목록(사장님 2026-09-19) ──
