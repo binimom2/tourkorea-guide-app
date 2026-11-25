@@ -2412,6 +2412,11 @@ function openDetail(x, kind){
    「※ …」 = 맨 아래 작은 글씨, 나머지 = 그날 일정 한 줄(「라운딩」이 든 줄은 골프 줄로 진하게). */
 function drawPlan(x){
   const box = $("#dPlanBox"), raw = String((x && x.plan) || "").trim();
+  /* 패키지(일정 있음)는 일정 → 안내사항 → 포함 → 불포함 → 사진 차례(사장님 1125),
+     나머지는 원래 차례(사진 → 포함 → 불포함 → 안내사항) */
+  const inc = $("#dIncBox"), exc = $("#dExcBox"), note = $("#dList").parentNode, addr = $("#dAddrBox"), gal = $("#dGal");
+  if(raw){ addr.after(inc); inc.after(exc); exc.after(gal); }
+  else { box.before(gal); note.before(inc); inc.after(exc); }
   if(!raw){ box.style.display = "none"; $("#dPlan").innerHTML = ""; return; }
   const days = [], foot = []; let cur = null;
   raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean).forEach(s => {
