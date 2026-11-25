@@ -867,6 +867,13 @@ footer .frow{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
   .nsearch .nsdrop{left:50%;right:auto;width:min(720px,100%);transform:translateX(-50%)}
   .menu{margin-left:10px}
 }
+/* 1줄 가운데 맞춤(사장님 2026-11-25 — 환율 상자를 뺀 뒤 오른쪽이 비어서). 나라·지역 줄이 남는 폭을 다 먹지 않게.
+   한 줄에 다 들어가는 넓은 화면만 — 좁은 PC는 예전처럼 나라·지역 줄이 옆으로 밀려 한 줄을 지킨다 */
+@media(min-width:1300px){
+  .nav .wrap{justify-content:center}
+  .ctyin{flex:0 1 auto}
+  .menu{margin-left:24px}
+}
 
 /* 찜·장바구니 창 — 상세창보다 좁고 목록만 보여 준다 */
 .modal.list{max-width:min(720px,96vw);padding:22px 22px 20px}
