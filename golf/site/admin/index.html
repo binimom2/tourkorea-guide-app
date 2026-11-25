@@ -493,6 +493,8 @@ tr.grp td{background:rgba(18,58,43,.045);font-size:12px;font-weight:800;color:va
 .f input,.f textarea{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:14px}
 .f textarea{resize:vertical;min-height:74px;line-height:1.5}
 .f input:focus,.f textarea:focus{outline:2px solid var(--marigold);outline-offset:1px}
+/* 「·」로 이어 적는 목록 칸(지역 차례·나라별 지역) — 좁으면 뒤가 잘려 안 보인다(사장님 1125) */
+input[data-list]{width:100%;max-width:820px;box-sizing:border-box}
 .hint{font-size:12px;color:var(--muted);margin:5px 0 0}
 
 /* ── 계정 ── */
