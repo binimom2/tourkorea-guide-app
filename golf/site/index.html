@@ -1189,6 +1189,15 @@ body.fs-lg .pacts li,body.fs-lg .pdt{font-size:16px}
               <input type="time" class="qp-time" id="qpTime2">
             </div>
           </div>
+          <!-- 패키지(여행 일정 있는 상품)만 — 박수(사장님 1125). 기본은 이름의 「3박」, 없으면 3박 -->
+          <div id="qpNWrap" style="display:none">
+            <div class="qp-lab">박수</div>
+            <div class="qp-pax">
+              <button type="button" id="qpNMinus" aria-label="박수 줄이기">−</button>
+              <span id="qpNN">3박</span>
+              <button type="button" id="qpNPlus" aria-label="박수 늘리기">＋</button>
+            </div>
+          </div>
           <!-- 호텔에서만 나온다 — 객실 수·성인·아동을 한 칸에 묶어 두고 눌러서 펼친다(사장님).
                아동을 고르면 그 아래로 아동마다 나이·생년월일 칸이 더 펼쳐진다. -->
           <div id="qpRoomsWrap" style="display:none">
@@ -2704,6 +2713,9 @@ function calPick(s){
   qpNights = Math.max(1, Math.min(30, dgap(a, b)));   // 박수는 고른 기간에서 저절로 나온다
   closeCal(); drawDateBtn(); drawTriple(); qpCalc();
 }
+let qpPkg = false, qpPkgN = 3;      // 패키지 여부 · 박수(사장님 1125)
+$("#qpNMinus").onclick = () => { qpPkgN = Math.max(1, qpPkgN - 1); $("#qpNN").textContent = qpPkgN + "박"; };
+$("#qpNPlus").onclick  = () => { qpPkgN = Math.min(30, qpPkgN + 1); $("#qpNN").textContent = qpPkgN + "박"; };
 function openPanel(x, kind){
   qpItem = x; qpKind = kind; qpHoles = "18";
   qpResult = null;                 // 앞에 보던 곳의 금액이 남아 담기지 않게
@@ -2784,8 +2796,8 @@ function openPanel(x, kind){
   /* 골프장·스파는 (라운드/메뉴) → 인원 → 날짜 → 원하는 시간 순이다(사장님 2026-09-09).
      시간은 자유롭게 적는 요청사항이고 호텔에는 없다. 골프장은 「원하는 티타임」이라 부른다. */
   /* qpPxRow = 「탑승 인원수 │ 차량 대수(인원)」 한 줄 묶음(2026-10-16) */
-  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPxRow", "qpTimeWrap"]
-       : ["qpHoleWrap", "qpPxRow", "qpDateWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
+  (isH ? ["qpDateWrap", "qpRoomsWrap", "qpHoleWrap", "qpTriple", "qpPxRow", "qpTimeWrap", "qpNWrap"]
+       : ["qpHoleWrap", "qpPxRow", "qpDateWrap", "qpNWrap", "qpTimeWrap", "qpRoomsWrap", "qpTriple"])
     .forEach(id => box.appendChild(document.getElementById(id)));
   $("#qpTimeWrap").style.display = isH ? "none" : "";
   $("#qpRidersWrap").style.display = unitOf(kind) === "대" ? "" : "none";   // 차량에서만 탑승 인원수
@@ -2797,6 +2809,15 @@ function openPanel(x, kind){
   $("#qpTime").value = "";
   $("#qpTime2Wrap").style.display = unitOf(kind) === "대" ? "" : "none";   // 차량은 시간 칸 따로
   $("#qpTime2").value = "";
+  /* 패키지(여행 일정 있음) — 출발일자 · 박수 · 인원수(사장님 1125). 희망 시간은 없다 */
+  qpPkg = !isH && !!String(x.plan || "").trim();
+  $("#qpNWrap").style.display = qpPkg ? "" : "none";
+  if(qpPkg){
+    $("#qpTimeWrap").style.display = "none";
+    $("#qpDateLab").textContent = "출발일자를 선택해주세요";
+    qpPkgN = Number((String(x.n || "").match(/(\d+)\s*박/) || [])[1]) || 3;
+    $("#qpNN").textContent = qpPkgN + "박";
+  }
   /* 호텔을 열 때마다 성인 2명 · 1박 · 1룸에서 다시 시작한다(사장님).
      골프장은 «골프장 인원»을 따로 기억해 두었다가 되살린다 — 기본 4명이고,
      손님이 8명으로 고쳐 두었으면 다른 골프장을 열어도 8명 그대로다.
@@ -2807,7 +2828,7 @@ function openPanel(x, kind){
     closeOcc();          // 다른 곳을 열 때 펼쳐진 채로 남지 않게
     drawAges();
   } else if(isMenuKind(kind)){
-    qpPax = 1;           // 스파·티켓… 은 늘 1명부터 시작한다(사장님 2026-09-09)
+    qpPax = qpPkg ? 4 : 1;   // 스파·티켓… 은 늘 1명부터(사장님 2026-09-09), 패키지는 최소출발 4명부터(1125)
   } else {
     qpPax = golfPax;
   }
@@ -3783,7 +3804,7 @@ function cartItem(){
   /* 스파·티켓… 은 고른 메뉴 이름이 «옵션»이다(골프장의 홀수, 호텔의 룸타입과 같은 자리) */
   const mp = isMenuKind(qpKind) ? priceOf(dCur, qpKind) : null;
   const mSel = mp && qpMenu >= 0 ? (qpMenuRows[qpMenu] || null) : null;
-  const option = isH ? qpRoom : (qpKind === "courses" ? qpHoles + "홀"
+  const option = isH ? qpRoom : qpPkg ? qpPkgN + "박" : (qpKind === "courses" ? qpHoles + "홀"
                /* 장바구니에는 코스도 같이 적는다 — 이름이 같고 코스만 다른 메뉴가 서로 덮어쓰지 않게 */
                : mSel ? (mSel.n + (mSub(mSel) ? " (" + mSub(mSel) + ")" : "")) : "");
   /* 장바구니는 여러 날 두고 보실 수 있으니 연도까지 적는다 (패널의 「09.17 (목)」과 다른 까닭) */
@@ -3806,7 +3827,7 @@ function cartItem(){
     option, bed: isH ? roomsListLabel() : "", beds: isH ? Object.assign({}, qpBeds) : null, date, dateEnd: end, time, riders,
     /* 메뉴 이름·코스·내용을 따로 — 인보이스가 줄을 나눠 적는다(2026-10-16) */
     mn: mSel ? mSel.n || "" : "", mc: mSel ? mSel.c || "" : "", md: mSel ? mSel.d || "" : "",
-    nights: isH ? qpNights : 0, rooms: isH ? qpRooms : 0,
+    nights: isH ? qpNights : qpPkg ? qpPkgN : 0, rooms: isH ? qpRooms : 0,
     pax: qpPax, adult: isH ? qpAdult : qpPax, child: isH ? qpChild : 0,
     ages: isH ? qpAges.filter(v => v !== "" && v != null).map(Number) : [],
     births: isH ? qpBirth.slice(0, qpChild).filter(birthOk) : [],   // 아동 생년월일(여덟 자리) — 예약요청에 같이 실린다
@@ -3822,7 +3843,7 @@ const cartKeyOf = c => [c.kind, c.name, c.option, c.date, c.time || "", c.bed ||
 function addToCart(direct){
   if(!dCur) return;
   if(direct === true && !bookGate()) return;
-  if(!$("#qpDate").value)              return qpTell("먼저 <b>날짜</b>를 선택해 주세요.");
+  if(!$("#qpDate").value)              return qpTell(qpPkg ? "먼저 <b>출발일자</b>를 선택해 주세요." : "먼저 <b>날짜</b>를 선택해 주세요.");
   if(qpKind === "hotels" && !qpRoom)   return qpTell("<b>객실 타입</b>을 선택해 주세요.");
   if(qpKind === "hotels" && qpRooms < 1){ openOcc(); return qpTell("<b>객실</b>(트윈·더블·싱글·트리플)을 선택해 주세요."); }  /* 아동이 있으면 생년월일을 꼭 받는다(사장님 2026-09-19) — 아동 요금(엑스트라 아동·아동 조식)은 그 호텔의 아동 나이(childMax, 11 또는 12)까지만 적용된다 */
   if(qpKind === "hotels" && qpChild){
