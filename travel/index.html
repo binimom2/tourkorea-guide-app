@@ -5443,7 +5443,16 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
     const dirType=f.k==='arrival'?'arr':'dep';
     const normVal=padFlightKey(val); // 예전 저장값의 한 자리 시각도 비교용으로 정규화
     const allFlights=getVendors('flights').filter(fl=>fl.active!==false&&fl.direction&&(dirType==='arr'?fl.direction.endsWith('-BKK'):fl.direction.startsWith('BKK-')));
-    const curFlight=allFlights.find(fl=>`${fl.flightNo} ${fl.dep}-${fl.arr}`===normVal);
+    let curFlight=allFlights.find(fl=>`${fl.flightNo} ${fl.dep}-${fl.arr}`===normVal);
+    /* 항공 목록에서 같은 편명의 시간만 바뀐 경우(사장님 1126): 편명이 하나만 맞으면 새 시간으로 선택해 둔다.
+       Save 하면 새 시간이 저장되고, 아래 「이전」 글자로 바뀐 걸 알 수 있다. 같은 편명이 여러 개면 직접입력 그대로. */
+    let oldTime='';
+    if(!curFlight&&val){
+      const fno=String(val).trim().split(/\s+/)[0];
+      const same=allFlights.filter(fl=>fl.flightNo===fno);
+      if(same.length===1){ curFlight=same[0]; oldTime=String(val).trim().slice(fno.length).trim(); val=`${curFlight.flightNo} ${curFlight.dep}-${curFlight.arr}`; }
+    }
+    const selVal=curFlight?`${curFlight.flightNo} ${curFlight.dep}-${curFlight.arr}`:normVal;
     const curAirline=curFlight?curFlight.airline:'';
     const airlineCodes=[...new Set(allFlights.map(fl=>fl.airline))];
     const airlineList=getVendors('AIRLINES');
@@ -5458,9 +5467,10 @@ function renderSubFieldInput(f,val,sectionKey,isNew){
           const flightOpts=allFlights.filter(fl=>!curAirline||fl.airline===curAirline).map(fl=>{
             const v=`${fl.flightNo} ${fl.dep}-${fl.arr}`;
             const t=dirType==='arr'?fl.arr:fl.dep;
-            return `<option value="${escapeAttr(v)}" ${v===normVal?'selected':''}>${fl.flightNo}(${t})</option>`;
+            return `<option value="${escapeAttr(v)}" ${v===selVal?'selected':''}>${fl.flightNo}(${t})</option>`;
           }).join('');
-          return `<select id="${id}"><option value="">NONE</option>${flightOpts}</select>`;
+          return `<select id="${id}"><option value="">NONE</option>${flightOpts}</select>`
+            +(oldTime?`<div style="font-size:10px;color:#dc2626;">이전 ${escapeHtml(oldTime)}</div>`:'');
         })();
     return `<div style="display:flex;flex-direction:column;gap:3px;min-width:120px;">
       <select id="${id}-airline" onchange="filterFlightOptions('${id}',this.value,'${dirType}')" style="font-size:10px;padding:3px 4px;">
