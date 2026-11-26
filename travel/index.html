@@ -4408,7 +4408,8 @@ async function _onTabBack(){
   _tabBackAt=Date.now();
   const pulled=await _pullLatestRes();
   if(_saveBusy) return;
-  if(_isEditingRes()&&modalMode==='edit'&&editingId&&subEditKey===null&&!_bahtCtx){
+  // 편집 줄·작은 창(지불·날짜변경·복사 등)이 열려 있으면 화면을 다시 그리지 않는다 — 저장 때 3-way 병합이 챙긴다
+  if(_isEditingRes()&&modalMode==='edit'&&editingId&&subEditKey===null&&!_bahtCtx&&!document.querySelector('.sov.open')){
     const latest=reservations.find(r=>r.id===editingId);
     if(latest&&_draftBase&&_sbSnap(latest)!==_sbSnap(_draftBase)){
       const sy=window.scrollY, cy=_calScrollY;
@@ -6302,6 +6303,13 @@ function showToast(msg){
    못 건드리는 별도 키) ③ 다시 로그인하면 실패한 저장을 자동으로 이어서 실행한다. */
 
 const DRAFT_KEY='trv_draft';   // TRV_KEYS에 없다 → loadAllFromSupabase가 이 값을 덮어쓰지 않는다
+/* 초안은 창(탭)마다 따로 둔다. 예전엔 한 칸이라 창 2~3개를 띄우면 서로 3초마다 덮어쓰고,
+   한 창에서 예약을 닫으면 다른 창의 초안까지 지워졌다(1126 점검). 창 id는 sessionStorage라 새로고침해도 같다. */
+const _TAB_ID=(()=>{ try{ let t=sessionStorage.getItem('trv_tab_id'); if(!t){ t=Date.now().toString(36)+Math.random().toString(36).slice(2,6); sessionStorage.setItem('trv_tab_id',t); } return t; }catch(e){ return 'x'; } })();
+const _MY_DRAFT=DRAFT_KEY+':'+_TAB_ID;
+const DRAFT_LIVE_MS=90000;     // 다른 창이 이 시간 안에 갱신한 초안 = 지금 쓰는 중 → 되살리기 대상 아님(뒤 탭 타이머는 1분까지 느려짐)
+let _recoverKey=null;          // 되살리기 띠가 가리키는 초안 키
+function _allDraftKeys(){ const out=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k===DRAFT_KEY||(k&&k.indexOf(DRAFT_KEY+':')===0)) out.push(k); } }catch(e){} return out; }
 let _sessDead=false;           // 지금 로그인이 끊긴 상태인가
 let _pendingSave=null;         // 로그인이 살아나면 자동으로 다시 실행할 저장
 let _sessWatchTimer=null;
@@ -6423,7 +6431,7 @@ function saveDraftNow(){
   try{
     if(!workingRes||!_isEditingRes()) return;
     try{ syncFormToRes(); }catch(e){}
-    localStorage.setItem(DRAFT_KEY,JSON.stringify({
+    localStorage.setItem(_MY_DRAFT,JSON.stringify({
       at:new Date().toISOString(),
       by:(currentUser?currentUser.id:''),
       mode:modalMode,
@@ -6432,23 +6440,38 @@ function saveDraftNow(){
     }));
   }catch(e){}
 }
+// 이 창의 초안만 지운다(다른 창 초안은 그대로). 띠가 이 창 초안을 가리키고 있었으면 띠도 내린다.
 function clearDraft(){
-  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+  try{ localStorage.removeItem(_MY_DRAFT); }catch(e){}
+  if(_recoverKey===_MY_DRAFT) _hideDraftBar();
+}
+function _hideDraftBar(){
+  _recoverKey=null;
   const el=document.getElementById('draftBar'); if(el) el.classList.remove('show');
   _syncTbarOffset();
 }
-function _readDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); }catch(e){ return null; } }
+function _dropRecoverDraft(){ if(_recoverKey){ try{ localStorage.removeItem(_recoverKey); }catch(e){} } _hideDraftBar(); }
+function _readDraftKey(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
+function _readDraft(){ return _recoverKey?_readDraftKey(_recoverKey):null; }
 // 비교용: 저장할 때마다 바뀌는 값은 빼고 「내용이 같은가」만 본다
 function _draftCmp(r){ const c=JSON.parse(JSON.stringify(r||{})); delete c.updatedAt; delete c.updatedBy; return c; }
 
 /* 로그인 직후 확인 — 저장 못 한 입력이 남아 있으면 되살릴 기회를 준다 */
 function checkDraftRecovery(){
-  const d=_readDraft();
-  if(!d||!d.res) return;
-  const cur=reservations.find(r=>r&&r.id===d.res.id);
-  if(cur&&_sbSnap(_draftCmp(cur))===_sbSnap(_draftCmp(d.res))){ clearDraft(); return; }   // 이미 서버에 들어감
-  // 열어 보기만 하고 아무것도 안 바꾼 초안 — 되살릴 것이 없다(예전엔 이것까지 「저장 못 한 입력」으로 떠서 되살려 저장하면 남의 최신 입력을 덮었다)
-  if(d.base&&_sbSnap(_draftCmp(d.base))===_sbSnap(_draftCmp(d.res))){ clearDraft(); return; }
+  // 창마다 초안이 있다 — 지금 다른 창에서 쓰는 중인 것은 건너뛰고, 남은 것 중 가장 최근 것 하나를 띄운다
+  let d=null, dk=null;
+  _allDraftKeys().forEach(k=>{
+    const x=_readDraftKey(k);
+    if(!x||!x.res){ try{ localStorage.removeItem(k); }catch(e){} return; }
+    if(k!==_MY_DRAFT&&x.at&&Date.now()-new Date(x.at).getTime()<DRAFT_LIVE_MS) return;   // 다른 창이 쓰는 중
+    const cur=reservations.find(r=>r&&r.id===x.res.id);
+    if(cur&&_sbSnap(_draftCmp(cur))===_sbSnap(_draftCmp(x.res))){ try{ localStorage.removeItem(k); }catch(e){} return; }   // 이미 서버에 들어감
+    // 열어 보기만 하고 아무것도 안 바꾼 초안 — 되살릴 것이 없다(예전엔 이것까지 「저장 못 한 입력」으로 떠서 되살려 저장하면 남의 최신 입력을 덮었다)
+    if(x.base&&_sbSnap(_draftCmp(x.base))===_sbSnap(_draftCmp(x.res))){ try{ localStorage.removeItem(k); }catch(e){} return; }
+    if(!d||String(x.at||'')>String(d.at||'')){ d=x; dk=k; }
+  });
+  if(!d) return;
+  _recoverKey=dk;
   const t=new Date(d.at); const p=n=>String(n).padStart(2,'0');
   const when=isNaN(t)?'':`${p(t.getMonth()+1)}/${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}`;
   const who=`${d.res.datein||''} ${d.res.name||d.res.code||''}`.trim()||'(이름 없음)';
@@ -6458,9 +6481,9 @@ function checkDraftRecovery(){
   _syncTbarOffset();
 }
 function restoreDraft(){
-  const d=_readDraft(); if(!d||!d.res){ clearDraft(); return; }
+  const d=_readDraft(); if(!d||!d.res){ _dropRecoverDraft(); return; }
   const cur=reservations.find(r=>r&&r.id===d.res.id);
-  document.getElementById('draftBar').classList.remove('show'); _syncTbarOffset();
+  _dropRecoverDraft();   // 되살린 뒤로는 이 창의 초안 칸에 새로 보관된다(옛 칸은 지워 다시 뜨지 않게)
   /* 초안을 통째로 여는 게 아니라, 「기준본 대비 내가 바꾼 부분」만 지금 서버본 위에 얹는다(저장 때와 같은 3-way 병합).
      그래야 초안을 쓰는 사이 다른 사람이 적은 호텔 리마크·차량 번호 등이 되살린 화면에서 사라지지 않는다. */
   let res=d.res, base=null, merged=false, conflict=false;
@@ -6470,7 +6493,7 @@ function restoreDraft(){
   } else if(cur&&!d.base&&cur.updatedAt&&d.at&&String(cur.updatedAt)>String(d.at)){
     // 기준본이 없는 옛 형식 초안인데 그 뒤에 남이 이미 저장했다 — 통째로 열면 그 내용을 덮어쓰게 되므로 되살리지 않는다
     alert('이 초안은 예전 방식으로 보관된 것이고, 그 뒤에 다른 사람이 이 예약을 저장했습니다.\n되살리면 그 사람의 입력이 사라질 수 있어 불러오지 않습니다.\n\n예약을 열어 최신 내용을 확인한 뒤 필요한 부분만 다시 적어 주세요.');
-    clearDraft(); return;
+    return;
   }
   openReservation(cur?d.res.id:null,null,res,base||undefined);
   showToast(merged?'📝 저장 못 한 입력을 최신 내용 위에 얹어 불러왔습니다 — 확인 후 [Save]를 눌러주세요'
@@ -6479,7 +6502,7 @@ function restoreDraft(){
 }
 function discardDraft(){
   if(!confirm('저장하지 못한 입력을 버립니다.\n한 번 버리면 되살릴 수 없습니다.\n\n버릴까요?')) return;
-  clearDraft();
+  _dropRecoverDraft();
 }
 // 입력창이 열려 있는 동안 3초마다 초안을 갱신한다(창을 닫거나 저장에 성공하면 지운다)
 setInterval(()=>{ if(_isEditingRes()) saveDraftNow(); },3000);
@@ -6492,7 +6515,7 @@ setInterval(()=>{ if(_isEditingRes()) saveDraftNow(); },3000);
     if(last && Date.now()-last>IDLE_LIMIT){
       try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
       localStorage.removeItem('trv_session'); localStorage.removeItem(IDLE_KEY);
-      try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}   // 시간 초과로 끊긴 세션의 초안은 저장하지 않은 것 — 버린다
+      _allDraftKeys().forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });   // 시간 초과로 끊긴 세션의 초안은 저장하지 않은 것 — 버린다(모든 창)
       return;
     }
     const { data: { session } } = await sb.auth.getSession();
