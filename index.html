@@ -1744,18 +1744,18 @@
     </div>
 
     <!-- 발란스: 전도금 − 일차 행사비 − 옵션원가 + 통화별 입금/지출 = 받을 금액 (calcBalance) -->
-    <div class="summary-card" id="balance-block">
+    <div class="summary-card admin-only" id="balance-block">
       <h3>⚖ 발란스</h3>
       <table class="bal-tbl">
-        <tr><th></th><th>₩</th><th>$</th><th>฿</th></tr>
-        <tr><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
-        <tr><td>− 가이드 행사비 (일차)</td><td></td><td></td><td id="bal-exp"></td></tr>
-        <tr><td>− 옵션 원가</td><td></td><td></td><td id="bal-cost"></td></tr>
-        <tr class="bal-sub"><td>= 금액</td><td></td><td></td><td id="bal-net"></td></tr>
-        <tr><td>+ 옵션 입금액</td><td id="bal-opt-krw"></td><td id="bal-opt-usd"></td><td id="bal-opt-thb"></td></tr>
-        <tr><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
-        <tr><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
-        <tr class="bal-total"><td>총 받을 금액</td><td id="bal-tot-krw"></td><td id="bal-tot-usd"></td><td id="bal-tot-thb"></td></tr>
+        <tr><th>내역</th><th>₩</th><th>$</th><th>฿</th><th>입금</th><th>메모</th></tr>
+        <tr data-bal="adv"><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
+        <tr data-bal="exp"><td>− 가이드 행사비 (일차)</td><td></td><td></td><td id="bal-exp"></td></tr>
+        <tr data-bal="cost"><td>− 옵션 원가</td><td></td><td></td><td id="bal-cost"></td></tr>
+        <tr data-bal="net" class="bal-sub"><td>= 금액</td><td></td><td></td><td id="bal-net"></td></tr>
+        <tr data-bal="opt"><td>+ 옵션 입금액</td><td id="bal-opt-krw"></td><td id="bal-opt-usd"></td><td id="bal-opt-thb"></td></tr>
+        <tr data-bal="tip"><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
+        <tr data-bal="tc"><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
+        <tr data-bal="tot" class="bal-total"><td>총 받을 금액</td><td id="bal-tot-krw"></td><td id="bal-tot-usd"></td><td id="bal-tot-thb"></td></tr>
       </table>
     </div>
     <style>
@@ -1766,6 +1766,10 @@
       .bal-tbl td:first-child{text-align:left;font-weight:600;min-width:0;}
       .bal-tbl .bal-sub td{background:#f8fafc;font-weight:700;}
       .bal-tbl .bal-total td{background:#e8f9f0;color:#1A8A60;font-weight:800;font-size:14px;}
+      .bal-tbl td.bal-chk{text-align:center;min-width:0;}
+      .bal-tbl td.bal-chk input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;}
+      .bal-tbl td.bal-memo{padding:2px 4px;min-width:0;}
+      .bal-tbl td.bal-memo input{width:200px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;}
     </style>
 
     <!-- 회사 정산서 코멘트 (Admin 전용, 한 줄) — 회사 정산서 출력에만 찍힌다 -->
@@ -2681,6 +2685,7 @@ function initData() {
   state.days = [];
   state.options = [{ id:uid(), name:'', currency:'THB', price:'', pax:'', total:'', cost:'', profit:'' }];
   state.gigatip = [{ id:uid(), currency:'THB', price:'', pax:'', total:'', type:'기가팁', detail:'' }];
+  state.balance = {};
   ['jewell','latex','beomrung','taiko','herb'].forEach(k => {
     const defDc = k === 'herb' ? 0 : '';
     const defCom = k === 'herb' ? 50 : '';
@@ -4214,6 +4219,26 @@ function calcBalance(){
     const tot = (c==='THB'?net:0) + opt[c] + tip[c] - tc[c];
     set('bal-tot-'+k, f(tot,c) || (c==='THB'?'฿ 0':''), tot<0);
   });
+  // 줄마다 입금 체크 + 메모 (state.balance[줄] = {c, m}) — 칸은 처음 한 번만 만들고 값만 맞춘다
+  if (!state.balance || typeof state.balance !== 'object') state.balance = {};
+  document.querySelectorAll('#balance-block tr[data-bal]').forEach(tr => {
+    const k = tr.dataset.bal;
+    let chk = tr.querySelector('.bal-chk input'), memo = tr.querySelector('.bal-memo input');
+    if (!chk) {
+      const td1 = document.createElement('td'); td1.className = 'bal-chk';
+      chk = document.createElement('input'); chk.type = 'checkbox';
+      chk.addEventListener('change', () => { (state.balance[k] = state.balance[k] || {}).c = chk.checked; scheduleSave(); });
+      td1.appendChild(chk);
+      const td2 = document.createElement('td'); td2.className = 'bal-memo';
+      memo = document.createElement('input'); memo.type = 'text'; memo.maxLength = 200;
+      memo.addEventListener('input', () => { (state.balance[k] = state.balance[k] || {}).m = memo.value; scheduleSave(); });
+      td2.appendChild(memo);
+      tr.append(td1, td2);
+    }
+    const v = state.balance[k] || {};
+    chk.checked = !!v.c;
+    if (document.activeElement !== memo) memo.value = v.m || '';
+  });
 }
 
 function updateSummary(){
@@ -4395,6 +4420,7 @@ function confirmReset(){
 
   // ③ state 나머지 초기화 (옵션통화, 쇼핑 직접 초기화)
   state.optionCurrency = 'THB';
+  state.balance = {};
   SHOP_KEYS.forEach(k=>{
     state.shopping[k] = [{id:uid(),name:'',type:'',dc:'',sale:'',com:'',commission:0,kbPct:getDefaultKbPct(k,''),kbCom:0,credit:''}];
     // 체크박스 해제 + 패널 숨김
@@ -4686,6 +4712,7 @@ function loadData() {
     if (!state.expenses.main || state.expenses.main.length === 0) state.expenses.main = defaultRows();
     state.options  = saved.options  || [];
     state.gigatip  = saved.gigatip  || [];
+    state.balance  = (saved.balance && typeof saved.balance === 'object') ? saved.balance : {};
     state.shopping = saved.shopping || {};
     state.days = (saved.days || []).map(d => ({ id: d.id, label: d.label }));
     syncUidFromState(); // _uid를 기존 ID 최대값+1로 동기화 → 신규 추가시 충돌 방지
