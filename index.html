@@ -1789,8 +1789,8 @@
         <tr data-bal="tip"><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
         <tr data-bal="tc"><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
         <tr data-bal="tot" class="bal-total"><td>총 받을 금액</td><td class="bal-totc" data-cur="KRW"><span id="bal-tot-krw"></span></td><td class="bal-totc" data-cur="USD"><span id="bal-tot-usd"></span></td><td class="bal-totc" data-cur="THB"><span id="bal-tot-thb"></span></td></tr>
-        <tr data-bal="cash" class="bal-amt"><td>현금 입금</td><td class="bal-amtc" data-k="cKRW"></td><td class="bal-amtc" data-k="cUSD"></td><td class="bal-amtc" data-k="cTHB"></td></tr>
-        <tr data-bal="xfer" class="bal-amt"><td>송금 입금</td><td class="bal-amtc" data-k="tKRW"></td><td></td><td class="bal-amtc" data-k="tTHB"></td></tr>
+        <tr data-bal="cash" class="bal-amt"><td>현금 입출금</td><td class="bal-amtc" data-k="cKRW"></td><td class="bal-amtc" data-k="cUSD"></td><td class="bal-amtc" data-k="cTHB"></td></tr>
+        <tr data-bal="xfer" class="bal-amt"><td>은행 입출금</td><td class="bal-amtc" data-k="tKRW"></td><td></td><td class="bal-amtc" data-k="tTHB"></td></tr>
       </table>
     </div>
     <style>
@@ -1804,9 +1804,9 @@
       .bal-tbl td:first-child{text-align:left;font-weight:600;min-width:0;}
       .bal-tbl .bal-sub td{background:#f8fafc;font-weight:700;}
       .bal-tbl .bal-total td{background:#e8f9f0;color:#1A8A60;font-weight:800;font-size:14px;}
-      .bal-tbl input.bal-cb{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle;margin:0 6px 0 0;float:left;}
-      .bal-tbl td.bal-amtc{padding:2px 4px;}
-      .bal-tbl td.bal-amtc input{width:96px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;text-align:right;font-weight:700;}
+      .bal-tbl input.bal-cb{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle;margin:0 5px 0 0;}
+      .bal-tbl td.bal-amtc{padding:2px 4px;white-space:nowrap;}
+      .bal-tbl td.bal-amtc input[type="text"]{width:84px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;text-align:right;font-weight:700;}
       .bal-tbl td.bal-memo{padding:2px 4px;min-width:0;}
       .bal-tbl td.bal-memo input{width:200px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;}
     </style>
@@ -4335,6 +4335,16 @@ function _balChange(fn){
   _balTimers[id] = setTimeout(() => _balSaveNow(id), 600);
 }
 // 체크·입금방법·메모 칸은 처음 한 번만 만들고, 값은 지금 열린 정산서의 저장값으로 맞춘다.
+// 현금·은행 칸 금액: 직접 적은 값이 있으면 그 값, 없으면 현금 칸은 「총 받을 금액 − 은행 금액」을 기본으로 보여준다.
+function _balAmt(v, ak){
+  const amt = (v && v.amt) || {};
+  if (amt[ak] !== undefined) return parseFloat(amt[ak]) || 0;
+  if (ak[0] !== 'c') return 0;
+  const cur = ak.slice(1);
+  const bank = amt['t'+cur] !== undefined ? (parseFloat(amt['t'+cur]) || 0) : 0;
+  return Math.round(((_balTot[cur]||0) - bank)*100)/100;
+}
+
 function _balRenderInputs(){
   const blk = document.getElementById('balance-block'); if (!blk) return;
   const e = _balEntry(), ro = !e, v = e || {};
@@ -4353,39 +4363,32 @@ function _balRenderInputs(){
     const k = tr.dataset.bal;
     if (!tr.dataset.wired) {
       tr.dataset.wired = '1';
-      // 입금 체크: 「총 받을 금액」 줄, 화폐별 금액 앞
-      tr.querySelectorAll('td.bal-totc').forEach(td => {
-        const c = td.dataset.cur;
-        const cb = document.createElement('input'); cb.type='checkbox'; cb.className='bal-cb'; cb.dataset.cur=c; cb.title='입금';
-        cb.addEventListener('change', () => {
-          _balChange(x => {
-            x.c = (x.c && typeof x.c==='object') ? x.c : {}; x.c[c] = cb.checked;
-            // 체크했는데 현금·송금 금액이 비어 있으면 총 받을 금액을 현금 칸에 먼저 넣어 둔다(나눠 받았으면 고치면 됨)
-            x.amt = x.amt || {};
-            if (cb.checked && !x.amt['c'+c] && !x.amt['t'+c] && _balTot[c]) x.amt['c'+c] = String(_balTot[c]);
-          });
-          _balRenderInputs();
-        });
-        td.insertBefore(cb, td.firstChild);
-      });
-      // 현금·송금 입금 금액 (amt.cKRW/cUSD/cTHB = 현금, tKRW/tTHB = 송금) — 일계표가 이 금액으로 합산
+      // 현금·은행 입출금 금액 (amt.cKRW/cUSD/cTHB = 현금, tKRW/tTHB = 은행) + 칸마다 입금 체크(ck)
+      // 일계표는 체크된 칸의 금액만 합산한다.
       tr.querySelectorAll('td.bal-amtc').forEach(td => {
         const ak = td.dataset.k;
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.className='bal-cb'; cb.title='입금 확인';
         const inp = document.createElement('input'); inp.type='text'; inp.inputMode='decimal';
-        inp.addEventListener('input', () => _balChange(x => { x.amt = x.amt || {}; x.amt[ak] = inp.value.replace(/[^0-9.\-]/g,''); }));
+        cb.addEventListener('change', () => _balChange(x => {
+          x.ck = x.ck || {}; x.ck[ak] = cb.checked;
+          // 체크하는 순간 보이는 금액(기본값 포함)을 그대로 저장 — 이후 총액이 바뀌어도 받은 금액은 고정
+          x.amt = x.amt || {};
+          if (cb.checked && x.amt[ak] === undefined) x.amt[ak] = String(_balAmt(x, ak));
+        }));
+        inp.addEventListener('input', () => { _balChange(x => { x.amt = x.amt || {}; x.amt[ak] = inp.value.replace(/[^0-9.\-]/g,''); }); _balRenderInputs(); });
         inp.addEventListener('blur', () => { const n = parseFloat(inp.value.replace(/,/g,'')); inp.value = isNaN(n) ? '' : fmtNum(n); });
-        td.appendChild(inp);
+        td.append(cb, inp);
       });
       const td2 = document.createElement('td'); td2.className='bal-memo';
       const m = document.createElement('input'); m.type='text'; m.maxLength=200;
       m.addEventListener('input', () => _balChange(x => { x.m = x.m || {}; x.m[k] = m.value; }));
       td2.appendChild(m); tr.append(td2);
     }
-    const vc = (v.c && typeof v.c==='object') ? v.c : {};
-    tr.querySelectorAll('input.bal-cb').forEach(cb => { cb.checked = !!vc[cb.dataset.cur]; cb.disabled = ro; });
-    tr.querySelectorAll('td.bal-amtc input').forEach(inp => {
-      const raw = (v.amt && v.amt[inp.parentNode.dataset.k]) || '';
-      if (document.activeElement !== inp) { const n = parseFloat(raw); inp.value = (raw === '' || isNaN(n)) ? '' : fmtNum(n); }
+    tr.querySelectorAll('td.bal-amtc').forEach(td => {
+      const ak = td.dataset.k;
+      const cb = td.querySelector('input.bal-cb'), inp = td.querySelector('input[type="text"]');
+      cb.checked = !!(v.ck && v.ck[ak]); cb.disabled = ro;
+      if (document.activeElement !== inp) { const n = _balAmt(v, ak); inp.value = n ? fmtNum(n) : ''; }
       inp.disabled = ro;
     });
     const m = tr.querySelector('.bal-memo input');
@@ -4425,8 +4428,10 @@ async function renderBalanceTab(){
     list.map(s => {
       const inf = (s.fullData && s.fullData.info) || {};
       const period = inf.tourStart ? (inf.tourStart + (inf.tourNights ? ' · '+inf.tourNights+'박' : '')) : '-';
-      const b = balanceDB[s.id] || {}, c = b.c || {};
-      const chk = ['KRW','USD','THB'].filter(k => c[k]).map(k => sym[k]).join(' ');
+      const b = balanceDB[s.id] || {};
+      const lbl = {cKRW:'현금₩', cUSD:'현금$', cTHB:'현금฿', tKRW:'은행₩', tTHB:'은행฿'};
+      const chk = b.ck ? Object.keys(lbl).filter(k => b.ck[k]).map(k => lbl[k]).join(' ')
+                       : ['KRW','USD','THB'].filter(k => (b.c||{})[k]).map(k => sym[k]).join(' ');
       return `<tr class="bl-row" onclick="openSubData('${esc(s.id)}','balance')"><td>${esc(s.settleCode)}</td><td>${esc(s.guideName)}</td><td>${esc(period)}</td><td style="text-align:center;">${chk ? '☑ '+chk : ''}</td><td style="text-align:center;">${esc(b.date||'')}</td></tr>`;
     }).join('') + '</table>';
 }
@@ -4502,8 +4507,12 @@ function _dailyLedgerRows(day){
     const e = balanceDB[id]; if (!e || e.date !== day) return;
     const c = e.c || {}, how = e.how || {}, t = e.tot || {};
     const r = { e, kc:0, kt:0, usd:0, tc:0, tt:0 };
-    if (e.amt && typeof e.amt === 'object') {
-      // 현금·송금 칸에 적은 금액 그대로
+    if (e.ck && typeof e.ck === 'object') {
+      // 현금·은행 입출금 칸 중 「체크된 칸」의 금액만
+      const a = k => e.ck[k] ? (parseFloat((e.amt||{})[k]) || 0) : 0;
+      r.kc = a('cKRW'); r.kt = a('tKRW'); r.usd = a('cUSD'); r.tc = a('cTHB'); r.tt = a('tTHB');
+    } else if (e.amt && typeof e.amt === 'object') {
+      // (1127 낮 잠깐) 현금·송금 칸에 적은 금액 그대로
       const a = k => parseFloat(e.amt[k]) || 0;
       r.kc = a('cKRW'); r.kt = a('tKRW'); r.usd = a('cUSD'); r.tc = a('cTHB'); r.tt = a('tTHB');
     } else {
@@ -4529,7 +4538,7 @@ function runDailyLedger(){
     return `<tr><td>${esc(r.e.guideName)}</td><td>${esc(r.e.settleCode)}</td><td>${esc(r.e.period)}</td><td>${nf(r.kc)}</td><td>${nf(r.kt)}</td><td>${nf(r.usd)}</td><td>${nf(r.tc)}</td><td>${nf(r.tt)}</td><td class="dl-memo">${esc(memo)}</td></tr>`;
   }).join('');
   document.getElementById('dlResult').innerHTML = rows.length ? `<table class="dl-tbl">
-    <tr><th>가이드명</th><th>정산코드</th><th>행사기간</th><th>현금 ₩</th><th>송금 ₩</th><th>$</th><th>현금 ฿</th><th>송금 ฿</th><th>비고</th></tr>
+    <tr><th>가이드명</th><th>정산코드</th><th>행사기간</th><th>현금 ₩</th><th>은행 ₩</th><th>$</th><th>현금 ฿</th><th>은행 ฿</th><th>비고</th></tr>
     ${body}
     <tr class="dl-sum"><td colspan="3">합계 (${rows.length}건)</td><td>${nf(sum.kc)}</td><td>${nf(sum.kt)}</td><td>${nf(sum.usd)}</td><td>${nf(sum.tc)}</td><td>${nf(sum.tt)}</td><td></td></tr>
   </table>` : `<div style="padding:10px;color:#888;">${esc(day)} 작성일자로 입금된 발란스가 없습니다.</div>`;
