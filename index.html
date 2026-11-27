@@ -3445,6 +3445,18 @@ const SHOP_NAMES = {
   herb:     '허브',
 };
 
+// 쇼핑 줄 보여주는 순서: 구분(A→B→C→D→E→반품→회사보고→그 외) → D/C% 작은 것 위로.
+// 구분 없는 새 줄은 맨 아래. 저장 데이터(배열 순서)는 건드리지 않고 사본만 정렬.
+function sortedShopRows(key, arr) {
+  const order = SHOP_TYPES[key] || [];
+  const rank = t => { t=(t||'').trim(); if(!t) return 999; const i=order.indexOf(t); return i<0 ? 900 : i; };
+  return (arr||[]).map((r,i)=>({r,i})).sort((a,b)=>
+    rank(a.r.type)-rank(b.r.type)
+    || (parseFloat(a.r.dc)||0)-(parseFloat(b.r.dc)||0)
+    || a.i-b.i
+  ).map(x=>x.r);
+}
+
 function renderShop(key) {
   const list = document.getElementById(key+'-list');
   if (!list) return;
@@ -3453,7 +3465,7 @@ function renderShop(key) {
   const types   = SHOP_TYPES[key] || [];
   const hasTypes = types.length > 0;
 
-  (state.shopping[key]||[]).forEach(row => {
+  sortedShopRows(key, state.shopping[key]).forEach(row => {
     const div = document.createElement('div');
     div.className = 'shop-row';
 
@@ -7416,7 +7428,7 @@ async function downloadShoppingExcel() {
         // 체크(선택)되지 않은 쇼핑센터는 제외 — 구버전 데이터(체크값 없음)는 실제 입력값 유무로 판단
         const chk = s.fullData && s.fullData.fields ? s.fullData.fields['_chk_'+ck] : undefined;
         if (chk === false) return;
-        const items=(s.fullData&&s.fullData.shopping&&s.fullData.shopping[ck])||[];
+        const items=sortedShopRows(ck, (s.fullData&&s.fullData.shopping&&s.fullData.shopping[ck])||[]);
         items.forEach(item=>{
           const sale=parseFloat((item.sale||'').toString().replace(/,/g,''))||0;
           const type=(item.type||'').trim();
