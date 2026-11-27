@@ -4337,12 +4337,16 @@ function _balChange(fn){
 // 체크·입금방법·메모 칸은 처음 한 번만 만들고, 값은 지금 열린 정산서의 저장값으로 맞춘다.
 // 현금·은행 칸 금액: 직접 적은 값이 있으면 그 값, 없으면 현금 칸은 「총 받을 금액 − 은행 금액」을 기본으로 보여준다.
 function _balAmt(v, ak){
-  const amt = (v && v.amt) || {};
-  if (amt[ak] !== undefined) return parseFloat(amt[ak]) || 0;
+  return _balAmtOf((v && v.amt) || {}, ak, _balTot);
+}
+// 빈 칸('')도 「안 적음」으로 보고 현금 칸은 기본값(총액 − 은행). 0을 받았으면 0을 적으면 된다.
+function _balAmtOf(amt, ak, tot){
+  const has = k => amt[k] !== undefined && amt[k] !== null && String(amt[k]).trim() !== '';
+  if (has(ak)) return parseFloat(amt[ak]) || 0;
   if (ak[0] !== 'c') return 0;
   const cur = ak.slice(1);
-  const bank = amt['t'+cur] !== undefined ? (parseFloat(amt['t'+cur]) || 0) : 0;
-  return Math.round(((_balTot[cur]||0) - bank)*100)/100;
+  const bank = has('t'+cur) ? (parseFloat(amt['t'+cur]) || 0) : 0;
+  return Math.round((((tot||{})[cur]||0) - bank)*100)/100;
 }
 
 function _balRenderInputs(){
@@ -4373,10 +4377,10 @@ function _balRenderInputs(){
           x.ck = x.ck || {}; x.ck[ak] = cb.checked;
           // 체크하는 순간 보이는 금액(기본값 포함)을 그대로 저장 — 이후 총액이 바뀌어도 받은 금액은 고정
           x.amt = x.amt || {};
-          if (cb.checked && x.amt[ak] === undefined) x.amt[ak] = String(_balAmt(x, ak));
+          if (cb.checked && String(x.amt[ak] == null ? '' : x.amt[ak]).trim() === '') x.amt[ak] = String(_balAmt(x, ak));
         }));
         inp.addEventListener('input', () => { _balChange(x => { x.amt = x.amt || {}; x.amt[ak] = inp.value.replace(/[^0-9.\-]/g,''); }); _balRenderInputs(); });
-        inp.addEventListener('blur', () => { const n = parseFloat(inp.value.replace(/,/g,'')); inp.value = isNaN(n) ? '' : fmtNum(n); });
+        inp.addEventListener('blur', () => setTimeout(_balRenderInputs, 0));   // 쉼표 정리 + 비운 현금 칸은 기본값으로
         td.append(cb, inp);
       });
       const td2 = document.createElement('td'); td2.className='bal-memo';
@@ -4509,7 +4513,7 @@ function _dailyLedgerRows(day){
     const r = { e, kc:0, kt:0, usd:0, tc:0, tt:0 };
     if (e.ck && typeof e.ck === 'object') {
       // 현금·은행 입출금 칸 중 「체크된 칸」의 금액만
-      const a = k => e.ck[k] ? (parseFloat((e.amt||{})[k]) || 0) : 0;
+      const a = k => e.ck[k] ? _balAmtOf(e.amt || {}, k, e.tot) : 0;
       r.kc = a('cKRW'); r.kt = a('tKRW'); r.usd = a('cUSD'); r.tc = a('cTHB'); r.tt = a('tTHB');
     } else if (e.amt && typeof e.amt === 'object') {
       // (1127 낮 잠깐) 현금·송금 칸에 적은 금액 그대로
