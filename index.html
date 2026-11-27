@@ -4224,11 +4224,14 @@ function calcBalance(){
   document.querySelectorAll('#balance-block tr[data-bal]').forEach(tr => {
     const k = tr.dataset.bal;
     let chk = tr.querySelector('.bal-chk input'), memo = tr.querySelector('.bal-memo input');
-    if (!chk) {
+    if (!memo) {
+      // 입금 체크는 실제로 받는 「총 받을 금액」 줄에만
       const td1 = document.createElement('td'); td1.className = 'bal-chk';
-      chk = document.createElement('input'); chk.type = 'checkbox';
-      chk.addEventListener('change', () => { (state.balance[k] = state.balance[k] || {}).c = chk.checked; scheduleSave(); });
-      td1.appendChild(chk);
+      if (k === 'tot') {
+        chk = document.createElement('input'); chk.type = 'checkbox';
+        chk.addEventListener('change', () => { (state.balance[k] = state.balance[k] || {}).c = chk.checked; scheduleSave(); });
+        td1.appendChild(chk);
+      }
       const td2 = document.createElement('td'); td2.className = 'bal-memo';
       memo = document.createElement('input'); memo.type = 'text'; memo.maxLength = 200;
       memo.addEventListener('input', () => { (state.balance[k] = state.balance[k] || {}).m = memo.value; scheduleSave(); });
@@ -4236,7 +4239,7 @@ function calcBalance(){
       tr.append(td1, td2);
     }
     const v = state.balance[k] || {};
-    chk.checked = !!v.c;
+    if (chk) chk.checked = !!v.c;
     if (document.activeElement !== memo) memo.value = v.m || '';
   });
 }
