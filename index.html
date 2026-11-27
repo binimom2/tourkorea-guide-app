@@ -1762,8 +1762,14 @@
 
   <!-- ═══ ⚖ 발란스 탭 (어드민 전용) — 저장은 정산서 본문과 별도(guide_balance_v1, 정산서 id별) ═══ -->
   <div id="tab-balance" class="tab-panel">
+    <!-- 정산서를 안 연 상태: 미정산 제출건 목록 → 누르면 그 건을 열고 발란스로 -->
+    <div class="summary-card" id="bal-list-card" style="display:none;">
+      <h3 style="margin:0 0 8px;">⚖ 발란스 — 미정산 제출건</h3>
+      <div id="bal-list"></div>
+    </div>
     <div class="summary-card" id="balance-block">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+        <button type="button" onclick="balBackToList()" style="border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;">◀ 목록</button>
         <h3 style="margin:0;">⚖ 발란스</h3>
         <button type="button" onclick="printBalance()" style="margin-left:auto;background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">🖨 발란스 출력</button>
       </div>
@@ -1773,7 +1779,6 @@
         <span>정산코드 <b id="bal-code">-</b></span>
         <label>작성일자 <input type="date" id="bal-date"></label>
       </div>
-      <div id="bal-notice" style="display:none;font-size:12px;color:#c0392b;margin:4px 0;">제출현황에서 정산서를 열면 입금 체크·메모를 저장할 수 있습니다.</div>
       <table class="bal-tbl">
         <tr><th>내역</th><th>₩</th><th>$</th><th>฿</th><th>메모</th></tr>
         <tr data-bal="adv"><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
@@ -1963,6 +1968,8 @@
   .dl-tbl td:nth-child(-n+3){text-align:left;}
   .dl-tbl td.dl-memo{text-align:left;white-space:normal;min-width:120px;}
   .dl-tbl tr.dl-sum td{font-weight:800;background:#e8f9f0;color:#1A8A60;}
+  .dl-tbl tr.bl-row{cursor:pointer;}
+  .dl-tbl tr.bl-row:hover td{background:#eef6fb;}
 </style>
 
 <!-- ═══ 월별 엑셀 모달 ═══ -->
@@ -2779,10 +2786,7 @@ function switchTab(name) {
   const mini = document.getElementById('miniInfoBar');
   if (mini) mini.style.display = (name !== 'main' && name !== 'summary') ? 'flex' : 'none';
   if (name === 'summary') updateSummary();
-  if (name === 'balance') {
-    try { calcBalance(); } catch(e) { console.error('calcBalance', e); }
-    loadBalanceDB().then(ok => { if (currentTab === 'balance') { try { calcBalance(); } catch(e) {} } if (!ok) showToast('⚠ 발란스 저장값을 서버에서 불러오지 못했습니다.', true); });
-  }
+  if (name === 'balance') renderBalanceTab();
 }
 
 function updateMiniBar() {
@@ -4385,6 +4389,44 @@ function _balRenderInputs(){
       m.disabled = ro;
     }
   });
+}
+
+// ⚖ 발란스 탭: 정산서를 열었으면 그 건의 발란스, 아니면 미정산 제출건 목록
+async function renderBalanceTab(){
+  const viewing = !!window._viewingSubId;
+  const card = document.getElementById('bal-list-card'), blk = document.getElementById('balance-block');
+  if (card) card.style.display = viewing ? 'none' : 'block';
+  if (blk) blk.style.display = viewing ? 'block' : 'none';
+  if (viewing) {
+    try { calcBalance(); } catch(e) { console.error('calcBalance', e); }
+    const ok = await loadBalanceDB();
+    if (currentTab === 'balance') { try { calcBalance(); } catch(e) {} }
+    if (!ok) showToast('⚠ 발란스 저장값을 서버에서 불러오지 못했습니다.', true);
+    return;
+  }
+  const box = document.getElementById('bal-list');
+  box.innerHTML = '<div style="padding:8px;color:#888;">불러오는 중...</div>';
+  await loadSubmissions();
+  await loadBalanceDB();
+  if (currentTab !== 'balance' || window._viewingSubId) return;
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const list = (Array.isArray(submissionsDB) ? submissionsDB : [])
+    .filter(s => s && !s.settled && s.fullData)
+    .sort((a,b) => (b.settleCode||'').localeCompare(a.settleCode||'', undefined, {numeric:true}));
+  if (!list.length) { box.innerHTML = '<div style="padding:8px;color:#888;">미정산 제출건이 없습니다.</div>'; return; }
+  const sym = {KRW:'₩', USD:'$', THB:'฿'};
+  box.innerHTML = `<table class="dl-tbl"><tr><th>정산코드</th><th>가이드명</th><th>행사기간</th><th>입금 체크</th><th>작성일자</th></tr>` +
+    list.map(s => {
+      const inf = (s.fullData && s.fullData.info) || {};
+      const period = inf.tourStart ? (inf.tourStart + (inf.tourNights ? ' · '+inf.tourNights+'박' : '')) : '-';
+      const b = balanceDB[s.id] || {}, c = b.c || {};
+      const chk = ['KRW','USD','THB'].filter(k => c[k]).map(k => sym[k]).join(' ');
+      return `<tr class="bl-row" onclick="openSubData('${esc(s.id)}','balance')"><td>${esc(s.settleCode)}</td><td>${esc(s.guideName)}</td><td>${esc(period)}</td><td style="text-align:center;">${chk ? '☑ '+chk : ''}</td><td style="text-align:center;">${esc(b.date||'')}</td></tr>`;
+    }).join('') + '</table>';
+}
+function balBackToList(){
+  if (window._viewingSubId) restoreMyData();
+  if (!window._viewingSubId) switchTab('balance');
 }
 
 // 🖨 발란스만 A4 반 장(위쪽 절반)으로 출력
