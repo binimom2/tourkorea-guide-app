@@ -969,6 +969,7 @@
       <button class="logout-btn" id="btnSubmit" onclick="submitToAdmin()" style="background:rgba(220,38,38,0.35);margin-right:4px;display:none;">📤 제출</button>
       <button class="logout-btn guide-only" id="btnNewReport" onclick="confirmReset()" style="background:rgba(40,168,122,0.7);margin-right:4px;">📝 새 보고서</button>
       <button class="logout-btn admin-only" id="btnVisitStats" onclick="openVisitStats()" style="background:rgba(124,58,237,0.45);margin-right:4px;">📊 방문집계</button>
+      <button class="logout-btn admin-only" id="btnDailyLedger" onclick="openDailyLedger()" style="background:rgba(26,138,96,0.45);margin-right:4px;">📒 일계표</button>
       <button class="logout-btn admin-only" id="btnMonthExcel" onclick="openMonthExcel()" style="background:rgba(232,135,42,0.35);margin-right:4px;">📥 다운로드</button>
       <button class="logout-btn admin-only" id="btnSettings" onclick="openSettings()" style="background:rgba(40,168,122,0.35);margin-right:4px;">⚙ 코드관리</button>
       <button class="logout-btn admin-only" id="btnUserMgr" onclick="openUserMgr()" style="background:rgba(91,124,250,0.35);margin-right:4px;">👥 계정관리</button>
@@ -1743,34 +1744,6 @@
       </div>
     </div>
 
-    <!-- 발란스: 전도금 − 일차 행사비 − 옵션원가 + 통화별 입금/지출 = 받을 금액 (calcBalance) -->
-    <div class="summary-card admin-only" id="balance-block">
-      <h3>⚖ 발란스</h3>
-      <table class="bal-tbl">
-        <tr><th>내역</th><th>₩</th><th>$</th><th>฿</th><th>메모</th></tr>
-        <tr data-bal="adv"><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
-        <tr data-bal="exp"><td>− 가이드 행사비 (일차)</td><td></td><td></td><td id="bal-exp"></td></tr>
-        <tr data-bal="cost"><td>− 옵션 원가</td><td></td><td></td><td id="bal-cost"></td></tr>
-        <tr data-bal="net" class="bal-sub"><td>= 금액</td><td></td><td></td><td id="bal-net"></td></tr>
-        <tr data-bal="opt"><td>+ 옵션 입금액</td><td id="bal-opt-krw"></td><td id="bal-opt-usd"></td><td id="bal-opt-thb"></td></tr>
-        <tr data-bal="tip"><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
-        <tr data-bal="tc"><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
-        <tr data-bal="tot" class="bal-total"><td>총 받을 금액</td><td class="bal-totc" data-cur="KRW"><span id="bal-tot-krw"></span></td><td class="bal-totc" data-cur="USD"><span id="bal-tot-usd"></span></td><td class="bal-totc" data-cur="THB"><span id="bal-tot-thb"></span></td></tr>
-      </table>
-    </div>
-    <style>
-      .bal-tbl{border-collapse:collapse;font-size:13px;margin-top:4px;}
-      .bal-tbl th,.bal-tbl td{border:1px solid var(--border);padding:5px 10px;white-space:nowrap;}
-      .bal-tbl th{background:#f8fafc;font-weight:700;text-align:center;}
-      .bal-tbl td{text-align:right;min-width:80px;}
-      .bal-tbl td:first-child{text-align:left;font-weight:600;min-width:0;}
-      .bal-tbl .bal-sub td{background:#f8fafc;font-weight:700;}
-      .bal-tbl .bal-total td{background:#e8f9f0;color:#1A8A60;font-weight:800;font-size:14px;}
-      .bal-tbl input.bal-cb{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle;margin:0 6px 0 0;float:left;}
-      .bal-tbl td.bal-memo{padding:2px 4px;min-width:0;}
-      .bal-tbl td.bal-memo input{width:200px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;}
-    </style>
-
     <!-- 회사 정산서 코멘트 (Admin 전용, 한 줄) — 회사 정산서 출력에만 찍힌다 -->
     <div class="summary-card settle-admin-card admin-only" id="admin-note-block" style="margin-bottom:10px;">
       <div style="padding:10px 12px;">
@@ -1785,6 +1758,52 @@
       <button class="btn-print" style="flex:1;" onclick="printGuide()">🖨 가이드 정산서 출력</button>
       <button class="btn-print admin-only" id="btnPrintAdmin" style="flex:1;background:#c0392b;" onclick="printAdmin()">🖨 회사 정산서 출력</button>
     </div>
+  </div>
+
+  <!-- ═══ ⚖ 발란스 탭 (어드민 전용) — 저장은 정산서 본문과 별도(guide_balance_v1, 정산서 id별) ═══ -->
+  <div id="tab-balance" class="tab-panel">
+    <div class="summary-card" id="balance-block">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+        <h3 style="margin:0;">⚖ 발란스</h3>
+        <button type="button" onclick="printBalance()" style="margin-left:auto;background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">🖨 발란스 출력</button>
+      </div>
+      <div class="bal-info">
+        <span>가이드명 <b id="bal-guide">-</b></span>
+        <span>행사기간 <b id="bal-period">-</b></span>
+        <span>정산코드 <b id="bal-code">-</b></span>
+        <label>작성일자 <input type="date" id="bal-date"></label>
+      </div>
+      <div id="bal-notice" style="display:none;font-size:12px;color:#c0392b;margin:4px 0;">제출현황에서 정산서를 열면 입금 체크·메모를 저장할 수 있습니다.</div>
+      <table class="bal-tbl">
+        <tr><th>내역</th><th>₩</th><th>$</th><th>฿</th><th>메모</th></tr>
+        <tr data-bal="adv"><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
+        <tr data-bal="exp"><td>− 가이드 행사비 (일차)</td><td></td><td></td><td id="bal-exp"></td></tr>
+        <tr data-bal="cost"><td>− 옵션 원가</td><td></td><td></td><td id="bal-cost"></td></tr>
+        <tr data-bal="net" class="bal-sub"><td>= 금액</td><td></td><td></td><td id="bal-net"></td></tr>
+        <tr data-bal="opt"><td>+ 옵션 입금액</td><td id="bal-opt-krw"></td><td id="bal-opt-usd"></td><td id="bal-opt-thb"></td></tr>
+        <tr data-bal="tip"><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
+        <tr data-bal="tc"><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
+        <tr data-bal="tot" class="bal-total"><td>총 받을 금액</td><td class="bal-totc" data-cur="KRW"><span id="bal-tot-krw"></span></td><td class="bal-totc" data-cur="USD"><span id="bal-tot-usd"></span></td><td class="bal-totc" data-cur="THB"><span id="bal-tot-thb"></span></td></tr>
+        <tr data-bal="how" class="bal-how"><td>입금 방법</td><td class="bal-howc" data-cur="KRW"></td><td></td><td class="bal-howc" data-cur="THB"></td></tr>
+      </table>
+    </div>
+    <style>
+      .bal-info{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--text-sub);margin-bottom:8px;align-items:center;}
+      .bal-info b{color:var(--text);margin-left:4px;}
+      .bal-info input{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-family:inherit;margin-left:4px;}
+      .bal-tbl{border-collapse:collapse;font-size:13px;margin-top:4px;}
+      .bal-tbl th,.bal-tbl td{border:1px solid var(--border);padding:5px 10px;white-space:nowrap;}
+      .bal-tbl th{background:#f8fafc;font-weight:700;text-align:center;}
+      .bal-tbl td{text-align:right;min-width:80px;}
+      .bal-tbl td:first-child{text-align:left;font-weight:600;min-width:0;}
+      .bal-tbl .bal-sub td{background:#f8fafc;font-weight:700;}
+      .bal-tbl .bal-total td{background:#e8f9f0;color:#1A8A60;font-weight:800;font-size:14px;}
+      .bal-tbl input.bal-cb{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle;margin:0 6px 0 0;float:left;}
+      .bal-tbl td.bal-howc{text-align:center;}
+      .bal-tbl td.bal-howc label{margin:0 4px;cursor:pointer;font-size:12px;}
+      .bal-tbl td.bal-memo{padding:2px 4px;min-width:0;}
+      .bal-tbl td.bal-memo input{width:200px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;}
+    </style>
   </div>
 
 </div><!-- /content -->
@@ -1918,6 +1937,33 @@
     </div>
   </div>
 </div>
+
+<!-- ═══ 📒 일계표 모달 (어드민) — 발란스 작성일자별 받은 돈 ═══ -->
+<div class="cfg-modal" id="dailyLedgerModal">
+  <div class="cfg-box" style="width:auto;max-width:96vw;">
+    <div class="cfg-head">
+      <span>📒 일계표</span>
+      <button onclick="closeDailyLedger()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ 닫기</button>
+    </div>
+    <div class="cfg-body">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+        <button onclick="shiftDailyLedger(-1)" style="border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;">◀</button>
+        <input type="date" id="dlDate" onchange="runDailyLedger()" style="border:1px solid var(--border);border-radius:6px;padding:5px;font-size:13px;">
+        <button onclick="shiftDailyLedger(1)" style="border:1px solid var(--border);background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;">▶</button>
+        <button onclick="printDailyLedger()" style="margin-left:auto;background:#1a6b8a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">🖨 출력</button>
+      </div>
+      <div id="dlResult"></div>
+    </div>
+  </div>
+</div>
+<style>
+  .dl-tbl{border-collapse:collapse;font-size:13px;}
+  .dl-tbl th,.dl-tbl td{border:1px solid var(--border);padding:5px 9px;white-space:nowrap;text-align:right;}
+  .dl-tbl th{background:#f8fafc;text-align:center;}
+  .dl-tbl td:nth-child(-n+3){text-align:left;}
+  .dl-tbl td.dl-memo{text-align:left;white-space:normal;min-width:120px;}
+  .dl-tbl tr.dl-sum td{font-weight:800;background:#e8f9f0;color:#1A8A60;}
+</style>
 
 <!-- ═══ 월별 엑셀 모달 ═══ -->
 <div class="cfg-modal" id="monthExcelModal">
@@ -2733,6 +2779,10 @@ function switchTab(name) {
   const mini = document.getElementById('miniInfoBar');
   if (mini) mini.style.display = (name !== 'main' && name !== 'summary') ? 'flex' : 'none';
   if (name === 'summary') updateSummary();
+  if (name === 'balance') {
+    try { calcBalance(); } catch(e) { console.error('calcBalance', e); }
+    loadBalanceDB().then(ok => { if (currentTab === 'balance') { try { calcBalance(); } catch(e) {} } if (!ok) showToast('⚠ 발란스 저장값을 서버에서 불러오지 못했습니다.', true); });
+  }
 }
 
 function updateMiniBar() {
@@ -2761,6 +2811,7 @@ function rebuildTabBar() {
   // 정산서 탭: 어드민/매니저는 항상, 가이드는 제출건 열람 중(정산완료 최종본)일 때만.
   // (회사 정산서 부분은 body.role-guide .settle-admin-card 로 계속 숨겨져 가이드 정산금까지만 보인다.)
   if (currentRole !== 'guide' || window._viewingSubId) tabDefs.push(['summary','📊 정산서']);
+  if (currentRole === 'admin') tabDefs.push(['balance','⚖ 발란스']);   // 어드민 전용
   tabDefs.forEach(([t,label]) => bar.appendChild(makeTabBtn(t, label)));
   if (currentRole === 'admin' || currentRole === 'organizer' || currentRole === 'op' || currentRole === 'guide') {
     const subLabel = currentRole === 'guide' ? '📋 내 제출현황' : '📋 제출현황';
@@ -4216,36 +4267,235 @@ function calcBalance(){
     set('bal-tip-'+k, f(tip[c],c));
     set('bal-tc-'+k, f(tc[c],c));
     const tot = (c==='THB'?net:0) + opt[c] + tip[c] - tc[c];
-    set('bal-tot-'+k, f(tot,c) || (c==='THB'?'฿ 0':''), tot<0);
+    _balTot[c] = Math.round(tot*100)/100;
   });
-  // 줄마다 입금 체크 + 메모 (state.balance[줄] = {c, m}) — 칸은 처음 한 번만 만들고 값만 맞춘다
-  if (!state.balance || typeof state.balance !== 'object') state.balance = {};
-  document.querySelectorAll('#balance-block tr[data-bal]').forEach(tr => {
+  [['KRW','krw'],['USD','usd'],['THB','thb']].forEach(([c,k])=>{
+    set('bal-tot-'+k, f(_balTot[c],c) || (c==='THB'?'฿ 0':''), _balTot[c]<0);
+  });
+  _balRenderInputs();
+}
+
+// ── 발란스 입력값 저장소 ──
+// 정산완료로 잠긴 정산서도 입금 확인은 해야 하므로 정산서 본문(제출본)과 따로 둔다.
+// guide_balance_v1 = { 정산서id: {date, c:{KRW,USD,THB}, how:{KRW,THB}, m:{줄:메모}, guideName, period, settleCode, tot:{KRW,USD,THB}, at} }
+var BAL_KEY = 'guide_balance_v1';
+var balanceDB = {};                        // var: 스크립트 앞부분 초기화 중 호출돼도 TDZ 오류 안 나게
+var _balTot = {KRW:0, USD:0, THB:0};
+var _balTimers = {};
+function _balToday(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function _balPeriod(){
+  const s=(document.getElementById('tourStart')||{}).value||'';
+  const nights=(document.getElementById('tourNights')||{}).value||'';
+  return s ? (s+(nights?' · '+nights+'박':'')) : '-';
+}
+function _balEntry(){ const id=window._viewingSubId; if(!id) return null; return balanceDB[id] || (balanceDB[id] = {}); }
+async function _loadBalRaw(){
+  if(!await _ensureFreshToken()) throw new Error('세션 없음');
+  const { data, error } = await sb.from('guide_data').select('data').eq('data_key', BAL_KEY).maybeSingle();
+  if(error) throw error;
+  return (data && data.data && typeof data.data==='object' && !Array.isArray(data.data)) ? data.data : {};
+}
+async function loadBalanceDB(){
+  try {
+    const srv = await _loadBalRaw();
+    Object.keys(_balTimers).forEach(id => { if (balanceDB[id]) srv[id] = balanceDB[id]; });   // 아직 저장 대기 중인 내 변경은 유지
+    balanceDB = srv;
+    return true;
+  } catch(e) { return false; }
+}
+// 서버 최신본을 다시 읽어 「이 정산서 한 건」만 바꿔 넣는다 — 다른 정산서 입력은 건드리지 않음.
+async function _balSaveNow(id){
+  delete _balTimers[id];
+  const mine = balanceDB[id]; if (!mine) return;
+  let srv;
+  try { srv = await _loadBalRaw(); }
+  catch(e) { showToast('❌ 발란스 저장 실패 — 서버를 읽지 못했습니다. 잠시 후 다시 체크해 주세요.', true); return; }
+  try { await pushGuideDailyBackup(BAL_KEY, srv); } catch(e) {}
+  srv[id] = mine;
+  if (await syncToSupabase(BAL_KEY, srv)) {
+    Object.keys(_balTimers).forEach(k => { if (balanceDB[k]) srv[k] = balanceDB[k]; });
+    balanceDB = srv;
+  }
+}
+function _balChange(fn){
+  const id = window._viewingSubId; const e = _balEntry(); if (!e) return;
+  fn(e);
+  if (!e.date) { e.date = _balToday(); const di=document.getElementById('bal-date'); if(di) di.value=e.date; }
+  e.guideName = (document.getElementById('guideName')||{}).value || '';
+  e.period = _balPeriod();
+  e.settleCode = (state.info && state.info.settleCode && state.info.settleCode!=='-') ? state.info.settleCode : '';
+  e.tot = Object.assign({}, _balTot);
+  e.at = new Date().toISOString();
+  clearTimeout(_balTimers[id]);
+  _balTimers[id] = setTimeout(() => _balSaveNow(id), 600);
+}
+// 체크·입금방법·메모 칸은 처음 한 번만 만들고, 값은 지금 열린 정산서의 저장값으로 맞춘다.
+function _balRenderInputs(){
+  const blk = document.getElementById('balance-block'); if (!blk) return;
+  const e = _balEntry(), ro = !e, v = e || {};
+  const legacy = (state.balance && typeof state.balance==='object') ? state.balance : {};
+  const nt = document.getElementById('bal-notice'); if (nt) nt.style.display = ro ? 'block' : 'none';
+  const st = (id, t) => { const el=document.getElementById(id); if(el) el.textContent=t; };
+  st('bal-guide', (document.getElementById('guideName')||{}).value || '-');
+  st('bal-period', _balPeriod());
+  st('bal-code', (state.info && state.info.settleCode) || '-');
+  const di = document.getElementById('bal-date');
+  if (di) {
+    if (!di.dataset.wired) { di.dataset.wired='1'; di.addEventListener('change', () => _balChange(x => { x.date = di.value; })); }
+    di.value = v.date || ''; di.disabled = ro;
+  }
+  blk.querySelectorAll('tr[data-bal]').forEach(tr => {
     const k = tr.dataset.bal;
-    let memo = tr.querySelector('.bal-memo input');
-    if (!memo) {
-      // 입금 체크는 실제로 받는 「총 받을 금액」 줄에만, 화폐별 금액 앞에 — state.balance.tot.c = {KRW,USD,THB}
+    if (!tr.dataset.wired) {
+      tr.dataset.wired = '1';
+      // 입금 체크: 「총 받을 금액」 줄, 화폐별 금액 앞
       tr.querySelectorAll('td.bal-totc').forEach(td => {
         const c = td.dataset.cur;
-        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'bal-cb'; cb.dataset.cur = c; cb.title = '입금';
-        cb.addEventListener('change', () => {
-          const row = (state.balance[k] = state.balance[k] || {});
-          if (!row.c || typeof row.c !== 'object') row.c = {};
-          row.c[c] = cb.checked; scheduleSave();
-        });
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.className='bal-cb'; cb.dataset.cur=c; cb.title='입금';
+        cb.addEventListener('change', () => _balChange(x => { x.c = (x.c && typeof x.c==='object') ? x.c : {}; x.c[c] = cb.checked; }));
         td.insertBefore(cb, td.firstChild);
       });
-      const td2 = document.createElement('td'); td2.className = 'bal-memo';
-      memo = document.createElement('input'); memo.type = 'text'; memo.maxLength = 200;
-      memo.addEventListener('input', () => { (state.balance[k] = state.balance[k] || {}).m = memo.value; scheduleSave(); });
-      td2.appendChild(memo);
-      tr.append(td2);
+      // 입금 방법(현금/송금): ₩·฿만
+      tr.querySelectorAll('td.bal-howc').forEach(td => {
+        const c = td.dataset.cur;
+        ['현금','송금'].forEach(h => {
+          const lb = document.createElement('label');
+          const r = document.createElement('input'); r.type='radio'; r.name='balhow-'+c; r.value=h;
+          r.addEventListener('change', () => _balChange(x => { x.how = x.how || {}; x.how[c] = h; }));
+          lb.append(r, ' '+h); td.appendChild(lb);
+        });
+      });
+      if (k !== 'how') {
+        const td2 = document.createElement('td'); td2.className='bal-memo';
+        const m = document.createElement('input'); m.type='text'; m.maxLength=200;
+        m.addEventListener('input', () => _balChange(x => { x.m = x.m || {}; x.m[k] = m.value; }));
+        td2.appendChild(m); tr.append(td2);
+      } else tr.append(document.createElement('td'));
     }
-    const v = state.balance[k] || {};
-    const vc = (v.c && typeof v.c === 'object') ? v.c : {};
-    tr.querySelectorAll('input.bal-cb').forEach(cb => { cb.checked = !!vc[cb.dataset.cur]; });
-    if (document.activeElement !== memo) memo.value = v.m || '';
+    const vc = (v.c && typeof v.c==='object') ? v.c : {};
+    tr.querySelectorAll('input.bal-cb').forEach(cb => { cb.checked = !!vc[cb.dataset.cur]; cb.disabled = ro; });
+    tr.querySelectorAll('td.bal-howc').forEach(td => {
+      const want = (v.how && v.how[td.dataset.cur]) || '현금';
+      td.querySelectorAll('input').forEach(r => { r.checked = (r.value === want); r.disabled = ro; });
+    });
+    const m = tr.querySelector('.bal-memo input');
+    if (m) {
+      const mv = (v.m && v.m[k] != null) ? v.m[k] : ((!v.m && legacy[k] && legacy[k].m) || '');
+      if (document.activeElement !== m) m.value = mv;
+      m.disabled = ro;
+    }
   });
+}
+
+// 🖨 발란스만 A4 반 장(위쪽 절반)으로 출력
+function printBalance(){
+  calcBalance();
+  const blk = document.getElementById('balance-block'); if (!blk) return;
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const tbl = blk.querySelector('.bal-tbl').cloneNode(true);
+  const live = blk.querySelector('.bal-tbl');
+  const liveIns = live.querySelectorAll('input'), cloneIns = tbl.querySelectorAll('input');
+  cloneIns.forEach((inp, i) => {
+    const src = liveIns[i]; let txt;
+    if (src.type === 'checkbox') txt = src.checked ? '☑ ' : '☐ ';
+    else if (src.type === 'radio') { if (!src.checked) { inp.parentNode.remove(); return; } txt = src.value; inp.parentNode.replaceWith(document.createTextNode(txt)); return; }
+    else txt = src.value;
+    inp.replaceWith(document.createTextNode(txt));
+  });
+  const g = esc(document.getElementById('bal-guide').textContent);
+  const p = esc(document.getElementById('bal-period').textContent);
+  const code = esc(document.getElementById('bal-code').textContent);
+  const dt = esc((document.getElementById('bal-date')||{}).value || '');
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) { showToast('❌ 팝업이 막혀 있습니다. 팝업 허용 후 다시 눌러 주세요.', true); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>발란스 - ${g}</title><style>
+    @page{size:A4 portrait;margin:10mm;}
+    body{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;margin:0;color:#111;}
+    .half{height:128mm;overflow:hidden;}
+    h2{font-size:16px;margin:0 0 6px;}
+    .info{display:flex;gap:16px;font-size:12px;margin-bottom:6px;flex-wrap:wrap;}
+    table{border-collapse:collapse;width:100%;font-size:11.5px;}
+    th,td{border:1px solid #999;padding:3px 7px;white-space:nowrap;}
+    th{background:#f0f0f0;}
+    td{text-align:right;} td:first-child{text-align:left;font-weight:600;}
+    td:last-child{text-align:left;white-space:normal;}
+    tr.bal-sub td{background:#f6f6f6;font-weight:700;}
+    tr.bal-total td{font-weight:800;font-size:12.5px;}
+    tr.bal-how td{text-align:center;}
+  </style></head><body><div class="half">
+    <h2>⚖ 발란스</h2>
+    <div class="info"><span>가이드명 <b>${g}</b></span><span>행사기간 <b>${p}</b></span><span>정산코드 <b>${code}</b></span><span>작성일자 <b>${dt||'-'}</b></span></div>
+    ${tbl.outerHTML}
+  </div><script>window.onload=function(){window.print();setTimeout(function(){window.close();},300);};<\/script></body></html>`);
+  w.document.close();
+}
+
+// 📒 일계표 — 작성일자별로 그날 받은 돈(현금₩·송금₩·$·현금฿·송금฿) 합계
+async function openDailyLedger(){
+  if (currentRole !== 'admin') return;
+  const di = document.getElementById('dlDate');
+  if (!di.value) di.value = _balToday();
+  document.getElementById('dailyLedgerModal').style.display = 'flex';
+  document.getElementById('dlResult').innerHTML = '<div style="padding:10px;color:#888;">불러오는 중...</div>';
+  if (!await loadBalanceDB()) { document.getElementById('dlResult').innerHTML = '<div style="padding:10px;color:#c0392b;">서버에서 불러오지 못했습니다. 다시 열어 주세요.</div>'; return; }
+  runDailyLedger();
+}
+function closeDailyLedger(){ document.getElementById('dailyLedgerModal').style.display = 'none'; }
+function shiftDailyLedger(n){
+  const di = document.getElementById('dlDate');
+  const d = new Date((di.value || _balToday()) + 'T00:00:00'); d.setDate(d.getDate()+n);
+  const p = x => String(x).padStart(2,'0');
+  di.value = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  runDailyLedger();
+}
+function _dailyLedgerRows(day){
+  const rows = [];
+  Object.keys(balanceDB||{}).forEach(id => {
+    const e = balanceDB[id]; if (!e || e.date !== day) return;
+    const c = e.c || {}, how = e.how || {}, t = e.tot || {};
+    const r = { e, kc:0, kt:0, usd:0, tc:0, tt:0 };
+    if (c.KRW) { if ((how.KRW||'현금') === '송금') r.kt = t.KRW||0; else r.kc = t.KRW||0; }
+    if (c.USD) r.usd = t.USD||0;
+    if (c.THB) { if ((how.THB||'현금') === '송금') r.tt = t.THB||0; else r.tc = t.THB||0; }
+    if (c.KRW || c.USD || c.THB) rows.push(r);
+  });
+  rows.sort((a,b) => (a.e.settleCode||'').localeCompare(b.e.settleCode||'', undefined, {numeric:true}));
+  return rows;
+}
+function runDailyLedger(){
+  const day = document.getElementById('dlDate').value || _balToday();
+  const rows = _dailyLedgerRows(day);
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const nf = v => v ? fmtNum(Math.round(v*100)/100) : '';
+  const sum = {kc:0,kt:0,usd:0,tc:0,tt:0};
+  const body = rows.map(r => {
+    Object.keys(sum).forEach(k => sum[k] += r[k]);
+    const memo = (r.e.m && r.e.m.tot) || '';
+    return `<tr><td>${esc(r.e.guideName)}</td><td>${esc(r.e.settleCode)}</td><td>${esc(r.e.period)}</td><td>${nf(r.kc)}</td><td>${nf(r.kt)}</td><td>${nf(r.usd)}</td><td>${nf(r.tc)}</td><td>${nf(r.tt)}</td><td class="dl-memo">${esc(memo)}</td></tr>`;
+  }).join('');
+  document.getElementById('dlResult').innerHTML = rows.length ? `<table class="dl-tbl">
+    <tr><th>가이드명</th><th>정산코드</th><th>행사기간</th><th>현금 ₩</th><th>송금 ₩</th><th>$</th><th>현금 ฿</th><th>송금 ฿</th><th>메모</th></tr>
+    ${body}
+    <tr class="dl-sum"><td colspan="3">합계 (${rows.length}건)</td><td>${nf(sum.kc)}</td><td>${nf(sum.kt)}</td><td>${nf(sum.usd)}</td><td>${nf(sum.tc)}</td><td>${nf(sum.tt)}</td><td></td></tr>
+  </table>` : `<div style="padding:10px;color:#888;">${esc(day)} 작성일자로 입금 체크된 발란스가 없습니다.</div>`;
+}
+function printDailyLedger(){
+  const day = document.getElementById('dlDate').value || _balToday();
+  const html = document.getElementById('dlResult').innerHTML;
+  const w = window.open('', '_blank', 'width=1000,height=700');
+  if (!w) { showToast('❌ 팝업이 막혀 있습니다. 팝업 허용 후 다시 눌러 주세요.', true); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>일계표 ${day}</title><style>
+    @page{size:A4 landscape;margin:10mm;}
+    body{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;margin:0;color:#111;}
+    h2{font-size:16px;margin:0 0 8px;}
+    table{border-collapse:collapse;width:100%;font-size:12px;}
+    th,td{border:1px solid #999;padding:4px 7px;white-space:nowrap;text-align:right;}
+    th{background:#f0f0f0;text-align:center;}
+    td:nth-child(-n+3){text-align:left;} td.dl-memo{text-align:left;white-space:normal;}
+    tr.dl-sum td{font-weight:800;background:#f6f6f6;}
+  </style></head><body><h2>📒 일계표 — ${day}</h2>${html}
+  <script>window.onload=function(){window.print();setTimeout(function(){window.close();},300);};<\/script></body></html>`);
+  w.document.close();
 }
 
 function updateSummary(){
