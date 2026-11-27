@@ -1747,7 +1747,7 @@
     <div class="summary-card admin-only" id="balance-block">
       <h3>⚖ 발란스</h3>
       <table class="bal-tbl">
-        <tr><th>내역</th><th>₩</th><th>$</th><th>฿</th><th>입금</th><th>메모</th></tr>
+        <tr><th>내역</th><th>₩</th><th>$</th><th>฿</th><th>메모</th></tr>
         <tr data-bal="adv"><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
         <tr data-bal="exp"><td>− 가이드 행사비 (일차)</td><td></td><td></td><td id="bal-exp"></td></tr>
         <tr data-bal="cost"><td>− 옵션 원가</td><td></td><td></td><td id="bal-cost"></td></tr>
@@ -1755,7 +1755,7 @@
         <tr data-bal="opt"><td>+ 옵션 입금액</td><td id="bal-opt-krw"></td><td id="bal-opt-usd"></td><td id="bal-opt-thb"></td></tr>
         <tr data-bal="tip"><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
         <tr data-bal="tc"><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
-        <tr data-bal="tot" class="bal-total"><td>총 받을 금액</td><td id="bal-tot-krw"></td><td id="bal-tot-usd"></td><td id="bal-tot-thb"></td></tr>
+        <tr data-bal="tot" class="bal-total"><td>총 받을 금액</td><td class="bal-totc" data-cur="KRW"><span id="bal-tot-krw"></span></td><td class="bal-totc" data-cur="USD"><span id="bal-tot-usd"></span></td><td class="bal-totc" data-cur="THB"><span id="bal-tot-thb"></span></td></tr>
       </table>
     </div>
     <style>
@@ -1766,8 +1766,7 @@
       .bal-tbl td:first-child{text-align:left;font-weight:600;min-width:0;}
       .bal-tbl .bal-sub td{background:#f8fafc;font-weight:700;}
       .bal-tbl .bal-total td{background:#e8f9f0;color:#1A8A60;font-weight:800;font-size:14px;}
-      .bal-tbl td.bal-chk{text-align:center;min-width:0;}
-      .bal-tbl td.bal-chk input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;}
+      .bal-tbl input.bal-cb{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle;margin:0 6px 0 0;float:left;}
       .bal-tbl td.bal-memo{padding:2px 4px;min-width:0;}
       .bal-tbl td.bal-memo input{width:200px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;font-family:inherit;}
     </style>
@@ -4223,23 +4222,28 @@ function calcBalance(){
   if (!state.balance || typeof state.balance !== 'object') state.balance = {};
   document.querySelectorAll('#balance-block tr[data-bal]').forEach(tr => {
     const k = tr.dataset.bal;
-    let chk = tr.querySelector('.bal-chk input'), memo = tr.querySelector('.bal-memo input');
+    let memo = tr.querySelector('.bal-memo input');
     if (!memo) {
-      // 입금 체크는 실제로 받는 「총 받을 금액」 줄에만
-      const td1 = document.createElement('td'); td1.className = 'bal-chk';
-      if (k === 'tot') {
-        chk = document.createElement('input'); chk.type = 'checkbox';
-        chk.addEventListener('change', () => { (state.balance[k] = state.balance[k] || {}).c = chk.checked; scheduleSave(); });
-        td1.appendChild(chk);
-      }
+      // 입금 체크는 실제로 받는 「총 받을 금액」 줄에만, 화폐별 금액 앞에 — state.balance.tot.c = {KRW,USD,THB}
+      tr.querySelectorAll('td.bal-totc').forEach(td => {
+        const c = td.dataset.cur;
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'bal-cb'; cb.dataset.cur = c; cb.title = '입금';
+        cb.addEventListener('change', () => {
+          const row = (state.balance[k] = state.balance[k] || {});
+          if (!row.c || typeof row.c !== 'object') row.c = {};
+          row.c[c] = cb.checked; scheduleSave();
+        });
+        td.insertBefore(cb, td.firstChild);
+      });
       const td2 = document.createElement('td'); td2.className = 'bal-memo';
       memo = document.createElement('input'); memo.type = 'text'; memo.maxLength = 200;
       memo.addEventListener('input', () => { (state.balance[k] = state.balance[k] || {}).m = memo.value; scheduleSave(); });
       td2.appendChild(memo);
-      tr.append(td1, td2);
+      tr.append(td2);
     }
     const v = state.balance[k] || {};
-    if (chk) chk.checked = !!v.c;
+    const vc = (v.c && typeof v.c === 'object') ? v.c : {};
+    tr.querySelectorAll('input.bal-cb').forEach(cb => { cb.checked = !!vc[cb.dataset.cur]; });
     if (document.activeElement !== memo) memo.value = v.m || '';
   });
 }
