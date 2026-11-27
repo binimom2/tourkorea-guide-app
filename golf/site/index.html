@@ -338,6 +338,8 @@ section{padding:64px 0}
 .thumb i{font-style:normal;font-size:30px;font-weight:900;color:rgba(255,255,255,.9);letter-spacing:-.04em;text-align:center;padding:0 12px;line-height:1.15}
 /* 사진이 있으면 이름 칸을 덮는다. 없으면 img가 스스로 사라져 이름 칸이 남는다. */
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* 관리 「★ 강조 문구」(x.star) — 카드 사진 왼쪽 아래 빨간 띠(사장님 1127) */
+.thumb .starb{position:absolute;left:9px;bottom:9px;background:#D62828;color:#fff;font-size:12px;font-weight:900;border-radius:6px;padding:4px 9px;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.25);max-width:calc(100% - 18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .thumb .holes{position:absolute;top:9px;right:9px;background:var(--marigold);color:#2A1A00;font-size:11px;font-weight:900;border-radius:999px;padding:3px 9px;z-index:2}
 .card .body{padding:13px 15px 15px;flex:1;display:flex;flex-direction:column;gap:5px}
 .card h3{margin:0;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
@@ -1716,6 +1718,7 @@ function thumbOf(x, badge, kind){
     + (src ? '<img loading="lazy" alt="' + esc(x.n) + '" src="' + esc(src)
              + '" onerror="this.remove()">' : "")
     + (badge ? '<span class="holes">' + esc(badge) + '</span>' : '')
+    + (String(x.star || "").trim() ? '<span class="starb">★ ' + esc(String(x.star).trim().replace(/^[★☆*\s]+/, "")) + '</span>' : '')
     + (kind ? favBtnHtml(kind, x.n) : '') + '</div>';
 }
 /* 지역 줄 — 호텔은 세부지역(sr)이 있으면 「방콕 › 스쿰빗(아속-프롬퐁)」 (사장님 2026-10-16) */
