@@ -1743,6 +1743,31 @@
       </div>
     </div>
 
+    <!-- 발란스: 전도금 − 일차 행사비 − 옵션원가 + 통화별 입금/지출 = 받을 금액 (calcBalance) -->
+    <div class="summary-card" id="balance-block">
+      <h3>⚖ 발란스</h3>
+      <table class="bal-tbl">
+        <tr><th></th><th>₩</th><th>$</th><th>฿</th></tr>
+        <tr><td>가이드 전도금</td><td></td><td></td><td id="bal-adv"></td></tr>
+        <tr><td>− 가이드 행사비 (일차)</td><td></td><td></td><td id="bal-exp"></td></tr>
+        <tr><td>− 옵션 원가</td><td></td><td></td><td id="bal-cost"></td></tr>
+        <tr class="bal-sub"><td>= 금액</td><td></td><td></td><td id="bal-net"></td></tr>
+        <tr><td>+ 옵션 입금액</td><td id="bal-opt-krw"></td><td id="bal-opt-usd"></td><td id="bal-opt-thb"></td></tr>
+        <tr><td>+ 기가팁 입금액</td><td id="bal-tip-krw"></td><td id="bal-tip-usd"></td><td id="bal-tip-thb"></td></tr>
+        <tr><td>− TC정산금 지출금</td><td id="bal-tc-krw"></td><td id="bal-tc-usd"></td><td id="bal-tc-thb"></td></tr>
+        <tr class="bal-total"><td>총 받을 금액</td><td id="bal-tot-krw"></td><td id="bal-tot-usd"></td><td id="bal-tot-thb"></td></tr>
+      </table>
+    </div>
+    <style>
+      .bal-tbl{border-collapse:collapse;font-size:13px;margin-top:4px;}
+      .bal-tbl th,.bal-tbl td{border:1px solid var(--border);padding:5px 10px;white-space:nowrap;}
+      .bal-tbl th{background:#f8fafc;font-weight:700;text-align:center;}
+      .bal-tbl td{text-align:right;min-width:80px;}
+      .bal-tbl td:first-child{text-align:left;font-weight:600;min-width:0;}
+      .bal-tbl .bal-sub td{background:#f8fafc;font-weight:700;}
+      .bal-tbl .bal-total td{background:#e8f9f0;color:#1A8A60;font-weight:800;font-size:14px;}
+    </style>
+
     <!-- 회사 정산서 코멘트 (Admin 전용, 한 줄) — 회사 정산서 출력에만 찍힌다 -->
     <div class="summary-card settle-admin-card admin-only" id="admin-note-block" style="margin-bottom:10px;">
       <div style="padding:10px 12px;">
@@ -4159,6 +4184,38 @@ function calcSettleAdmin() {
   stAdmTotalEl.style.color=stAdmTotalVal<0?'var(--danger)':'var(--primary)';
 }
 
+// 발란스: ฿ 금액 = 전도금 − 일차 행사비(회사지불 제외) − 옵션 원가
+// 총 받을 금액(통화별) = 옵션 입금 + 기가팁 입금 − TC정산금 지출 (฿는 위 금액도 더함). 환율 환산 없음.
+function calcBalance(){
+  const n = v => parseFloat((v==null?'':v).toString().replace(/,/g,''))||0;
+  const cur3 = () => ({KRW:0, USD:0, THB:0});
+  const adv = n(document.getElementById('advancePay')?.value);
+  let exp = 0;
+  (state.days||[]).forEach(d => (state.expenses[d.id]||[]).forEach(r => exp += n(r.amount)));
+  const cost = (state.options||[]).reduce((s,r)=>s+n(r.cost), 0);
+  const net = adv - exp - cost;
+  const opt = cur3(), tip = cur3(), tc = cur3();
+  (state.options||[]).forEach(r => { const c=r.currency||'THB'; if(c in opt) opt[c] += n(r.total); });
+  (state.gigatip||[]).forEach(r => {
+    const c=r.currency||'THB'; if(!(c in tip)) return;
+    if ((r.type||'기가팁')==='TC정산금') tc[c] += n(r.total); else tip[c] += n(r.total);
+  });
+  const sym = {KRW:'₩', USD:'$', THB:'฿'};
+  const f = (v,c) => { v = Math.round(v*100)/100; return v===0 ? '' : (v<0?'-':'')+sym[c]+' '+fmtNum(Math.abs(v)); };
+  const set = (id, txt, neg) => { const el=document.getElementById(id); if(el){ el.textContent=txt; el.style.color = neg ? 'var(--danger)' : ''; } };
+  set('bal-adv', f(adv,'THB'));
+  set('bal-exp', f(exp,'THB'));
+  set('bal-cost', f(cost,'THB'));
+  set('bal-net', f(net,'THB') || '฿ 0', net<0);
+  [['KRW','krw'],['USD','usd'],['THB','thb']].forEach(([c,k])=>{
+    set('bal-opt-'+k, f(opt[c],c));
+    set('bal-tip-'+k, f(tip[c],c));
+    set('bal-tc-'+k, f(tc[c],c));
+    const tot = (c==='THB'?net:0) + opt[c] + tip[c] - tc[c];
+    set('bal-tot-'+k, f(tot,c) || (c==='THB'?'฿ 0':''), tot<0);
+  });
+}
+
 function updateSummary(){
   // 기본 정보 (화면용 + 프린트용 동시 업데이트)
   const guide=document.getElementById('guideName').value||'-';
@@ -4200,6 +4257,8 @@ function updateSummary(){
   document.querySelectorAll('.admin-only').forEach(el=>{
     el.style.display=currentRole==='admin'?'block':'none';
   });
+
+  try { calcBalance(); } catch(e) { console.error('calcBalance', e); }
 
   // 체크된 정산방법 재계산
   if(document.getElementById('chk-incentive')?.checked) { calcIncentive(); }
